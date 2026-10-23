@@ -405,7 +405,7 @@ function vWork(kind, id) {
       kind === 'dsa' ? el('div', { class: 'schema', text: Q.tests.slice(0, 2).map(t => Q.fn + '(' + t[0].map(a => JSON.stringify(a)).join(', ') + ') → ' + JSON.stringify(t[1])).join('\n'), style: { whiteSpace: 'pre-wrap' } }) : null]),
     Q.why ? el('div', { class: 'why' }, [el('b', { text: 'Why a data engineer cares: ' }), Q.why]) : null,
     lang !== 'python' ? tablesBox() : null,
-    Q.rec ? el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'lbl', text: 'On full data (recorded runs)' }), el('div', { class: 'hint', style: { background: 'var(--red-l)', borderColor: '#F0C4B8' } }, [el('b', { text: 'Before: ' }), Q.rec[0]]), el('div', { class: 'hint' }, [el('b', { text: 'Target: ' }), Q.rec[1]])]) : null,
+    Q.rec ? el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'lbl', text: 'On full data (typical estimate)' }), el('div', { class: 'hint', style: { background: 'var(--red-l)', borderColor: '#F0C4B8' } }, [el('b', { text: 'Before: ' }), Q.rec[0]]), el('div', { class: 'hint' }, [el('b', { text: 'Target: ' }), Q.rec[1]])]) : null,
     kind !== 'test' ? el('a', { href: '#/path/' + Q.w, style: { fontWeight: 600 }, text: 'See this week\'s full list' }) : null]);
 
   /* middle: editor + output */

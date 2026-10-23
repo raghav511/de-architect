@@ -1,6 +1,6 @@
 # SQL bank: 12 weeks x 5. Runs on the sample ride-hailing tables (see py/runtime.py seed()).
 # k: 'W' write or 'O' optimize. For O, 'start' is the slow query (it returns the right answer) and
-# 'avoid'/'need' are [regex, message] rules about HOW the answer is written. 'rec' = recorded numbers on full data.
+# 'avoid'/'need' are [regex, message] rules about HOW the answer is written. 'rec' = typical before/after estimates on full-size data.
 S = []
 def q(**k): S.append(k)
 

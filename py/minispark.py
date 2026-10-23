@@ -560,7 +560,7 @@ class DataFrame:
         print('== Physical Plan ==')
         for i, s in enumerate(steps):
             print(('   ' * i) + ('+- ' if i else '') + s)
-        print('(practice engine: plan shape only; sizes and timings are from recorded real runs)')
+        print('(practice engine: plan shape only; the sizes and timings shown in the app are typical estimates for full-size data)')
 
     def createOrReplaceTempView(self, name):
         _con.execute('CREATE OR REPLACE TEMP VIEW ' + _q(name) + ' AS ' + self._sql)
