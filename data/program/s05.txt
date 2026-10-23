@@ -1,0 +1,690 @@
+@@meta
+id: s05
+n: 5
+title: Real time
+goal: Trip demand per zone, fresh to within 30 seconds, flowing from Kafka through Spark Structured Streaming into an Iceberg table. The stream survives a restart without duplicates, a poison message without stalling, and a schema change without breaking consumers.
+hours: 10
+
+@@tickets
+501 | learn | 2 | Chapter 5 and the readings | You can draw one message's path from producer to committed offset, and say exactly what a watermark decides. | chapter
+502 | build | 2.5 | Trip demand per zone, streaming | Kafka to Structured Streaming to Iceberg, updated within 30 seconds; killing and restarting the job adds no duplicates. | lab
+503 | incident | 0.75 | A poison message and rising lag | A dead-letter topic catches the bad record, lag returns to zero, and a replay runbook exists. | lab
+504 | ai | 1 | Retrieval over your runbooks | 8 of 10 test questions retrieve the right section, and every answer cites its source. | lab
+505 | practice | 1.25 | Warm-ups and the customer drill | Three SQL and three DSA warm-ups attempted, and the drill answered out loud. | practice
+506 | test | 0.5 | Quiz 5 | 80% or better. | quiz
+507 | test | 1 | Coding test 5 | Attempted inside the 60-minute timer. | coding
+508 | talk | 1 | Interview set 5 and the mock | 14 of 18 questions ticked, and a mock score recorded. | interview
+
+@@readings
+- [Spark: Structured Streaming programming guide](https://spark.apache.org/docs/latest/streaming/apis-on-dataframes-and-datasets.html). Read the sections on event-time windows, watermarking and output modes.
+- [Kafka documentation: Design](https://kafka.apache.org/43/design/design/). This time read replication and message delivery semantics.
+- [Confluent: Schema evolution and compatibility](https://docs.confluent.io/platform/current/schema-registry/fundamentals/schema-evolution.html). The compatibility table is asked about directly.
+- [Iceberg: Spark Structured Streaming](https://iceberg.apache.org/docs/latest/spark-structured-streaming/). Which output modes an Iceberg sink accepts, and why maintenance matters more for streams.
+- [Uber: Real-time exactly-once ad event processing](https://www.uber.com/us/en/blog/real-time-exactly-once-ad-event-processing/). A production design with Kafka, Flink and Pinot, to read after the chapter.
+
+@@chapter
+## 5.1 Why streaming is harder than batch
+
+Surge pricing needs to know how many riders are requesting trips in each zone right now. The hourly batch job is no use for that.
+
+Streaming appears in 87% of your interview files. LinkedIn's senior loop gives it a full round of twelve questions, and Confluent's goes deep into consumer behaviour. Three things make it harder than batch.
+
+**The data never ends.** A batch job reads a bounded input and stops. A stream has no end, so any aggregation must be cut into windows, and the job must decide when a window is finished.
+
+**There are two clocks.** *Event time* is when something happened on the rider's phone. *Processing time* is when your job saw it. A phone in a tunnel sends events minutes late. If you count by processing time, the 09:00 window contains whatever happened to arrive at 09:00.
+
+**The job runs for months.** It will be restarted, redeployed and crashed many times. Each restart must continue from exactly where it stopped, with its in-progress counts intact.
+
+## 5.2 Kafka from the inside
+
+Sprint 1 gave you topics, partitions, offsets and consumer groups. Now the parts that interviews probe.
+
+**Replication.** Each partition has one **leader** and several **followers** on different brokers. Producers and consumers talk to the leader. Followers copy it. The followers that are fully caught up form the **in-sync replicas**, or ISR. If the leader dies, a new one is elected from the ISR, so no acknowledged message is lost.
+
+Durability is set by three numbers together.
+
+| Setting | Meaning | Typical production value |
+|---|---|---|
+| Replication factor | Copies of each partition | 3 |
+| `acks` on the producer | How many replicas must confirm a write | `all`: every in-sync replica |
+| `min.insync.replicas` on the topic | The smallest ISR that still accepts writes | 2 |
+
+With those values, one broker can fail and writes continue. If two fail, producers get errors. That is correct behaviour: the cluster refuses writes it cannot keep safe.
+
+**Producers.** A producer batches messages per partition and can compress each batch. With idempotence enabled, which is the default in current versions, the broker discards duplicates caused by producer retries.
+
+**Consumers.** A consumer runs a loop: poll for records, process them, commit offsets. Committed offsets are stored in an internal Kafka topic.
+
+- **Auto-commit** commits on a timer, whatever your code has finished. A crash after the commit and before processing loses messages.
+- **Manual synchronous commit** blocks until the broker confirms. It is safe and slower.
+- **Manual asynchronous commit** does not block and does not retry, so a failed commit can go unnoticed. A common pattern is asynchronous commits during normal running and one synchronous commit on shutdown.
+
+**Rebalancing.** When a consumer joins, leaves or is judged dead, the group redistributes partitions. A consumer is judged dead if it stops sending heartbeats, or if it takes longer than `max.poll.interval.ms` between polls, which happens when processing one batch is too slow. During an eager rebalance, every consumer stops. Cooperative rebalancing moves only the partitions that need to move. Frequent rebalances are a classic cause of a stream that makes no progress.
+
+**Lag** is the gap between the newest offset in a partition and the group's committed offset. It is the first number to monitor for any consumer.
+
+**Choosing a partition count.** Work back from consumers. If one consumer instance handles 10,000 events per second and the topic carries 500,000, you need at least 50 partitions to run 50 consumers. Add headroom for growth, since the count can be raised later but never lowered, and raising it changes which partition each key maps to.
+
+**Retention.** Messages are kept for a time or size limit. A **compacted** topic keeps only the latest message per key for ever, which suits "current state of each entity" topics.
+
+## 5.3 Delivery guarantees
+
+| Guarantee | How it happens | Result |
+|---|---|---|
+| At-most-once | Commit the offset, then process | A crash loses messages |
+| At-least-once | Process, then commit | A crash reprocesses messages, so duplicates are possible |
+| Exactly-once | At-least-once delivery, plus a sink that makes reprocessing harmless | Each message affects the result once |
+
+No network delivers a message exactly once. What systems provide is exactly-once *effect*, and you get it in one of two ways. The sink is **idempotent**: writing the same record twice leaves one record, through a merge on a key. Or the sink is **transactional**: the output and the record of progress are committed together, so they cannot disagree.
+
+The complete answer to "how do you get exactly-once end to end" has three parts: a source you can replay, progress stored in a checkpoint, and an idempotent or transactional sink.
+
+## 5.4 Spark Structured Streaming
+
+Structured Streaming treats a stream as a table that keeps growing. You write the same DataFrame code as for batch. By default the engine runs it as a series of small batches, each reading the records that arrived since the last one.
+
+```python
+events = (spark.readStream.format("kafka")
+          .option("kafka.bootstrap.servers", "localhost:9092")
+          .option("subscribe", "trip_events")
+          .option("maxOffsetsPerTrigger", 50000)
+          .load()
+          .select(F.from_json(F.col("value").cast("string"), schema).alias("e"))
+          .select("e.*")
+          .withColumn("event_ts", F.to_timestamp("event_ts")))
+
+demand = (events.filter("event_type = 'requested'")
+          .withWatermark("event_ts", "2 minutes")
+          .dropDuplicatesWithinWatermark(["event_id"])
+          .groupBy(F.window("event_ts", "1 minute"), "zone_id")
+          .agg(F.count("*").alias("requests")))
+```
+
+**The checkpoint.** Each query has a checkpoint location in durable storage. It records which Kafka offsets each batch covered, and it holds the query's state. On restart, the query reads the checkpoint and continues. Spark does not use Kafka's consumer group commits to track its progress. Deleting the checkpoint makes the query forget everything.
+
+**Windows.** A *tumbling* window is fixed and non-overlapping, such as each minute. A *sliding* window overlaps, such as five minutes advancing every minute. A *session* window closes after a gap in activity.
+
+**The watermark.** To count requests per minute, the engine keeps a running count for each open window. It cannot keep every window open for ever. `withWatermark("event_ts", "2 minutes")` tells it: track the latest event time seen so far, subtract two minutes, and treat that as the point before which no more data is expected. When the watermark passes the end of a window, the window is final and its state is freed. An event that arrives later than that is dropped.
+
+The threshold is a business decision. A longer one accepts later data and holds more state in memory.
+
+**Output modes.** This is where the 30-second requirement bites.
+
+| Mode | What is written each batch | Consequence |
+|---|---|---|
+| Append | Only windows that are final | A one-minute window with a two-minute watermark appears about three minutes late, and never changes |
+| Update | Every window whose count changed | Fresh within one batch, but rows are revised as late events arrive |
+| Complete | The whole result table | Only for small results |
+
+Surge pricing needs freshness more than finality, so it needs update mode. Finance needs final numbers, so it wants append mode. The same stream can feed both.
+
+An Iceberg sink accepts append and complete. For update semantics, use `foreachBatch`, which hands you each micro-batch as an ordinary DataFrame:
+
+```python
+def upsert(batch_df, batch_id):
+    (batch_df.select(F.col("window.start").alias("window_start"), "zone_id", "requests")
+             .createOrReplaceTempView("updates"))
+    batch_df.sparkSession.sql("""
+        MERGE INTO lake.gold.zone_demand t
+        USING updates s
+           ON t.window_start = s.window_start AND t.zone_id = s.zone_id
+        WHEN MATCHED THEN UPDATE SET t.requests = s.requests
+        WHEN NOT MATCHED THEN INSERT *""")
+
+query = (demand.writeStream
+         .outputMode("update")
+         .foreachBatch(upsert)
+         .option("checkpointLocation", "s3a://lake/checkpoints/zone_demand")
+         .trigger(processingTime="10 seconds")
+         .start())
+```
+
+`foreachBatch` on its own is at-least-once: if the job dies after the merge and before the checkpoint is updated, the batch runs again. The merge on `(window_start, zone_id)` makes that harmless. This is sprint 1's idempotency lesson, applied to a stream.
+
+**Backpressure.** `maxOffsetsPerTrigger` caps how much each batch reads, so a restart after an outage works through the backlog in steady pieces and does not try to load it all at once.
+
+## 5.5 Schemas that change
+
+The app team will add a field. If producers and consumers disagree about the shape of a message, the stream breaks.
+
+A **schema registry** stores every version of each topic's schema. A producer registers its schema and puts only a small schema id in each message. A consumer fetches the schema by id. The registry rejects a new schema that violates the topic's compatibility rule.
+
+| Mode | Guarantee | Allowed changes | Upgrade first |
+|---|---|---|---|
+| Backward | The new schema can read old data | Delete fields; add fields that have defaults | Consumers |
+| Forward | The old schema can read new data | Add fields; delete fields that have defaults | Producers |
+| Full | Both | Add or delete only fields that have defaults | Either |
+
+Backward is the usual default, because it lets a consumer replay old messages with the newest schema. The safe habit in any mode is to give every new field a default and never to change a field's type or meaning.
+
+## 5.6 Failure handling
+
+**Poison messages.** A record that cannot be parsed will fail every time. If the job retries it for ever, the partition stalls and lag grows. Route such records to a **dead-letter topic** with the error and the original bytes, continue with the rest, and alert. Someone fixes the cause and replays the dead-letter topic.
+
+**A slow consumer.** If lag rises steadily, the consumer is slower than the producer. In order: check for rebalance loops, make processing faster, add consumers up to the partition count, then add partitions.
+
+**Replay.** After fixing a bug, you reprocess old messages by restarting from earlier offsets with a new checkpoint. This is only safe if the sink is idempotent. Write the steps down as a runbook before you need them.
+
+## 5.7 Spark, Flink and Kafka Streams
+
+| | Spark Structured Streaming | Flink | Kafka Streams |
+|---|---|---|---|
+| Model | Micro-batches by default | One event at a time | One event at a time |
+| Typical latency | Seconds | Milliseconds to seconds | Milliseconds |
+| State | Checkpointed state store | Large managed state with savepoints | Local stores backed by Kafka topics |
+| Runs as | A Spark application | A Flink cluster | A library inside your own service |
+| Best fit | Teams already on Spark; batch and stream sharing code; lakehouse sinks | Low latency, complex event-time logic, very large state | Kafka-to-Kafka processing inside a microservice |
+
+For Meridian's demand counts, seconds are fine and the team already runs Spark. You will use Flink SQL next sprint, where change data capture is its natural home.
+
+Two architecture names complete the vocabulary. **Lambda** runs a batch pipeline and a streaming pipeline side by side and merges their results, which means writing the logic twice. **Kappa** uses one streaming pipeline and replays the log when logic changes. A lakehouse with streaming writes into table formats is close to kappa.
+
+## 5.8 Retrieval for your agent
+
+Your agent can read logs and plans. It does not know your runbooks, your schema notes or what you did the last time lag spiked. Putting every document into every prompt is wasteful and soon impossible. **Retrieval-augmented generation**, or RAG, fetches only the relevant passages at question time.
+
+1. **Chunk.** Split documents into passages. For runbooks and notes, split at headings, so each chunk is one complete procedure with its title.
+2. **Embed.** An embedding model turns each chunk into a vector. Texts with similar meaning get nearby vectors.
+3. **Store.** Keep vectors with their text and source.
+4. **Retrieve.** Embed the question and take the nearest chunks.
+5. **Generate.** Give the model the question and the retrieved chunks, and require it to cite the source of each claim and to say when the chunks do not contain the answer.
+
+```python
+import numpy as np
+from sentence_transformers import SentenceTransformer
+
+model = SentenceTransformer("all-MiniLM-L6-v2")          # small, runs locally
+
+def build_index(chunks):                                  # chunks: [{"source": ..., "text": ...}]
+    vectors = model.encode([c["text"] for c in chunks], normalize_embeddings=True)
+    return np.asarray(vectors)
+
+def retrieve(question, chunks, vectors, k=4):
+    q = model.encode([question], normalize_embeddings=True)[0]
+    scores = vectors @ q                                  # cosine similarity, since vectors are normalised
+    top = np.argsort(-scores)[:k]
+    return [{**chunks[i], "score": float(scores[i])} for i in top]
+```
+
+For a few hundred chunks, an array in memory is the right tool. A vector database earns its place at millions of chunks or when you need filtering and updates.
+
+Three engineering points separate working retrieval from a demo.
+
+- **Retrieval is search, so measure it as search.** Write ten questions and note which chunk should answer each. Check how often that chunk is in the top four. If retrieval misses, no prompt can save the answer.
+- **Exact terms matter.** Embeddings are weak on identifiers such as `max.poll.interval.ms` or an error code. Combining vector search with keyword search, called hybrid search, fixes much of this.
+- **Retrieval or a tool?** Use retrieval for knowledge written in prose: runbooks, past incidents, definitions. Use a tool for live facts: current lag, today's row count. Asking retrieval for a live number returns yesterday's document.
+
+@@lab
+## Build: trip demand per zone, streaming (2.5 hours)
+
+Ask Claude to **start sprint 5**. The starter kit adds a schema registry to the compose file, an Avro version of the generator, and a streaming job skeleton.
+
+1. **The stream.** Read `trip_events`, keep `requested` events, set a two-minute watermark, drop duplicate `event_id` values within the watermark, and count per one-minute window and zone.
+2. **The fresh sink.** Write with update mode and `foreachBatch`, merging into `lake.gold.zone_demand`. Trigger every 10 seconds.
+3. **Measure freshness.** Produce an event and time how long it takes to appear in a query on the table. It should be under 30 seconds.
+4. **Kill it.** Stop the job mid-run with `kill -9`. Restart it. Compare the counts for the affected minutes with a batch recount from the raw topic. They must match.
+5. **The final sink.** Add a second query from the same stream in append mode, writing to `lake.gold.zone_demand_final`. Note how much later its rows appear, and why.
+6. **A schema change.** Add an optional `promo_code` field with a default to the Avro schema and register it. Confirm the running consumer does not break. Then try to register a change that renames `zone_id`, and read the registry's rejection.
+7. **Schedule maintenance.** A stream that commits every ten seconds creates small files quickly. Add this table to your sprint 2 maintenance DAG.
+
+**Done when** freshness is under 30 seconds, the kill test shows no duplicates and no loss, and the incompatible schema is rejected.
+
+## Incident: a poison message and rising lag (45 minutes)
+
+```
+[SEV2] 02:14 IST  consumer lag
+topic=trip_events  query=zone_demand  lag=1,840,000 and rising
+impact: surge pricing in Bengaluru is using demand that is 40 minutes old
+```
+
+A new app version shipped at 01:50. One partition has stopped moving.
+
+1. **Reproduce.** Use the generator's `--poison` option, which sends a message that is not valid for the schema. Watch the query fail and restart on the same offset.
+2. **Find it.** Read the exception. Then inspect the record at the failing offset with the console consumer.
+3. **Contain it.** Change parsing so a record that fails to decode is written to `trip_events.dlq` with the error text, topic, partition and offset, and the stream continues.
+4. **Recover.** Restart and watch lag fall. Record how long the backlog takes to clear with your `maxOffsetsPerTrigger` setting.
+5. **Write the runbook**, `docs/runbooks/stream-replay.md`, with headings: symptoms, how to find the bad offset, how to route to the dead-letter topic, how to replay the dead-letter topic after a fix, and how to replay a time range from the main topic with a new checkpoint.
+
+Add the incident to `notes/what-broke.md`. The runbook is also the first document your retrieval agent will search.
+
+## AI lab: retrieval over your runbooks (1 hour)
+
+1. **Collect documents.** Your runbook, `notes/what-broke.md` from five sprints, the dbt model descriptions, and the README grain statements. Split them at headings and keep the file name and heading as `source`.
+2. **Index them** with the code in section 5.8.
+3. **Write ten test questions** and record the source that should answer each. Include two that use exact identifiers, such as a config name, and one that no document answers.
+4. **Score retrieval.** For each question, is the expected source in the top four? Record the score out of ten.
+5. **Add `search_docs(question)` as a tool** for your agent, returning the top chunks with sources. Ask: "Lag is rising on trip_events. What do I do?" Check that the answer follows your runbook and cites it.
+6. **Improve one thing.** If the identifier questions failed, add a simple keyword match alongside the vector score and measure again.
+
+**Done when** at least 8 of 10 retrieve correctly, answers cite sources, and the unanswerable question gets "the documents do not cover this".
+
+@@practice
+## SQL warm-ups: rolling windows
+
+1. **Seven-day moving average of daily transactions.** `daily(txn_date, amount)`, one row per day. Asked at Goldman Sachs. *Approach:* `AVG(amount) OVER (ORDER BY txn_date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)`. Say what happens when a day is missing: `ROWS` counts rows, not days.
+2. **Daily active users, then a seven-day rolling average of that number.** Asked at Meta. *Approach:* aggregate to one row per day first, then apply the window. Two steps.
+3. **Each user's three busiest days.** `activity(user_id, event_date, events)`. Asked at Confluent. *Approach:* `ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY events DESC)` and keep 3.
+
+## DSA warm-ups: heaps
+
+1. **K most frequent elements.** *Approach:* count with a map, then keep a min-heap of size K. O(n log K).
+2. **Kth largest element in a stream.** *Approach:* a min-heap holding the K largest seen so far; the top is the answer after each insert.
+3. **Merge K sorted lists.** *Approach:* a heap of one head element per list; pop the smallest and push that list's next element. This is how a merge of sorted shuffle files works.
+
+## Customer drill: "we need it in real time"
+
+The pricing team says: *"We need demand data in real time."*
+
+What do you ask before agreeing to build a stream? Decide, then compare.
+
+- How often does the pricing decision itself change? If surge is recalculated every two minutes, sub-second data buys nothing.
+- What is the cost of data being one minute old, and of being five minutes old?
+- Does the consumer need early numbers that may be revised, or final numbers?
+- What happens to pricing if the stream stops? Is there a safe fallback?
+
+"Real time" is not a requirement. A freshness target with a number, and a decision it serves, is. Streams cost more to build and to run, so an engineer who replaces "real time" with "under 30 seconds, revised for two minutes" has saved the customer money.
+
+@@quiz
+TYPE: mcq
+TAG: streaming
+Q: A topic has 6 partitions. A consumer group has 8 consumers. How many consumers receive no messages?
+A) 0
+B) 2
+C) 6
+D) 8
+ANS: B
+WHY: Each partition is assigned to exactly one consumer in a group. Six get a partition and two stand idle.
+---
+TYPE: mcq
+TAG: streaming
+Q: A topic has replication factor 3 and `min.insync.replicas=2`. Producers use `acks=all`. How many brokers holding this partition can fail before producers start receiving errors?
+A) 0
+B) 1
+C) 2
+D) 3
+ANS: B
+WHY: With one broker down, two replicas remain in sync and writes are accepted. With two down, the in-sync set is below the minimum and the broker rejects writes.
+---
+TYPE: mcq
+TAG: streaming
+Q: A consumer commits its offset first and then processes the records. It crashes during processing. Which delivery guarantee does this give?
+A) At-most-once
+B) At-least-once
+C) Exactly-once
+D) None; Kafka redelivers anyway
+ANS: A
+WHY: The committed offset already points past the unprocessed records, so they are never read again. Processing before committing gives at-least-once.
+---
+TYPE: mcq
+TAG: streaming
+Q: Which of these triggers a consumer group rebalance?
+A) A producer sending a large batch
+B) A consumer taking longer than `max.poll.interval.ms` between polls
+C) A message exceeding retention
+D) A consumer committing an offset
+ANS: B
+WHY: A consumer that does not poll in time is considered failed and removed from the group, and its partitions are reassigned. Slow processing per batch is a common hidden cause.
+---
+TYPE: mcq
+TAG: streaming
+Q: Where does a Structured Streaming query record which Kafka offsets it has processed?
+A) In Kafka's consumer group offsets
+B) In its checkpoint location
+C) In the driver's memory only
+D) In the Hive Metastore
+ANS: B
+WHY: The checkpoint holds the offset log and state. That is why each query needs its own durable checkpoint directory, and why deleting it resets the query.
+---
+TYPE: mcq
+TAG: streaming
+Q: A windowed aggregation uses a watermark and append output mode. When is a window's row written to the sink?
+A) As soon as its first event arrives
+B) On every micro-batch
+C) Once the watermark has passed the end of the window
+D) Only when the job stops
+ANS: C
+WHY: Append mode writes each row once, so the engine waits until the window can no longer change. Update mode writes earlier and revises.
+---
+TYPE: mcq
+TAG: streaming
+Q: A topic's compatibility mode is BACKWARD. What does that guarantee?
+A) Old consumers can read data written with the new schema
+B) Consumers using the new schema can read data written with the previous schema
+C) No schema changes are allowed
+D) Fields can be renamed freely
+ANS: B
+WHY: Backward compatibility protects readers on the new schema reading older data, which is why consumers are upgraded first.
+---
+TYPE: mcq
+TAG: ai
+Q: A retrieval-based assistant gives a confident, wrong answer about your runbook. What do you check first?
+A) Whether the model's temperature is too high
+B) Whether the correct passage was among the retrieved chunks
+C) Whether the prompt is long enough
+D) Whether the API key is valid
+ANS: B
+WHY: If the right chunk was not retrieved, generation had no chance. Diagnose retrieval before changing the prompt.
+---
+TYPE: fill
+TAG: streaming
+Q: The followers that are fully caught up with a partition's leader are called the in-sync ____.
+ANS: replicas | replica
+WHY: A new leader is chosen only from the in-sync replicas, so acknowledged writes survive a leader failure.
+---
+TYPE: fill
+TAG: streaming
+Q: The difference between the latest offset in a partition and a consumer group's committed offset is the consumer ____.
+ANS: lag
+WHY: Lag that grows steadily means the consumer is slower than the producer or has stalled.
+---
+TYPE: fill
+TAG: streaming
+Q: Records that repeatedly fail processing are sent to a dead-____ topic so the stream can continue.
+ANS: letter
+WHY: A dead-letter topic isolates poison messages with their error details for later inspection and replay.
+---
+TYPE: fill
+TAG: streaming
+Q: The Kafka source option `____` caps how many records one Structured Streaming micro-batch reads.
+ANS: maxOffsetsPerTrigger
+WHY: It keeps batch sizes steady when a job restarts with a large backlog.
+---
+TYPE: short
+TAG: streaming
+Q: Your stream merges window counts into an Iceberg table with `foreachBatch` and crashes after the merge but before the checkpoint is updated. Explain step by step why the restart leaves no duplicates. Then name a sink where it would.
+MODEL: On restart, Spark reads the checkpoint, finds that the last batch was not recorded as complete, and **reruns that batch with the same offsets**, since Kafka can be replayed. The state store is restored to the start of that batch, so the recomputed counts are identical.
+
+The batch then runs the same `MERGE` keyed on window start and zone. Rows already written are matched and updated to the same values; nothing is inserted twice. Replayable source, checkpointed progress and an idempotent sink together give an exactly-once result.
+
+A plain **append** inside `foreachBatch`, an HTTP call, an email, or an insert into a database table without a key would produce duplicates on the rerun.
+---
+TYPE: short
+TAG: streaming
+Q: Distinguish event time from processing time. A query has a two-minute watermark on one-minute tumbling windows. What happens to an event that arrives five minutes late?
+MODEL: **Event time** is when the event occurred at its source. **Processing time** is when the engine received it. They differ because of network delay, offline devices and backlogs. Windows should be assigned by event time so results describe what happened.
+
+The watermark is the latest event time seen minus two minutes. Once it passes the end of a window, that window is finalised and its state dropped. An event five minutes late belongs to a window whose end is already behind the watermark, so it is **discarded** and not counted.
+
+To keep such events, lengthen the watermark at the cost of more state and later final results, or reconcile later with a batch job over the raw data.
+---
+TYPE: short
+TAG: streaming
+Q: How would you design topic partitioning for clickstream ingestion at 500,000 events per second?
+MODEL: **Count.** Work back from consumer throughput. If one consumer instance processes about 10,000 events per second, 500,000 needs at least 50 partitions. Add headroom for growth and for catching up after an outage, so 100 or more. Check the produce side too: at 1 KB per event this is about 500 MB per second across the cluster.
+
+**Key.** Choose by the ordering needed. Keying by session or user id keeps one user's events in order and spreads load, provided no single key dominates. Avoid low-cardinality keys such as country, which cause skew.
+
+**Cautions.** Partitions can be added but not removed, and adding them changes key-to-partition mapping, so size generously at the start. Use replication factor 3.
+---
+TYPE: short
+TAG: streaming
+Q: Compare synchronous and asynchronous offset commits. What is the risk of auto-commit?
+MODEL: A **synchronous** commit blocks until the broker confirms and retries on failure. It is safe but adds latency to every batch. An **asynchronous** commit returns at once and reports the outcome in a callback. It gives higher throughput, but a failed commit is not retried, because a later commit may already have succeeded and retrying could move the offset backwards. A common pattern is asynchronous commits while running and a final synchronous commit on shutdown or rebalance.
+
+**Auto-commit** commits on a timer regardless of processing. If the consumer crashes after an auto-commit but before finishing those records, they are lost. If it crashes before the next auto-commit, finished records are processed again.
+
+@@coding
+TITLE: Rolling seven-day active users
+KIND: sql
+MIN: 15
+TAG: sql
+SRC: LinkedIn, 5 YOE, and Google, 5 YOE
+PROBLEM:
+Table `events(user_id, event_date)`.
+
+For each date that appears in the table, return the number of **distinct users** active in the seven days ending on that date, inclusive. Output `day, active_7d`, ordered by day.
+SOLUTION:
+```sql
+WITH days AS (
+  SELECT DISTINCT event_date AS day FROM events
+)
+SELECT d.day,
+       COUNT(DISTINCT e.user_id) AS active_7d
+FROM days d
+JOIN events e
+  ON e.event_date >  d.day - INTERVAL '7' DAY
+ AND e.event_date <= d.day
+GROUP BY d.day
+ORDER BY d.day;
+```
+
+The obvious attempt, `COUNT(DISTINCT user_id) OVER (... RANGE BETWEEN 6 PRECEDING ...)`, is rejected by most engines, because distinct counts cannot be maintained incrementally over a sliding frame. The range join is the portable answer: each day is joined to the seven days of events that end on it.
+
+Both interviewers asked how to make it fast on a very large table. Reduce `events` to one row per user per day first. Restrict the date range, so partition pruning applies. If an approximation is acceptable, keep a daily HyperLogLog sketch per day and merge seven sketches, which avoids the join entirely.
+<!--test
+con.execute("create table events(user_id int, event_date date)")
+con.execute("insert into events values (1,'2026-10-01'),(2,'2026-10-03'),(1,'2026-10-08'),(3,'2026-10-08'),(3,'2026-10-08'),(4,'2026-10-10')")
+rows = [(str(d)[:10], int(n)) for d, n in con.execute(Q).fetchall()]
+assert rows == [('2026-10-01',1),('2026-10-03',2),('2026-10-08',3),('2026-10-10',3)], rows
+-->
+---
+TITLE: More than three logins inside five minutes
+KIND: sql
+MIN: 12
+TAG: sql
+SRC: Confluent, 5–6 YOE
+PROBLEM:
+Table `logins(user_id, login_ts)`.
+
+Return every `user_id` that logged in **more than three times within any five-minute span**. Four logins exactly five minutes apart from first to last count. Order by `user_id`.
+SOLUTION:
+```sql
+WITH x AS (
+  SELECT user_id, login_ts,
+         LAG(login_ts, 3) OVER (PARTITION BY user_id ORDER BY login_ts) AS third_before
+  FROM logins
+)
+SELECT DISTINCT user_id
+FROM x
+WHERE third_before IS NOT NULL
+  AND login_ts - third_before <= INTERVAL '5' MINUTE
+ORDER BY user_id;
+```
+
+"More than three in a window" means four events close together. For each login, look back exactly three rows. If that earlier login is within five minutes, then four logins fit inside the span. One `LAG` with an offset replaces a self-join.
+
+This generalises: "at least N events within T" is `LAG(ts, N-1)` and a comparison. Confluent asked for it in Python, where the same idea is a sliding window over each user's sorted timestamps.
+<!--test
+con.execute("create table logins(user_id int, login_ts timestamp)")
+con.execute("insert into logins values (1,'2026-10-11 09:00:00'),(1,'2026-10-11 09:01:00'),(1,'2026-10-11 09:02:00'),(1,'2026-10-11 09:04:00'),(2,'2026-10-11 09:00:00'),(2,'2026-10-11 09:02:00'),(2,'2026-10-11 09:04:00'),(2,'2026-10-11 09:06:00'),(3,'2026-10-11 09:00:00'),(3,'2026-10-11 09:00:10'),(3,'2026-10-11 09:00:20'),(4,'2026-10-11 09:00:00'),(4,'2026-10-11 09:10:00'),(4,'2026-10-11 09:11:00'),(4,'2026-10-11 09:12:00'),(4,'2026-10-11 09:14:00')")
+assert con.execute(Q).fetchall() == [(1,),(4,)]
+-->
+---
+TITLE: LRU cache
+KIND: dsa
+MIN: 15
+TAG: dsa
+SRC: Confluent, 5–6 YOE
+PROBLEM:
+Implement a least-recently-used cache with a fixed capacity.
+
+- `get(key)` returns the value, or -1 if absent, and marks the key as most recently used.
+- `put(key, value)` inserts or updates the key and marks it most recently used. If the cache is over capacity, evict the least recently used key.
+
+Both operations must run in O(1).
+SOLUTION:
+```python
+from collections import OrderedDict
+
+class LRUCache:
+    def __init__(self, capacity: int):
+        self.capacity = capacity
+        self.data = OrderedDict()
+
+    def get(self, key):
+        if key not in self.data:
+            return -1
+        self.data.move_to_end(key)           # now the most recently used
+        return self.data[key]
+
+    def put(self, key, value):
+        if key in self.data:
+            self.data.move_to_end(key)
+        self.data[key] = value
+        if len(self.data) > self.capacity:
+            self.data.popitem(last=False)    # evict the oldest
+```
+
+`OrderedDict` is a hash map combined with a doubly linked list, which is exactly the structure the problem needs: the map gives O(1) lookup, and the list gives O(1) reordering and eviction.
+
+Many interviewers then ask you to build it without `OrderedDict`. Keep a dictionary from key to node, and a doubly linked list with dummy head and tail nodes. `get` unlinks the node and re-inserts it at the tail. `put` does the same and removes the node after the head when over capacity. Practise writing that version once.
+<!--test
+c = LRUCache(2)
+c.put(1, 1); c.put(2, 2)
+assert c.get(1) == 1
+c.put(3, 3)
+assert c.get(2) == -1
+c.put(4, 4)
+assert c.get(1) == -1 and c.get(3) == 3 and c.get(4) == 4
+c.put(3, 30)
+assert c.get(3) == 30
+-->
+---
+TITLE: Demand per zone per minute
+KIND: pyspark
+MIN: 18
+TAG: streaming
+PROBLEM:
+A DataFrame `df` has columns `event_id, event_type, event_ts, zone_id`, where `event_ts` is a timestamp. The same `event_id` can appear more than once.
+
+Write `zone_demand(df)` returning `window_start, zone_id, requests`: the number of distinct `requested` events in each one-minute tumbling window per zone, ordered by window then zone.
+
+Write it so the same function works on a streaming DataFrame once a watermark is added.
+SOLUTION:
+```python
+from pyspark.sql import functions as F
+
+def zone_demand(df):
+    return (df.filter(F.col("event_type") == "requested")
+              .dropDuplicates(["event_id"])
+              .groupBy(F.window("event_ts", "1 minute").alias("w"), "zone_id")
+              .agg(F.count("*").alias("requests"))
+              .select(F.col("w.start").alias("window_start"), "zone_id", "requests")
+              .orderBy("window_start", "zone_id"))
+```
+
+`F.window` assigns each row to a tumbling window by event time and works identically in batch and streaming, which is the main attraction of Structured Streaming: you test the logic on a static DataFrame, as here.
+
+For the streaming version, add `.withWatermark("event_ts", "2 minutes")` before the de-duplication, use `dropDuplicatesWithinWatermark` so the de-duplication state is bounded, and remove the `orderBy`, since sorting an unbounded stream is not supported outside complete mode.
+<!--test
+raw = spark.createDataFrame([("e1","requested","2026-10-11 09:00:05",14),("e1","requested","2026-10-11 09:00:05",14),("e2","requested","2026-10-11 09:00:50",14),("e3","requested","2026-10-11 09:01:10",14),("e4","completed","2026-10-11 09:00:30",14),("e5","requested","2026-10-11 09:00:59",7)], "event_id string, event_type string, event_ts string, zone_id int")
+df = raw.withColumn("event_ts", F.to_timestamp("event_ts"))
+out = [(str(r.window_start), r.zone_id, r.requests) for r in zone_demand(df).collect()]
+assert out == [("2026-10-11 09:00:00",7,1),("2026-10-11 09:00:00",14,2),("2026-10-11 09:01:00",14,1)], out
+-->
+
+@@interview
+Q: How does offset management work in Kafka?
+SRC: Confluent, 5–6 YOE
+TAG: streaming
+A: Every message in a partition has a sequential offset. A consumer group tracks, per partition, the offset of the next message to read, and commits it to an internal topic called `__consumer_offsets`. On restart or after a rebalance, a consumer resumes from the committed offset. If none exists, `auto.offset.reset` decides whether to start from the earliest or latest message. Commits can be automatic on a timer or manual after processing. The timing of the commit relative to processing sets the guarantee: commit after processing for at-least-once. Stream processors such as Spark and Flink keep offsets in their own checkpoints so that offsets and state stay consistent.
+---
+Q: What is the difference between synchronous and asynchronous commits?
+SRC: Confluent, 5–6 YOE
+TAG: streaming
+A: A synchronous commit blocks the consumer until the broker acknowledges and retries on recoverable errors. It guarantees the commit happened before the consumer moves on, at the cost of throughput. An asynchronous commit sends the request and continues; a callback reports success or failure, and failures are not retried because a later commit may already have gone through. It is faster, but a crash can leave the committed offset behind actual progress, which means more reprocessing. I use asynchronous commits in the poll loop and a synchronous commit in the shutdown and rebalance handlers, with idempotent processing to absorb the duplicates.
+---
+Q: What happens during a consumer group rebalance?
+SRC: Confluent, 5–6 YOE
+TAG: streaming
+A: The group coordinator, a broker, detects a membership change: a consumer joined, left, missed heartbeats beyond the session timeout, or exceeded the maximum poll interval. Partitions are then reassigned across members. In the eager protocol, all consumers give up all partitions and stop until the new assignment arrives. In the cooperative protocol, only partitions that must move are revoked, so the rest keep processing. After a rebalance each consumer resumes from the last committed offset, so uncommitted work is repeated. Frequent rebalances usually mean processing is too slow per poll. Remedies: smaller batches, a longer poll interval, static membership for rolling restarts.
+---
+Q: How do you decide the partition count for a topic?
+SRC: Confluent, 5–6 YOE
+TAG: streaming
+A: I start from required throughput and consumer parallelism. Measure what one consumer instance can process, divide peak rate by that, and add headroom for growth and for draining a backlog. I check the produce side against per-partition write throughput. Then the constraints: partitions can be increased but not decreased; increasing them changes key-to-partition mapping and so breaks per-key ordering across the change; and very high partition counts add broker overhead and lengthen leader elections. So I size for a year or two of growth up front, and prefer a key that distributes evenly.
+---
+Q: How do you handle backpressure when a consumer is slower than the producer?
+SRC: Flipkart, 4 YOE
+TAG: streaming
+A: Kafka absorbs the difference as lag, because consumers pull at their own pace, so the first step is to monitor lag and alert on its trend. To fix it: profile the consumer and remove slow per-record work, such as synchronous calls to an external service, by batching or caching. Scale consumers up to the partition count, then add partitions. In Spark, cap intake per batch with `maxOffsetsPerTrigger` so batches stay a predictable size, and scale executors. If the peak is temporary, accept the lag and make sure retention is long enough that data is not deleted before it is read.
+---
+Q: Explain replication factor, ISR and leader election in Kafka.
+SRC: Expedia, 5 YOE
+TAG: streaming
+A: The replication factor is the number of copies of each partition, on different brokers. One replica is the leader and serves reads and writes; followers fetch from it. The in-sync replicas are those caught up to the leader within a time bound. With `acks=all`, a write is acknowledged once all in-sync replicas have it, and `min.insync.replicas` sets how small that set may shrink before writes are refused. When a leader fails, the controller elects a new leader from the in-sync replicas, so acknowledged data is preserved. Electing a replica outside the ISR is possible only if unclean election is enabled, which trades durability for availability.
+---
+Q: How do you ensure sequential message processing in Kafka? How do you guarantee ordering when consuming from several partitions?
+SRC: Databricks, 5 YOE
+TAG: streaming
+A: Kafka orders messages only within a partition. To keep related messages in order, give them the same key so they land in one partition, and process each partition with one consumer thread. On the producer, idempotence keeps retries from reordering. There is no global order across partitions. If total order is truly required, the topic needs a single partition, which caps throughput. More often I question the requirement: per-entity order is usually what the business needs. Where events from several partitions must be combined in time order downstream, I sort by event timestamp within a window in the stream processor.
+---
+Q: Explain Kafka's delivery guarantees. How would you design a pipeline with exactly-once delivery?
+SRC: Apple, 5 YOE
+TAG: streaming
+A: At-most-once commits before processing and can lose messages. At-least-once commits after processing and can duplicate them. Exactly-once means each message affects the result once.
+
+For exactly-once I combine three things. A replayable source, which Kafka is. Progress tracked together with processing state, through the processor's checkpoint and not separate consumer commits. And a sink that is idempotent or transactional: a merge on a business key into a table format, or Kafka transactions that write output and offsets atomically for Kafka-to-Kafka flows. On the producer side, idempotence removes duplicates from retries. I would state clearly that side effects outside the transaction, such as calling an API, remain at-least-once.
+---
+Q: How do you ensure exactly-once processing in Spark Structured Streaming with Kafka as the source?
+SRC: Flipkart, 4 YOE
+TAG: streaming
+A: Structured Streaming records the offset range of each micro-batch in the checkpoint's write-ahead log before processing it, and stores state in the checkpoint as well. If the job fails, it reruns the same batch with the same offsets. That makes processing deterministic and replayable. The remaining requirement is the sink. Built-in file, Delta and Iceberg sinks commit each batch atomically with its batch id, so a rerun is recognised and skipped. With `foreachBatch`, I make the write idempotent myself, using a merge on a key or the batch id. Each query needs its own durable checkpoint location, which must survive restarts and deployments.
+---
+Q: Explain event-time processing, watermarks and late data handling in Spark streaming.
+SRC: LinkedIn, 5 YOE
+TAG: streaming
+A: Event-time processing assigns each record to a window by the timestamp inside the record, not by arrival time, so results reflect when things happened. Because data can arrive late and out of order, the engine cannot know a window is complete. A watermark is its rule for deciding: the maximum event time seen minus an allowed lateness. When the watermark passes a window's end, the window is finalised, emitted in append mode, and its state removed. Later events for that window are dropped. In code: `withWatermark("event_ts", "10 minutes")` followed by `groupBy(window("event_ts", "5 minutes"))`. The lateness threshold trades completeness against state size and delay.
+---
+Q: Explain checkpointing and write-ahead logs. When are they required in streaming jobs?
+SRC: LinkedIn, 5 YOE
+TAG: streaming
+A: A checkpoint is durable storage of a streaming query's progress and state. In Structured Streaming it contains an offset log, written ahead of each batch to record what the batch will read, a commit log marking completed batches, and the state store for stateful operators. After a failure the query replays any batch that was logged but not committed, with state restored to match. Checkpointing is required for every production streaming query, and essential for stateful ones: aggregations, de-duplication and stream joins. The location must be reliable storage such as S3 or HDFS, and must be kept stable across restarts; changing the query's stateful logic may require a new checkpoint.
+---
+Q: If a consumer node crashes mid-batch, how do you ensure messages are not lost?
+SRC: Amazon, 4 YOE
+TAG: streaming
+A: Commit offsets only after the batch has been fully processed and its output durably written. If the consumer crashes mid-batch, the committed offset still points to the start of that batch, so the next consumer to take the partition reads it again. That gives at-least-once, with possible duplicates, so the output step must be idempotent, for example a keyed upsert. In a stream processor, the same guarantee comes from checkpoints: offsets and state are saved together, and recovery replays from the last checkpoint. Kafka's retention must be long enough to cover the longest expected outage, or the data will be gone before it can be reread.
+---
+Q: How do you handle schema evolution in Avro or JSON messages?
+SRC: Confluent, 5–6 YOE
+TAG: streaming
+A: With Avro, I use a schema registry and a compatibility mode per topic, normally backward. New fields are added with defaults and fields are never renamed or retyped; a rename is an add followed later by a removal. The registry rejects incompatible schemas at produce time, so a bad change fails in the producer's deployment and not in every consumer. Consumers upgrade before producers under backward compatibility. JSON has no built-in contract, so I add one: JSON Schema in the registry, or validation at ingestion with unknown fields preserved in a raw column and invalid records routed to a dead-letter topic.
+---
+Q: Compare Kafka Streams, Flink and Spark Structured Streaming for stateful aggregations and low-latency processing.
+SRC: LinkedIn, 5 YOE
+TAG: streaming
+A: Flink processes event by event with millisecond latency, has the most mature event-time and state handling, supports very large state with incremental checkpoints, and offers savepoints for upgrades. It is the strongest choice for low latency and complex stateful logic, at the price of running a Flink cluster. Spark Structured Streaming runs micro-batches with latency of seconds, shares code and skills with batch Spark, and integrates closely with lakehouse tables. Kafka Streams is a library inside a JVM service, with state in local stores backed by changelog topics. It is ideal for Kafka-to-Kafka processing without a separate cluster, but is tied to Kafka and to JVM languages.
+---
+Q: What metrics do you track for Kafka clusters, stream processors and consumers? How would you alert on consumer lag?
+SRC: LinkedIn, 5 YOE
+TAG: streaming
+A: Cluster: under-replicated partitions, offline partitions, ISR shrink rate, request latency, disk usage against retention. Producers: error and retry rate, request latency. Consumers: lag per partition, time since last commit, rebalance rate. Stream processor: input rate against processing rate, batch duration against trigger interval, state size, watermark delay, and failed batches.
+
+For lag I alert on trend and time, not a fixed count: lag increasing for more than a set number of minutes, or estimated time lag beyond the freshness target. A fixed threshold is too noisy on busy topics and too lax on quiet ones. I also alert when a consumer group has no active members.
+---
+Q: What is the difference between Spark Streaming and Structured Streaming?
+SRC: J.P. Morgan, 6 YOE
+TAG: streaming
+A: Spark Streaming is the older API built on RDDs, where a stream is a sequence of small RDDs called a DStream. It works by processing time, needs manual handling of event time and state, and is no longer developed. Structured Streaming is built on DataFrames and the SQL engine. A stream is an unbounded table; the same code runs in batch and streaming; and it has native event-time windows, watermarks, managed state and exactly-once sinks, with optimisation by Catalyst. A real-world example: counting per-minute events with late data is a few lines with a watermark in Structured Streaming and hand-written state logic with DStreams.
+---
+Q: When would you give an agent retrieval over documents, and when a tool? How do you evaluate retrieval?
+TAG: ai
+A: Retrieval suits knowledge written as text that changes slowly: runbooks, past incident notes, metric definitions, design decisions. A tool suits live or exact facts: current lag, today's row counts, a query plan. Using retrieval for live facts returns stale text; using tools for prose knowledge means writing an API for every document.
+
+I evaluate retrieval separately from generation. I write questions paired with the passage that should answer each, and measure how often it appears in the top few results. Then I check answers for faithfulness to the retrieved text, citations, and correct refusals when nothing relevant was retrieved. I add keyword search when identifiers are missed.
+---
+Q: Tell me about a time you debugged a critical production issue under pressure.
+SRC: Confluent, 5–6 YOE
+TAG: behavioral
+A: Tell it in this order: what was broken and who was affected, how you narrowed it down, the fix, and what you changed afterwards. Interviewers listen for a calm method: stop the damage first, form a hypothesis, check evidence, change one thing at a time, communicate status. Use a real incident from Salesforce or Uber if you have one with clear numbers. If not, this sprint's incident is honest practice material, described as a simulated outage: lag of 1.8 million, a poison record after an app release, a dead-letter topic to contain it, a replay runbook to prevent a repeat. End with the prevention step. That is what separates a senior answer.
+
+@@mock
+## Mock 5: streaming design and Kafka deep dive (40 minutes)
+
+Confluent's third round and LinkedIn's sixth both follow this shape: design a real-time pipeline, then defend every arrow in it.
+
+**Format.** Claude plays a staff engineer.
+
+- 15 minutes: design. "Clickstream to a dashboard with under five seconds of delay." You ask about volume and freshness first, then draw ingest, process, store and serve.
+- 15 minutes: Kafka. Offsets, commits, rebalances, partition count, ordering, replication. Expect follow-ups two levels deep.
+- 10 minutes: failure. A consumer crashes mid-batch. A schema changes. Lag grows. What happens, and what do you do?
+
+**What is scored, out of 10.**
+
+| Area | Points | What earns them |
+|---|---|---|
+| Requirements first | 2 | Volume, freshness and correctness needs are stated before any tool is named |
+| Mechanisms | 4 | Correct explanations of offsets, checkpoints, watermarks and delivery guarantees |
+| Failure thinking | 3 | Each component has a stated failure mode and recovery path |
+| Trade-offs | 1 | Freshness against finality, cost against latency |

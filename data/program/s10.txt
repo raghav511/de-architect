@@ -1,0 +1,676 @@
+@@meta
+id: s10
+n: 10
+title: Design at scale
+goal: You can design a data system out loud in 45 minutes: clarify, estimate, draw, go deep, break it, and scale it. Eight designs are written down as one-page documents, and you can review AI-written pipeline code for the mistakes it typically makes.
+hours: 10
+
+@@tickets
+1001 | learn | 2 | Chapter 10 and the readings | You can run the six-step method on an unfamiliar prompt and do the capacity arithmetic without a calculator. | chapter
+1002 | build | 2.5 | Eight one-page design documents | Each design has requirements, numbers, a diagram, choices with rejected alternatives, failure modes and a 10× plan. | lab
+1003 | incident | 0.75 | Ten times the traffic, and a lost region | A written tabletop exercise names what breaks first in your platform and what you would change. | lab
+1004 | ai | 1 | Review AI-written code, and harden the agent | You find all four planted flaws, and the agent's evaluation runs automatically with cost and trace per step. | lab
+1005 | practice | 1.25 | Timed repeats and the customer drill | Six earlier problems redone under time, and the drill answered out loud. | practice
+1006 | test | 0.5 | Quiz 10 | 80% or better. | quiz
+1007 | test | 1 | Coding test 10, hard set | Attempted inside the 60-minute timer. | coding
+1008 | talk | 1 | Interview set 10 and the mock | 14 of 18 questions ticked, and a mock score recorded. | interview
+
+@@readings
+- [Uber: From batch to streaming, accelerating data freshness in Uber's data lake](https://www.uber.com/us/en/blog/from-batch-to-streaming-accelerating-data-freshness-in-ubers-data-lake/). A real migration with the trade-offs written down.
+- [Uber: Operating Apache Pinot at Uber scale](https://www.uber.com/ch/en/blog/operating-apache-pinot/). What a real-time analytics store is for, and what running one costs.
+- [Uber: "Orders Near You" and user-facing analytics on real-time geospatial data](https://www.uber.com/pl/en/blog/orders-near-you/). A worked example of serving fresh aggregates to millions of users.
+- [Anthropic: Building Effective AI Agents](https://www.anthropic.com/engineering/building-effective-agents). Reread the section on workflows and orchestrator-workers before the AI lab.
+
+@@chapter
+## 10.1 What a design round tests
+
+Design prompts appear in nearly every file in your bank. Uber, Stripe, LinkedIn, Atlassian, Nvidia, Adobe and Google all run a full design round for senior data engineers. The prompts are short on purpose: "a streaming pipeline for real-time insights", "an IoT ingestion pipeline", "a fraud detection system".
+
+The interviewer is not looking for one right architecture. They score four things:
+
+1. **Do you clarify before you build?** A senior engineer finds out what is needed before choosing tools.
+2. **Are your choices justified?** Every box comes with a reason and a rejected alternative.
+3. **Do you think about failure?** What happens when a component dies, data is late, or volume doubles.
+4. **Do you use numbers?** Throughput, storage, latency and cost, estimated aloud.
+
+You have built most of these systems in the last nine sprints. This sprint teaches you to present them.
+
+## 10.2 A method for 45 minutes
+
+| Step | Minutes | What you do |
+|---|---|---|
+| 1. Clarify | 5–8 | Functional: what data comes in, what must come out, for whom. Non-functional: volume, freshness, correctness, retention, access, cost limits. Write the answers where the interviewer can see them. |
+| 2. Estimate | 3–5 | Events per second at peak, bytes per day, storage per year, partitions or shards needed |
+| 3. Draw the flow | 8–10 | Sources, ingest, raw storage, processing, serving, consumers. Orchestration and monitoring around it. One sentence per box. |
+| 4. Go deep | 10–15 | Pick, or let the interviewer pick, two components and explain them fully: schema, partitioning, guarantees |
+| 5. Break it | 5 | Failure of each component, late and duplicate data, 10× growth |
+| 6. Close | 2–3 | Trade-offs you made, and what you would build next |
+
+Two habits help. Say what you are assuming when the interviewer does not answer: "I'll assume 50,000 events per second at peak." And state the guarantee the system gives: "Dashboards are at most 30 seconds behind and may revise for two minutes; the daily numbers are final."
+
+## 10.3 Capacity arithmetic
+
+Memorise a few numbers and the rest is multiplication.
+
+| Fact | Value |
+|---|---|
+| Seconds in a day | 86,400, about 10⁵ |
+| 1 million events a day | about 12 per second |
+| 1 billion events a day | about 11,600 per second |
+| A typical event | 0.5 to 1 KB as JSON |
+| Parquet compared with JSON | often 5 to 10 times smaller |
+| Peak compared with average | plan for 2 to 3 times |
+
+A worked example. Meridian has 2 million trips a day, and each trip emits about 50 events. That is 100 million events a day, about 1,200 per second on average and 3,000 to 4,000 at peak. At 1 KB each, raw data is 100 GB a day, or about 36 TB a year before compression. As Parquet, perhaps 5 TB a year. If one consumer handles 5,000 events per second, a dozen Kafka partitions cover peak with headroom.
+
+The interviewer will rarely check your arithmetic. They check that you did it, and that your design follows from it: at 3,000 events per second, a single database could take the writes, so if you propose Kafka you should say why.
+
+## 10.4 Choosing a serving store
+
+Processing produces results. Something must serve them. The choice depends on the access pattern, so name the pattern first.
+
+| Access pattern | Store | Notes |
+|---|---|---|
+| Look up one key in milliseconds, at very high rate | **Redis** | In memory; for counters, sessions, the latest value per entity |
+| Look up by key, durable, scaling without operations | **DynamoDB** | Partition key spreads load, sort key orders items within it; design tables for known queries |
+| Very high write volume, queried by known keys | **Cassandra** | Partition key decides the node, clustering columns order rows; one table per query pattern |
+| Aggregations over fresh events, many concurrent users, sub-second | **Pinot, Druid, ClickHouse** | Columnar, ingest directly from Kafka; Uber uses Pinot for user-facing analytics |
+| Text search, log exploration | **Elasticsearch, OpenSearch** | Inverted indexes |
+| Complex analytical SQL, seconds acceptable | **The warehouse** | Snowflake, Redshift, BigQuery, or Trino over the lake |
+
+The common mistake is pointing a live product feature at the warehouse. Warehouses handle heavy queries well and thousands of concurrent small queries badly.
+
+## 10.5 Distributed systems vocabulary
+
+Several of your bank's questions test these terms directly.
+
+**CAP.** When a network partition separates nodes, a distributed store must choose between staying **consistent**, by refusing some requests, and staying **available**, by answering with possibly stale data. Cassandra and DynamoDB default toward availability, with consistency adjustable per request. A single-leader relational database chooses consistency.
+
+**Quorums.** With N replicas, a write acknowledged by W of them and a read that consults R of them will always overlap on at least one up-to-date replica if R + W > N. With N = 3, R = 2 and W = 2 gives consistent reads.
+
+**Partitioning.** Hash partitioning spreads keys evenly but makes range scans expensive. Range partitioning keeps ranges together but concentrates hot ranges. **Consistent hashing** places nodes and keys on a ring, so adding a node moves only a small share of keys.
+
+**Retries.** When a service recovers, thousands of clients retrying at once can knock it over again. Retry with **exponential backoff and jitter**: wait longer after each failure, with randomness so clients spread out.
+
+**Recovery targets.** **RPO**, the recovery point objective, is how much data you can afford to lose, measured in time. **RTO**, the recovery time objective, is how long you can be down. A design for a region failure states both.
+
+## 10.6 Eight designs
+
+Each of these is a prompt from your bank. The skeletons below are the starting point for your one-page documents.
+
+**1. Clickstream analytics: dashboards within 30 seconds, plus daily batch.** *(LinkedIn, Atlassian, Adobe, Amazon.)* Apps send events to an ingestion service that writes to Kafka, keyed by session. A stream processor de-duplicates on event id, sessionises, and aggregates per minute in update mode into a real-time store such as Pinot for dashboards. Raw events also land in an Iceberg bronze table; batch jobs build silver and gold daily, with late data merged within a lookback window. *Key decisions:* the freshness and finality split; partition count from throughput; event-time windows with watermarks. *Failure:* replay from Kafka with idempotent sinks; dead-letter topic for bad events.
+
+**2. Change data capture into a warehouse.** *(LinkedIn, J.P. Morgan.)* Sprint 6. Log-based capture, Kafka keyed by primary key, raw changelog plus merged current state, version guard, reconciliation, slot-lag alerts.
+
+**3. Real-time fraud detection.** *(Kotak Mahindra, Grab, Fanatics.)* A payment request calls a scoring service synchronously with a latency budget, say 100 milliseconds. The service reads precomputed features, such as transactions per card in the last 10 minutes and distance from the last location, from a low-latency store kept fresh by a stream processor over the transaction stream. A model scores; rules handle clear cases. If scoring times out, a fallback rule decides, because payments must not wait. Decisions and features are logged to the lake for training and audit. *Key decisions:* which features need streaming freshness and which can be batch; fail-open or fail-closed; the feedback loop from chargebacks, which arrive weeks later.
+
+**4. Average speed of all cars in a city, in real time.** *(Grab; similar at Uber and Google.)* Drivers' phones send location pings every few seconds to Kafka, keyed by driver. A stream processor computes speed from consecutive pings per driver, which needs per-driver state, discards impossible values, then aggregates per city or per geospatial cell in sliding windows. Results go to a real-time store and a dashboard; raw pings go to the lake. *Key decisions:* geospatial indexing such as hexagonal cells; out-of-order pings; GPS noise; very high write volume.
+
+**5. IoT telemetry at one message per second per device.** *(Google, Nvidia, PayPal.)* Devices connect through an ingestion gateway or managed IoT service into a stream. Hot path: a stream processor computes per-device health and raises anomaly alerts. Cold path: raw data lands in partitioned, compacted tables for analysis, with retention and downsampling, keeping full resolution for 30 days and minute averages for longer. *Key decisions:* time-series storage cost; device clock skew; late uploads after a device reconnects; alert fatigue.
+
+**6. A central log analytics platform.** *(Cloudflare and Pinterest designs; your own bootcamp project 3.)* Agents such as Fluent Bit ship logs to Kafka. A stream job parses, adds metadata and writes Iceberg tables partitioned by day and service, compacted hourly. Trino or a log search engine serves queries. Sensitive fields are masked at ingest. Retention is enforced per service. *Key decisions:* small files, schema per service, cost per GB, access control for security logs.
+
+**7. A task scheduler.** *(Fanatics.)* You answered this in sprint 9: a state store, a scheduling loop that releases tasks whose dependencies succeeded, workers with heartbeats, retries with backoff, and partitioned schedulers at scale.
+
+**8. An executive metrics layer.** *(Uber: "an executive dashboard for business leaders".)* The problem is consistency, not speed. Gold marts from sprint 4, with metric definitions in one place, a semantic layer or metrics store, so every dashboard computes "completed trips" the same way. Pre-aggregate daily and weekly tables for speed. Certify the core metrics with tests and owners. *Key decisions:* definitions and ownership, freshness by 07:00, reconciliation with finance, and access by role.
+
+## 10.7 AI in the design round
+
+Interviewers now add AI to general design questions. Two kinds of follow-up are common.
+
+**"Add an AI feature to this system."** Treat the model as one more component with its own requirements.
+
+- **Context:** what data it needs, and through which tools or retrieval.
+- **Evaluation:** how you measure quality before and after each change.
+- **Budgets:** latency and cost per request, and what happens when they are exceeded.
+- **Guardrails:** what it can read, what it can change, and where a person approves.
+- **Observability:** a trace of every request with each model call, tool call, tokens and latency, so a bad answer can be explained.
+
+**"Would you use several agents?"** One agent with good tools is the default. It is cheaper, faster and easier to debug. Several agents help when a task splits into **independent** subtasks that can run in parallel or need separate contexts, such as one agent reading logs while another reads recent code changes, with an orchestrator combining their findings. Each extra agent adds tokens, latency and places for errors to hide, so the split must earn its cost on your evaluation set.
+
+**Reviewing AI-written code.** A common new interview task gives you a pipeline written by an assistant and asks what is wrong. The code usually runs. The flaws are in behaviour over time. In one published example, an assistant produced a working sentiment pipeline in about two minutes that overwrote the full history on every run, re-scored records that had not changed, and averaged over all of history when the business wanted a recent window. Read generated code with these questions:
+
+1. What happens on the second run, and the hundredth?
+2. Does it process only what changed?
+3. Does it compute what the business asked for, at the right grain and window?
+4. What does it cost per run as data grows?
+5. What happens with duplicates, late data and nulls?
+
+@@lab
+## Build: eight one-page design documents (2.5 hours)
+
+Use one template for all eight, in `docs/designs/`. About 18 minutes each. The template:
+
+```
+# <name>
+Problem, in one sentence.
+Requirements: functional; volume; freshness; correctness; retention; access.
+Numbers: events per second at peak, bytes per day, storage per year, partitions.
+Diagram: sources → ingest → raw → process → serve → consumers, plus orchestration and monitoring.
+Choices: for each component, the choice, the reason, the rejected alternative.
+Failure modes: one per component, with detection and recovery.
+At 10×: what changes.
+Cost: the two biggest cost drivers and how you control them.
+```
+
+Write the eight from section 10.6. For designs 2 and 7, link to the work you already did and keep them short. Spend the saved time on 3 and 4, which are the least familiar.
+
+**Done when** all eight exist and you can present any one of them in ten minutes from the page.
+
+Then pick one at random, set a 45-minute timer, and present it out loud to an empty room with the method from section 10.2. Note where you ran over.
+
+## Incident: ten times the traffic, and a lost region (45 minutes)
+
+This is a tabletop exercise. Nothing is run. You reason about your own platform and write it down.
+
+**Scenario one.** A New Year's Eve promotion brings ten times the normal trip volume for six hours.
+
+For each component, in the order data flows, write what happens and what you would change in advance:
+
+- Kafka: partitions, broker disk, consumer lag
+- The streaming job: trigger interval, state size, checkpoint duration
+- Iceberg: commit frequency, small files, concurrent writers
+- Snowflake: warehouse queuing for the dashboards
+- The on-call agent: alert volume, cost per incident, rate limits on the model API
+
+Which breaks first? Most designs fail first at the component nobody sized: for many platforms that is the serving layer or a database used for state.
+
+**Scenario two.** The cloud region hosting the platform is unavailable for four hours.
+
+- What data is lost, and what is your RPO?
+- How long until dashboards work again, and what is your RTO?
+- What would you need to change to halve each? Include the cost.
+
+Add both to `notes/what-broke.md` as a "planned failure".
+
+## AI lab: review AI-written code, and harden the agent (1 hour)
+
+**Part one: review (20 minutes).** An assistant was asked for "average sentiment per restaurant, updated daily, for the restaurant dashboard". It produced this, and it runs without errors. Find four problems before opening the answer.
+
+```python
+from pyspark.sql import functions as F
+
+def run(spark, day):
+    reviews = spark.read.table("silver.reviews")
+    scored = reviews.withColumn("sentiment", score_with_llm(F.col("text")))
+    daily = (scored.groupBy("restaurant_id")
+                   .agg(F.avg("sentiment").alias("avg_sentiment")))
+    daily.write.mode("overwrite").saveAsTable("gold.restaurant_sentiment")
+```
+
+<details>
+<summary>Answers</summary>
+
+1. **It reads all history every day.** The `day` argument is never used. Cost and run time grow without limit.
+2. **It re-scores every review on every run.** Reviews do not change, so each should be scored once and stored. With a model call per row, this is the expensive one.
+3. **It averages over all time.** A dashboard of current sentiment needs a recent window, such as the last 30 days. A restaurant that improved last month still shows its old average.
+4. **It overwrites the table.** Yesterday's values are lost, so trends cannot be shown and a bad run cannot be compared with a good one. Write one partition per day.
+
+The fix: score only new reviews into a silver table with the score, prompt version and model; then compute a dated gold partition for a rolling window from stored scores.
+
+</details>
+
+**Part two: harden the agent (40 minutes).**
+
+1. **Automate the evaluation.** One command runs the agent on every incident in your set and prints a score table. Run it after every change from now on.
+2. **Trace each run.** Record each model call and tool call with its tokens and duration. Print the trace for the slowest incident and find where the time went.
+3. **Set limits.** A maximum of 8 tool calls and a token budget per incident. When either is reached, the agent posts what it has found so far and says it stopped.
+4. **Try a split.** Make a second version with two sub-agents, one for logs and job metrics and one for data health and lineage, combined by an orchestrator. Compare score, tokens and time with the single agent on the same set. Keep whichever wins, and write down why.
+
+**Done when** the evaluation runs from one command, traces exist, the limits work, and you have a measured answer to "one agent or two?"
+
+@@practice
+## Timed repeats
+
+Spaced repetition beats new problems at this stage. Redo these from a blank file, with no notes, under a timer.
+
+| Problem | First seen | Target |
+|---|---|---|
+| Rolling seven-day active users | Sprint 5 | 12 minutes |
+| Sessions from a clickstream | Sprint 4 | 12 minutes |
+| Top product per region, including empty regions | Sprint 3 | 10 minutes |
+| LRU cache, without `OrderedDict` | Sprint 5 | 15 minutes |
+| Merge intervals | Sprint 4 | 8 minutes |
+| Coin change | Sprint 8 | 10 minutes |
+
+Record your times beside the targets. Anything over target goes back on next sprint's list.
+
+## Customer drill: "we need Kafka"
+
+A customer's architect insists the new pipeline must use Kafka. Their source produces about ten events a minute.
+
+How do you respond? Decide, then compare.
+
+- Ask what they expect Kafka to give them: replay, several consumers, decoupling, or that it is their standard.
+- Show the numbers: ten events a minute is one every six seconds. A table polled each minute, or a queue, does the job at a fraction of the operating cost.
+- If there is a real reason, such as a company standard or expected growth, accept it and say so.
+- Write the decision down with its reason, so the next engineer understands it.
+
+Pushing back politely with numbers, and then accepting a good reason, is how senior engineers are recognised in design reviews and in customer rooms.
+
+@@quiz
+TYPE: mcq
+TAG: design
+Q: About how many events per second is one billion events per day?
+A) About 1,200
+B) About 11,600
+C) About 116,000
+D) About 1 million
+ANS: B
+WHY: One billion divided by 86,400 seconds is about 11,574. Plan for two or three times that at peak.
+---
+TYPE: mcq
+TAG: design
+Q: During a network partition, what does the CAP theorem say a distributed store must choose between?
+A) Speed and cost
+B) Consistency and availability
+C) Partitioning and replication
+D) Reads and writes
+ANS: B
+WHY: While nodes cannot communicate, a system either refuses some requests to stay consistent, or answers them and risks returning stale data.
+---
+TYPE: mcq
+TAG: design
+Q: A store keeps 3 replicas of each item. Which setting guarantees that a read sees the latest acknowledged write?
+A) W = 1, R = 1
+B) W = 1, R = 2
+C) W = 2, R = 2
+D) W = 3, R = 0
+ANS: C
+WHY: When R + W > N, every read set overlaps every write set in at least one replica. 2 + 2 > 3.
+---
+TYPE: mcq
+TAG: design
+Q: 5,000 people watch a dashboard of the top ten zones by demand over the last five minutes, refreshing every few seconds. Which serving store fits best?
+A) The data warehouse
+B) A real-time OLAP store such as Pinot, Druid or ClickHouse
+C) An S3 bucket
+D) The OLTP database behind the app
+ANS: B
+WHY: Real-time OLAP stores ingest from streams and answer aggregation queries in under a second at high concurrency. Warehouses handle many concurrent small queries poorly, and the app's database must not carry analytics.
+---
+TYPE: mcq
+TAG: design
+Q: What is the main rule for modelling data in Cassandra?
+A) Normalise everything into third normal form
+B) Design one table per query, with the partition key chosen for how the data will be read
+C) Use joins for flexibility
+D) Avoid primary keys
+ANS: B
+WHY: Cassandra has no joins and reads efficiently only by partition key. Tables are shaped around queries, and data is duplicated across tables when needed.
+---
+TYPE: mcq
+TAG: design
+Q: A service recovers from an outage and thousands of clients retry at the same instant, knocking it over again. What prevents this?
+A) Retrying immediately and repeatedly
+B) Exponential backoff with random jitter
+C) Disabling retries
+D) A larger timeout
+ANS: B
+WHY: Backoff reduces the rate of retries over time, and jitter spreads clients out so they do not retry in synchrony.
+---
+TYPE: mcq
+TAG: design
+Q: What does RPO measure?
+A) How long a system may be down
+B) How much data, measured in time, may be lost in a failure
+C) Requests per operation
+D) Read performance under load
+ANS: B
+WHY: The recovery point objective is the acceptable data loss window. The recovery time objective, RTO, is the acceptable downtime.
+---
+TYPE: mcq
+TAG: ai
+Q: When is a multi-agent design worth its extra cost?
+A) Always; more agents are smarter
+B) When the work splits into independent subtasks that benefit from running in parallel or with separate contexts, and the split improves results on an evaluation
+C) When the prompt is long
+D) Never
+ANS: B
+WHY: Each agent adds tokens, latency and failure points. A single agent with good tools is the default; splitting must be justified by measured gains.
+---
+TYPE: fill
+TAG: design
+Q: There are ____ seconds in a day.
+ANS: 86400 | 86,400
+WHY: Rounding it to 10⁵ makes per-day to per-second conversions quick in an interview.
+---
+TYPE: fill
+TAG: design
+Q: Placing nodes and keys on a ring so that adding a node moves only a small share of keys is called ____ hashing.
+ANS: consistent
+WHY: With plain modulo hashing, adding a node remaps nearly every key. Consistent hashing remaps only the keys near the new node.
+---
+TYPE: fill
+TAG: design
+Q: The architecture with one streaming path, where logic changes are applied by replaying the log, is called the ____ architecture.
+ANS: kappa
+WHY: Lambda runs separate batch and streaming paths and merges them. Kappa uses only the stream and replays it.
+---
+TYPE: fill
+TAG: design
+Q: In Cassandra, the part of the primary key that decides which node stores a row is the ____ key.
+ANS: partition
+WHY: Clustering columns, the rest of the primary key, order rows within a partition.
+---
+TYPE: short
+TAG: design
+Q: You are given "design a real-time analytics pipeline for ride events". What do you do in the first eight minutes?
+MODEL: **Clarify.** Who consumes the output and what decisions it drives; which metrics; how fresh, and whether early revisable numbers are acceptable; correctness needs, such as exactly-once for money; volume and peak; retention; access rules; cost limits. State assumptions where answers are missing.
+
+**Estimate aloud.** For example: 100 million events a day is about 1,200 per second on average and perhaps 4,000 at peak; at 1 KB, 100 GB a day raw. That implies a dozen or so Kafka partitions and a few TB a year in Parquet.
+
+Write the requirements and numbers where the interviewer can see them, and refer back to them for every later choice.
+---
+TYPE: short
+TAG: design
+Q: Design real-time fraud detection for card payments. Describe the components and two key trade-offs.
+MODEL: **Path:** the payment service calls a scoring service synchronously within a strict latency budget. The service reads precomputed features from a low-latency store; a stream processor over the transaction stream keeps them current, such as spend and count per card over recent windows. A model plus rules decides approve, review or decline. Decisions and features are logged to the lake for training, audit and dashboards. Chargebacks feed back as labels weeks later.
+
+**Trade-offs:** *fail open or closed* when scoring times out: approve with a fallback rule to protect revenue, or decline to protect against loss, chosen by amount and risk. *Feature freshness against cost:* only features that change the decision within minutes get streaming computation; the rest come from batch.
+---
+TYPE: short
+TAG: design
+Q: Your platform faces ten times its usual traffic for a few hours. Name the components that break first and what you would do in advance.
+MODEL: **Kafka:** consumer lag if partitions cap parallelism, and broker disk. Pre-size partitions and retention; check disk headroom.
+
+**Stream processing:** micro-batches longer than the trigger interval, growing state, slow checkpoints. Scale executors, cap intake per batch, and accept wider freshness during the peak.
+
+**Table storage:** many more commits and small files. Increase the trigger interval and schedule extra compaction.
+
+**Serving and warehouse:** dashboard queries queue. Scale out with multi-cluster warehouses or the real-time store, and cache.
+
+**Supporting systems:** alert storms and agent cost. Rate-limit and group alerts.
+
+The unsized component, often a serving database, usually fails first. Load-test it beforehand.
+---
+TYPE: short
+TAG: ai
+Q: An assistant wrote a daily pipeline that runs without errors. What do you look for when reviewing it?
+MODEL: Behaviour over repeated runs, not just one. **Incrementality:** does it read only new data, or all history every time? **Idempotency:** does rerunning a day duplicate or overwrite correctly, and does it keep history or overwrite it? **Correctness of intent:** right grain, right time window, right definitions, as the business asked. **Cost:** expensive steps such as model calls or full scans that repeat for unchanged data. **Edge cases:** duplicates, late data, nulls, empty input. **Tests:** whether any exist.
+
+A published example had exactly three of these flaws: it overwrote history, re-scored unchanged records, and averaged over all time instead of a recent window.
+
+@@coding
+TITLE: Weekly cohort retention
+KIND: sql
+MIN: 18
+TAG: sql
+SRC: LinkedIn, 5 YOE
+PROBLEM:
+Table `events(user_id, event_date)`.
+
+A user's **cohort** is the week of their first event, where weeks start on Monday. For each cohort and each week after it in which members were active, return:
+
+`cohort_week, week_number, active_users, retention_pct`
+
+`week_number` is 0 for the cohort week itself. `retention_pct` is active users as a percentage of the cohort's size, rounded to one decimal. Order by cohort, then week.
+SOLUTION:
+```sql
+WITH firsts AS (
+  SELECT user_id,
+         CAST(DATE_TRUNC('week', MIN(event_date)) AS DATE) AS cohort_week
+  FROM events
+  GROUP BY user_id
+),
+activity AS (
+  SELECT DISTINCT e.user_id, f.cohort_week,
+         CAST((CAST(DATE_TRUNC('week', e.event_date) AS DATE) - f.cohort_week) / 7 AS INTEGER) AS week_number
+  FROM events e
+  JOIN firsts f ON f.user_id = e.user_id
+),
+sizes AS (
+  SELECT cohort_week, COUNT(*) AS cohort_size
+  FROM firsts
+  GROUP BY cohort_week
+)
+SELECT a.cohort_week,
+       a.week_number,
+       COUNT(*) AS active_users,
+       ROUND(100.0 * COUNT(*) / s.cohort_size, 1) AS retention_pct
+FROM activity a
+JOIN sizes s ON s.cohort_week = a.cohort_week
+GROUP BY a.cohort_week, a.week_number, s.cohort_size
+ORDER BY a.cohort_week, a.week_number;
+```
+
+Three steps: assign each user a cohort, list the distinct weeks each user was active relative to their cohort, then count per cohort and week and divide by the cohort's size.
+
+Two details. `DISTINCT` in `activity` is essential, or a user active on three days of one week counts three times. And week truncation returns a timestamp in several engines, so it is cast to a date before subtracting. Subtracting two dates gives days; dividing by 7 gives weeks.
+
+LinkedIn followed up with a "cohort-size-adjusted" retention. Small cohorts produce noisy percentages, so when comparing cohorts, either weight each cohort's rate by its size, or require a minimum size before showing it.
+<!--test
+con.execute("create table events(user_id int, event_date date)")
+con.execute("insert into events values (1,'2026-10-05'),(1,'2026-10-13'),(1,'2026-10-20'),(1,'2026-10-20'),(2,'2026-10-06'),(2,'2026-10-21'),(3,'2026-10-14'),(4,'2026-10-13'),(4,'2026-10-19')")
+rows = [(str(c), int(w), int(n), float(p)) for c, w, n, p in con.execute(Q).fetchall()]
+assert rows == [("2026-10-05",0,2,100.0),("2026-10-05",1,1,50.0),("2026-10-05",2,2,100.0),("2026-10-12",0,2,100.0),("2026-10-12",1,1,50.0)], rows
+-->
+---
+TITLE: Add-to-cart to purchase within seven days
+KIND: sql
+MIN: 14
+TAG: sql
+SRC: Google, 5 YOE
+PROBLEM:
+Table `events(user_id, event_type, event_ts)`. Event types include `add_to_cart` and `purchase`.
+
+Return a single value, `conversion_pct`: of the users who added something to their cart at least once, the percentage who made a purchase **within seven days after any of their add-to-cart events**. Round to one decimal.
+SOLUTION:
+```sql
+WITH carts AS (
+  SELECT user_id, event_ts AS cart_ts
+  FROM events
+  WHERE event_type = 'add_to_cart'
+),
+converted AS (
+  SELECT DISTINCT c.user_id
+  FROM carts c
+  JOIN events p
+    ON p.user_id = c.user_id
+   AND p.event_type = 'purchase'
+   AND p.event_ts >= c.cart_ts
+   AND p.event_ts <= c.cart_ts + INTERVAL '7' DAY
+)
+SELECT ROUND(100.0 * (SELECT COUNT(*) FROM converted)
+                   / (SELECT COUNT(DISTINCT user_id) FROM carts), 1) AS conversion_pct;
+```
+
+The denominator is everyone who reached the first step of the funnel. The numerator is the subset who reached the second step within the time limit. Users who purchased without a cart event are outside the funnel, and are excluded from both.
+
+The join on a time range is the important part. A purchase before the cart event, or more than seven days after it, does not count. A user with several cart events counts once, which is why the numerator uses `DISTINCT`.
+
+Google's follow-up was billions of rows in BigQuery. Filter both sides to the two event types and to the date range first, partition by date so those filters prune, and join on user id so the range condition is evaluated only within one user's events.
+<!--test
+con.execute("create table events(user_id int, event_type varchar, event_ts timestamp)")
+con.execute("insert into events values (1,'add_to_cart','2026-10-01 10:00'),(1,'purchase','2026-10-05 09:00'),(2,'add_to_cart','2026-10-01 10:00'),(2,'purchase','2026-10-10 10:00'),(3,'add_to_cart','2026-10-01 10:00'),(3,'add_to_cart','2026-10-08 10:00'),(3,'purchase','2026-10-10 10:00'),(4,'purchase','2026-10-02 10:00'),(5,'add_to_cart','2026-10-03 10:00')")
+assert float(con.execute(Q).fetchone()[0]) == 50.0
+-->
+---
+TITLE: Trapping rain water
+KIND: dsa
+MIN: 15
+TAG: dsa
+SRC: PayPal, 3 YOE
+PROBLEM:
+Given a list of non-negative integers representing bar heights of width 1, return how much water is trapped between them after rain.
+
+`[0,1,0,2,1,0,1,3,2,1,2,1]` returns 6.
+
+PayPal asked for an answer optimal in both time and space.
+SOLUTION:
+```python
+def trap(heights):
+    left, right = 0, len(heights) - 1
+    left_max = right_max = water = 0
+    while left < right:
+        if heights[left] < heights[right]:
+            left_max = max(left_max, heights[left])
+            water += left_max - heights[left]
+            left += 1
+        else:
+            right_max = max(right_max, heights[right])
+            water += right_max - heights[right]
+            right -= 1
+    return water
+```
+
+Water above a bar is the smaller of the tallest bar to its left and the tallest to its right, minus its own height. The straightforward solution precomputes both maxima in two arrays: O(n) time and O(n) space.
+
+The two-pointer version removes the arrays. Move inwards from the side with the lower bar. If the left bar is lower than the right one, then somewhere on the right is a bar at least as tall, so the water at the left position depends only on `left_max`, which is already known. Time O(n), space O(1). Explain that reasoning; it is what the interviewer is checking.
+<!--test
+assert trap([0,1,0,2,1,0,1,3,2,1,2,1]) == 6
+assert trap([4,2,0,3,2,5]) == 9
+assert trap([]) == 0
+assert trap([3]) == 0
+assert trap([2,0,2]) == 2
+-->
+---
+TITLE: Too many accesses in five minutes, as a stream
+KIND: python
+MIN: 13
+TAG: streaming
+SRC: Confluent, 5–6 YOE
+PROBLEM:
+Access events arrive one at a time, in timestamp order, as `(user, ts)` with `ts` in seconds.
+
+Write a class `AccessMonitor(limit=3, window_seconds=300)` with a method `record(user, ts)` that returns `True` when this event means the user has accessed the system **more than `limit` times within the window**, counting events whose timestamps are at most `window_seconds` apart, and `False` otherwise.
+
+Memory per user must stay bounded no matter how many events a user sends.
+SOLUTION:
+```python
+from collections import deque
+
+class AccessMonitor:
+    def __init__(self, limit=3, window_seconds=300):
+        self.limit = limit
+        self.window = window_seconds
+        self.recent = {}                      # user -> the last limit+1 timestamps
+
+    def record(self, user, ts):
+        q = self.recent.get(user)
+        if q is None:
+            q = self.recent[user] = deque(maxlen=self.limit + 1)
+        q.append(ts)                          # the oldest falls off automatically
+        return len(q) == self.limit + 1 and ts - q[0] <= self.window
+```
+
+"More than three in five minutes" means the current event and the three before it all fall inside the window. So only the last four timestamps per user matter, and a deque with a maximum length keeps exactly those. Each call is O(1), and memory per user is fixed. This is the same idea as `LAG(ts, 3)` in the SQL version of this problem from sprint 5.
+
+Two follow-ups to raise yourself. Memory across users still grows with the number of users, so remove users with no events in the last window, as a stream processor's state timeout would. And if events can arrive out of order, insert in sorted position, or buffer briefly with a watermark.
+<!--test
+m = AccessMonitor(3, 300)
+assert [m.record("a", t) for t in (0, 60, 120)] == [False, False, False]
+assert m.record("a", 240) is True
+assert m.record("a", 600) is False
+assert [m.record("b", t) for t in (0, 100, 200, 300)] == [False, False, False, True]
+assert len(m.recent["a"]) == 4
+-->
+
+@@interview
+Q: Design an end-to-end clickstream pipeline that supports dashboards with at most 30 seconds of delay and daily batch analytics.
+SRC: LinkedIn, 5 YOE
+TAG: design
+A: Clarify volume, metrics and correctness first; assume 50,000 events per second at peak. Apps send events to a collector that writes to Kafka, keyed by session, with enough partitions for peak consumer throughput. **Hot path:** a stream processor de-duplicates on event id within a watermark, aggregates per minute by event time in update mode, and writes to a real-time OLAP store that the dashboards query. **Cold path:** raw events land continuously in an Iceberg bronze table; daily batch jobs build sessionised silver and gold tables, merging late data within a lookback window. Exactly-once in effect through checkpoints and idempotent sinks. Monitoring on lag, freshness and volume. The daily tables are the source of truth; the dashboard is fresh but revisable.
+---
+Q: How would you design a near real-time fraud detection system for credit card transactions?
+SRC: Kotak Mahindra, 6 YOE
+TAG: design
+A: Transactions flow through Kafka. A Flink or Structured Streaming job maintains per-card features in windows, such as count and amount in the last ten minutes and distance from the previous transaction, and writes them to a low-latency store. The authorisation path calls a scoring service that reads those features, applies rules and a model, and returns a decision within a strict budget, under 5 seconds end to end and ideally milliseconds for the score. Suspicious cases go to an alert queue for the fraud team. Failed events go to a dead-letter queue. Late events are handled with watermarks, and decisions are logged for audit and retraining. I would state the fallback when scoring times out.
+---
+Q: Design a system to calculate the average speed of all cars in a city in real time.
+SRC: Grab, 8 YOE
+TAG: design
+A: Cars send GPS pings every few seconds to an ingestion service, which writes to Kafka or Kinesis keyed by vehicle, so each vehicle's pings stay in order. A stream processor keeps the last ping per vehicle in state, computes speed from distance and time between consecutive pings, and drops impossible values from GPS noise. It aggregates speed per city, and per geospatial cell for maps, in sliding windows by event time with a short watermark. Aggregates go to a real-time store for dashboards and to Redshift, Snowflake or BigQuery for history. Raw pings land in the lake. At scale, partitions follow vehicle count, and state is bounded by evicting inactive vehicles.
+---
+Q: Design a pipeline that ingests real-time stock market data and makes it available for analytics within seconds.
+SRC: Google, 5 YOE
+TAG: design
+A: Market feed handlers publish ticks to Pub/Sub or Kafka, keyed by symbol for ordering. A stream processor, Dataflow on Google Cloud, normalises ticks, de-duplicates by sequence number, and computes windowed aggregates such as one-second bars and moving averages by event time with a small allowed lateness. Results stream into BigQuery, partitioned by date and clustered by symbol, for analytics within seconds, and into a low-latency cache for live screens. Raw ticks are archived for replay and compliance. I would discuss the batch versus real-time trade-off for heavy end-of-day analytics, the handling of feed gaps and corrections, and scaling around market open.
+---
+Q: IoT devices send data every second. Design a real-time ingestion pipeline into BigQuery.
+SRC: Google, 5 YOE
+TAG: design
+A: Devices publish to Pub/Sub, through an IoT gateway if they need it, with device id as an attribute for ordering. Dataflow, Apache Beam, validates and parses messages, routes malformed ones to a dead-letter topic, handles late data with event-time windows and allowed lateness, and writes raw rows to BigQuery tables partitioned by date or hour and clustered by device id, plus windowed aggregates for dashboards. Challenges: ordering per device, late uploads after reconnection, device clock skew, and cost. For cost, I would use the storage write API, keep raw data partitioned with expiry, and downsample old data into aggregate tables.
+---
+Q: How would you collect logs and metrics from thousands of GPU servers, and alert on anomalies?
+SRC: Nvidia, 5–7 YOE
+TAG: design
+A: An agent on each server collects metrics such as temperature, utilisation, memory errors and power, and ships logs. Metrics go to a time-series system with high write capacity; logs go through Kafka into a log store and the lake. Alerting has two layers: threshold rules for known failure signals, such as temperature or error counts, and anomaly detection against each server's own baseline and its peers in the same cluster, to catch drift. Alerts are grouped by rack or cluster to avoid storms, and routed with context. History in the lake supports failure prediction. At scale, I partition by cluster, downsample old metrics and monitor the monitoring system itself.
+---
+Q: Design an ETL pipeline for ad click data, over a million records a day, with raw logs in S3 or GCS. Cover bronze, silver and gold, late data, de-duplication and schema.
+SRC: Atlassian, 5 YOE
+TAG: design
+A: **Bronze:** raw logs ingested incrementally, unchanged, with load metadata, partitioned by arrival date. **Silver:** parsed and typed, de-duplicated on click id with `ROW_NUMBER` keeping the first occurrence, bot traffic filtered, joined to campaign dimensions, partitioned by event date. Late data handled by reprocessing a lookback window and merging on click id, or in streaming with a watermark. **Gold:** impressions and clicks as separate fact tables at their own grain, joined in aggregates for click-through rates by campaign and day, in a star schema with campaign, ad, date and placement dimensions. Monitor volume and duplicate rates; fix skew on large campaigns with salting or adaptive execution.
+---
+Q: Design the data architecture behind an executive dashboard for business leaders.
+SRC: Uber, 5 YOE
+TAG: design
+A: The hard requirement is trust, not speed. Clarify the dozen metrics leaders use, their definitions and owners, and the time the dashboard must be ready. Build conformed gold marts with facts and dimensions, and define each metric once in a semantic layer, so every chart computes it the same way. Pre-aggregate daily and weekly tables so the dashboard is fast. Gate publication on data tests and reconciliation with finance figures. Add freshness and certification labels on the dashboard itself. Access by role. Monitor completion against the morning deadline. I would also give every metric a link to its definition and owner.
+---
+Q: Design a scalable recommendation system for e-commerce using real-time data.
+SRC: Stripe, 4 YOE
+TAG: design
+A: **Ingestion:** user events through Kafka. **Features:** a stream processor computes recent behaviour such as last viewed categories and session intent into the online part of a feature store, a low-latency key-value store; batch jobs compute long-term features and train models offline from the lake, writing to the same feature definitions so training and serving match. **Serving:** a service retrieves candidates, for example from embeddings or popularity, ranks them with a model using online features, and returns results within tens of milliseconds, with caching for popular items. **Feedback:** impressions and clicks are logged back to the lake for training and A/B tests. Key risks: training and serving skew, and cold start.
+---
+Q: How would you design for billions of records? How do you decide which big data tools to use?
+SRC: Stripe, 4 YOE
+TAG: design
+A: Start from access patterns and requirements, not tools. Billions of records mean partitioning everything: storage by time and a clustering key, processing in parallel by key, serving by the key users query. I choose tools by fit. Object storage with a table format for durable, cheap storage. Spark for large batch transformation. Kafka with Flink or Structured Streaming when freshness is minutes or seconds. A warehouse for analytical SQL. A key-value store such as DynamoDB for millisecond lookups. I also weigh the team's skills, operational cost and what already exists. I prefer the smallest set of tools that meets the requirements.
+---
+Q: How would you store terabytes or petabytes of data? Compare HDFS, S3 and DynamoDB, and explain fault tolerance and fast retrieval.
+SRC: Amazon, 4 YOE
+TAG: design
+A: For bulk analytical data, S3 with columnar files and a table format: cheap, durable and independent of compute. HDFS where compute must sit with data on-premises. DynamoDB is not bulk storage; it serves key lookups in milliseconds, so it holds the serving view, not history. Fault tolerance: S3 stores objects redundantly across facilities; HDFS replicates blocks three times; DynamoDB replicates across availability zones. Fast retrieval: partitioning and statistics in the lake, an index or key design in the serving store, and a cache in front of hot keys. At ten times the size, the design holds; partitions, compaction and serving capacity are what scale.
+---
+Q: Explain the CAP theorem and how it applies to databases such as DynamoDB or Cassandra.
+SRC: Wipro, 2 YOE
+TAG: design
+A: In a distributed system, when a network partition prevents nodes from communicating, the system must choose: remain consistent by refusing some operations, or remain available by serving possibly stale data. Without a partition, both are possible. Cassandra and DynamoDB are designed for availability, with replication and eventual consistency by default, but both let you tune per request: Cassandra with consistency levels such as quorum, and DynamoDB with strongly consistent reads. The practical point is that consistency is a per-operation choice with a latency cost, chosen by what the data is used for.
+---
+Q: What are the advantages of Cassandra over relational databases, and what are its common uses?
+SRC: Cisco, 4 YOE
+TAG: design
+A: Cassandra scales writes horizontally with no single leader: every node accepts writes, data is partitioned by key across a ring and replicated, and adding nodes adds capacity. It stays available through node and data-centre failures, and its log-structured storage makes writes very fast. The costs: no joins, limited ad hoc queries, and data modelled per query, often duplicated. It suits high-volume writes read by known keys: time-series data from sensors, event logs, user activity feeds, messaging, and the latest state per device. It is a poor fit for analytics or for transactions that span many entities.
+---
+Q: What caching strategies would you use for frequently read but rarely updated data?
+SRC: Fanatics, 6 YOE
+TAG: design
+A: Cache-aside is the default: the application reads the cache, and on a miss reads the source and fills the cache with a time to live. For data that changes rarely, a long time to live with explicit invalidation on update works well, triggered by the write path or by change data capture. Read-through and write-through caches move that logic into the cache layer. For very hot items, a local in-process cache in front of a shared one such as Redis cuts network calls. I watch for stampedes when a hot key expires, solved with request coalescing or early refresh, and I monitor hit rate.
+---
+Q: Design a booking system for a three-seat theatre that accepts only cash. How do you keep bookings correct?
+SRC: Google, 5 YOE
+TAG: design
+A: Tables: shows, seats per show, and bookings with show, seat, customer, status and timestamps. The constraint that matters is that a seat can be booked once per show, enforced by a unique constraint on show and seat, not by application checks, because two clerks can try at the same moment. Booking is one transaction: insert the booking, and if the unique constraint fails, the seat is taken. Cash means payment is recorded at the counter, so a booking moves from held to paid, with holds expiring after a few minutes. With three seats, the interviewer is testing whether you think about concurrency and constraints, not scale.
+---
+Q: If you had to build a data product for half the infrastructure cost, what trade-offs would you make?
+SRC: Google, 5 YOE
+TAG: design
+A: First find where the cost is, since most of it usually sits in a few places. Then trade along explicit axes. Freshness: hourly instead of streaming where decisions allow it. Retention: full detail for a shorter period, aggregates after that. Precision: approximate distinct counts and percentiles. Compute: serverless and auto-suspend, Spot capacity for batch. Storage layout: partitioning and compaction to cut scans. Scope: retire unused tables and dashboards. I would agree each trade-off with the users, measure the saving, and keep the core metrics exact.
+---
+Q: When is a multi-agent design worth it, and how would you add an AI feature to a data platform responsibly?
+TAG: ai
+A: A single agent with well-designed tools is the default. Multiple agents are worth their cost when the work splits into independent parts that benefit from parallel execution or separate context, and the split improves results on an evaluation set. For any AI feature I specify five things like any other component: the context and tools it uses; an evaluation set and metric; latency and cost budgets with behaviour when exceeded; guardrails on what it can read and change, with human approval for changes; and tracing of every model and tool call with tokens and latency. Then a staged rollout, starting in shadow mode.
+---
+Q: Product demands real-time reporting, but the infrastructure budget is limited. How do you negotiate the trade-off?
+SRC: Flipkart, 4 YOE
+TAG: behavioral
+A: Turn "real-time" into a requirement with a number: which metrics, how fresh, and what decision changes with fresher data. Usually only a few metrics need minutes, and the rest are fine hourly or daily. Then present options with cost: hourly batch, micro-batch every few minutes, true streaming, each with an estimated monthly cost and what it enables. Recommend the cheapest option that meets the actual decision cadence, often near-real-time for a handful of metrics only. Agree it in writing, with a review date. Use a real example from your work if you have one, with the outcome.
+
+@@mock
+## Mock 10: full system design round (45 minutes)
+
+This is the round that most often decides a senior offer. Do it twice this sprint if you can, with different prompts.
+
+**Format.** Claude gives you one prompt from section 10.6, or a new one, and plays an interviewer who answers clarifying questions briefly and pushes on weak points.
+
+Follow the six steps of section 10.2. Claude will interrupt twice: once to ask for a deep dive on a component of its choice, and once with a change, such as ten times the volume or a new requirement for exactly-once results.
+
+**What is scored, out of 10.**
+
+| Area | Points | What earns them |
+|---|---|---|
+| Requirements | 2 | Clarified, written down, and used to justify later choices |
+| Numbers | 2 | Estimates done aloud and reflected in the design |
+| Architecture | 2 | A complete flow, each component with a reason and a rejected alternative |
+| Depth | 2 | One component explained down to schema, keys and guarantees |
+| Failure and scale | 2 | Each component's failure mode and the 10× plan |

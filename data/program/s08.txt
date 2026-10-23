@@ -1,0 +1,739 @@
+@@meta
+id: s08
+n: 8
+title: Two platforms, one set of tables
+goal: The same trip data is worked on in Databricks and in Snowflake. You know how each stores and prunes data, what each costs, how one table can serve both, and how to delete one rider's data from everywhere when the law requires it.
+hours: 10
+
+@@tickets
+801 | learn | 2 | Chapter 8 and the readings | You can explain how Delta and Snowflake each store a table, and what really happens to the bytes when a row is deleted. | chapter
+802 | build | 2.5 | The same data on Databricks and Snowflake | Auto Loader fills a Delta table you have optimised and time-travelled, Snowflake holds the same trips with a clone and a dynamic table, and one Iceberg table is read from both sides. | lab
+803 | incident | 0.75 | Delete one rider everywhere, and hide a column | The rider is gone from every layer including old versions, and an analyst role sees masked phone numbers, shown by a test that fails then passes. | lab
+804 | ai | 1 | An LLM step inside a batch pipeline | Cancellation reasons are classified for a full day of data under a call budget, and a rerun makes zero new calls. | lab
+805 | practice | 1.25 | Warm-ups and the customer drill | Three SQL and three DSA warm-ups attempted, and the drill answered out loud. | practice
+806 | test | 0.5 | Quiz 8 | 80% or better. | quiz
+807 | test | 1 | Coding test 8 | Attempted inside the 60-minute timer. | coding
+808 | talk | 1 | Interview set 8 and the mock | 14 of 18 questions ticked, and a mock score recorded. | interview
+
+@@readings
+- [Databricks: What is Delta Lake?](https://docs.databricks.com/aws/en/delta) and [Optimize data file layout](https://docs.databricks.com/aws/en/delta/optimize). The transaction log and the maintenance commands.
+- [Delta Lake blog: Liquid clustering](https://delta.io/blog/liquid-clustering/). Why it replaces partitioning and Z-ordering for most tables.
+- [Snowflake: Clustering keys and clustered tables](https://docs.snowflake.com/en/user-guide/tables-clustering-keys). How pruning works on micro-partitions, and when clustering is worth paying for.
+- [Snowflake: Apache Iceberg tables](https://docs.snowflake.com/en/user-guide/tables-iceberg). How Snowflake reads and writes tables that live in your own storage.
+- [The Apache Iceberg market in the middle of 2026](https://datalakehousehub.com/blog/iceberg-market-2026). A survey of which vendors support what. Written by someone who works for a vendor, so read it as a map and not as a verdict.
+
+@@chapter
+## 8.1 Why there are two
+
+Meridian's data scientists work in Databricks. Finance works in Snowflake. Each team has asked for the trip tables in its own platform, and the obvious answer, copying everything twice, means two sets of pipelines, two bills and two versions of the truth.
+
+Databricks appears in 29% of job postings and Snowflake in 31%. In your bank, the questions on both are about internals: how does it store data, how does it skip data, what does it cost, and how do you govern it. This chapter answers those four questions for each platform, then shows how one table can serve both.
+
+## 8.2 Delta Lake from the inside
+
+A Delta table is a directory of Parquet files plus a `_delta_log` directory.
+
+```
+trips/
+ ├─ part-0001.parquet
+ ├─ part-0002.parquet
+ └─ _delta_log/
+      ├─ 00000000000000000000.json      commit 0: add part-0001
+      ├─ 00000000000000000001.json      commit 1: add part-0002
+      ├─ 00000000000000000002.json      commit 2: remove part-0001, add part-0003
+      └─ 00000000000000000010.checkpoint.parquet
+```
+
+Each commit is a JSON file listing actions: files **added**, files **removed**, and changes to metadata. The current state of the table is whatever results from replaying the log. A checkpoint, written every ten commits by default, saves that replayed state so readers do not start from zero.
+
+Atomicity comes from the log. A writer prepares its data files, then tries to create the next numbered commit file. Only one writer can create a given number. A writer that loses checks whether the winner's changes conflict with its own, and either retries on top or fails. This is optimistic concurrency, the same idea as Iceberg's pointer swap.
+
+Because old files are only marked as removed, earlier versions remain readable.
+
+```sql
+SELECT count(*) FROM trips VERSION AS OF 12;
+SELECT count(*) FROM trips TIMESTAMP AS OF '2026-10-10';
+DESCRIBE HISTORY trips;
+```
+
+**Schema enforcement** rejects a write whose columns do not match the table. **Schema evolution** is opt-in, for example with the `mergeSchema` option, and adds new columns. Enforcement is the default for a good reason: a typo in an upstream column name becomes a failed job and not a silent new column.
+
+Four maintenance commands are asked about by name.
+
+| Command | What it does |
+|---|---|
+| `OPTIMIZE` | Rewrites many small files into fewer large ones |
+| `OPTIMIZE ... ZORDER BY (col)` | Also sorts data so rows with nearby values of the chosen columns share files, which makes file-level min and max statistics selective |
+| `CLUSTER BY (col)` on the table, called **liquid clustering** | Replaces both partitioning and Z-ordering. Clustering is incremental, and the clustering columns can be changed later without rewriting the table |
+| `VACUUM` | Physically deletes files that no version within the retention period references. The default retention is 7 days. After it runs, time travel beyond that point is gone |
+
+For a new table, the current advice is liquid clustering on the columns you filter by, and no partitions unless the table is very large and always filtered by date.
+
+**Deletion vectors** let a delete or update mark rows as removed in a small side file, without rewriting the data file. It is Delta's merge-on-read. **Change Data Feed** exposes row-level changes between versions, so downstream jobs can process only what changed.
+
+## 8.3 The Databricks platform
+
+**Compute.** An **all-purpose cluster** is interactive, shared and long-lived, for notebooks. A **job cluster** is created for one run and terminated afterwards, at a lower rate. Scheduled work belongs on job clusters. **SQL warehouses** serve BI queries, with a serverless option that starts in seconds. **Photon** is a vectorised execution engine written in C++ that replaces parts of Spark's JVM engine for SQL and DataFrame workloads. Photon is about how queries execute. Liquid clustering is about how data is laid out. A question that asks you to compare them is checking that you know they are different things.
+
+**Cost.** Databricks bills in **DBUs**, a unit of processing capability per hour that depends on instance type and the kind of workload. The total cost of a job is DBUs consumed times the DBU rate for that compute type, plus the cloud provider's charge for the virtual machines. Control it with cluster policies, auto-termination, autoscaling, job clusters, and the billing system tables.
+
+**Ingestion.** **Auto Loader** incrementally loads new files from cloud storage. It keeps track of which files it has seen, infers and evolves the schema, and puts data that does not fit into a rescued-data column.
+
+```python
+bronze = (spark.readStream.format("cloudFiles")
+          .option("cloudFiles.format", "json")
+          .option("cloudFiles.schemaLocation", "s3://meridian/_schemas/trip_events")
+          .load("s3://meridian/raw/trip_events/"))
+```
+
+**Declarative pipelines.** You declare tables as queries, with **expectations**, which are data quality rules that can warn, drop rows or fail the update. The platform works out dependencies, incremental processing, retries and infrastructure. This product was long called Delta Live Tables, and many interviewers still use that name. It also has a built-in way to apply a change feed as a Type 1 or Type 2 dimension, which is the hand-written merge from sprint 6 in one statement.
+
+**Governance.** **Unity Catalog** is one catalog across all workspaces, with a three-level name: `catalog.schema.table`. It holds permissions, row filters and column masks, lineage captured automatically from queries, and the credentials for external storage. Implementing it in an existing project means creating a metastore, mapping storage through external locations, migrating tables from the old per-workspace metastore, and replacing direct storage access with grants.
+
+**Deployment.** Jobs, pipelines and their settings are defined in files and deployed through CI with asset bundles, the same discipline as Terraform.
+
+## 8.4 Snowflake from the inside
+
+Snowflake has three layers that scale separately.
+
+- **Storage.** Data is held in Snowflake's own compressed columnar format in cloud object storage.
+- **Compute.** **Virtual warehouses** are independent clusters. Finance's dashboards and the nightly load can run on different warehouses over the same data without competing.
+- **Cloud services.** The coordinator: authentication, metadata, query optimisation, transactions.
+
+**Micro-partitions.** Every table is automatically divided into immutable micro-partitions of roughly 50 to 500 MB of uncompressed data, stored by column. For each one, Snowflake records the minimum and maximum of every column. A query's filters are checked against that metadata, and micro-partitions that cannot match are skipped. This is **pruning**, and it is why Snowflake has no indexes to manage.
+
+Pruning works well when data arrives in an order that matches how it is queried, as time-ordered events filtered by date do. When it does not, define a **clustering key**, and a background service reorganises the data. Clustering costs credits, so it is for very large tables with selective filters.
+
+**Compute behaviour to know.**
+
+- Warehouses come in sizes, each step roughly doubling capacity and cost. A larger warehouse makes a heavy query faster.
+- A **multi-cluster warehouse** adds clusters when queries queue. It helps concurrency, not single-query speed.
+- **Auto-suspend** stops a warehouse when idle and **auto-resume** restarts it. Billing is per second with a one-minute minimum each time it starts.
+- A **result cache** returns identical queries on unchanged data without using a warehouse.
+
+**Features asked about by name.**
+
+| Feature | What it is |
+|---|---|
+| **Time Travel** | Query or restore data as of an earlier moment, within a retention period. After that, **Fail-safe** keeps it for a further period that only Snowflake support can access |
+| **Zero-copy cloning** | `CREATE TABLE t2 CLONE t1` copies only metadata. Both tables point at the same micro-partitions, and storage is consumed only as they diverge. Ideal for test environments |
+| **Stages and `COPY INTO`** | Bulk loading of files from a location |
+| **Snowpipe** | Continuous loading triggered by file arrival. Snowpipe Streaming loads rows directly, without files |
+| **Streams and tasks** | A stream records changes to a table since it was last consumed. A task runs SQL on a schedule. Together they build incremental pipelines |
+| **Dynamic tables** | You declare a query and a target lag. Snowflake keeps the result that fresh, incrementally where it can. The declarative replacement for most stream and task pairs |
+| **`VARIANT`** | A column type for semi-structured data, queried with path notation and `FLATTEN` |
+| **Masking and row access policies** | Rules attached to columns and tables that change what each role sees |
+
+Schema changes in Snowflake are ordinary `ALTER TABLE` statements. For event data whose attributes keep changing, land the payload in a `VARIANT` column, so new fields need no change at all, and promote stable fields to typed columns in a view or a downstream model.
+
+## 8.5 One table, two engines
+
+The alternative to copying data into each platform is to keep one copy in open storage and let both engines use it. Iceberg is the format both vendors have agreed on.
+
+- **Snowflake** can create and manage Iceberg tables in your own bucket, and can read Iceberg tables managed by an external catalog such as AWS Glue.
+- **Databricks** can expose Delta tables with Iceberg metadata, read by Iceberg clients through Unity Catalog's Iceberg REST interface, and now manages Iceberg tables as well.
+
+The files are the easy part. Three things remain hard.
+
+1. **Who commits.** Give each table exactly one writing engine. Others read. Two engines committing to one table through different catalogs is how tables get corrupted.
+2. **The catalog.** Engines find tables through a catalog, and the catalog hands out storage credentials. Choose one as the system of record and connect the others to it.
+3. **Governance does not travel.** A column mask defined in Unity Catalog means nothing to Snowflake. Access rules must be defined on every platform that can read the data.
+
+A design you can defend: the lakehouse engine writes bronze and silver; gold tables are published as Iceberg; the warehouse reads them without copying; each platform enforces its own access policies generated from one definition.
+
+## 8.6 Governance and the right to be forgotten
+
+**Sensitive data.** Classify columns: direct identifiers such as name, phone and email; indirect ones such as precise location. Then reduce who can see them.
+
+- **Column masking** returns a masked value unless the reader's role is allowed the real one.
+- **Row-level policies** filter rows by role, such as a city manager seeing only their city.
+- **Tokenisation** replaces a value with a stable token in the pipeline itself, so most tables never contain the real value. Joins still work because the same input always gives the same token.
+
+**Deletion requests.** Privacy laws, including GDPR in Europe and India's Digital Personal Data Protection Act, give a person the right to have their data erased. For a lakehouse this is harder than `DELETE FROM`.
+
+A delete in Delta or Iceberg writes a new version of the table. The old files, still containing the rider, remain until they are physically removed. Time travel will happily show the deleted rows. So a real erasure has three steps.
+
+1. **Find every copy.** Raw files, bronze, silver, gold, the warehouse, Kafka topics still within retention, exports and backups. Lineage is what makes this possible.
+2. **Delete logically** from each table.
+3. **Delete physically.** Run `VACUUM` on Delta, or expire snapshots and remove orphan files on Iceberg, once the retention period allows. In Snowflake, the data leaves Time Travel and Fail-safe on their schedules.
+
+The design that makes this cheap is to keep personal data in one small table keyed by a surrogate id, and to use only that id everywhere else. Erasing a person is then one row in one place, and every other table holds an id that no longer resolves to anyone.
+
+## 8.7 A language model inside a batch pipeline
+
+Riders who cancel can type a reason. Product wants those reasons grouped into categories. That is a classification task for a model, run over every new row every night.
+
+Both platforms now offer SQL functions that call a model for each row, which is the quickest way to try this. Wherever the call is made, the engineering concerns are the same, and they are data engineering concerns.
+
+**Cost is rows times tokens.** A million rows of 100 tokens each is 100 million input tokens per night. Four controls matter, in this order.
+
+1. **Process only new or changed rows.** This is an incremental model like any other.
+2. **Cache by input.** Many reasons are identical: "driver late", "changed my mind". Hash the normalised text and call the model once per distinct value.
+3. **Use the smallest model that passes your evaluation.**
+4. **Set a budget and fail early.** Count the calls a run would make before making any. If the number is over budget, stop and alert.
+
+**Reproducibility.** Store the prompt version and model name with every output row. When the prompt changes, you can tell which rows were labelled by which version, and re-run only if the change justifies the cost.
+
+**Validation.** Use the structured output pattern from sprint 2: a closed list of categories including `unknown`, validated on return.
+
+**Privacy.** Free text contains names and phone numbers. Mask them before the text leaves your platform.
+
+**Evaluation.** Label a few hundred rows by hand and measure accuracy before the first full run and after every prompt change.
+
+For work that can wait, providers offer batch endpoints that process large sets of requests asynchronously. A nightly classification job is a natural fit.
+
+@@lab
+## Build: the same data on two platforms (2.5 hours)
+
+Start both trials now. Set every cluster to terminate after ten minutes of inactivity and every warehouse to suspend after one minute. Ask Claude to **start sprint 8**.
+
+**Part A: Databricks (75 minutes)**
+
+1. Upload a few days of raw trip events to cloud storage. Use **Auto Loader** to stream them into a bronze Delta table.
+2. Build a silver table with a `MERGE` on `event_id`.
+3. **Open the log.** List `_delta_log` and read two commit files. Find the `add` and `remove` actions from your merge.
+4. **Time travel.** Run `DESCRIBE HISTORY`. Query an earlier version. Find rows present in one version and absent from another with `EXCEPT`.
+5. **Layout.** Run the merge ten times with small batches and count files. Run `OPTIMIZE` and count again. Create a second copy of the table with `CLUSTER BY (city, trip_date)` and compare files scanned for a filtered query.
+6. **Vacuum.** Run `VACUUM` with the default retention, then with a short retention in a scratch table, and confirm that the old version can no longer be read.
+
+**Part B: Snowflake (45 minutes)**
+
+1. Load the same trips with a stage and `COPY INTO`.
+2. Run a filtered query and read its profile: partitions scanned against partitions total.
+3. `CLONE` the table. Update the clone. Confirm the original is unchanged.
+4. Use Time Travel to query the table as of five minutes ago.
+5. Create a **dynamic table** for completed trips per city per day with a target lag of one hour.
+
+**Part C: one table, two engines (30 minutes)**
+
+1. Re-create the sprint 7 stack and its Iceberg table in the Glue catalog.
+2. In Snowflake, create the three objects needed to read it: an external volume, a catalog integration and an Iceberg table. Query it, and compare the count with Athena.
+3. If this takes more than 30 minutes, stop. Write down what the three objects are and which one holds the credentials. Being able to explain the integration is what an interview needs.
+
+**Done when** parts A and B are complete and you can describe part C on a whiteboard. Then tear everything down and check both bills.
+
+## Incident: delete one rider everywhere, and hide a column (45 minutes)
+
+**Part one.** Rider `r-104` has asked for their data to be erased. You have 30 days by policy.
+
+1. **Find the copies.** List every place `r-104` exists: raw files, bronze, silver, gold, Snowflake, the Kafka topic, your enrichment cache. Write the list down before deleting anything.
+2. **Delete from the Delta silver table.** Then query the previous version. The rider is still there.
+3. **Make it real.** Vacuum the table once retention allows, and confirm the old version is unreadable.
+4. **Delete in Snowflake.** Note the Time Travel retention on that table, and what it means for your 30 days.
+5. **Raw files.** Decide how to handle immutable raw JSON that contains the rider: rewrite the affected files, or apply a retention period shorter than the legal deadline.
+6. **Write the runbook**, `docs/runbooks/erasure.md`, and add one paragraph proposing the design from section 8.6 that would have made this a one-row delete.
+
+**Part two.** An audit finds that the `analyst` role can read riders' phone numbers.
+
+1. Write a test that selects a phone number as `analyst` and asserts it is masked. Run it. It fails.
+2. Add a column mask in Unity Catalog and a masking policy in Snowflake.
+3. Run the test again on both. It passes.
+
+Add both to `notes/what-broke.md`. The Databricks loop in your bank asks exactly this: explain your approach to GDPR, and how you would anonymise or delete user data on request.
+
+## AI lab: an LLM step inside a batch pipeline (1 hour)
+
+1. **The task.** The generator writes a free-text `cancel_reason` on cancelled trips, with many repeats. Classify each into: `driver_late`, `price`, `changed_plans`, `wrong_pickup`, `app_issue`, `other`, `unknown`.
+2. **Label 100 rows by hand** as your evaluation set. Run the sprint 2 classifier on them, adapted to the new categories, and record accuracy.
+3. **Build the job** as a function over one day of data: normalise the text, hash it, look it up in a cache table, call the model only for misses, write results with `prompt_version` and `model`.
+4. **Add the budget.** Before calling anything, count the misses. If the count is above your limit, raise an error.
+5. **Run a day.** Record distinct inputs against total rows, and the token usage reported by the API.
+6. **Rerun the same day.** The number of model calls must be zero.
+7. **Mask first.** Add a step that replaces phone numbers in the text with a placeholder before hashing, and check it on three examples.
+
+**Done when** a rerun makes no calls, the budget stops an oversized run, and your notes contain accuracy, cache hit rate and tokens per thousand rows.
+
+@@practice
+## SQL warm-ups
+
+1. **Average subscription length in months per product.** `subscriptions(user_id, product, start_date, end_date)`. Asked at Adobe. *Approach:* a date difference in months, then `AVG` grouped by product. Decide aloud what to do with subscriptions that have not ended.
+2. **Top three most-used products per country.** Asked at Adobe. *Approach:* aggregate usage per country and product, then rank within country.
+3. **Split a string into one row per character.** `'pen'` becomes `p`, `e`, `n`. Asked at Walmart. *Approach:* join to a sequence of numbers from 1 to the string's length and take `SUBSTRING(s, n, 1)`. Engines with arrays can split and unnest.
+
+## DSA warm-ups: dynamic programming, part 1
+
+1. **House robber.** Maximise the sum of non-adjacent numbers. *Approach:* for each house, the best total is the larger of skipping it, or taking it plus the best total two houses back. Two variables are enough.
+2. **Longest increasing subsequence.** Asked at Goldman Sachs. *Approach:* `best[i]` is the longest subsequence ending at `i`; O(n²). Mention the O(n log n) version with binary search over subsequence tails.
+3. **Longest palindromic substring.** Asked at Stripe. *Approach:* expand around each of the 2n−1 centres; O(n²) time, O(1) space.
+
+For each, state the subproblem in one sentence before writing code. If you cannot, you are not ready to code it.
+
+## Customer drill: "just pick one platform"
+
+The CFO says: *"Why are we paying for both Databricks and Snowflake? Pick one."*
+
+How do you respond? Decide, then compare.
+
+- Ask what each team does on its platform that the other platform would do worse, and get examples.
+- Get the cost of each, split into storage, compute and people's time.
+- Separate two questions the CFO has merged: one copy of the data, and one engine. The first is nearly always right. The second may not be.
+- Offer the middle path with numbers: one set of tables in open storage, both engines reading it, duplicate pipelines removed.
+- Say what would make consolidation the right call later, such as one platform's usage falling below a threshold.
+
+The skill here is refusing a false choice politely and replacing it with a decision the customer can actually make.
+
+@@quiz
+TYPE: mcq
+TAG: spark
+Q: What gives a Delta table atomic commits on object storage?
+A) Parquet's footer
+B) An ordered transaction log in `_delta_log`, where each commit lists files added and removed
+C) Locks held on the bucket
+D) The Hive Metastore
+ANS: B
+WHY: Readers reconstruct the table from the log. A write becomes visible only when its commit file is created, and only one writer can create a given commit number.
+---
+TYPE: mcq
+TAG: spark
+Q: You run `VACUUM` on a Delta table with the default settings. What is the effect?
+A) All data is deleted
+B) Files no longer referenced by any version within the last 7 days are physically removed, ending time travel beyond that
+C) Small files are merged
+D) Statistics are refreshed
+ANS: B
+WHY: `VACUUM` removes unreferenced files older than the retention period, which defaults to 7 days. Merging small files is `OPTIMIZE`.
+---
+TYPE: mcq
+TAG: spark
+Q: What does Z-ordering optimise?
+A) Write throughput
+B) Data skipping, by placing rows with nearby values of the chosen columns in the same files
+C) The size of the transaction log
+D) Join order
+ANS: B
+WHY: Co-locating related values tightens each file's min and max range for those columns, so filters skip more files.
+---
+TYPE: mcq
+TAG: cloud
+Q: Which compute should a nightly production job use on Databricks?
+A) An all-purpose cluster shared with notebooks
+B) A job cluster created for the run and terminated afterwards
+C) A developer's laptop
+D) A SQL warehouse of the largest size, always on
+ANS: B
+WHY: Job clusters are isolated, start clean, stop when the run ends, and are billed at a lower rate than all-purpose compute.
+---
+TYPE: mcq
+TAG: cloud
+Q: What does `CREATE TABLE trips_test CLONE trips` do in Snowflake?
+A) Copies all data to new storage immediately
+B) Creates a new table whose metadata points to the same micro-partitions; storage is used only as the tables diverge
+C) Creates a view
+D) Exports the table to a stage
+ANS: B
+WHY: Zero-copy cloning is a metadata operation. Micro-partitions are immutable, so sharing them is safe, and changes write new ones.
+---
+TYPE: mcq
+TAG: cloud
+Q: At 9 a.m., many Snowflake users run short queries and they queue. Each query is fast once it starts. What is the right fix?
+A) A larger warehouse size
+B) A multi-cluster warehouse that adds clusters under concurrency
+C) A clustering key
+D) More Time Travel retention
+ANS: B
+WHY: Queuing is a concurrency problem, solved by scaling out. A larger size speeds up individual heavy queries, which is not the problem here.
+---
+TYPE: mcq
+TAG: modeling
+Q: A rider's rows are removed from a Delta table with `DELETE`. Is the data physically gone?
+A) Yes, immediately
+B) No. Older data files still hold the rows until `VACUUM` removes them after the retention period
+C) Yes, once the cluster restarts
+D) Only if the table is partitioned
+ANS: B
+WHY: A delete creates a new table version. Previous files remain for time travel until they are vacuumed, so erasure is not complete until then.
+---
+TYPE: mcq
+TAG: ai
+Q: A nightly job classifies two million text values with a language model. Which change reduces cost the most?
+A) A longer prompt
+B) Processing only new rows and calling the model once per distinct input
+C) Running it twice to be sure
+D) Returning longer explanations
+ANS: B
+WHY: Cost is the number of calls times tokens per call. Incremental processing and caching by input hash cut the number of calls, often by an order of magnitude.
+---
+TYPE: fill
+TAG: cloud
+Q: Unity Catalog names a table with three levels: `catalog.____.table`.
+ANS: schema
+WHY: The catalog level sits above schemas and lets one metastore govern data across workspaces.
+---
+TYPE: fill
+TAG: cloud
+Q: Snowflake stores each table as immutable, columnar micro-____, with minimum and maximum values recorded for every column.
+ANS: partitions | partition
+WHY: The per-partition metadata lets the optimiser prune partitions that cannot match a filter, without indexes.
+---
+TYPE: fill
+TAG: cloud
+Q: The Databricks feature that incrementally ingests new files from cloud storage, tracking which it has seen, is Auto ____.
+ANS: Loader
+WHY: It is the `cloudFiles` source, with schema inference, evolution and a rescued-data column.
+---
+TYPE: fill
+TAG: cloud
+Q: In Snowflake, a ____ table is defined by a query and a target lag, and Snowflake keeps its contents that fresh.
+ANS: dynamic
+WHY: Dynamic tables replace many hand-built stream and task pipelines with a declaration.
+---
+TYPE: short
+TAG: spark
+Q: Explain how Delta Lake provides ACID transactions on object storage. What is in a commit, and what happens when two writers commit at once?
+MODEL: A Delta table is Parquet data files plus an ordered log. Each commit is a numbered JSON file listing actions: data files added, files removed, and metadata changes. The table at any version is the result of replaying the log up to that commit, with periodic checkpoints to make that fast.
+
+**Atomicity:** a write is invisible until its commit file exists. **Isolation:** readers use a fixed version, so they see a consistent snapshot. **Concurrency:** writers are optimistic. Each prepares files, then tries to create the next commit number, and only one can succeed. The other checks whether the winning commit touched the same data; if not, it retries on top, and if so, it fails with a conflict.
+---
+TYPE: short
+TAG: spark
+Q: Partitioning, `OPTIMIZE`, Z-ordering and liquid clustering: what does each do, and when do you use it?
+MODEL: **Partitioning** splits a table into directories by a low-cardinality column. Use it for very large tables always filtered by that column, typically date. Too fine a partition creates small files.
+
+**`OPTIMIZE`** compacts small files into larger ones. Run it regularly on tables with frequent small writes.
+
+**Z-ordering** sorts data across files by chosen columns during optimisation, so file statistics become selective for filters on those columns. Use it on high-cardinality filter columns. It must be re-run as data arrives.
+
+**Liquid clustering** replaces partitioning and Z-ordering with clustering keys that are maintained incrementally and can be changed later. It is the default choice for new Delta tables.
+---
+TYPE: short
+TAG: cloud
+Q: Describe Snowflake's architecture. Why does separating storage and compute matter, and how does Snowflake skip data without indexes?
+MODEL: Three layers. **Storage** holds data in compressed columnar micro-partitions in cloud object storage. **Compute** consists of independent virtual warehouses that query that storage. **Cloud services** handle metadata, optimisation, security and transactions.
+
+Separation means storage and compute scale and are billed independently. Different workloads use different warehouses on the same data without contention, and a warehouse can be suspended when idle while the data remains.
+
+**Pruning:** each micro-partition records min and max values per column. The optimiser compares query filters with that metadata and skips partitions that cannot match. A clustering key improves pruning when the natural load order does not match the filters.
+---
+TYPE: short
+TAG: modeling
+Q: A user asks for all their personal data to be deleted. Design the process for a platform with a lakehouse and a warehouse.
+MODEL: 1. **Locate.** Use lineage and a data inventory to list every table, file zone, stream and export containing the user's identifiers.
+2. **Delete logically** in each table, on both platforms, including derived and cached tables.
+3. **Delete physically.** Old versions still hold the rows: vacuum Delta tables or expire Iceberg snapshots after retention, and account for the warehouse's time travel and recovery periods. Handle raw immutable files by rewriting them or by a retention period shorter than the legal deadline.
+4. **Prove it.** Record what was deleted and when, without storing the personal data in the log.
+
+**Better design:** keep personal data in one table keyed by a surrogate id, reference only that id elsewhere, and erasure becomes one delete.
+
+@@coding
+TITLE: Photoshop customers and their other spend
+KIND: sql
+MIN: 12
+TAG: sql
+SRC: Adobe, 4–6 YOE
+PROBLEM:
+Table `purchases(customer_id, product, amount)`.
+
+Return every customer who bought **Photoshop**, with the total they spent on all **other** products as `other_spend`. A customer who bought only Photoshop has `other_spend` 0. Order by `customer_id`.
+SOLUTION:
+```sql
+SELECT customer_id,
+       SUM(CASE WHEN product <> 'Photoshop' THEN amount ELSE 0 END) AS other_spend
+FROM purchases
+GROUP BY customer_id
+HAVING SUM(CASE WHEN product = 'Photoshop' THEN 1 ELSE 0 END) > 0
+ORDER BY customer_id;
+```
+
+One pass over the table. The `HAVING` clause keeps customers with at least one Photoshop purchase, and the `SELECT` sums everything else.
+
+The common wrong answer filters with `WHERE product <> 'Photoshop'` and then joins back to Photoshop buyers. That loses customers who bought only Photoshop, who should appear with 0. Conditional aggregation keeps them, because the group exists even when the conditional sum is zero.
+<!--test
+con.execute("create table purchases(customer_id int, product varchar, amount int)")
+con.execute("insert into purchases values (1,'Photoshop',50),(1,'Illustrator',30),(1,'Acrobat',20),(2,'Illustrator',30),(3,'Photoshop',50),(4,'Photoshop',50),(4,'Photoshop',50),(4,'Acrobat',5)")
+rows = [(c, int(s)) for c, s in con.execute(Q).fetchall()]
+assert rows == [(1,50),(3,0),(4,5)], rows
+-->
+---
+TITLE: Heavy users who also left a good review
+KIND: sql
+MIN: 15
+TAG: sql
+SRC: Adobe, 4–6 YOE
+PROBLEM:
+`usage_logs(user_id, product, used_on)` has one row per use. `reviews(user_id, product, rating, reviewed_on)`.
+
+Return each `user_id` and `month` in which the user used **some single product more than 4 times**, and in the **same month** gave **at least one review rated 4 or higher**, for any product. `month` is the first day of the month. Order by user, then month.
+SOLUTION:
+```sql
+WITH heavy AS (
+  SELECT DISTINCT user_id, mth
+  FROM (
+    SELECT user_id, product, DATE_TRUNC('month', used_on) AS mth
+    FROM usage_logs
+    GROUP BY user_id, product, DATE_TRUNC('month', used_on)
+    HAVING COUNT(*) > 4
+  ) per_product
+),
+good AS (
+  SELECT DISTINCT user_id, DATE_TRUNC('month', reviewed_on) AS mth
+  FROM reviews
+  WHERE rating >= 4
+)
+SELECT h.user_id, h.mth AS month
+FROM heavy h
+JOIN good g
+  ON g.user_id = h.user_id
+ AND g.mth = h.mth
+ORDER BY h.user_id, h.mth;
+```
+
+Each condition is reduced to one row per user and month before the two are joined. This is the aggregate-then-join rule from the last sprint again. Joining the raw tables on user and month would multiply every usage row by every review row.
+
+Read the wording carefully. "More than 4 times" is `> 4`. "Any product" needs the count grouped by product, then collapsed with `DISTINCT`, or a user with three uses each of two products would wrongly qualify.
+<!--test
+con.execute("create table usage_logs(user_id int, product varchar, used_on date)")
+con.execute("create table reviews(user_id int, product varchar, rating int, reviewed_on date)")
+rows = []
+for d in range(1, 6): rows.append((1, 'ps', f'2026-03-{d:02d}'))
+for d in range(1, 4): rows.append((2, 'ps', f'2026-03-{d:02d}'))
+for d in range(4, 7): rows.append((2, 'ai', f'2026-03-{d:02d}'))
+for d in range(1, 7): rows.append((3, 'ps', f'2026-03-{d:02d}'))
+for d in range(1, 6): rows.append((4, 'ps', f'2026-04-{d:02d}'))
+con.executemany("insert into usage_logs values (?,?,?)", rows)
+con.execute("insert into reviews values (1,'ai',5,'2026-03-20'),(2,'ps',5,'2026-03-20'),(3,'ps',3,'2026-03-20'),(4,'ps',4,'2026-03-30'),(4,'ps',4,'2026-04-02')")
+out = [(u, str(m)[:10]) for u, m in con.execute(Q).fetchall()]
+assert out == [(1,'2026-03-01'),(4,'2026-04-01')], out
+-->
+---
+TITLE: Fewest coins to make an amount
+KIND: dsa
+MIN: 15
+TAG: dsa
+SRC: Salesforce, 4 YOE
+PROBLEM:
+Given a list of coin denominations and a target amount, return the **fewest coins** needed to make exactly that amount. Each denomination can be used any number of times. Return -1 if it cannot be made.
+
+`coins = [1, 2, 5]`, `amount = 11` returns 3, for 5 + 5 + 1.
+SOLUTION:
+```python
+def coin_change(coins, amount):
+    INF = amount + 1
+    best = [0] + [INF] * amount          # best[a] = fewest coins to make a
+    for a in range(1, amount + 1):
+        for c in coins:
+            if c <= a and best[a - c] + 1 < best[a]:
+                best[a] = best[a - c] + 1
+    return best[amount] if best[amount] != INF else -1
+```
+
+State the subproblem first: `best[a]` is the fewest coins that make amount `a`. To make `a`, the last coin is one of the denominations `c`, and the rest is the best way to make `a - c`. Take the minimum over all choices. Time is O(amount × number of coins), and space is O(amount).
+
+A greedy approach that always takes the largest coin fails for coins such as `[1, 3, 4]` and amount 6, where greedy gives 4 + 1 + 1 and the answer is 3 + 3. Mention that example. It shows you understand why dynamic programming is needed here.
+<!--test
+assert coin_change([1,2,5], 11) == 3
+assert coin_change([2], 3) == -1
+assert coin_change([1,3,4], 6) == 2
+assert coin_change([5], 0) == 0
+-->
+---
+TITLE: Enrich rows with a model, under a budget
+KIND: python
+MIN: 18
+TAG: ai
+PROBLEM:
+You are adding a model-based classification step to a batch job.
+
+Write `enrich(rows, classify, cache, budget)`.
+
+- `rows` is a list of dictionaries, each with a `"text"` key.
+- `classify(text)` calls a model and returns a category. It is slow and costs money.
+- `cache` is a dictionary from normalised text to category. Read from it and add to it.
+- Normalise text by stripping whitespace and lower-casing.
+- Call `classify` **at most once per distinct normalised text** not already in the cache.
+- If the number of calls needed is greater than `budget`, raise `RuntimeError` **before making any call**.
+- Return new dictionaries with a `"category"` key added. Do not modify the input rows.
+SOLUTION:
+```python
+def enrich(rows, classify, cache, budget):
+    norm = lambda s: s.strip().lower()
+
+    misses = []                                   # distinct texts not yet cached, in first-seen order
+    seen = set()
+    for row in rows:
+        key = norm(row["text"])
+        if key not in cache and key not in seen:
+            seen.add(key)
+            misses.append(key)
+
+    if len(misses) > budget:
+        raise RuntimeError(f"{len(misses)} model calls needed, budget is {budget}")
+
+    for key in misses:
+        cache[key] = classify(key)
+
+    return [{**row, "category": cache[norm(row["text"])]} for row in rows]
+```
+
+The function is split into three passes on purpose. The first works out what must be called, without calling anything. The budget check sits between planning and doing, so an oversized run costs nothing. The last pass builds the output from the cache.
+
+This shape is the answer to "how do you control the cost of a model in a pipeline": plan, check, call once per distinct input, and reuse. In production the cache is a table keyed by a hash of the prompt version and the text, so changing the prompt naturally invalidates old entries.
+<!--test
+calls = []
+def fake(text):
+    calls.append(text)
+    return "late" if "late" in text else "other"
+cache = {"changed my mind": "changed_plans"}
+rows = [{"id": 1, "text": "Driver late "}, {"id": 2, "text": "driver late"}, {"id": 3, "text": "Changed my mind"}, {"id": 4, "text": "too costly"}]
+out = enrich(rows, fake, cache, budget=2)
+assert [r["category"] for r in out] == ["late", "late", "changed_plans", "other"]
+assert calls == ["driver late", "too costly"]
+assert "category" not in rows[0]
+out2 = enrich(rows, fake, cache, budget=0)
+assert len(calls) == 2
+try:
+    enrich([{"text": "a"}, {"text": "b"}], fake, {}, budget=1)
+    raise AssertionError("budget not enforced")
+except RuntimeError:
+    pass
+assert len(calls) == 2
+-->
+
+@@interview
+Q: How does Delta Lake ensure ACID transactions on a data lake?
+TAG: spark
+A: Through its transaction log. Every change is a numbered commit file in `_delta_log` listing which data files were added and removed. Readers build a snapshot from the log, so they see a consistent version and never a partial write. A commit is atomic because it becomes visible only when its log file is created, and the storage layer guarantees that only one writer can create a given commit number. Concurrent writers use optimistic concurrency: the loser checks for a real conflict and retries or fails. Durability comes from object storage. Checkpoints summarise the log so reading it stays fast.
+---
+Q: What is a Delta table? How would you implement an upsert with `MERGE`?
+SRC: Atlassian, 3 YOE
+TAG: spark
+A: A Delta table is a set of Parquet files with a transaction log that gives atomic commits, versioning, schema enforcement and row-level changes.
+
+```sql
+MERGE INTO silver.trips t
+USING updates s
+   ON t.trip_id = s.trip_id
+WHEN MATCHED AND s.updated_at > t.updated_at THEN UPDATE SET *
+WHEN NOT MATCHED THEN INSERT *;
+```
+
+The source must hold one row per key, so I de-duplicate it first. The timestamp guard makes replays harmless. I include a partition or clustering column in the condition where possible so fewer files are scanned, and schedule `OPTIMIZE`, since frequent merges create small files.
+---
+Q: Explain schema enforcement and schema evolution in Delta Lake. Give an example where evolution could cause harm.
+SRC: Atlassian, 5 YOE
+TAG: spark
+A: Enforcement means a write whose schema does not match the table is rejected, which protects consumers from unexpected columns or types. Evolution lets the table's schema change as part of a write when explicitly enabled, for example with `mergeSchema`, typically adding nullable columns.
+
+A harmful case: an upstream bug sends `user_Id` with a capital letter, or a new column of the wrong type. With evolution always on, the table quietly gains a junk column, the real column fills with NULLs, and dashboards drift without any failure. I keep enforcement as the default, allow evolution only for reviewed additive changes, and alert on any schema difference at ingestion.
+---
+Q: What are Delta Lake's time travel and versioning features? How do you find records present in one version and not in another?
+SRC: Fractal, 7.5 YOE
+TAG: spark
+A: Every commit creates a new table version. You can query an earlier one with `VERSION AS OF n` or `TIMESTAMP AS OF`, list commits with `DESCRIBE HISTORY`, and roll back with `RESTORE`. It works as long as the old files have not been vacuumed.
+
+To compare versions:
+
+```sql
+SELECT * FROM trips VERSION AS OF 12
+EXCEPT
+SELECT * FROM trips VERSION AS OF 11;
+```
+
+That returns rows added or changed in version 12. Swapping the two gives rows removed. For continuous use, enable Change Data Feed and read the row-level changes between versions with their change type.
+---
+Q: Explain Photon versus liquid clustering in Databricks.
+SRC: Fractal, 7.5 YOE
+TAG: spark
+A: They solve different problems and are used together. **Photon** is an execution engine: a vectorised engine written in C++ that runs SQL and DataFrame operations faster than Spark's JVM engine, with no code changes. It affects how fast a query processes the data it reads. **Liquid clustering** is a data layout feature for Delta tables: it organises rows by clustering keys, incrementally, so queries filtering on those keys skip most files. It affects how much data a query reads. Photon makes each byte cheaper to process; clustering reduces the bytes. If asked to choose, I would say the question mixes two layers.
+---
+Q: What is liquid clustering, and how does it compare with partitioning and Z-ordering?
+SRC: Accenture, 7 YOE
+TAG: spark
+A: Liquid clustering organises a Delta table by clustering keys declared with `CLUSTER BY`. Data is clustered incrementally as it is written and optimised, and the keys can be changed later without rewriting the table. Partitioning is rigid: it fixes a directory layout, suits only low-cardinality columns, and causes small files when chosen badly. Z-ordering handles high-cardinality columns but must be re-run over the data and cannot be combined with changing needs cheaply. Liquid clustering covers both cases with less tuning. I use it for new tables, and keep partitioning only for very large tables with a stable, always-used date filter.
+---
+Q: Explain Databricks job clusters, and Photon in a SQL warehouse.
+SRC: J.P. Morgan, 6 YOE
+TAG: cloud
+A: A job cluster is created when a job run starts and terminated when it ends. It gives each run a clean, isolated environment sized for that workload, and it is billed at the lower jobs rate, so it is the right compute for scheduled production work. All-purpose clusters are for interactive development and cost more per unit.
+
+A SQL warehouse is compute dedicated to SQL and BI workloads, with autoscaling for concurrency and a serverless option. Photon is the vectorised native engine that SQL warehouses use, which speeds up scans, joins and aggregations on Delta and Parquet, especially on large data.
+---
+Q: How do you calculate the cost of a Databricks cluster using DBUs?
+SRC: J.P. Morgan, 6 YOE
+TAG: cloud
+A: A DBU is a unit of processing per hour. Each instance type has a DBU rate, and each workload type, such as jobs, all-purpose or SQL, has a price per DBU, with Photon and serverless priced differently.
+
+Cost of a run is: number of nodes × DBUs per node-hour × hours × price per DBU, plus the cloud provider's charge for the same virtual machines over the same time, unless the compute is serverless, where infrastructure is included. For example, ten nodes at 2 DBUs each for half an hour is 10 DBUs, multiplied by the jobs rate, plus ten VM half-hours. I track real usage from the billing system tables by job.
+---
+Q: What is Unity Catalog, and how would you implement it in an ongoing project?
+SRC: Accenture, 7 YOE
+TAG: cloud
+A: Unity Catalog is Databricks' central governance layer: one metastore across workspaces with a `catalog.schema.table` namespace, fine-grained permissions, row filters and column masks, automatic lineage, auditing, and managed access to external storage.
+
+For an existing project: create the metastore and assign workspaces. Define storage credentials and external locations for existing data paths. Design catalogs, usually by environment or domain. Migrate tables from the legacy Hive metastore, upgrading external tables in place and copying managed ones. Replace direct storage access and mounts with grants to groups. Switch clusters to an access mode that enforces Unity Catalog, test jobs, then cut over workspace by workspace.
+---
+Q: Explain the role of Delta Live Tables. How is it different from a traditional pipeline?
+SRC: Accenture, 7 YOE
+TAG: cloud
+A: Delta Live Tables, now part of Databricks' declarative pipelines, lets you declare each table as a query, and the platform works out the dependency graph, incremental processing, retries, cluster management and monitoring. Data quality rules called expectations are attached to tables and can warn, drop rows or fail. It also provides a built-in way to apply change data as Type 1 or Type 2 tables.
+
+In a traditional pipeline you write the orchestration yourself: task order, checkpoints, error handling, backfills. The declarative approach removes that code and standardises operations. The trade-offs are less control over execution details and a tie to the platform.
+---
+Q: Explain Snowflake's architecture. How does it separate compute and storage?
+SRC: Autodesk, 4 YOE
+TAG: cloud
+A: Snowflake has three layers. The storage layer keeps all data in compressed, columnar micro-partitions in the cloud provider's object storage. The compute layer is made of virtual warehouses, which are independent clusters that read from that shared storage and keep only a local cache. The cloud services layer coordinates: authentication, metadata, query planning, transactions and access control.
+
+Because warehouses hold no data, you can run many of them against the same tables, size each for its workload, and suspend them when idle while storage continues at its own, much lower, rate. That removes contention between loading and reporting and makes cost follow usage.
+---
+Q: What are micro-partitions in Snowflake, and why are they important?
+SRC: Autodesk, 4 YOE
+TAG: cloud
+A: Micro-partitions are the immutable storage units Snowflake creates automatically as data is loaded, each holding roughly 50 to 500 MB of uncompressed data in columnar form. For each one, Snowflake stores metadata: the range of values for every column, distinct counts and null counts.
+
+They matter for three reasons. Pruning: filters are compared against the metadata and non-matching partitions are skipped, which replaces indexes. Column pruning: only referenced columns are read. And immutability enables other features: Time Travel and zero-copy cloning work because changes write new micro-partitions and old ones are simply retained or shared.
+---
+Q: What are zero-copy cloning and Time Travel in Snowflake, and how would you use them?
+TAG: cloud
+A: Zero-copy cloning creates a new table, schema or database whose metadata points at the source's existing micro-partitions. Nothing is copied, so it is instant and free until the clone or the source changes, at which point only the new micro-partitions consume storage. I use it for test and development environments on production-sized data, and to snapshot a table before a risky change.
+
+Time Travel lets you query, clone or restore an object as of an earlier time within its retention period. I use it to recover from a bad load or an accidental delete, and to compare a table before and after a change.
+---
+Q: How does schema evolution work in Snowflake? How would you store user activity logs whose attributes keep changing?
+SRC: Apple, 5 YOE
+TAG: cloud
+A: Structured tables evolve with `ALTER TABLE`: adding a nullable column is a metadata change, and loads can be configured to add new columns found in incoming files. Existing queries are unaffected by added columns.
+
+For activity logs with changing attributes, I land each event with a few fixed columns, such as user id, event type and timestamp, plus the full payload in a `VARIANT` column. New attributes appear in the payload with no schema change, and can be queried by path immediately. Attributes that become stable and widely used are promoted to typed columns in a view, a dynamic table or a dbt model, which keeps a clean contract for consumers.
+---
+Q: How do you build incremental pipelines inside Snowflake?
+TAG: cloud
+A: There are three levels. Ingestion: `COPY INTO` for scheduled batches, Snowpipe for continuous loading as files arrive, and Snowpipe Streaming for row-level, low-latency ingestion from Kafka. Transformation, the older way: a stream on a table records inserts, updates and deletes since it was last read, and a task runs a `MERGE` on a schedule or when the stream has data. Transformation, the newer way: dynamic tables, where I declare the query and a target lag and Snowflake refreshes incrementally and manages dependencies. I use dynamic tables for most cases, and streams and tasks when I need procedural control. dbt can sit on top of either.
+---
+Q: Explain your approach to GDPR compliance. How would you anonymise or delete user data on request?
+SRC: Databricks, 5 YOE
+TAG: modeling
+A: Prevention first: classify personal data, minimise where it is stored, tokenise identifiers in the pipeline, mask columns by role, and set retention periods so data does not live for ever.
+
+For an erasure request: use lineage to find every table, file zone and stream containing the person. Delete from each, then make the deletion physical, since table formats keep old versions: vacuum Delta tables or expire Iceberg snapshots after retention, and account for the warehouse's recovery periods. Rewrite or age out raw files. Log the completion. The design that makes this routine is a single personal-data table keyed by a surrogate id, with only the id used elsewhere.
+---
+Q: How would you design a PII masking strategy for customer addresses in a warehouse?
+SRC: Chubb, 4 YOE
+TAG: modeling
+A: Decide by role what each group needs. Most analysts need a city or postcode area, not a street address, so the default view exposes a generalised value. A dynamic masking policy on the address column returns the full value only to approved roles, a partial value to some, and a fixed mask to everyone else. Apply the policy by tag, so every column classified as an address is covered automatically. Keep the raw value in a restricted schema. Where joins on address are needed, store a deterministic token. Audit access to unmasked data, and test the policy with queries run as each role.
+---
+Q: What experience do you have with generative AI features for accelerating data engineering work?
+SRC: Accenture, 7 YOE
+TAG: ai
+A: Answer on two levels. **As a developer:** you use coding assistants daily for SQL, PySpark and pipeline design, and you review what they produce: reading the plan, running tests, checking edge cases. Give one example where the assistant was wrong and you caught it.
+
+**As a builder:** you have put models into pipelines. Describe the agentic request-processing system at Salesforce, then the engineering controls you apply: structured output with validation, an evaluation set, caching and budgets for cost, masking of personal data before a call, human approval for changes, and prompt and model versions stored with outputs. That second half is what separates an engineer from a user.
+
+@@mock
+## Mock 8: platform deep dive (35 minutes)
+
+The J.P. Morgan and Accenture senior loops in your bank spend a full round on Databricks, and Autodesk's on Snowflake. Interviewers pick the platform on your resume and go down until you run out.
+
+**Format.** Claude plays a platform lead. Choose Databricks or Snowflake at the start. Claude spends most of the time on your choice and a few minutes on the other.
+
+- 15 minutes: storage and performance. How is a table stored? How is data skipped? What do the maintenance commands do, and when do you run them?
+- 10 minutes: cost and compute. What are you billed for? A dashboard is slow at 9 a.m.; what do you change?
+- 10 minutes: governance. A deletion request arrives. An analyst should not see phone numbers. A second engine needs to read the same table.
+
+**What is scored, out of 10.**
+
+| Area | Points | What earns them |
+|---|---|---|
+| Internals | 4 | The log or the micro-partition, explained as a mechanism |
+| Cost reasoning | 2 | You name what is billed and the lever for each |
+| Governance | 3 | Physical deletion, masking and cross-engine access are all handled |
+| Honesty | 1 | You mark clearly what you have run yourself and what you have only read about |

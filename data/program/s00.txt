@@ -1,0 +1,419 @@
+@@meta
+id: s00
+n: 0
+title: Start here: diagnostic
+goal: Find out where you stand before sprint 1, set up your machine, and learn how a sprint works. The scores you record here replace the guesses made from your resume.
+hours: 2.5
+
+@@tickets
+001 | learn | 0.5 | Read how the program works | You can name the eight tickets every sprint contains and the two rules about using AI. | chapter
+002 | test | 0.5 | Diagnostic quiz, 20 questions | Answered in one sitting without looking anything up. | quiz
+003 | test | 1 | Diagnostic coding test, 4 problems | Attempted under the 60-minute timer and marked honestly. | coding
+004 | build | 0.5 | Set up your machine | Docker runs a container, Python 3.11+ is installed, and an empty `meridian-platform` repo exists. | lab
+
+@@chapter
+## How this program works
+
+You have twelve sprints of about ten hours each. Every sprint has the same shape, so you never have to decide what to do next. You only have to decide when.
+
+You play the first data engineer at **Meridian**, a fictional ride-hailing and food-delivery company operating in Indian cities. Each sprint the business asks for something. Delivering it needs several technologies working together, and at some point in the week something breaks. The interview material is attached to that work: you learn Spark tuning because your job is slow, and you learn watermarks because surge pricing is using stale data.
+
+Ride-hailing was chosen on purpose. In your purchased question bank, Uber, Meta, Google and Grab all use it for data modeling and system design rounds. By sprint 10 you will have built the system those rounds ask you to design.
+
+## The platform you will build
+
+```
+ rider and driver apps ──> Kafka ──┐
+                                   ├──> Spark (batch and streaming) ──> Iceberg tables
+ Postgres (orders) ──> Debezium ───┘                                    on object storage
+                                                                              │
+                                              dbt models (bronze, silver, gold)
+                                                                              │
+                                                   Trino, Snowflake, Databricks ──> dashboards
+
+ Airflow schedules and checks every step.
+ An on-call agent watches Airflow, reads failures, and reports to Slack.
+```
+
+Sprint 1 builds a thin version of this whole picture. Later sprints deepen one layer at a time while the rest keeps running. In sprint 7 the platform moves to AWS.
+
+## The eight tickets in every sprint
+
+| Ticket | Hours | What it is |
+|---|---|---|
+| Learn | 2.0 | The sprint's chapter, written for this program, plus two or three outside readings |
+| Build | 2.5 | Work on the platform with clear done-criteria |
+| Incident | 0.75 | An injected failure you diagnose, fix and write up |
+| AI lab | 1.0 | One agent skill, building toward the on-call agent |
+| Practice | 1.25 | Three SQL and three DSA warm-ups, and one customer drill |
+| Quiz | 0.5 | 16 questions: multiple choice, fill in the blank, short answer |
+| Coding test | 1.0 | 60 minutes: two SQL, one DSA, one PySpark or Python |
+| Interview set and mock | 1.0 | 18 questions with model answers, and one live round with Claude |
+
+A workable weekly pattern is one hour on each weekday evening and two and a half hours on each weekend day. Put the chapter early in the week and both tests on the weekend.
+
+## What ten hours a week costs you
+
+The first plan assumed fifteen hours. At ten, three things were cut, and you should know what they are.
+
+- **Builds are narrower.** You will not write every file from scratch. At the start of each sprint, ask Claude in the chat to "start sprint N". Claude will generate that sprint's starter kit into your projects folder, and you fill in the parts that teach something.
+- **Tests are shorter.** Quizzes have 16 questions and coding tests have 4 problems.
+- **DSA coverage is the thinnest part.** You get four DSA problems a week across practice and the coding test. If you find a spare hour in any week, spend it there. It is the first-round filter at Uber, Stripe, LinkedIn, Visa, Google, Atlassian, Microsoft, PayPal and Intuit in your bank.
+
+## Two rules about using AI
+
+1. **Tests are done with AI off.** Quizzes and coding tests measure what you can do alone, because some companies ban AI in interviews and all of them ask follow-up questions.
+2. **Builds are done with AI on, and you must be able to explain every line.** Other companies now grade how well you direct an assistant and whether you catch its mistakes. Treat generated code as a pull request from a junior engineer: read it, run it, and reject what you cannot defend.
+
+## How scoring works
+
+- Multiple-choice and fill-in questions mark themselves. Short answers show a model answer and you mark yourself: got it, partly, or missed.
+- Coding problems are marked by you: solved alone, solved with hints, or not solved.
+- A sprint is ready to close when the quiz is at 80% or better and at least half the coding problems are solved alone. Below that, ask Claude for a repair set on the weak topic before moving on.
+- The **Scorecard** at the top of the sprint list adds everything up by interview round, so you can see whether SQL, Spark, streaming or design is your weakest round at any time.
+
+## What happens after this diagnostic
+
+Tell Claude your diagnostic results in the chat, or just say they are recorded. Claude can read the scorecard, and will adjust where the practice time goes. A low DSA score moves practice time toward DSA. A high SQL score lets you skip the easier SQL warm-ups.
+
+@@lab
+## Set up your machine
+
+This takes about thirty minutes. Do it once.
+
+1. **Docker Desktop.** Install it and give it at least 6 GB of memory in Settings. On a MacBook Air, close heavy apps while the platform is running. The local stack is sized to fit: single-node Kafka, MinIO for object storage, Spark in local mode, and Airflow in standalone mode.
+2. **Python 3.11 or newer**, with `venv`. Check with `python3 --version`.
+3. **Git and a repository.** Create an empty repository called `meridian-platform` on GitHub and clone it into your projects folder. Everything you build goes there. A public repo with real commit history is part of what you show interviewers in sprint 12.
+4. **An editor** you are fast in. VS Code or Cursor are both fine.
+5. **Java 17**, which Spark needs. Check with `java -version`.
+
+Check Docker works:
+
+```bash
+docker run --rm hello-world
+```
+
+## Accounts, and when to open them
+
+Open each account in the sprint that needs it. Free trials are time-limited and it is easy to waste them.
+
+| Account | Needed from | Note |
+|---|---|---|
+| An LLM API key | Sprint 1 | The labs use the Anthropic Python SDK. Any model API with tool calling will work. Set a monthly spend limit when you create the key. |
+| Snowflake trial | Sprint 4 | Do not start it earlier. |
+| AWS account | Sprint 7 | Set a billing alarm at a few dollars before creating anything else. |
+| Databricks trial | Sprint 8 | Do not start it earlier. |
+
+## Then start sprint 1
+
+When the diagnostic is done, open the chat and send: **start sprint 1**. Claude will set up the starter kit with you.
+
+@@quiz
+TYPE: mcq
+TAG: sql
+Q: Three employees in one department earn 100, 100 and 90. Ordered by salary descending, which function returns 1, 1, 2?
+A) `ROW_NUMBER()`
+B) `RANK()`
+C) `DENSE_RANK()`
+D) `NTILE(2)`
+ANS: C
+WHY: `DENSE_RANK` gives ties the same rank and leaves no gap. `RANK` would return 1, 1, 3. `ROW_NUMBER` would return 1, 2, 3 in an arbitrary order for the tie.
+---
+TYPE: mcq
+TAG: sql
+Q: A table has 5 rows. Column `tip` is NULL in 2 of them. What do `COUNT(*)` and `COUNT(tip)` return?
+A) 5 and 5
+B) 5 and 3
+C) 3 and 3
+D) 5 and NULL
+ANS: B
+WHY: `COUNT(*)` counts rows. `COUNT(column)` counts only non-NULL values of that column.
+---
+TYPE: mcq
+TAG: sql
+Q: `SELECT ... FROM riders r LEFT JOIN trips t ON t.rider_id = r.rider_id WHERE t.status = 'completed'`. What happens to riders who have no trips?
+A) They appear with NULL trip columns
+B) They are removed, so the query behaves like an inner join
+C) The query fails
+D) They appear once per status value
+ANS: B
+WHY: For riders with no trips, `t.status` is NULL, and `NULL = 'completed'` is not true, so the WHERE clause drops them. To keep them, move the condition into the ON clause.
+---
+TYPE: fill
+TAG: sql
+Q: With one row per day, a 7-day rolling sum uses the frame `ROWS BETWEEN ____ PRECEDING AND CURRENT ROW`.
+ANS: 6
+WHY: The current row plus the six rows before it makes seven days.
+---
+TYPE: fill
+TAG: dsa
+Q: Binary search on a sorted array of n elements runs in O(____) time.
+ANS: log n | logn | log(n)
+WHY: Each comparison halves the remaining search space.
+---
+TYPE: mcq
+TAG: dsa
+Q: You need the K most frequent items in a list of n items, where K is much smaller than n. Which approach is the standard efficient answer?
+A) Sort the whole list, then scan
+B) Count with a hash map, then keep a min-heap of size K
+C) Nested loops comparing every pair
+D) Binary search for each item
+ANS: B
+WHY: Counting is O(n). A heap of size K gives O(n log K) overall, which beats sorting all distinct items when K is small.
+---
+TYPE: mcq
+TAG: spark
+Q: Which of these Spark operations is a wide transformation that causes a shuffle?
+A) `filter`
+B) `select`
+C) `withColumn`
+D) `groupBy(...).agg(...)`
+ANS: D
+WHY: Grouping needs all rows with the same key on the same partition, so data must move between executors. The other three work within each partition.
+---
+TYPE: mcq
+TAG: spark
+Q: You write five DataFrame transformations and nothing runs. Why?
+A) Spark is waiting for more memory
+B) Transformations are lazy and only an action triggers execution
+C) The driver is down
+D) DataFrames must be cached first
+ANS: B
+WHY: Spark builds a plan from transformations and executes it only when an action such as `count`, `collect` or a write is called.
+---
+TYPE: mcq
+TAG: spark
+Q: When is a broadcast join the right choice?
+A) Both tables are very large
+B) One table is small enough to be copied to every executor
+C) The join key is skewed on both sides
+D) Only for outer joins
+ANS: B
+WHY: Broadcasting the small side lets each executor join locally and avoids shuffling the large table.
+---
+TYPE: fill
+TAG: spark
+Q: The number of partitions Spark SQL uses after a shuffle is set by `spark.sql.____.partitions`.
+ANS: shuffle
+WHY: `spark.sql.shuffle.partitions` defaults to 200. Adaptive query execution can coalesce them at run time.
+---
+TYPE: mcq
+TAG: streaming
+Q: What ordering does Kafka guarantee?
+A) Across the whole topic
+B) Within a partition
+C) Within a consumer group
+D) None at all
+ANS: B
+WHY: Each partition is an ordered log. Messages in different partitions have no defined order relative to each other.
+---
+TYPE: mcq
+TAG: streaming
+Q: In stream processing, what is a watermark for?
+A) Encrypting messages
+B) Deciding how long to wait for late events before finalising a window and dropping its state
+C) Marking the last committed offset
+D) Limiting producer throughput
+ANS: B
+WHY: A watermark is the engine's estimate of how far event time has progressed. It bounds lateness so that state does not grow forever.
+---
+TYPE: mcq
+TAG: modeling
+Q: A driver moves from Pune to Bengaluru and you must keep history. Which slowly changing dimension type adds a new row with validity dates?
+A) Type 0
+B) Type 1
+C) Type 2
+D) Type 3
+ANS: C
+WHY: Type 2 closes the old row and inserts a new one. Type 1 overwrites. Type 3 keeps only a previous-value column.
+---
+TYPE: mcq
+TAG: modeling
+Q: What does the grain of a fact table mean?
+A) Its storage format
+B) Exactly what one row represents
+C) Its partition column
+D) The number of dimensions
+ANS: B
+WHY: Declaring the grain, such as one row per completed trip, is the first decision in dimensional design. Every fact and dimension must be true at that grain.
+---
+TYPE: mcq
+TAG: spark
+Q: Why is Parquet preferred over CSV for analytics?
+A) It is human-readable
+B) It is columnar, so a query reads only the columns and row groups it needs
+C) It needs no schema
+D) It cannot be compressed
+ANS: B
+WHY: Columnar layout with per-column statistics allows column pruning and predicate pushdown, and similar values compress well together.
+---
+TYPE: mcq
+TAG: cloud
+Q: What makes a pipeline task idempotent?
+A) It runs only once
+B) Running it again for the same input leaves the same result
+C) It has no dependencies
+D) It never fails
+ANS: B
+WHY: Retries and backfills rerun tasks. An idempotent task can be rerun safely because it overwrites or merges and does not append blindly.
+---
+TYPE: fill
+TAG: cloud
+Q: In Airflow, the DAG argument that controls whether missed schedule intervals since `start_date` are run automatically is `____`.
+ANS: catchup
+WHY: With `catchup=True` the scheduler creates a run for every missed interval. Set it explicitly, because the default differs between Airflow 2 and Airflow 3.
+---
+TYPE: mcq
+TAG: design
+Q: How do production systems usually achieve an exactly-once result end to end?
+A) By using a network that never fails
+B) At-least-once delivery combined with an idempotent or transactional sink
+C) By disabling retries
+D) By sending each message twice
+ANS: B
+WHY: Delivery can always be retried, so duplicates are possible. The result is made exactly-once by making the write idempotent or by committing data and offsets atomically.
+---
+TYPE: mcq
+TAG: ai
+Q: In a tool-using agent, what happens when the model decides to call a tool?
+A) The model executes the tool on its own servers
+B) The model returns a structured request, your code runs the tool, and you send the result back
+C) The conversation ends
+D) The tool result is guessed by the model
+ANS: B
+WHY: The model only asks. Your program executes the call and returns the output in the next message. Repeating this until the model stops asking is the agent loop.
+---
+TYPE: mcq
+TAG: ai
+Q: What is retrieval-augmented generation mainly for?
+A) Training a new model
+B) Fetching relevant documents at question time and giving them to the model as context
+C) Making responses shorter
+D) Replacing the database
+ANS: B
+WHY: Retrieval grounds the answer in your own material, such as runbooks and schema docs, without retraining anything.
+
+@@coding
+TITLE: Second-highest salary per department
+KIND: sql
+MIN: 15
+TAG: sql
+SRC: asked in several loops in your bank
+PROBLEM:
+Table `emp(emp_id, name, dept, salary)`.
+
+Return `dept, name, salary` for every employee who earns the **second-highest distinct salary** in their department. If two people tie for it, return both. Departments with only one distinct salary return nothing. Order by `dept, name`.
+SOLUTION:
+```sql
+WITH r AS (
+  SELECT dept, name, salary,
+         DENSE_RANK() OVER (PARTITION BY dept ORDER BY salary DESC) AS rnk
+  FROM emp
+)
+SELECT dept, name, salary
+FROM r
+WHERE rnk = 2
+ORDER BY dept, name;
+```
+
+`DENSE_RANK` is the right function because the question says *distinct* salary and wants ties kept. `ROW_NUMBER` would return one arbitrary person. `RANK` would skip rank 2 when two people share the top salary.
+
+Expect the follow-up: "do it without a window function." Use a correlated subquery that takes the maximum salary below the department maximum.
+<!--test
+con.execute("create table emp(emp_id int, name varchar, dept varchar, salary int)")
+con.execute("insert into emp values (1,'A','eng',300),(2,'B','eng',300),(3,'C','eng',200),(4,'D','eng',200),(5,'E','eng',100),(6,'F','ops',150),(7,'G','fin',90),(8,'H','fin',80)")
+assert con.execute(Q).fetchall() == [('eng','C',200),('eng','D',200),('fin','H',80)]
+-->
+---
+TITLE: Riders active three days in a row
+KIND: sql
+MIN: 15
+TAG: sql
+PROBLEM:
+Table `logins(user_id, login_date)`. A user can have several rows for the same date.
+
+Return the `user_id` of every user who logged in on at least **three consecutive calendar days**. Order by `user_id`.
+SOLUTION:
+```sql
+WITH d AS (
+  SELECT DISTINCT user_id, login_date FROM logins
+),
+g AS (
+  SELECT user_id, login_date,
+         login_date - CAST(ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY login_date) AS INTEGER) AS grp
+  FROM d
+)
+SELECT DISTINCT user_id
+FROM g
+GROUP BY user_id, grp
+HAVING COUNT(*) >= 3
+ORDER BY user_id;
+```
+
+This is the gaps-and-islands pattern. Within a run of consecutive dates, the date and the row number both increase by one, so their difference is constant. That constant labels the run. De-duplicating first matters, because two rows for one day would break the arithmetic.
+
+Date arithmetic differs by engine. Snowflake uses `DATEADD(day, -rn, login_date)` and Spark SQL uses `date_sub(login_date, rn)`.
+<!--test
+con.execute("create table logins(user_id int, login_date date)")
+con.execute("insert into logins values (1,'2026-01-01'),(1,'2026-01-02'),(1,'2026-01-02'),(1,'2026-01-03'),(2,'2026-01-01'),(2,'2026-01-02'),(2,'2026-01-04'),(2,'2026-01-05'),(3,'2026-01-30'),(3,'2026-01-31'),(3,'2026-02-01')")
+assert con.execute(Q).fetchall() == [(1,),(3,)]
+-->
+---
+TITLE: Longest substring without repeating characters
+KIND: dsa
+MIN: 15
+TAG: dsa
+SRC: Stripe, 4 YOE
+PROBLEM:
+Given a string, return the length of the longest substring that contains no repeated character.
+
+`"abcabcbb"` returns 3. `"bbbbb"` returns 1. `"pwwkew"` returns 3. Aim for one pass.
+SOLUTION:
+```python
+def longest_unique(s: str) -> int:
+    last = {}            # character -> index where it was last seen
+    start = best = 0
+    for i, ch in enumerate(s):
+        if ch in last and last[ch] >= start:
+            start = last[ch] + 1      # jump the window past the repeat
+        last[ch] = i
+        best = max(best, i - start + 1)
+    return best
+```
+
+Sliding window with a hash map. Time O(n), space O(k) for k distinct characters. The check `last[ch] >= start` matters: a character seen before the current window is not a repeat. `"abba"` is the test that catches this.
+<!--test
+assert longest_unique("abcabcbb") == 3
+assert longest_unique("bbbbb") == 1
+assert longest_unique("pwwkew") == 3
+assert longest_unique("") == 0
+assert longest_unique("abba") == 2
+-->
+---
+TITLE: De-duplicate events, then total per user
+KIND: pyspark
+MIN: 15
+TAG: spark
+PROBLEM:
+A DataFrame `df` has columns `user_id, event_id, ts, amount`. The same `event_id` can arrive more than once with different `ts` values because of retries.
+
+Write `spend_per_user(df)` that keeps only the **latest** row for each `event_id`, then returns `user_id, total` with the sum of `amount` per user, ordered by `user_id`.
+SOLUTION:
+```python
+from pyspark.sql import functions as F, Window
+
+def spend_per_user(df):
+    w = Window.partitionBy("event_id").orderBy(F.col("ts").desc())
+    latest = (df.withColumn("rn", F.row_number().over(w))
+                .filter(F.col("rn") == 1)
+                .drop("rn"))
+    return (latest.groupBy("user_id")
+                  .agg(F.sum("amount").alias("total"))
+                  .orderBy("user_id"))
+```
+
+`dropDuplicates(["event_id"])` would also remove duplicates, but it keeps an arbitrary row, not the latest. The window makes the choice explicit. Both steps shuffle: one by `event_id`, one by `user_id`. Say that out loud in an interview before you are asked.
+<!--test
+df = spark.createDataFrame([(1,"e1",1,10.0),(1,"e1",2,12.0),(1,"e2",1,5.0),(2,"e3",1,7.0),(2,"e3",1,7.0)], "user_id int, event_id string, ts int, amount double")
+assert [(r.user_id, r.total) for r in spend_per_user(df).collect()] == [(1,17.0),(2,7.0)]
+-->

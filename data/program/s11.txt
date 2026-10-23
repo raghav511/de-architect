@@ -1,0 +1,602 @@
+@@meta
+id: s11
+n: 11
+title: In front of the customer
+goal: You can take a vague business problem, break it down, build the smallest useful thing on real data in a day, and explain it to someone who is not an engineer. Your stories, your resume and your product sense are ready for the non-technical half of every loop. The sprint ends with your second full mock loop.
+hours: 10
+mockloop: 2
+
+@@tickets
+1101 | learn | 1.75 | Chapter 11 and the readings | You can run the decomposition method on a new prompt and explain the three common shapes of a forward deployed interview loop. | chapter
+1102 | build | 2.25 | A one-day customer build | Discovery notes, a pipeline on the customer's messy data, one chart and a one-page memo with three findings, presented to Claude playing the customer. | lab
+1103 | incident | 0.5 | "Your dashboard is wrong" | The difference with the customer's own report is found, explained in their words, and agreed. | lab
+1104 | ai | 1 | AI-assisted coding round practice | One timed multi-file task with an assistant in chat only, and one without, with notes on what you verified. | lab
+1105 | practice | 1 | Story bank and product SQL | Eight STAR stories written, and three product-metric queries attempted. | practice
+1106 | test | 0.5 | Quiz 11 | 80% or better. | quiz
+1107 | test | 1 | Coding test 11 | Attempted inside the 60-minute timer. | coding
+1108 | talk | 2 | Interview set 11 and mock loop 2 | 14 of 18 questions ticked, and all four loop rounds scored. | interview
+
+@@readings
+- [Aced: What is a forward deployed engineer?](https://www.aced.io/blog/what-is-a-forward-deployed-engineer). The role, who hires, and how it differs from solutions and software engineering.
+- [What the forward deployed engineer interview really tests](https://www.techinterview.org/post/3233477236/forward-deployed-engineer-interview/). The decomposition, learning, re-engineering and design rounds, with sample prompts.
+- [Scaler: Forward deployed engineer jobs in India and globally](https://www.scaler.com/topics/forward-deployed-jobs-in-india-global/). Which companies were hiring for these roles in India when it was written.
+- [Hello Interview: Meta's AI-enabled coding interview](https://www.hellointerview.com/blog/meta-ai-enabled-coding). The format and what is graded.
+- [DataVidhya: What changed in data engineering interviews in 2026](https://datavidhya.com/learn/de-interview-prep/the-2026-landscape/what-changed-in-2026/). Which companies allow AI in rounds and which ban it.
+
+@@chapter
+## 11.1 Why this sprint exists
+
+Half of every loop in your bank is not technical. There is a hiring-manager round, a behavioral round, and often a product or case round: Meta measures engagement for a new feature, Atlassian asks why click-through rose while conversions fell, Google asks you to sell its cloud to a non-technical buyer. Candidates who prepare only for the technical rounds lose offers here.
+
+The same skills define a role that is growing quickly. A **forward deployed engineer** works inside a customer's environment, finds out what they need, and ships production software for them. Postings grew from 643 in April 2025 to 5,330 in April 2026, according to Indeed data reported by Business Insider. In an analysis of 1,000 postings, the most requested skills were Python, AI agents, TypeScript, AWS and LLMs, with SQL and a modern data stack assumed. When Scaler checked Indian openings, Google Cloud, Sarvam AI and Accenture were hiring for such roles; Palantir, OpenAI and Anthropic had none in India at the time.
+
+Your profile fits. Years of analytical work with business teams, then data engineering, then agentic automation for a go-to-market team. This sprint trains the part of that profile that interviews test least directly and value most.
+
+## 11.2 Discovery
+
+Every engagement begins with a conversation in which the customer describes a symptom and you find the problem. Go in with a list, and leave with written answers.
+
+- **Who** will use what you build, and how often?
+- **What decision** will it change? If nobody can name one, stop and ask again.
+- **What does done look like?** Ask them to describe the screen or the number they want to see.
+- **What do they do today?** The current workaround shows what matters and what data exists.
+- **What data is there**, who owns it, and how good is it?
+- **What constraints** apply: security, deadlines, budget, systems you may not touch?
+- **How will we know it worked?** Agree a measure before you build.
+
+Then restate what you heard in two sentences and ask if it is right. Customers often correct the restatement, which is the most useful moment of the meeting.
+
+## 11.3 Decomposition
+
+The signature forward deployed round gives you a vague prompt and watches how you break it down. Interview guides report it as the most heavily weighted round, and the one most candidates fail, usually by drawing an architecture in the first two minutes.
+
+A method, worked through on a real prompt from those guides: *"A logistics company wants to know why deliveries are running late. Where do you start?"*
+
+**1. Clarify the goal and the user.** Who is asking? An operations director who wants fewer late deliveries next quarter. What will they do with the answer? Change staffing, routes or promises.
+
+**2. Define the measure precisely.** "Late" against what? The time promised to the end customer at checkout, delivered more than 15 minutes after that. Measured per delivery, reported as a rate. Write it down, because half of the later disagreement will be about this sentence.
+
+**3. Break the outcome into parts.** A delivery passes through stages, and lateness accumulates in them:
+
+```
+order placed → assigned to a driver → picked up → in transit → delivered
+     (wait)          (wait)              (drive)       (last mile)
+```
+
+Late deliveries can now be attributed: what share of the delay happened in each stage?
+
+**4. Form hypotheses, ranked.** Not enough drivers at peak times, so assignment waits. Warehouses slow at specific sites, so pickup waits. Bad promises: the promised time ignores distance or traffic. Specific areas with hard last-mile access. Rank by likely impact and by how easy each is to check.
+
+**5. Map data to hypotheses.** Stage timestamps from the order system, driver shifts, warehouse throughput, delivery addresses. Note which exist, which are trustworthy, and which are missing.
+
+**6. Propose the smallest valuable deliverable.** Not a platform. A table of every delivery with the time spent in each stage, and one chart of late rate by stage, site and hour, within a few days. It will show which hypothesis to pursue.
+
+**7. Say how you will know it worked.** The late rate in the next month, compared with the same period before, for the changes made because of the analysis.
+
+Throughout, think aloud, ask before assuming, and invite the interviewer to push back. When they do, adjust openly. The round is scored on the quality of your thinking and on how you take a challenge, not on finding a single answer.
+
+## 11.4 The smallest valuable build
+
+Engineers tend to build the general solution. Customers need the specific one first. The smallest valuable build serves **one user**, for **one decision**, on **real data**, and can be shown within days. Everything else waits until that user has used it.
+
+Three rules help:
+
+- **Real data early.** A demo on synthetic data proves nothing about the customer's mess. Their timestamps will be in three time zones, and finding that on day one is worth more than any slide.
+- **Show, then ask.** A rough chart on their data starts a better conversation than a requirements document.
+- **Write down what you did not build** and why. It prevents scope arguments and shows judgment.
+
+## 11.5 Product metrics and experiments
+
+Product rounds test whether you understand what the data is for.
+
+**Activity.** Daily, weekly and monthly active users. **Stickiness**, DAU divided by MAU, shows how often monthly users return. **Retention** by cohort, which you built in sprint 10. **Funnels**: the share of users who pass each step, such as impression, click, add to cart, purchase.
+
+**Choosing metrics.** A **north star** metric captures value to customers, such as completed trips per week. **Guardrail** metrics must not get worse while you push it, such as cancellation rate and support tickets. A team that optimises clicks without a guardrail on purchases gets more clicks and less revenue.
+
+**Reading a metric change.** Atlassian's question: after a new recommendation algorithm, click-through rose 10% and conversion fell 5%. Work through it:
+
+- Check the definitions: is conversion per click or per impression? If per click, more low-intent clicks will lower it even when total purchases rise. Compute **purchases per impression**, which is the number the business cares about.
+- Segment: by user type, product, device and position. A change that helps one segment can hurt another.
+- Look at what users do after clicking: bounce rate, time on page, how relevant the clicked item was.
+- Check the experiment itself: was the split clean?
+
+**A/B testing essentials.**
+
+- Choose the randomisation unit to match the effect. Usually the user. For marketplace features where users affect each other, such as driver matching in a city, randomise by city or time window.
+- Fix the primary metric, guardrails and sample size before starting, from the smallest effect worth detecting.
+- Run for at least one full weekly cycle, and do not stop early because the result looks significant. Checking repeatedly and stopping at the first good result inflates false positives.
+- Check the **sample ratio**. If a planned 50/50 split shows 53/47 on a large sample, something in assignment or logging is broken, and the result cannot be trusted.
+
+## 11.6 Stories, and your own story
+
+Behavioral rounds are scored on evidence. **STAR** is the structure: the **situation** in two sentences, the **task** you owned, the **actions** you took, which is most of the answer, and the **result** with a number, followed by what you learned.
+
+Prepare a **story bank** of eight to ten stories, each tagged with the themes it can answer: ownership, conflict, failure, ambiguity, influencing without authority, tight deadline, mentoring, a stakeholder disagreement, learning something fast, a customer focus. One good story can answer three questions. Map your stories to each company's stated values before its loop: Amazon's leadership principles, Google's emphasis on collaboration and humility, Atlassian's openness.
+
+**Your career story.** Interviewers will notice twelve years of experience with four and a half years titled data engineer. Address it directly and briefly, as a choice, not an apology:
+
+> "I spent my first years on the analytical side of data at Google, working with the people who used the data. I moved into data engineering because I kept seeing that the pipelines decided what was possible. That background is why I design pipelines around how the data will be used, and it is why I ended up building the agentic workflows at Salesforce for a go-to-market team."
+
+Then move to your strongest pipeline with numbers.
+
+**Your resume.** Lead each role with the biggest pipeline and its scale. Put numbers in every bullet you can defend in detail; you will be asked about each one. Keep AI as a clear differentiator, after the pipelines. Add the program's platform repository and the on-call agent as a project, with a link.
+
+## 11.7 Code-reading and AI-assisted rounds
+
+Two newer formats need specific practice.
+
+**Code comprehension.** Prep publishers report that Apple runs a round where you read an existing pipeline, explain what it does, find where it breaks, and propose a refactor, without writing new code. Read top-down: entry point, inputs, outputs, then each transformation. Say aloud what each block does before judging it. Then apply the review questions from sprint 10: reruns, incrementality, correctness of intent, cost, edge cases.
+
+**AI-enabled coding.** Meta began rolling out a round in October 2025, for software engineering roles, where an assistant is available in a chat panel beside a multi-file codebase. It runs about an hour in three phases: fix a bug, implement a feature, then optimise against harder tests. You write the code; the assistant can only advise. It is graded on problem solving, code quality, how well you understand and verify what the assistant suggests, and communication. Candidates who leaned on the assistant without showing understanding were marked down.
+
+Company policies differ widely. Prep sites report that Amazon treats undisclosed AI use as cheating, while Meta, Google and Canva have rounds where AI is expected. **Ask each recruiter** which applies to each round. Practise both ways.
+
+How to use the assistant well when it is allowed:
+
+1. Read the code yourself first. Ask the assistant to explain parts you do not understand, not to solve the task.
+2. Write specific prompts: the function, the constraint, the input shape.
+3. Read every line it suggests before you type it, and say why you accept or change it.
+4. Run tests often. Add one edge-case test of your own.
+5. Narrate. The interviewer is grading your judgment, which they can only hear.
+
+@@lab
+## Build: a one-day customer build (2.25 hours)
+
+Ask Claude to **start sprint 11**. The starter kit contains a fictional customer, **Swiftline Logistics**, with a one-page brief from their operations director and four messy CSV files: orders, driver assignments, pickups and deliveries. The data has the problems real customers have: timestamps in mixed time zones, duplicated status events, missing promised times for some orders, and a city code that changed spelling in the middle of the month.
+
+Work in four timed blocks. Stop each one when its time is up.
+
+1. **Discovery, 25 minutes.** Read the brief. Write `discovery.md`: your questions from section 11.2, the answers you can infer from the brief, the assumptions you are making, and the definition of "late" you will use.
+2. **Build, 60 minutes.** A small pipeline, in Spark, dbt or plain SQL, that produces one row per delivery with the time spent in each stage and a late flag. Write down every data problem you fixed and how.
+3. **Show, 25 minutes.** One chart: late rate by stage, site or hour, whichever is most revealing. One table of the five worst sites or hours.
+4. **Memo, 15 minutes.** One page for the director: three findings with numbers, one recommended next step, and what you did not do.
+
+Then ask Claude to **play the Swiftline director**. Present your memo in five minutes and answer questions for ten.
+
+**Done when** all four files exist and you have presented them. Record what the "director" challenged you on.
+
+## Incident: "your dashboard is wrong" (30 minutes)
+
+The director replies: *"Your late rate is 18%. Our operations report says 11%. Your dashboard is wrong."* They cannot say more. The starter kit includes their report as a CSV.
+
+1. Get specifics first: which period, which sites, which number. Find five deliveries that are late in your data and on time in theirs.
+2. Compare definitions using those five. You will find that their report measures lateness from dispatch time, not from the time promised to the customer, and excludes failed delivery attempts.
+3. Write a three-sentence explanation the director can forward to their CEO, with both numbers and what each measures.
+4. Propose which definition to use going forward, and why, and offer to show both until they decide.
+
+Neither number was wrong. Being able to say that calmly, with five examples, is what customers remember.
+
+## AI lab: AI-assisted coding round practice (1 hour)
+
+1. **With the assistant, 35 minutes.** Ask Claude for an AI-enabled practice task: a small multi-file Python repository from your platform with one bug, one feature to add and tiered tests. Set your assistant to chat only, so it can advise but not edit files. Work through the three phases. Keep a log of each prompt you sent and whether you accepted, changed or rejected the answer.
+2. **Without the assistant, 20 minutes.** A comparable single problem with no AI at all.
+3. **Review, 5 minutes.** Read your log. Mark prompts that asked for an answer instead of help. Note one suggestion you caught being wrong, or one you should have checked and did not.
+
+**Done when** both tasks are attempted and the log is reviewed. The goal is two sets of reflexes, because you will not always know in advance which round you are in.
+
+@@practice
+## Story bank (30 minutes)
+
+Write eight stories in `stories.md`, each in STAR form, under 200 words, with a number in the result. Tag each with the themes it answers.
+
+Sources you already have:
+
+- The Salesforce request-processing agent: 83 minutes to 8. Themes: ownership, customer focus, innovation.
+- The 120+ workflow migration to AWS: 30% lower cost. Themes: delivery under pressure, reducing complexity, leadership.
+- The 2M-record DUNS enrichment with validation and audit tracking. Themes: data quality, attention to detail.
+- The OpenMetadata pipeline across 5,000+ objects. Themes: influence across teams, governance.
+- Leading three engineers at Uber on validation checks reaching 99.9% accuracy. Themes: mentoring, quality.
+- A failure, from your own career, told honestly with what you changed.
+- A disagreement with a stakeholder or teammate, and how it was resolved.
+- The renamed-column incident from sprint 9, clearly described as a practice incident if used.
+
+## Product SQL warm-ups
+
+1. **Stickiness by month.** `events(user_id, event_date)`. Average DAU in the month divided by MAU. *Approach:* compute DAU per day and MAU per month separately, then join and divide.
+2. **Funnel conversion by step.** `events(user_id, step)` with steps view, add_to_cart, checkout, purchase. *Approach:* count distinct users per step, then divide each by the previous step's count with `LAG`.
+3. **Users who reacted but never commented in the same week.** Asked at Meta. You will meet it in the coding test; try it here first without looking.
+
+@@quiz
+TYPE: mcq
+TAG: behavioral
+Q: In a decomposition round you are asked "why are deliveries running late?" What should you do first?
+A) Draw a streaming architecture
+B) Clarify who is asking, what decision the answer will drive, and how "late" is defined
+C) Propose a machine learning model
+D) Ask which cloud provider they use
+ANS: B
+WHY: The round is weighted toward structured thinking about the user and the problem. Jumping to technology is the most commonly reported way to fail it.
+---
+TYPE: mcq
+TAG: behavioral
+Q: What is the smallest valuable build for a customer engagement?
+A) A general platform that can answer any future question
+B) The narrowest thing that gives one user what they need for one decision, on real data
+C) A slide deck of the planned architecture
+D) Whatever can be built without talking to the customer
+ANS: B
+WHY: Small, real and in use quickly lets you learn what actually matters before investing in a general solution.
+---
+TYPE: mcq
+TAG: modeling
+Q: What does the ratio of daily active users to monthly active users measure?
+A) Revenue per user
+B) Stickiness: how often monthly users come back
+C) Conversion rate
+D) Churn rate
+ANS: B
+WHY: A ratio near 1 means monthly users use the product almost daily. Near 0.1 means they come about three days a month.
+---
+TYPE: mcq
+TAG: sql
+Q: After a recommendation change, click-through rate rises 10% and conversion per click falls 5%. Which number best tells you whether the business is better off?
+A) Click-through rate
+B) Conversion per click
+C) Purchases, or revenue, per impression
+D) Number of recommendations shown
+ANS: C
+WHY: Per-click conversion can fall simply because more low-intent users click. Outcomes per impression combine both effects into the one that matters.
+---
+TYPE: mcq
+TAG: modeling
+Q: A test was planned as a 50/50 split. With a million users, the observed split is 53/47. What should you conclude?
+A) Variant B is better
+B) There is a sample ratio mismatch, so assignment or logging is broken and the results cannot be trusted yet
+C) Nothing; small differences are normal
+D) Extend the test by a week
+ANS: B
+WHY: At that sample size a 3-point imbalance is far outside chance. Something is excluding or duplicating users in one arm, which biases every metric.
+---
+TYPE: mcq
+TAG: modeling
+Q: An analyst checks an A/B test every day and stops it the first day the p-value drops below 0.05. What is the problem?
+A) None
+B) Repeated checking with early stopping greatly increases the chance of a false positive
+C) The p-value cannot be computed daily
+D) Tests must run for exactly one day
+ANS: B
+WHY: Each look is another chance for noise to cross the threshold. Fix the sample size or duration in advance, or use a method designed for sequential testing.
+---
+TYPE: mcq
+TAG: behavioral
+Q: What does STAR stand for?
+A) Strategy, Tactics, Action, Review
+B) Situation, Task, Action, Result
+C) Scope, Timeline, Approach, Risk
+D) Summary, Technique, Analysis, Recommendation
+ANS: B
+WHY: It keeps stories short and evidence-based. Most of the time belongs to the actions you personally took, and the result should carry a number.
+---
+TYPE: mcq
+TAG: ai
+Q: In an AI-enabled coding round, what is mainly graded?
+A) How fast the assistant writes the code
+B) Your problem solving, and how well you understand and verify what the assistant suggests
+C) Whether you avoid the assistant entirely
+D) The number of prompts sent
+ANS: B
+WHY: Candidates who accepted suggestions without understanding them have been marked down. The skill is judgment over the tool's output.
+---
+TYPE: fill
+TAG: modeling
+Q: The number of distinct users active on a given day is abbreviated ____.
+ANS: DAU
+WHY: Daily active users. Weekly and monthly versions are WAU and MAU.
+---
+TYPE: fill
+TAG: modeling
+Q: A metric that must not get worse while you optimise the primary metric is called a ____ metric.
+ANS: guardrail
+WHY: For example, cancellation rate while optimising bookings. Guardrails stop a win on one number from hiding damage elsewhere.
+---
+TYPE: fill
+TAG: modeling
+Q: A planned 50/50 experiment that shows a significantly different split has a sample ratio ____.
+ANS: mismatch
+WHY: It signals a bug in assignment or logging, and it invalidates comparisons until fixed.
+---
+TYPE: fill
+TAG: modeling
+Q: The single metric a company uses to capture the value its product delivers is called the north ____ metric.
+ANS: star
+WHY: For Meridian it might be completed trips per week. Teams' goals should move it.
+---
+TYPE: short
+TAG: behavioral
+Q: Decompose "a logistics company wants to know why deliveries are late". Give the steps you would take, in order.
+MODEL: 1. **Clarify:** who is asking, and what decision the answer will drive.
+2. **Define the measure:** late relative to what promised time, by how much, counted per delivery as a rate.
+3. **Break it into parts:** the stages a delivery passes through, such as assignment, pickup, transit and last mile, so delay can be attributed to stages.
+4. **Hypotheses, ranked:** driver shortage at peaks, slow warehouses, unrealistic promises, hard-to-reach areas; ordered by likely impact and ease of checking.
+5. **Map data to hypotheses:** which timestamps and records exist and how reliable they are.
+6. **Smallest valuable deliverable:** per-delivery stage durations and a chart of late rate by stage, site and hour, within days.
+7. **Success measure:** change in late rate after acting on the findings.
+---
+TYPE: short
+TAG: sql
+Q: After a new recommendation algorithm, click-through rate rose 10% and conversion rate fell 5%. How do you analyse it, and how would you confirm with an experiment?
+MODEL: **Analyse.** Confirm definitions: if conversion is per click, more low-intent clicks lower it even if purchases rise, so compute purchases and revenue per impression. Walk the funnel: impressions, clicks, add to cart, purchase. Segment by user type, product, device and position to see where the change helps and hurts. Look at post-click behaviour such as bounce rate and relevance of the clicked items.
+
+**Confirm.** An A/B test randomised by user, with revenue or purchases per user as the primary metric and click-through and conversion as secondary. Set guardrails such as returns and complaints. Fix the sample size in advance, run at least a full week, check the sample ratio, and roll out only if the primary metric improves without breaching guardrails.
+---
+TYPE: short
+TAG: behavioral
+Q: An interviewer says: "You have twelve years of experience, but only four and a half in data engineering. Walk me through your career." Outline your answer.
+MODEL: Keep it under two minutes, chronological, and framed as deliberate.
+
+1. **The start:** years on the analytical side of Google's data, working directly with the people who used it.
+2. **The turn:** you saw that pipelines decided what was possible, so you moved into data engineering, with BigQuery and Hive optimisation, then pipelines for insurance carriers at Uber.
+3. **Now:** lead data engineer on Salesforce's platform: Airflow, PySpark, Snowflake, dbt, AWS, plus agentic automation that cut request handling from 83 minutes to 8.
+4. **The link:** the analyst years are why you build pipelines around how data is used.
+5. **Why this role:** one sentence tied to the company.
+
+Do not apologise. Then offer the strongest pipeline story.
+---
+TYPE: short
+TAG: ai
+Q: How do you use an AI assistant well in an interview round that allows it?
+MODEL: Read the code and the task yourself first, so you know what you are asking for. Use the assistant for understanding and for specific, well-scoped help: explain this function, suggest an approach for this constraint. Do not ask it for the whole solution. Read every suggested line before using it and say why you accept or change it. Run tests frequently and add your own edge cases. Keep the interviewer informed of your reasoning throughout. Manage time across the phases. Confirm with the recruiter beforehand whether AI is allowed, since some companies ban it entirely.
+
+@@coding
+TITLE: Daily active users and their seven-day average
+KIND: sql
+MIN: 12
+TAG: sql
+SRC: Meta, 3 YOE
+PROBLEM:
+Table `events(user_id, event_ts)`. Every day in the range has at least one event.
+
+Return `day, dau, dau_7d_avg` for each day, where `dau` is the number of distinct users that day and `dau_7d_avg` is the average DAU over that day and the six days before it, rounded to one decimal. For the first six days, average over the days available. Order by day.
+SOLUTION:
+```sql
+WITH dau AS (
+  SELECT CAST(event_ts AS DATE) AS day,
+         COUNT(DISTINCT user_id) AS dau
+  FROM events
+  GROUP BY CAST(event_ts AS DATE)
+)
+SELECT day,
+       dau,
+       ROUND(AVG(dau) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW), 1) AS dau_7d_avg
+FROM dau
+ORDER BY day;
+```
+
+Aggregate to one row per day first, then apply the window to the daily numbers. Averaging over raw events would weight busy users more heavily.
+
+`ROWS BETWEEN 6 PRECEDING` counts rows, so it equals seven calendar days only when no day is missing. The problem guarantees that. In real data, join to a calendar table first so empty days appear with a DAU of zero.
+
+Meta's follow-up was how to detect missing or duplicated data in such a dashboard. Compare daily counts with the source and with the same weekday in previous weeks, and check for gaps in the calendar.
+<!--test
+import datetime as dt
+con.execute("create table events(user_id int, event_ts timestamp)")
+base = dt.datetime(2026, 10, 1, 9)
+dau_vals = [3, 5, 4, 6, 2, 7, 5, 4, 8]
+rows = []
+for d, n in enumerate(dau_vals):
+    for u in range(n):
+        rows.append((u, base + dt.timedelta(days=d)))
+        rows.append((u, base + dt.timedelta(days=d, hours=2)))
+con.executemany("insert into events values (?,?)", rows)
+got = [(str(d), int(n), float(a)) for d, n, a in con.execute(Q).fetchall()]
+exp = []
+for i, n in enumerate(dau_vals):
+    win = dau_vals[max(0, i-6):i+1]
+    exp.append((str((base + dt.timedelta(days=i)).date()), n, round(sum(win)/len(win), 1)))
+assert got == exp, (got, exp)
+-->
+---
+TITLE: Reacted but never commented in the same week
+KIND: sql
+MIN: 13
+TAG: sql
+SRC: Meta, 3 YOE
+PROBLEM:
+Table `events(user_id, action, event_ts)`, where `action` is `reaction` or `comment`. Weeks start on Monday.
+
+Return each `user_id, week_start` where the user made at least one reaction during that week and **no comment during the same week**. Order by user, then week.
+SOLUTION:
+```sql
+WITH wk AS (
+  SELECT user_id, action,
+         CAST(DATE_TRUNC('week', event_ts) AS DATE) AS week_start
+  FROM events
+)
+SELECT DISTINCT r.user_id, r.week_start
+FROM wk r
+WHERE r.action = 'reaction'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM wk c
+    WHERE c.user_id = r.user_id
+      AND c.week_start = r.week_start
+      AND c.action = 'comment'
+  )
+ORDER BY r.user_id, r.week_start;
+```
+
+An anti-join scoped to the same user and the same week. Truncating both sides to the week first is what makes "the same week" a simple equality.
+
+Conditional aggregation works too: group by user and week, and keep groups with `SUM(CASE WHEN action = 'reaction' THEN 1 ELSE 0 END) > 0` and `SUM(CASE WHEN action = 'comment' THEN 1 ELSE 0 END) = 0`. It reads the table once, which is better on very large data. Know both.
+<!--test
+con.execute("create table events(user_id int, action varchar, event_ts timestamp)")
+con.execute("insert into events values (1,'reaction','2026-10-06 10:00'),(1,'comment','2026-10-08 10:00'),(1,'reaction','2026-10-13 10:00'),(2,'reaction','2026-10-06 10:00'),(3,'comment','2026-10-06 10:00'),(4,'reaction','2026-10-11 22:00'),(4,'comment','2026-10-12 08:00')")
+rows = [(u, str(w)) for u, w in con.execute(Q).fetchall()]
+assert rows == [(1,'2026-10-12'),(2,'2026-10-05'),(4,'2026-10-05')], rows
+-->
+---
+TITLE: Next closest time from the same digits
+KIND: dsa
+MIN: 15
+TAG: dsa
+SRC: Google, 5 YOE
+PROBLEM:
+Given a time `"HH:MM"`, return the next time, moving forward and wrapping past midnight, that uses **only digits already present** in the given time. Digits may be reused any number of times. If no other time works, return the same time.
+
+`"19:34"` returns `"19:39"`. `"23:59"` returns `"22:22"`.
+SOLUTION:
+```python
+def next_closest_time(t: str) -> str:
+    allowed = set(t.replace(":", ""))
+    start = int(t[:2]) * 60 + int(t[3:])
+    for step in range(1, 1441):
+        minute = (start + step) % 1440
+        candidate = f"{minute // 60:02d}{minute % 60:02d}"
+        if set(candidate) <= allowed:
+            return f"{candidate[:2]}:{candidate[2:]}"
+```
+
+There are only 1,440 minutes in a day, so trying each one going forward is constant time and impossible to get wrong. Step 1440 brings you back to the start, which handles the case where no other time works.
+
+Google asked whether to brute-force the 1,440 minutes or generate permutations of the digits. Say that both are constant time here, that the minute walk is simpler and its correctness is obvious, and that you would only switch if the search space grew, for example with seconds or arbitrary digit sets. Choosing the simplest correct solution and saying why is a strong answer.
+<!--test
+assert next_closest_time("19:34") == "19:39"
+assert next_closest_time("23:59") == "22:22"
+assert next_closest_time("11:11") == "11:11"
+assert next_closest_time("01:32") == "01:33"
+-->
+---
+TITLE: Is the experiment result significant?
+KIND: python
+MIN: 20
+TAG: modeling
+PROBLEM:
+Write `ab_test(conv_a, n_a, conv_b, n_b)` for a conversion experiment with control A and variant B. Return a tuple `(lift, z, p_value)`:
+
+- `lift`: the relative change in conversion rate from A to B
+- `z`: the two-proportion z statistic, using the pooled rate
+- `p_value`: two-sided
+
+Use only the standard library.
+SOLUTION:
+```python
+from math import sqrt, erf
+
+def ab_test(conv_a, n_a, conv_b, n_b):
+    p_a, p_b = conv_a / n_a, conv_b / n_b
+    pooled = (conv_a + conv_b) / (n_a + n_b)
+    se = sqrt(pooled * (1 - pooled) * (1 / n_a + 1 / n_b))
+    z = (p_b - p_a) / se
+    normal_cdf = 0.5 * (1 + erf(abs(z) / sqrt(2)))
+    p_value = 2 * (1 - normal_cdf)
+    lift = (p_b - p_a) / p_a
+    return lift, z, p_value
+```
+
+Under the null hypothesis both arms share one conversion rate, estimated by pooling. The standard error of the difference follows from it, and z is the difference measured in standard errors. The normal distribution's cumulative function is expressed through `erf`, so no statistics library is needed.
+
+With 200 of 1,000 against 240 of 1,000, the lift is 20%, z is about 2.16, and the two-sided p-value is about 0.03.
+
+Be ready to say what the number does not tell you: whether the sample size was fixed in advance, whether the split was clean, whether a 20% lift on a small base matters commercially, and whether guardrail metrics held. A p-value is one input to a decision, not the decision.
+<!--test
+lift, z, p = ab_test(200, 1000, 240, 1000)
+assert abs(lift - 0.2) < 1e-9
+assert abs(z - 2.159) < 0.01, z
+assert abs(p - 0.0308) < 0.002, p
+lift, z, p = ab_test(100, 1000, 100, 1000)
+assert lift == 0 and z == 0 and abs(p - 1.0) < 1e-12
+-->
+
+@@interview
+Q: A logistics company wants to know why deliveries are running late. Where do you start?
+TAG: behavioral
+A: With questions, not tools. Who is asking and what will they change with the answer? How is late defined: against the time promised to the customer, by how many minutes? Then I break a delivery into stages, such as assignment, pickup, transit and last mile, so delay can be attributed to stages, and list hypotheses: driver shortages at peak, slow warehouses, unrealistic promises, hard last-mile areas. I check which data exists for each. The first deliverable is small: one row per delivery with time in each stage and a chart of late rate by stage, site and hour, within a few days. Success is a measured fall in late rate after acting on it.
+---
+Q: A hospital has patient records spread across six systems that do not talk to each other. How would you give a nurse a single view?
+TAG: behavioral
+A: Start with the nurse: what decisions they make at the bedside, which five or six facts they need, and how fresh those must be. That bounds the problem. Then the systems: what each holds, how it can be read, and how patients are identified in each, since matching patients across systems is the hard part and errors are dangerous. I would build a narrow first version: read-only extracts from the systems, a patient matching step with confidence and manual review for uncertain matches, and a single screen of the agreed facts with each value's source and time. Security, audit logging and clinical sign-off come before any rollout.
+---
+Q: Explain one project from your resume in layman's terms.
+SRC: Salesforce, 4 YOE
+TAG: behavioral
+A: Choose the agentic request-processing system. "Sales and marketing teams kept asking for changes to how customer records were organised. Each request went through several people and checks and took over an hour. I built an assistant that reads the request in Slack, checks it against the rules, gathers the approvals it needs, and makes the change once approved. The same request now takes about eight minutes, and people spend their time on the cases that need judgment." Use no jargon, one analogy if helpful, and end with the result. Then pause and let them ask how it works.
+---
+Q: Meta launches "Story Reactions". What metrics would you track?
+SRC: Meta, 3 YOE
+TAG: modeling
+A: Start from the goal: more meaningful engagement with stories. **Adoption:** share of story viewers who react, by day, and reactors as a share of DAU. **Engagement:** reactions per viewer, repeat use over weeks. **Value to creators:** whether people who receive reactions post more stories, which is the loop the feature should create. **Guardrails:** replies and comments, which reactions might cannibalise; time spent; hides and reports. **Health:** retention of users who react against similar users who do not, measured through an experiment, not observation. I would name one primary metric, perhaps stories posted per creator, and treat the rest as diagnostic.
+---
+Q: After you update a recommendation algorithm, click-through rises 10% and conversion falls 5%. How do you analyse this, and how would you validate the change with an A/B test?
+SRC: Atlassian, 5 YOE
+TAG: modeling
+A: First check whether conversion is per click. If so, more clicks of lower intent lower it mechanically, so I compute purchases and revenue per impression, the outcome that matters. Then walk the funnel, segment by user type, product and position, and look at post-click behaviour such as bounce rate and time on page, to see whether the new recommendations are less relevant. To validate, run a user-level A/B test with revenue or conversions per impression as the primary metric, click-through as secondary, guardrails on returns and support contacts, a sample size fixed in advance, at least a full week, and a sample ratio check. Roll out only if the primary metric improves.
+---
+Q: How would you explain event streaming to a non-technical stakeholder?
+SRC: Confluent, 5–6 YOE
+TAG: behavioral
+A: "Think of it as a live news feed for the business. Every time something happens, such as a ride requested or a payment made, it is posted to the feed immediately. Any team can follow the feed and react as things happen: pricing adjusts for demand, fraud checks run, dashboards update. Nothing is lost, so a team that joins later can scroll back and catch up. The alternative is a report delivered once a night, which tells you what happened yesterday." Then connect it to a decision they care about.
+---
+Q: How would you sell a cloud platform to a non-technical buyer?
+SRC: Google, 5 YOE
+TAG: behavioral
+A: Start with their problem, not the product. Ask what slows them down or costs them money today. Then translate: "You pay only for what you use, instead of buying servers for your busiest day"; "your data is backed up across locations without anyone having to remember"; "your team can try an idea this afternoon instead of waiting for hardware". Use one concrete example from a similar business, address the fear they will not say out loud, which is usually security or losing control, and propose a small first step with a measurable outcome. The round tests whether you can lead with value and listen.
+---
+Q: Based on a dataset we give you, what questions would you ask to prove that the programs generating this data add value?
+SRC: Salesforce, 4 YOE
+TAG: modeling
+A: What is each program meant to change, and how is that measured? Who took part, and how were they chosen, since self-selection can make any programme look good? Is there a comparison group, or a period before the programme? Over what time frame should value appear? What does the programme cost, so value can be set against it? Then on the data itself: how complete it is, how outcomes are defined, and whether anything changed at the same time. Ideally I would propose a controlled test or a staggered rollout, because without a comparison I can show correlation but not value.
+---
+Q: Why do you want to join Stripe?
+SRC: Stripe, 4 YOE
+TAG: behavioral
+A: A good answer has three parts, and the same shape works for every company. **Their problem:** something specific you have learned about their data work, from an engineering blog, a talk or the job description, such as the scale and correctness demands of payments data. **Your fit:** how your experience connects, for example pipelines where accuracy matters and your work on validation and reconciliation. **What you want:** what you hope to learn or build there. Avoid generic praise. Prepare this for each company in your target list, and read one engineering blog post from each before its loop.
+---
+Q: Why are you considering leaving your current company?
+SRC: Uber, 5 YOE
+TAG: behavioral
+A: Keep it forward-looking and short. Describe what you want next, not what is wrong now: larger scale, deeper platform work, a product company where data is central, or the chance to build AI systems on top of strong data foundations. Mention one thing you value about your current role, so it does not sound like escape. Never criticise your employer, colleagues or manager. If there is a practical reason, such as your role being client-facing through a services company, state it neutrally: you want to own the platform directly.
+---
+Q: Walk me through your career journey and past projects. Which are you most proud of?
+SRC: Delivery Hero, 7 YOE
+TAG: behavioral
+A: Two minutes, chronological, framed as a deliberate progression: analytical work on Google's data; the move into data engineering through BigQuery and Hive optimisation; pipelines for insurance carriers at Uber with a team of three; leading data engineering on Salesforce's platform with Airflow, PySpark, Snowflake, dbt and AWS, and agentic automation. Name the thread: you build pipelines around how data is used. For the proudest project, pick one and give context, your role, the hardest decision and the number. The Salesforce request-processing agent or the 120-workflow migration both work.
+---
+Q: Tell me about a time you took ownership of a project under tight deadlines.
+SRC: Google, 5 YOE
+TAG: behavioral
+A: Choose a story where you acted beyond your assigned task. STAR, with most of the time on actions: how you broke the work down, what you cut and why, how you kept stakeholders informed, how you protected quality, and the specific outcome against the deadline. Googliness interviewers also listen for humility and for how you treated others under pressure, so mention who helped and what you would do differently. A strong answer includes one trade-off you made consciously and explained to the stakeholder.
+---
+Q: A teammate designs an architecture but is rigid and rejects your feedback. How do you handle it, and when would you escalate?
+SRC: Google, 5 YOE
+TAG: behavioral
+A: First, understand their reasoning in a one-to-one conversation, since they may know something I do not. Then make the disagreement concrete and impersonal: write down the requirement at risk, the specific concern, and evidence such as a quick benchmark or a failure scenario. Propose criteria we both accept and evaluate both designs against them, ideally with a small prototype. If we still disagree and the risk is material, I suggest a design review with a senior engineer, framed as getting a decision, not a ruling on who is right. Once decided, I commit fully, even if it was not my option.
+---
+Q: Describe a project where you took ownership despite ambiguity. How did you prioritise and deliver without waiting for instructions?
+SRC: Atlassian, 5 YOE
+TAG: behavioral
+A: Choose a story where the goal was clear but the path was not. Show the method: you wrote down what you knew and did not know, talked to the people affected to define success, proposed a first small deliverable, and set checkpoints so stakeholders could redirect you early. Then the result and the measure. The metadata pipeline across 5,000+ objects, or the first version of the request-processing agent, are good candidates. Atlassian also values openness, so mention how you shared progress and assumptions in public.
+---
+Q: Tell me about a time you had to explain a complex technical issue to a non-technical stakeholder.
+SRC: Apple, 5 YOE
+TAG: behavioral
+A: Pick a case where the explanation changed a decision. Show how you translated: you started from what they cared about, such as a report being late or a number being wrong; used an analogy; gave the cause in one sentence and the options with their costs; and checked understanding by asking what they would do. The result is the decision they made and its outcome. Good material: explaining why two teams' numbers differed, as in this sprint's incident, or why a migration needed a parallel run.
+---
+Q: If you join as a lead data engineer, what would your first 90 days look like?
+SRC: Grab, 8 YOE
+TAG: behavioral
+A: **Days 1 to 30, learn:** meet stakeholders and the team, map the platform and its costs, read incident history, and find the three biggest pains. Ship one small fix to learn the deployment path. **Days 31 to 60, stabilise:** agree service-level objectives for the critical datasets, add the missing tests and alerts on them, and fix the worst recurring incident. **Days 61 to 90, direct:** propose a written plan for the next two quarters, with priorities tied to business outcomes and measurable targets, and agree it with leadership and the team. Throughout, set up working practices: reviews, on-call, documentation.
+---
+Q: How do you mentor junior engineers on SQL and Spark best practices?
+SRC: Zen, 7 YOE
+TAG: behavioral
+A: Through real work more than lectures. Code reviews where I explain the reason behind each comment, such as why a join should aggregate first. Pairing on a slow query, reading the plan together. Short written guides of team conventions, with examples from our own code. Small, safe ownership: a junior engineer owns a pipeline with me as reviewer. I also make it normal to ask questions and to say "I do not know". Give one example of someone you helped and what they went on to do, such as the three engineers you led at Uber.
+---
+Q: In an interview round that allows an AI assistant, how do you use it, and what do you think you are being graded on?
+TAG: ai
+A: I read the codebase and the task myself first. I use the assistant for focused help: explaining unfamiliar code, suggesting approaches for a specific constraint, drafting a test. I do not ask it for the whole solution. I read every suggestion before using it and say aloud why I accept or change it, run the tests often, and add my own edge cases. I am being graded on problem solving, code quality, my understanding and verification of the assistant's output, and communication. I ask the recruiter beforehand whether AI is allowed in each round, because policies differ.
+
+@@mock
+## Mock loop 2: four rounds in about 75 minutes
+
+This loop covers the rounds that are not about pipelines. Do it in one sitting if you can.
+
+| Round | Minutes | Content | Modelled on |
+|---|---|---|---|
+| 1. Decomposition | 20 | A vague business prompt. You clarify, define, break down, hypothesise and scope. Claude pushes back twice. | Forward deployed loops |
+| 2. Product metrics and SQL | 20 | Define metrics for a feature, then write two queries for them | Meta loop round 3, Atlassian round 2 |
+| 3. AI-assisted coding | 20 | A small multi-file task with the assistant in chat only, narrated | Meta's AI-enabled round |
+| 4. Hiring manager | 15 | Career story, why this company, one conflict story, one failure story | Every loop in your bank |
+
+**Scoring.** Each round out of 10. Enter the average below and the four scores in your notes.
+
+**After the loop.** Compare with mock loop 1. Tell Claude both sets of scores. Sprint 12's loops will be weighted toward the weakest rounds across both.

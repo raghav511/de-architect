@@ -1,0 +1,721 @@
+@@meta
+id: s04
+n: 4
+title: A warehouse people trust
+goal: A star schema for trips, built with dbt on Snowflake and orchestrated by Airflow. Operations and Finance get the same number for the same question, history is kept when a driver moves city, and a backfill changes nothing it should not.
+hours: 10
+
+@@tickets
+401 | learn | 2 | Chapter 4 and the readings | You can state the grain of every fact table you design and choose an SCD type with a reason. | chapter
+402 | build | 2.5 | A star schema in dbt | `dbt build` passes, and `fct_trips` with `dim_driver` answers the Operations and Finance questions from one table. | lab
+403 | incident | 0.75 | Late trips and a backfill that double-counts | A late trip lands in the correct day, and one day's Finance total is identical before and after a backfill. | lab
+404 | ai | 1 | Text-to-SQL with an evaluation set | 25 questions scored by comparing results, and one context change measured. | lab
+405 | practice | 1.25 | Warm-ups and the customer drill | Three SQL and three DSA warm-ups attempted, and the drill answered out loud. | practice
+406 | test | 0.5 | Quiz 4 | 80% or better. | quiz
+407 | test | 1 | Coding test 4 | Attempted inside the 60-minute timer. | coding
+408 | talk | 1 | Interview set 4 and the mock | 14 of 18 questions ticked, and a mock score recorded. | interview
+
+@@readings
+- [Kimball Dimensional Modeling Techniques](https://www.kimballgroup.com/wp-content/uploads/2013/08/2013.09-Kimball-Dimensional-Modeling-Techniques11.pdf). The reference list of every technique named in this chapter. Read the first ten pages, then use it as a glossary.
+- [Kimball: Type 2, Add New Row](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/type-2/). One page on the most-asked modeling topic.
+- [dbt: How we structure our dbt projects](https://docs.getdbt.com/best-practices/how-we-structure/1-guide-overview). The staging, intermediate and marts layout you will follow.
+- [dbt: Add snapshots to your DAG](https://docs.getdbt.com/docs/build/snapshots). How dbt builds a Type 2 history for you.
+
+@@chapter
+## 4.1 The problem is a definition
+
+Operations says Meridian completed 412,000 trips yesterday. Finance says 398,500. Both ran correct SQL.
+
+Operations counts a trip as completed when the rider is dropped off. Finance counts it when payment has settled and no refund was issued. Neither is wrong. They are different metrics that share a name.
+
+Data modeling is the work of making such definitions explicit and putting them in one place, so the same question always returns the same answer. Data modeling appears in 84% of your interview files, and tier-1 loops give it a full round. Uber's asks you to design a ride-hailing model and then write SQL against your own design. By the end of this sprint you will have built that model for real.
+
+## 4.2 Facts, dimensions and grain
+
+A dimensional model has two kinds of table.
+
+- A **fact table** records measurements of a business process: a trip, a payment, an order. It is long and narrow, with numeric measures and keys.
+- A **dimension table** holds the context you filter and group by: driver, rider, zone, date. It is short and wide.
+
+Design in four steps, in this order.
+
+1. **Choose the business process.** Completed rides.
+2. **Declare the grain.** State exactly what one row means: *one row per trip*. Every later decision is tested against this sentence.
+3. **Choose the dimensions.** Everything that is true of a single trip: rider, driver, pickup zone, drop-off zone, date, payment method.
+4. **Choose the facts.** Measures at that grain: fare, distance, duration, tip, surge multiplier.
+
+Most modeling mistakes are grain mistakes. If you put a per-rider attribute into a trip-grain table for a shared ride, or join trips to payments when one trip has two payments, rows multiply and totals inflate. When a number is too high, check for a join that changed the grain.
+
+There are three kinds of fact table.
+
+| Type | One row is | Meridian example |
+|---|---|---|
+| Transaction | One event at a point in time | One payment |
+| Periodic snapshot | The state at the end of each period | Each driver's earnings and hours per day |
+| Accumulating snapshot | One process instance, updated as it passes milestones | One trip, with requested, accepted, started and completed timestamps |
+
+Measures differ in how they add up. A fare is **additive**: sum it across anything. A wallet balance is **semi-additive**: you can sum across riders, but not across days. A ratio such as cancellation rate is **non-additive**: store its numerator and denominator and compute the ratio at query time.
+
+A **star schema** keeps each dimension as one denormalised table joined directly to the fact. A **snowflake schema** normalises dimensions into sub-tables, so `dim_zone` points to `dim_city`, which points to `dim_country`. Stars need fewer joins and are easier to query, and columnar storage makes their redundancy cheap. Use a star unless a dimension is so large and so shared that maintaining it in one place matters more.
+
+## 4.3 Keys and the dimensions that have names
+
+A **natural key** comes from the source system, such as `driver_id`. A **surrogate key** is generated by the warehouse and means nothing outside it. Dimensions should carry surrogate keys, for four reasons: one driver can then have several rows over time; the warehouse is protected when a source system reuses or reformats ids; several sources can be merged; and a row for "unknown" can exist, so facts never hold a NULL key.
+
+These terms are asked by name.
+
+- **Conformed dimension.** One dimension shared by several fact tables with the same keys and meaning. `dim_date` and `dim_city` serve both rides and food delivery, which is what allows a report across both.
+- **Degenerate dimension.** An identifier kept in the fact table with no dimension of its own, such as `trip_id`.
+- **Role-playing dimension.** One dimension used more than once in a fact. `dim_zone` plays pickup zone and drop-off zone.
+- **Junk dimension.** A small table combining several low-cardinality flags, so the fact table carries one key and not six flag columns.
+- **Bridge table.** Resolves a many-to-many relationship. A pooled trip has several riders, so a bridge with one row per trip and rider sits between the fact and `dim_rider`, with a weighting factor if fares must be split.
+
+## 4.4 Slowly changing dimensions
+
+Dimension attributes change. A driver moves from Pune to Bengaluru. The question is what happens to history.
+
+| Type | What you do | History | Use when |
+|---|---|---|---|
+| 0 | Never change it | Original only | Date of first trip |
+| 1 | Overwrite | None | Fixing a misspelt name |
+| 2 | Close the old row, add a new one | Full | The old value must still explain old facts |
+| 3 | Keep a previous-value column | One step back | A single reorganisation, where both views are needed briefly |
+
+Type 2 is the one you must be able to build. Each row has a surrogate key, the natural key, the attributes, `valid_from`, `valid_to` and `is_current`.
+
+| driver_sk | driver_id | city | valid_from | valid_to | is_current |
+|---|---|---|---|---|---|
+| 1041 | d-77 | Pune | 2026-01-01 | 2026-03-01 | false |
+| 2290 | d-77 | Bengaluru | 2026-03-01 | 9999-12-31 | true |
+
+Loading takes two steps. First, close the current row of every driver whose tracked attributes changed. Second, insert a new current row for those drivers and for brand-new ones.
+
+```sql
+UPDATE dim_driver d
+SET valid_to = s.updated_at, is_current = FALSE
+FROM stg_driver s
+WHERE d.driver_id = s.driver_id
+  AND d.is_current
+  AND (d.city <> s.city OR d.vehicle_type <> s.vehicle_type);
+
+INSERT INTO dim_driver (driver_id, city, vehicle_type, valid_from, valid_to, is_current)
+SELECT s.driver_id, s.city, s.vehicle_type, s.updated_at, DATE '9999-12-31', TRUE
+FROM stg_driver s
+LEFT JOIN dim_driver d ON d.driver_id = s.driver_id AND d.is_current
+WHERE d.driver_id IS NULL;
+```
+
+After the first statement, a changed driver has no current row, so the second statement inserts one. Use a half-open interval, with `valid_from` inclusive and `valid_to` exclusive, so no date belongs to two versions.
+
+Facts find the right version when they are loaded. The fact load looks up the dimension row whose interval contains the trip date and stores that row's surrogate key.
+
+```sql
+JOIN dim_driver d
+  ON d.driver_id = t.driver_id
+ AND t.trip_date >= d.valid_from
+ AND t.trip_date <  d.valid_to
+```
+
+A February trip then reports under Pune for ever, and an April trip under Bengaluru.
+
+## 4.5 Layers
+
+The bronze, silver and gold layers of a lakehouse and the staging, intermediate and marts folders of a dbt project describe the same progression.
+
+| Layer | Contains | Rule |
+|---|---|---|
+| Bronze, or raw | Source data as it arrived | Never edited; you can always rebuild from it |
+| Silver, or staging and intermediate | Cleaned, typed, de-duplicated, conformed | One model per source table, then business logic in small steps |
+| Gold, or marts | Facts, dimensions and aggregates for consumers | The only layer dashboards and analysts query |
+
+Meridian's Iceberg tables are bronze and silver. This sprint builds gold.
+
+## 4.6 dbt in practice
+
+dbt turns SQL `SELECT` statements into tables and views, in dependency order, with tests. You write the transformation. dbt writes the DDL.
+
+```sql
+-- models/marts/fct_trips.sql
+{{ config(materialized='incremental', unique_key='trip_id', incremental_strategy='merge') }}
+
+select
+    t.trip_id,
+    d.driver_sk,
+    t.rider_id,
+    t.pickup_zone_id,
+    t.trip_date,
+    t.fare_amount,
+    t.completed_at,
+    t.payment_settled_at
+from {{ ref('stg_trips') }} t
+join {{ ref('dim_driver') }} d
+  on d.driver_id = t.driver_id
+ and t.trip_date >= d.valid_from
+ and t.trip_date <  d.valid_to
+
+{% if is_incremental() %}
+where t.trip_date >= (select dateadd(day, -3, max(trip_date)) from {{ this }})
+{% endif %}
+```
+
+What to know about that file:
+
+- `ref()` names another model. dbt builds the dependency graph from these calls and runs models in order.
+- **Materializations.** A `view` stores no data. A `table` is rebuilt in full on every run. An `incremental` model processes only new or changed rows. An `ephemeral` model is inlined into its consumers.
+- `is_incremental()` is false on the first run and on a full refresh, so the whole table is built. On later runs the filter applies.
+- `unique_key` with the `merge` strategy updates a row that already exists. Without it, a reprocessed trip is inserted a second time. That is this sprint's incident.
+- **Tests** are declared beside the model: `unique`, `not_null`, `accepted_values` and `relationships`. A test is a query that should return no rows.
+- **Snapshots** build a Type 2 history from a source table that only shows current state. dbt adds `dbt_valid_from` and `dbt_valid_to` for you.
+- `dbt build` runs models, tests, snapshots and seeds in dependency order, and stops downstream models when a test fails.
+
+Airflow orchestrates dbt in one of two ways. The simple way is one task that runs `dbt build`. The better way, once the project grows, is one Airflow task per model, so a failure is visible and retryable at model level. In both, pass the run's data interval to dbt as variables.
+
+## 4.7 Late data and backfills
+
+**Late-arriving facts.** A trip completes at 23:58 and its event reaches the warehouse two days later. An incremental filter that takes only rows newer than the latest loaded date will never see it. The standard fix is a **lookback window**: each run reprocesses the last few days and merges on the key, as in the model above. The window is a trade-off. Three days catches almost everything and costs three days of compute per run. Anything later needs a scheduled wider reconciliation.
+
+Always keep two timestamps: when the event happened, and when you loaded it. Partition and report by event time. Use load time to find what changed.
+
+**Late-arriving dimensions.** A trip arrives for a driver who is not yet in `dim_driver`. Do not drop the fact. Insert a placeholder dimension row for that natural key, mark it as inferred, and let the next dimension load fill it in.
+
+**Backfills.** A backfill reruns history. It is safe only if every run is idempotent, which you established in sprint 1. Three rules:
+
+1. Backfill by partition, in chunks, so a failure loses one chunk.
+2. Build into a separate table, validate row counts and totals against the old one, then swap. Readers never see a half-rebuilt table.
+3. Compare before and after. A backfill that changes a total needs an explanation before it is published.
+
+## 4.8 Snowflake, enough for this sprint
+
+Sprint 8 covers Snowflake in depth. For now you need three facts. Storage and compute are separate: data lives in Snowflake-managed storage, and **virtual warehouses** are clusters you start to run queries. You pay for a warehouse while it runs, so set auto-suspend to a minute and it stops when idle. And the role you connect with decides what you can see, which you will use to give your agent read-only access.
+
+## 4.9 Text-to-SQL and why it fails
+
+Analysts want to ask questions in English. A model can write SQL. The hard part is the one this chapter opened with: the model does not know that "completed" has two meanings at Meridian.
+
+The quality of text-to-SQL depends on the context you give the model. Managing that context deliberately is called **context engineering**. In practice it means four things.
+
+- **Narrow the surface.** Expose only gold tables. Twenty well-named tables beat two thousand raw ones.
+- **Describe columns.** A dbt description such as "settled fare in rupees, excluding tips" removes a class of errors.
+- **Define metrics in words.** "Completed trip (Operations): `completed_at` is not null. Completed trip (Finance): `payment_settled_at` is not null and not refunded."
+- **Give examples.** Three or four question and SQL pairs, covering a join and a date filter.
+
+Guardrails are separate from quality. The connection uses a read-only role. Only a single `SELECT` statement is accepted. A row limit is added. The query is compiled before it is run.
+
+You cannot improve what you do not measure, so build an **evaluation set**: questions with reference SQL written by you. Score by running both queries and comparing the results. Comparing SQL text is useless, because two different queries can be equally right. Include questions that are ambiguous, where the right behaviour is to state the definition used, and questions that cannot be answered from the schema, where the right behaviour is to say so.
+
+Then change one thing in the context and score again. That loop of change, measure and compare is the core discipline of building with language models.
+
+@@lab
+## Build: a star schema in dbt (2.5 hours)
+
+Ask Claude to **start sprint 4**. Start your Snowflake trial now, not earlier. The starter kit has a dbt project skeleton, a loader that copies a month of `silver.trips_enriched`, drivers and zones into Snowflake, and an Airflow DAG that runs dbt. If you would prefer to keep the trial for later, the same project runs locally on DuckDB with the `dbt-duckdb` adapter.
+
+1. **Write the grain first.** In `models/marts/README.md`, one sentence per table: "`fct_trips`: one row per trip."
+2. **Staging models** for trips, drivers and zones: rename, cast, de-duplicate. Nothing else.
+3. **A snapshot of drivers**, so a change of city or vehicle type produces a new version.
+4. **`dim_driver`** from the snapshot, with a surrogate key, `valid_from`, `valid_to` and `is_current`. Add `dim_zone` and `dim_date`.
+5. **`fct_trips`**, incremental, merged on `trip_id`, joined to the driver version valid on the trip date.
+6. **Tests.** `unique` and `not_null` on every key, `relationships` from the fact to each dimension, `accepted_values` on trip status.
+7. **Both metrics, from one table.** Write `completed_trips_ops` and `completed_trips_finance` as two clearly named measures in one model. Show the two numbers side by side for one day, with the difference explained by a third column: completed but not yet settled.
+8. **Move a driver.** Change one driver's city in the source, rerun, and confirm that old trips still report under the old city.
+
+**Done when** `dbt build` passes, both teams' numbers come from `fct_trips`, and the moved driver has two rows in `dim_driver`.
+
+## Incident: late trips, and a backfill that double-counts (45 minutes)
+
+**Part one: Finance's total for last Tuesday keeps changing.**
+
+1. The generator delays about 2% of completed events by up to two days. Change the incremental filter to the naive form, `where trip_date > (select max(trip_date) from {{ this }})`, and run for a week of data.
+2. Compare the trip count per day in `fct_trips` with the count in silver. Find the missing trips.
+3. Restore the three-day lookback with the merge. Rerun and compare again.
+4. Write down what a three-day window costs and what it still misses.
+
+**Part two: a backfill doubles March.**
+
+1. Remove `unique_key` from the model config, then rerun March. This is what happens when someone "just reruns the month".
+2. Run the tests. The `unique` test on `trip_id` fails. Note that the test caught it before any dashboard did.
+3. Restore the key. Rebuild March into a separate table, compare count and total fare with the original, then swap.
+
+Add both to `notes/what-broke.md`. Flipkart's senior loop asks all three of these directly: incremental design, late records after an SLA cut-off, and idempotent reprocessing.
+
+## AI lab: text-to-SQL with an evaluation set (1 hour)
+
+1. **Tools.** Give the agent `list_tables()`, `describe_table(name)`, which returns columns with their dbt descriptions, and `run_sql(sql)`. `run_sql` must use a read-only role, accept one `SELECT` only, and append a limit of 200 rows.
+2. **The evaluation set.** The starter kit includes 25 questions with reference SQL. Read them all and fix any you disagree with. They include five ambiguous questions and three that cannot be answered.
+3. **Baseline.** Run all 25 with only table and column names as context. Score by comparing result sets.
+4. **Add context.** Add column descriptions and the two metric definitions. Run and score again.
+5. **Read the failures.** Sort them into three groups: wrong definition, wrong join, and invented column.
+
+**Done when** you have two scores and a sentence explaining the difference.
+
+Keep the evaluation file. It grows in every sprint from here.
+
+@@practice
+## SQL warm-ups: recursion and consecutive runs
+
+1. **Reporting chain.** `employee(employee_id, employee_name, manager_id)`. For each employee, find their top-level manager. Asked at LinkedIn, J.P. Morgan and Zen. *Approach:* a recursive CTE that starts from people with no manager and repeatedly joins their reports, carrying the root's name down.
+2. **Customers who ordered in consecutive months.** Asked at Fanatics. *Approach:* reduce to one row per customer and month, then use `LAG` and check that the previous month is exactly one month earlier.
+3. **A number that appears at least three times in a row.** `logs(id, num)`. Asked at J.P. Morgan. *Approach:* compare each row with `LAG(num, 1)` and `LAG(num, 2)` ordered by `id`.
+
+## DSA warm-ups: binary search and intervals
+
+1. **First index with value at least x** in a sorted array. Asked at LinkedIn. *Approach:* binary search keeping the invariant that the answer lies in `[lo, hi]`; return `lo` when the loop ends. Test with x smaller than everything and larger than everything.
+2. **The single element in a sorted array where every other element appears twice.** Asked at TikTok. *Approach:* binary search on index parity; before the single element, pairs start at even indices. O(log n).
+3. **Minimum number of meeting rooms.** Given intervals, how many overlap at most? *Approach:* sort starts and ends separately and sweep, or use a min-heap of end times.
+
+## Customer drill: two teams, one word
+
+Operations and Finance each insist their trip count is the correct one, and each wants the dashboard to show theirs.
+
+What do you do in the meeting? Decide, then compare.
+
+- Ask each team what decision their number drives. Operations plans driver supply. Finance reports revenue.
+- Write both definitions down in front of both teams, in one sentence each.
+- Propose two named metrics from one table, with the gap between them shown, so each can reconcile to the other.
+- Agree who owns each definition and where it is documented.
+
+You did not pick a winner. Most "the data is wrong" disputes are definition disputes, and the engineer's job is to make both definitions visible.
+
+@@quiz
+TYPE: mcq
+TAG: modeling
+Q: You have chosen the business process to model. What is the next step in dimensional design?
+A) Choose the partition column
+B) Declare the grain
+C) List the measures
+D) Create surrogate keys
+ANS: B
+WHY: The grain states what one fact row represents. Dimensions and facts are then chosen to be true at that grain.
+---
+TYPE: mcq
+TAG: modeling
+Q: One row per trip, with columns for requested, accepted, started and completed timestamps that are filled in as the trip progresses. Which kind of fact table is this?
+A) Transaction
+B) Periodic snapshot
+C) Accumulating snapshot
+D) Factless
+ANS: C
+WHY: An accumulating snapshot has one row per process instance and is updated at each milestone. It suits processes with a defined beginning and end.
+---
+TYPE: mcq
+TAG: modeling
+Q: A daily table stores each rider's wallet balance. Summing the balance across all days of a month gives nonsense. What kind of measure is it?
+A) Additive
+B) Semi-additive
+C) Non-additive
+D) Degenerate
+ANS: B
+WHY: A balance can be summed across riders on one day but not across time. Across time you take the latest value or an average.
+---
+TYPE: mcq
+TAG: modeling
+Q: Which is the strongest reason to use surrogate keys in dimensions?
+A) They sort faster than strings
+B) They let one natural key have several versioned rows and insulate the warehouse from source key changes
+C) They are required by SQL
+D) They compress better
+ANS: B
+WHY: Type 2 history needs a key that differs between versions of the same driver. Surrogate keys also survive source systems reusing or changing ids.
+---
+TYPE: mcq
+TAG: modeling
+Q: A driver's name was misspelt in the source and has been corrected. History of the misspelling has no value. Which SCD type applies?
+A) Type 0
+B) Type 1
+C) Type 2
+D) Type 3
+ANS: B
+WHY: Type 1 overwrites the value. Use it for corrections and attributes whose history nobody needs.
+---
+TYPE: mcq
+TAG: modeling
+Q: `dim_date` and `dim_city` are used with identical keys and meaning by both the rides fact and the food orders fact. What are they called?
+A) Junk dimensions
+B) Conformed dimensions
+C) Bridge tables
+D) Degenerate dimensions
+ANS: B
+WHY: Conformed dimensions let you compare or combine measures across fact tables, such as rides and orders per city per day.
+---
+TYPE: mcq
+TAG: modeling
+Q: A dbt incremental model has `unique_key='trip_id'` and the merge strategy. A run reprocesses a trip that is already in the table. What happens?
+A) A duplicate row is inserted
+B) The existing row is updated
+C) The run fails
+D) The row is deleted
+ANS: B
+WHY: Merge matches on the unique key, updating matches and inserting the rest. Without the key, the strategy degrades to append and duplicates appear.
+---
+TYPE: mcq
+TAG: ai
+Q: What is the most reliable way to score a text-to-SQL system against a reference answer?
+A) Compare the SQL strings character by character
+B) Ask the model whether it is confident
+C) Execute both queries and compare the result sets
+D) Count the number of joins
+ANS: C
+WHY: Many different queries are equally correct. Execution accuracy checks what matters, which is whether the answer is right.
+---
+TYPE: fill
+TAG: modeling
+Q: In dbt, `{{ ____('stg_trips') }}` refers to another model and tells dbt to build that model first.
+ANS: ref
+WHY: dbt builds its dependency graph from `ref()` calls and resolves each to the right schema for the environment.
+---
+TYPE: fill
+TAG: modeling
+Q: An identifier such as `trip_id`, stored in the fact table with no dimension table of its own, is called a ____ dimension.
+ANS: degenerate
+WHY: It is a dimension key with no attributes left to store elsewhere. It is kept for grouping and drill-through.
+---
+TYPE: fill
+TAG: modeling
+Q: A pooled trip has several riders. The table that resolves this many-to-many relationship between the fact and `dim_rider` is called a ____ table.
+ANS: bridge
+WHY: A bridge holds one row per trip and rider, optionally with a weighting factor so fares are not double-counted.
+---
+TYPE: fill
+TAG: modeling
+Q: In a dbt model, the macro `____()` is true when the target table already exists and the run is not a full refresh.
+ANS: is_incremental
+WHY: It wraps the filter that limits a run to new or changed rows. On the first run it is false and the whole table is built.
+---
+TYPE: short
+TAG: modeling
+Q: Compare star and snowflake schemas. Which would you choose for a read-heavy analytics workload, and why?
+MODEL: A **star** schema joins each denormalised dimension directly to the fact. A **snowflake** schema normalises dimensions into chains of related tables.
+
+For read-heavy analytics, choose a star. Queries need fewer joins, are simpler to write and optimise, and BI tools work naturally with it. The redundancy it carries costs little in columnar storage, where repeated values compress well.
+
+Snowflaking is justified when a sub-dimension is large, shared by several dimensions and changes often, so maintaining it once outweighs the extra join. Many teams go further than a star and publish wide pre-joined tables for the most-used cases.
+---
+TYPE: short
+TAG: modeling
+Q: An incremental model loads only rows newer than the latest date already in the table. Some events arrive two days late. What goes wrong, how do you fix it, and what does the fix cost?
+MODEL: Late events have an event date older than the table's maximum, so the filter never selects them and they are lost for good.
+
+Fix: reprocess a **lookback window** on every run, for example the last three days by event date, and **merge on the unique key** so reprocessed rows are updated and not duplicated. On partitioned tables, the equivalent is overwriting the last few partitions.
+
+Cost: each run processes several days of data, and anything later than the window is still missed. Cover that with a periodic wider reconciliation against the source, and monitor how late data actually arrives so the window is chosen from evidence.
+---
+TYPE: short
+TAG: modeling
+Q: Describe how you load a Type 2 dimension, and how a fact row ends up pointing at the correct version.
+MODEL: Compare incoming rows with the current rows of the dimension on the natural key.
+
+1. For rows whose tracked attributes changed, **close** the current version: set `valid_to` to the change time and `is_current` to false.
+2. **Insert** a new current version for changed and new keys, with a fresh surrogate key, `valid_from` at the change time and an open-ended `valid_to`.
+
+Use half-open intervals so versions never overlap. dbt snapshots or a `MERGE` do the same work.
+
+When loading facts, join to the dimension on the natural key **and** the event date falling within `valid_from` and `valid_to`, and store that surrogate key. Old facts then keep the attributes that were true at the time.
+---
+TYPE: short
+TAG: modeling
+Q: After a backfill, Finance's total for one day is 3% higher than before. Give three possible causes and say how you would tell them apart.
+MODEL: **Duplicates.** The backfill appended rows that already existed, because the model lacked a unique key or the write was not idempotent. Check: count rows against distinct `trip_id` for that day.
+
+**Late data.** The backfill picked up events that arrived after the original load. The new number is the more correct one. Check: compare load timestamps of the extra rows with the original run time.
+
+**Changed logic or dimensions.** A join now fans out, a definition changed, or facts were re-joined to current dimension rows and not the version valid at the time. Check: diff the old and new rows by key and inspect which columns differ.
+
+In all cases, build the backfill beside the old table and reconcile before swapping.
+
+@@coding
+TITLE: Revenue by the city each driver belonged to at the time
+KIND: sql
+MIN: 12
+TAG: modeling
+PROBLEM:
+`dim_driver(driver_sk, driver_id, city, valid_from, valid_to)` is a Type 2 dimension. `valid_from` is inclusive and `valid_to` is exclusive. The current row has `valid_to = '9999-12-31'`.
+
+`trips(trip_id, driver_id, trip_date, fare)`.
+
+Return `city, trips, revenue`, attributing each trip to the city the driver belonged to **on the trip date**. Order by city.
+SOLUTION:
+```sql
+SELECT d.city,
+       COUNT(*)    AS trips,
+       SUM(t.fare) AS revenue
+FROM trips t
+JOIN dim_driver d
+  ON d.driver_id = t.driver_id
+ AND t.trip_date >= d.valid_from
+ AND t.trip_date <  d.valid_to
+GROUP BY d.city
+ORDER BY d.city;
+```
+
+This is a point-in-time join. Joining on `driver_id` alone would match each trip to every version of the driver and multiply rows. Joining only to the current row would move February's trips to the driver's new city and silently rewrite history.
+
+The half-open interval is deliberate. A trip on the day of the move matches exactly one version. With `BETWEEN`, it would match two.
+<!--test
+con.execute("create table dim_driver(driver_sk int, driver_id int, city varchar, valid_from date, valid_to date)")
+con.execute("create table trips(trip_id int, driver_id int, trip_date date, fare int)")
+con.execute("insert into dim_driver values (1,7,'Pune','2026-01-01','2026-03-01'),(2,7,'Bengaluru','2026-03-01','9999-12-31'),(3,8,'Pune','2026-01-01','9999-12-31')")
+con.execute("insert into trips values (1,7,'2026-02-10',100),(2,7,'2026-03-01',200),(3,7,'2026-04-01',50),(4,8,'2026-03-15',70)")
+rows = [(c, int(n), int(r)) for c, n, r in con.execute(Q).fetchall()]
+assert rows == [('Bengaluru',2,250),('Pune',2,170)], rows
+-->
+---
+TITLE: Sessions from a clickstream
+KIND: sql
+MIN: 15
+TAG: sql
+SRC: LinkedIn, 5 YOE
+PROBLEM:
+Table `events(user_id, event_ts)`.
+
+A new session starts with a user's first event, and whenever more than **30 minutes** have passed since that user's previous event.
+
+Return `user_id, session_no, session_start, session_end, events`, where `session_no` counts from 1 for each user. Order by user and session.
+SOLUTION:
+```sql
+WITH flagged AS (
+  SELECT user_id, event_ts,
+         CASE
+           WHEN LAG(event_ts) OVER (PARTITION BY user_id ORDER BY event_ts) IS NULL
+             OR event_ts - LAG(event_ts) OVER (PARTITION BY user_id ORDER BY event_ts) > INTERVAL '30' MINUTE
+           THEN 1 ELSE 0
+         END AS is_new
+  FROM events
+),
+numbered AS (
+  SELECT user_id, event_ts,
+         SUM(is_new) OVER (PARTITION BY user_id ORDER BY event_ts) AS session_no
+  FROM flagged
+)
+SELECT user_id,
+       session_no,
+       MIN(event_ts) AS session_start,
+       MAX(event_ts) AS session_end,
+       COUNT(*)      AS events
+FROM numbered
+GROUP BY user_id, session_no
+ORDER BY user_id, session_no;
+```
+
+Three steps, and the pattern is worth memorising. Flag the rows that start a session. Take a running sum of the flag, which gives every row its session number. Then aggregate by that number.
+
+The same shape solves any "group consecutive rows until something changes" problem. Timestamp subtraction varies by engine: Snowflake uses `DATEDIFF('minute', prev, event_ts) > 30`, and Spark SQL can compare `unix_timestamp` values.
+<!--test
+con.execute("create table events(user_id int, event_ts timestamp)")
+con.execute("insert into events values (1,'2026-10-11 09:00:00'),(1,'2026-10-11 09:10:00'),(1,'2026-10-11 09:45:00'),(1,'2026-10-11 09:50:00'),(2,'2026-10-11 10:00:00')")
+rows = [(u, int(s), str(a), str(b), int(n)) for u, s, a, b, n in con.execute(Q).fetchall()]
+assert rows == [(1,1,'2026-10-11 09:00:00','2026-10-11 09:10:00',2),(1,2,'2026-10-11 09:45:00','2026-10-11 09:50:00',2),(2,1,'2026-10-11 10:00:00','2026-10-11 10:00:00',1)], rows
+-->
+---
+TITLE: Merge overlapping intervals
+KIND: dsa
+MIN: 13
+TAG: dsa
+SRC: Atlassian, 5 YOE; also Adobe and Microsoft
+PROBLEM:
+Given a list of `[start, end]` intervals, merge all that overlap and return the result sorted by start. Intervals that touch, such as `[1, 4]` and `[4, 5]`, count as overlapping.
+
+`[[1,3],[2,6],[8,10],[15,18]]` returns `[[1,6],[8,10],[15,18]]`.
+SOLUTION:
+```python
+def merge_intervals(intervals):
+    merged = []
+    for start, end in sorted(intervals):
+        if merged and start <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)   # extend the last interval
+        else:
+            merged.append([start, end])
+    return merged
+```
+
+Sort by start, then sweep once. Each interval either extends the last merged one or begins a new one. Time is O(n log n) for the sort, and space is O(n) for the output.
+
+Atlassian asked for the edge cases by name: a single interval, one interval fully inside another, and adjacent intervals. The `max` handles the contained case, which is the one people miss. Adobe framed the same problem as merging subscription periods.
+<!--test
+assert merge_intervals([[1,3],[2,6],[8,10],[15,18]]) == [[1,6],[8,10],[15,18]]
+assert merge_intervals([[1,4],[4,5]]) == [[1,5]]
+assert merge_intervals([[1,10],[2,3]]) == [[1,10]]
+assert merge_intervals([]) == []
+assert merge_intervals([[5,7]]) == [[5,7]]
+-->
+---
+TITLE: Slowly changing dimension, Type 2, in PySpark
+KIND: pyspark
+MIN: 20
+TAG: modeling
+SRC: Intuit, 3 YOE
+PROBLEM:
+`dim` has columns `driver_id, city, valid_from, valid_to, is_current`. Current rows have `valid_to = 9999-12-31`.
+
+`updates` has `driver_id, city`: today's snapshot for some drivers.
+
+Write `apply_scd2(dim, updates, load_date)` returning the new dimension:
+
+- A driver whose city changed: close the current row at `load_date` and add a new current row from `load_date`.
+- A new driver: add a current row from `load_date`.
+- Everything else is unchanged, including historical rows.
+SOLUTION:
+```python
+from pyspark.sql import functions as F
+
+def apply_scd2(dim, updates, load_date):
+    history = dim.filter("NOT is_current")
+    current = dim.filter("is_current")
+
+    j = current.alias("d").join(updates.alias("u"), "driver_id", "full_outer")
+    in_dim = F.col("d.city").isNotNull()
+    changed = in_dim & F.col("u.city").isNotNull() & (F.col("u.city") != F.col("d.city"))
+    is_new = ~in_dim
+
+    load = F.lit(load_date).cast("date")
+    open_end = F.lit("9999-12-31").cast("date")
+
+    unchanged = j.filter(in_dim & ~changed).select(
+        "driver_id", F.col("d.city").alias("city"), "d.valid_from", "d.valid_to", "d.is_current")
+    closed = j.filter(changed).select(
+        "driver_id", F.col("d.city").alias("city"), "d.valid_from",
+        load.alias("valid_to"), F.lit(False).alias("is_current"))
+    opened = j.filter(changed | is_new).select(
+        "driver_id", F.col("u.city").alias("city"),
+        load.alias("valid_from"), open_end.alias("valid_to"), F.lit(True).alias("is_current"))
+
+    return history.unionByName(unchanged).unionByName(closed).unionByName(opened)
+```
+
+A full outer join of the current rows with the updates sorts every driver into one of four cases: unchanged, changed, new, or absent from today's updates. Each case produces its rows, and a union assembles the table.
+
+This builds the whole dimension again, which is fine for a dimension and matches how you would overwrite a small table. On Delta or Iceberg at scale you would express the same logic as a `MERGE`. Intuit asked for exactly that follow-up. The usual trick is to feed the merge each changed row twice, once to close the old version and once to insert the new one.
+<!--test
+import datetime as dt
+D = dt.date
+dim = spark.createDataFrame([(1,"Pune",D(2026,1,1),D(9999,12,31),True),(2,"Goa",D(2026,1,1),D(9999,12,31),True),(3,"Agra",D(2025,1,1),D(2026,1,1),False),(3,"Delhi",D(2026,1,1),D(9999,12,31),True)], "driver_id int, city string, valid_from date, valid_to date, is_current boolean")
+upd = spark.createDataFrame([(1,"Bengaluru"),(2,"Goa"),(4,"Kochi")], "driver_id int, city string")
+out = sorted((r.driver_id, r.city, str(r.valid_from), str(r.valid_to), r.is_current) for r in apply_scd2(dim, upd, "2026-03-01").collect())
+exp = sorted([(1,"Pune","2026-01-01","2026-03-01",False),(1,"Bengaluru","2026-03-01","9999-12-31",True),(2,"Goa","2026-01-01","9999-12-31",True),(3,"Agra","2025-01-01","2026-01-01",False),(3,"Delhi","2026-01-01","9999-12-31",True),(4,"Kochi","2026-03-01","9999-12-31",True)])
+assert out == exp, out
+-->
+
+@@interview
+Q: Design a data model for a ride-hailing app. Identify fact and dimension tables, explain when you would use a bridge table, and discuss strategies for slowly changing dimensions.
+SRC: Uber, 5 YOE
+TAG: modeling
+A: Start by stating the process and grain: completed rides, one row per trip.
+
+**Fact:** `fct_trips` with keys to rider, driver, pickup zone, drop-off zone, date and payment method, and measures for fare, distance, duration, surge and tip. `trip_id` stays as a degenerate dimension. A second fact at payment grain avoids fan-out when a trip has several payments.
+
+**Dimensions:** rider, driver, zone used twice as a role-playing dimension, date, payment method.
+
+**Bridge:** for pooled trips with several riders, a trip-to-rider bridge with a fare allocation weight.
+
+**SCD:** Type 2 for driver city and vehicle, since they explain past trips. Type 1 for corrections. Then offer one query against the model to show it works.
+---
+Q: Differentiate fact and dimension tables, with examples.
+SRC: Microsoft, 4 YOE
+TAG: modeling
+A: A fact table stores measurements of a business process at a declared grain, with foreign keys to dimensions and numeric measures. It is long, narrow and mostly appended. Example: one row per trip with fare, distance and duration. A dimension table stores descriptive context used to filter, group and label. It is short, wide and changes slowly. Example: a driver with city, vehicle type and rating band. Facts answer "how much" and "how many"; dimensions answer "by what" and "for whom". A useful test: if you would sum it, it is a fact; if you would group by it, it is a dimension attribute.
+---
+Q: Explain star schema versus snowflake schema. Which would you use in a read-heavy workload?
+SRC: Microsoft, 4 YOE
+TAG: modeling
+A: In a star schema, each dimension is one denormalised table joined directly to the fact. In a snowflake schema, dimensions are normalised into several related tables. For a read-heavy workload I use a star: fewer joins, simpler SQL, better fit with BI tools, and predictable plans. The duplicated attribute values cost little in columnar storage. I would snowflake only a large, shared, frequently changing sub-dimension, where maintaining it once is worth an extra join. For the hottest dashboards I often go further and publish a wide pre-joined table on top of the star.
+---
+Q: Why are surrogate keys preferred over natural keys in dimensional modeling?
+SRC: Microsoft, 4 YOE
+TAG: modeling
+A: Four reasons. Type 2 history needs several rows for one natural key, each with its own key for facts to reference. Source systems change: ids get reused, reformatted or merged after an acquisition, and surrogate keys isolate the warehouse from that. Integration: the same customer may arrive from two systems with different ids. And handling of unknowns: a reserved surrogate row for "unknown" or "not applicable" means facts never carry NULL keys. Integer surrogates also join a little faster than long strings. I keep the natural key as an attribute for lookup and reconciliation.
+---
+Q: How would you implement SCD Type 2 in a data warehouse?
+SRC: Microsoft, 4 YOE
+TAG: modeling
+A: The dimension has a surrogate key, the natural key, tracked attributes, `valid_from`, `valid_to` and a current flag. On each load I compare incoming rows with current rows on the natural key, often using a hash of the tracked columns. For changed rows I close the current version by setting `valid_to` and the flag, and insert a new version with a new surrogate key. New keys are inserted as current. I use half-open intervals to avoid overlap. In practice this is a `MERGE` statement, a dbt snapshot, or on Databricks a declarative change-apply feature. Fact loads look up the version valid at the event date.
+---
+Q: In a music app model, an artist changes genre and a user updates their country. Which SCD type do you use for each?
+SRC: Amazon, 4 YOE
+TAG: modeling
+A: It depends on whether past facts should be explained by the old value. For **user country**, I use Type 2: plays from last year should still count toward the country the user was in, for royalty and regional reporting. For **artist genre**, I ask how it is used. If recommendations and current catalogue browsing are the main use, Type 1 is enough and simpler. If historical genre trend reports matter, Type 2. I would say explicitly that Type 2 has a cost in joins and storage, so I apply it per attribute, not per table.
+---
+Q: Explain normalization and denormalization. When would you use each?
+SRC: Amazon, 4 YOE
+TAG: modeling
+A: Normalization splits data into tables so each fact is stored once, linked by keys. It prevents update anomalies and keeps writes small and consistent, so it suits transactional systems such as the orders database behind an app. Denormalization stores related data together, duplicating values to avoid joins. It makes reads fast and simple, so it suits analytics, where data is written in batches and read far more often than changed. In a warehouse the usual shape is denormalised dimensions around a fact. The cost of denormalization is that updates must touch many rows, which pipelines handle by rebuilding.
+---
+Q: Design a schema for an online food delivery platform with users, orders, restaurants and payments. Handle a restaurant changing its name.
+SRC: Amazon, 3 YOE
+TAG: modeling
+A: Transactional side, normalised: users, restaurants, menu items, orders, order items and payments, with an order belonging to one user and one restaurant and having many items and one or more payments.
+
+Analytical side: `fct_orders` at one row per order, and `fct_order_items` at item grain, with dimensions for user, restaurant, date, delivery partner and payment method.
+
+Restaurant name change: Type 2 on `dim_restaurant` if historical reports should show the name at the time, or Type 1 if the business sees it as the same entity relabelled. I would keep a stable restaurant id either way, so trend lines do not break at the rename.
+---
+Q: How would you model a player who plays for both an IPL team and the national team? Where do the constraints live?
+SRC: Flipkart, 4 YOE
+TAG: modeling
+A: A player-to-team relationship is many-to-many, so it needs a junction table: `player_team(player_id, team_id, start_date, end_date, role)`. The primary key is the combination of player, team and start date, with foreign keys to `players` and `teams`. The junction table is where relationship attributes belong, such as the dates and squad role. Constraints: foreign keys on the junction, a check that end date is after start date, and uniqueness on the key. In the analytical model, match facts carry both player and team keys directly at the grain of a player's performance in a match, so the bridge is not needed for most queries.
+---
+Q: How do you design an incremental pipeline when only changed records arrive each day?
+SRC: Flipkart, 4 YOE
+TAG: modeling
+A: Land each day's delta unchanged in a raw layer, partitioned by arrival date, so nothing is lost and runs can be replayed. De-duplicate within the batch by key and latest change timestamp. Merge into the target on the business key: update matches, insert new rows, and apply deletes if the source sends them. Drive the run from the data interval so it is repeatable. Track a high-water mark only as an optimisation, never as the sole source of truth. Reconcile row counts and checksums against the source periodically, since deltas can be missed. Run a full refresh occasionally, or whenever logic changes.
+---
+Q: What would you do if late-arriving records are ingested after the SLA cut-off?
+SRC: Flipkart, 4 YOE
+TAG: modeling
+A: First, do not lose them. The pipeline reprocesses a lookback window by event time and merges on the key, so late rows are added to the day they belong to. Second, be explicit about what was published. Reports at the cut-off are marked provisional, and totals are restated once the window closes, with the change visible to consumers. Third, measure lateness: track the gap between event time and load time, so the window and the SLA are set from the real distribution. If a source is routinely late, that is a conversation with its owner and a candidate for a data contract.
+---
+Q: You need to backfill a year of data into Redshift without blocking production queries. Design a strategy to ingest, validate and swap tables safely.
+SRC: PwC, 5 YOE
+TAG: modeling
+A: Load into a separate staging table with the same structure, in monthly chunks from files in S3, on a schedule or queue that keeps it away from peak hours. Each chunk is idempotent, so a failure repeats one month. Validate before touching production: row counts per day, sums of key measures, uniqueness of keys, and a sample comparison against the source. Then swap in one transaction, by renaming tables or switching a view that consumers read. Keep the old table for a rollback period. Readers see the old data until the swap and the new data after it, never a mixture.
+---
+Q: Explain batch versus incremental load. How do you implement an upsert?
+SRC: Zen, 7 YOE
+TAG: modeling
+A: A full load replaces the target every run. It is simple and self-healing but costs grow with table size. An incremental load processes only new or changed rows. It is cheaper and faster but needs change detection, late data handling and periodic reconciliation.
+
+An upsert updates existing rows and inserts new ones by key. With `MERGE`: match target and source on the key, update when matched, insert when not. Where `MERGE` is unavailable or slow, load the delta to a staging table, delete target rows with matching keys, insert the staged rows, all in one transaction. De-duplicate the source first, or a merge can fail or double-insert.
+---
+Q: How would you design a data pipeline using Snowflake, dbt and Airflow?
+SRC: Tiger Analytics, 4 YOE
+TAG: cloud
+A: Airflow schedules and sequences; Snowflake stores and computes; dbt holds the transformation logic. Ingestion lands raw data in Snowflake through `COPY INTO`, Snowpipe or a connector. dbt builds staging models that clean and type each source, intermediate models for business logic, and marts with facts and dimensions, with tests on keys and relationships and snapshots for history. Airflow runs ingestion, then `dbt build`, passing the data interval, with tests acting as gates before downstream tasks. I use separate warehouses for loading and transformation with auto-suspend, separate dev and prod targets, and CI that builds changed models on pull requests.
+---
+Q: Which dbt materializations exist, and when do you choose an incremental model?
+TAG: modeling
+A: `view` stores only the query and is always current; good for light staging logic. `table` rebuilds the full result each run; good for small or frequently changing logic. `incremental` adds or merges only new or changed rows; good for large event or fact tables where a full rebuild is too slow or costly. `ephemeral` is inlined into downstream models. I choose incremental only when the table is big enough to justify the added complexity, and I give it a unique key, a lookback filter for late data, and a tested full-refresh path, because incremental models drift when logic changes.
+---
+Q: When should you use a CTE, a derived table or a temporary table? Give the readability and performance trade-offs.
+SRC: LinkedIn, 5 YOE
+TAG: sql
+A: A CTE names a subquery at the top of a statement. I use it for readability and for breaking logic into steps, and it is required for recursion. A derived table is a subquery in the `FROM` clause: the same thing inline, fine for something short. Most modern optimisers treat the two alike and inline them, though some engines materialise CTEs, which matters if one is referenced several times. A temporary table stores an intermediate result physically. I use it when the result is expensive, reused by several statements, or benefits from its own statistics, accepting the write cost.
+---
+Q: Analysts want to ask questions in plain English. How would you build text-to-SQL that people can trust?
+TAG: ai
+A: I treat it as a context and evaluation problem. Expose only curated gold tables, with column descriptions and written metric definitions, plus a few example queries. Put a semantic layer underneath where possible, so the model selects defined metrics. Guardrails: a read-only role, single `SELECT` statements, row limits, and a compile step before execution. Show the generated SQL and the definition used with every answer. Build an evaluation set of real questions with reference queries, scored by comparing results, including ambiguous and unanswerable questions, and rerun it on every change. Roll out to a small group and feed their corrections back into the set.
+---
+Q: How do you prioritise when several stakeholders each demand urgent data?
+SRC: Meta, 3 YOE
+TAG: behavioral
+A: Describe a method, then a real case. Method: ask each stakeholder what decision the data feeds and by when, which turns "urgent" into a date and a consequence. Rank by business impact and cost of delay, look for a small deliverable that unblocks more than one of them, and make the order visible so nobody is surprised. Escalate only when two requests truly conflict and the ranking is not yours to make.
+
+For the case, your go-to-market request-handling work at Salesforce is suitable: many teams, competing requests, and a system you built to process them faster. End with the result and what you would repeat.
+
+@@mock
+## Mock 4: data modeling round (40 minutes)
+
+Uber's third round in your bank: design a data model for a common app, then write SQL against your own model and discuss performance. Meta and Google run the same exercise with a ride-sharing scenario.
+
+**Format.** Claude plays the interviewer and gives you a one-line prompt.
+
+- 5 minutes: you ask clarifying questions. What is measured, by whom, at what scale?
+- 15 minutes: you design the model aloud: process, grain, facts, dimensions, keys, history.
+- 15 minutes: two or three SQL questions against your design, with a follow-up on billions of rows.
+- 5 minutes: one change request, such as "now add pooled rides", to see whether your design bends or breaks.
+
+**What is scored, out of 10.**
+
+| Area | Points | What earns them |
+|---|---|---|
+| Grain | 3 | Stated first, in one sentence, and never violated |
+| Completeness | 2 | Keys, history and many-to-many cases are handled |
+| SQL on the model | 3 | Correct, and you explain how it would scale |
+| Adaptability | 2 | The change request extends the design without a rewrite |

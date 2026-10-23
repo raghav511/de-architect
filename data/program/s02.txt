@@ -1,0 +1,706 @@
+@@meta
+id: s02
+n: 2
+title: Storage that survives growth
+goal: Raw trip events move from loose Parquet files into an Iceberg table that Spark writes and Trino reads. You measure a query before and after partitioning and compaction, and an Airflow DAG keeps the table healthy.
+hours: 10
+
+@@tickets
+201 | learn | 2 | Chapter 2 and the readings | You can explain, step by step, how a query finds its files in a Hive table and in an Iceberg table. | chapter
+202 | build | 2.5 | Move trip events into an Iceberg table | Spark writes the table, Trino reads it, a `MERGE` rerun adds no rows, and a time-travel query returns yesterday's count. | lab
+203 | incident | 0.75 | Ten thousand tiny files, and a renamed column | Files per partition drop below 10, the before and after query times are written down, and the broken report is fixed. | lab
+204 | ai | 1 | Classify failures with structured output | 20 sample log tails are classified into your schema with zero parsing errors. | lab
+205 | practice | 1.25 | Warm-ups and the customer drill | Three SQL and three DSA warm-ups attempted, and the drill answered out loud. | practice
+206 | test | 0.5 | Quiz 2 | 80% or better. | quiz
+207 | test | 1 | Coding test 2 | Attempted inside the 60-minute timer. | coding
+208 | talk | 1 | Interview set 2 and the mock | 14 of 18 questions ticked, and a mock score recorded. | interview
+
+@@readings
+- [Iceberg table spec](https://iceberg.apache.org/spec/). Read the overview and the sections on snapshots, manifests and partitioning. It is the primary source for everything in section 2.5.
+- [Iceberg: Maintenance](https://iceberg.apache.org/docs/latest/maintenance/) and [Spark Procedures](https://iceberg.apache.org/docs/latest/spark-procedures/). The procedures you call in this sprint's incident.
+- [Trino blog: A gentle introduction to Iceberg](https://trino.io/blog/2021/05/03/a-gentle-introduction-to-iceberg.html). Explains what Hive tables could not do, from the query engine's side.
+
+@@chapter
+## 2.1 The only way to make a query fast
+
+Finance wants eighteen months of trips queryable in under ten seconds. A query engine spends its time reading bytes and moving them. Every technique in this chapter is a way to read fewer bytes.
+
+There are four levels at which bytes can be skipped, and you should be able to name them in order.
+
+1. **Skip partitions.** Do not open data for dates nobody asked about.
+2. **Skip files.** Inside a partition, skip files whose statistics show they cannot match.
+3. **Skip row groups.** Inside a file, skip chunks whose minimum and maximum exclude the filter.
+4. **Skip columns.** Read only the columns the query mentions.
+
+File formats give you levels 3 and 4. Partitioning gives you level 1. Table formats give you level 2 and make level 1 reliable.
+
+## 2.2 File formats from the inside
+
+**Row-oriented** formats store one record after another. They are good for writing and for reading whole records. **Column-oriented** formats store all values of one column together. They are good for analytics, where a query touches 5 of 80 columns.
+
+A **Parquet** file is laid out like this:
+
+```
+file
+ ├─ row group 1          (128 MB by default)
+ │    ├─ column chunk: event_id    ─ pages
+ │    ├─ column chunk: city        ─ pages  (dictionary encoded)
+ │    └─ column chunk: fare_amount ─ pages
+ ├─ row group 2
+ └─ footer: schema, and for every column chunk its min, max and null count
+```
+
+A reader opens the footer first. From it, the reader knows where every column chunk starts, so it can fetch only the columns it needs. That is **column pruning**. It also knows the minimum and maximum of each column in each row group, so `WHERE fare_amount > 5000` can skip any row group whose maximum is 900. That is **predicate pushdown**.
+
+Columns compress well because similar values sit together. A `city` column with ten distinct values is dictionary-encoded into small integers and then run-length encoded. Sorting data by a column before writing makes both the statistics and the compression far more effective.
+
+| Format | Layout | Strengths | Typical use |
+|---|---|---|---|
+| Parquet | Columnar | Pruning, pushdown, compression, nested types, supported everywhere | Analytics tables in a lake |
+| ORC | Columnar | Similar to Parquet, with built-in lightweight indexes; born in Hive | Hive and older Hadoop estates |
+| Avro | Row | Fast writes, schema stored with the data, strong schema evolution rules | Kafka messages, landing zones |
+| JSON, CSV | Row, text | Human-readable, universal | Exchange with other systems; never for large analytics |
+
+The interview answer to "Parquet, ORC or Avro?" has two halves. For analytics, a columnar format, and Parquet unless the estate is Hive-centred. For records moving between systems one at a time, Avro, because it is row-based and its writer and reader schemas are resolved by clear compatibility rules.
+
+## 2.3 Partitioning and bucketing
+
+**Partitioning** splits a table into directories by the value of one or more columns.
+
+```
+trip_events/dt=2026-10-10/part-0000.parquet
+trip_events/dt=2026-10-11/part-0000.parquet
+```
+
+A query with `WHERE dt = '2026-10-11'` reads one directory. This is **partition pruning**, and it is the largest single saving available.
+
+Choose partition columns by two tests. Queries must filter on the column, and the column must have few distinct values relative to the data size, so each partition holds at least hundreds of megabytes. Date passes both for event data. `rider_id` fails badly: five million riders means five million directories of tiny files.
+
+**Bucketing** is for high-cardinality columns. Rows are hashed on the column into a fixed number of files per partition.
+
+```python
+(df.write.bucketBy(16, "rider_id").sortBy("rider_id").saveAsTable("trips_bucketed"))
+```
+
+If two tables are bucketed the same way on the join key, the engine can join bucket to bucket with no shuffle. Bucketing also keeps one rider's rows in one file, which helps point lookups.
+
+A useful sentence for interviews: partition by what you filter on with low cardinality, bucket by what you join on with high cardinality.
+
+## 2.4 Hive tables and the metastore
+
+A **Hive table** is a convention plus a catalog. The **Hive Metastore** is a database that records, for each table, its schema, its storage location and its list of partitions. The data is just files in those directories. This is **schema-on-read**: files are interpreted using the schema at query time, and nothing validates them when they are written.
+
+Two kinds of table matter. For a **managed** table, Hive owns the data and `DROP TABLE` deletes the files. For an **external** table, `DROP TABLE` removes only the metastore entry. Lake data should almost always be external.
+
+The design has limits that you will be asked about.
+
+- **Planning lists directories.** To find files, the engine lists every partition directory. On object storage that is slow, and it gets slower with every partition.
+- **No atomic commits across files.** A job that writes 200 files can fail after 120. Readers see a half-written partition.
+- **No row-level changes.** To update one row you rewrite a partition.
+- **The partition scheme is frozen.** Changing from daily to hourly partitions means rewriting the table.
+- **The metastore can drift from storage.** Files added outside Hive are invisible until `MSCK REPAIR TABLE` registers them.
+
+## 2.5 Iceberg: a table is a tree of metadata
+
+Iceberg keeps the same Parquet files and replaces the directory convention with explicit metadata.
+
+```
+catalog  ──>  current metadata file  (schema, partition spec, list of snapshots)
+                    │
+                snapshot  ──>  manifest list  (one row per manifest, with partition ranges)
+                                   │
+                              manifest files  (one row per data file: path, partition, row count,
+                                   │           min and max of each column)
+                               data files    (Parquet)
+```
+
+A query is planned by reading this tree. The manifest list says which manifests could contain matching partitions. Each manifest says which data files could contain matching rows, using per-file column statistics. No directory is ever listed.
+
+A write creates new data files, new manifests and a new metadata file, then asks the catalog to swap the table's pointer from the old metadata file to the new one. That swap is atomic. Readers see the old snapshot or the new one and never anything in between. If two writers race, one swap fails and that writer retries on top of the other's commit. This is optimistic concurrency.
+
+Almost every Iceberg feature follows from that structure.
+
+- **Time travel.** Old snapshots still exist until you expire them.
+
+```sql
+SELECT count(*) FROM lake.raw.trip_events TIMESTAMP AS OF '2026-10-10 00:00:00';
+SELECT * FROM lake.raw.trip_events.snapshots;     -- metadata is queryable as tables
+```
+
+- **Hidden partitioning.** You declare a transform, and users filter on the real column.
+
+```sql
+CREATE TABLE lake.raw.trip_events (
+  event_id string, event_type string, trip_id string, rider_id string, driver_id string,
+  city string, zone_id int, fare_amount double, event_ts timestamp
+) USING iceberg
+PARTITIONED BY (days(event_ts));
+```
+
+A query with `WHERE event_ts >= '2026-10-11'` is pruned to the right days automatically. Nobody has to remember a separate `dt` column, which is the most common cause of accidental full scans on Hive tables.
+
+- **Partition evolution.** You can change `days(event_ts)` to `hours(event_ts)` for new data. Old files keep their old layout, and the planner handles both.
+- **Schema evolution.** Columns are tracked by a numeric id and not by name or position. Renaming, reordering or dropping a column is a metadata change and never rewrites data.
+- **Row-level changes.** `MERGE`, `UPDATE` and `DELETE` work.
+
+```sql
+MERGE INTO lake.raw.trip_events t
+USING staged_events s ON t.event_id = s.event_id
+WHEN MATCHED THEN UPDATE SET *
+WHEN NOT MATCHED THEN INSERT *;
+```
+
+That statement is the second idempotency fix promised in sprint 1. Run it twice with the same input and the table does not change.
+
+Row-level changes come in two modes. **Copy-on-write** rewrites every data file that contains a changed row. Writes are expensive and reads stay fast. **Merge-on-read** writes a small delete file that marks rows as removed, plus new rows. Writes are cheap, and reads must merge the deletes until compaction cleans up. Choose copy-on-write for tables changed in occasional batches and read constantly. Choose merge-on-read for tables with frequent small changes, such as the change-data-capture feed in sprint 6.
+
+## 2.6 Small files and table maintenance
+
+Small files are the most common performance problem in a data lake. Each file costs a request to open, a footer to read and a row in the metadata. Ten thousand 50 KB files hold the same data as one 500 MB file and take hundreds of times longer to scan.
+
+They come from three places: frequent small writes such as streaming micro-batches, partitioning that is too fine, and Spark jobs that write one file per shuffle partition into every table partition.
+
+An Iceberg table needs four housekeeping jobs. You will schedule them in an Airflow DAG.
+
+```sql
+CALL lake.system.rewrite_data_files(table => 'raw.trip_events');          -- compact small files
+CALL lake.system.expire_snapshots(table => 'raw.trip_events',
+                                  older_than => TIMESTAMP '2026-10-04 00:00:00',
+                                  retain_last => 10);                       -- drop old snapshots
+CALL lake.system.remove_orphan_files(table => 'raw.trip_events');          -- files no snapshot references
+CALL lake.system.rewrite_manifests('raw.trip_events');                     -- tidy the metadata itself
+```
+
+Compaction creates a new snapshot. The old small files are still referenced by older snapshots, so storage only shrinks after `expire_snapshots`. Expiring snapshots also ends time travel to them, which makes the retention period a business decision as well as a cost one.
+
+Prevent what you can at write time. Let adaptive query execution coalesce shuffle partitions, and make sure rows for one table partition are routed to one task before the write, so each partition gets a few large files.
+
+## 2.7 Delta Lake and Hudi in one page
+
+Three table formats do the same job with different internals.
+
+**Delta Lake** keeps a `_delta_log` directory of numbered JSON commit files beside the data, with periodic Parquet checkpoints. The current state of the table is the result of replaying the log. It began at Databricks and is the default there. Sprint 8 covers it in depth.
+
+**Hudi** was built at Uber for upserts. It assigns every record a key, maintains an index from key to file, and offers copy-on-write and merge-on-read table types. It is strongest for heavy incremental update workloads.
+
+**Iceberg** began at Netflix. Its strengths are the metadata tree, hidden partitioning, and wide engine support: Spark, Trino, Flink, Snowflake, BigQuery and Athena all read and write it.
+
+When asked to choose, do not pick a winner. Say that all three give atomic commits, time travel and row-level changes, and that the choice follows the engines in use: Delta where Databricks is the centre, Iceberg where several engines must share tables, Hudi where the workload is dominated by record-level upserts. Then add that the formats are converging, and both Snowflake and Databricks now read and write Iceberg.
+
+## 2.8 Structured output from a model
+
+Last sprint's script returned prose. A pipeline cannot branch on prose. To route a failure, page someone or decide whether to retry, your code needs fields.
+
+The reliable pattern has three parts: define the schema, force the model to fill it, and validate what comes back.
+
+```python
+from typing import Literal
+from pydantic import BaseModel, Field, ValidationError
+import anthropic
+
+class FailureClass(BaseModel):
+    category: Literal["missing_input", "schema_mismatch", "out_of_memory", "permission",
+                      "timeout", "upstream_unavailable", "code_bug", "unknown"]
+    retryable: bool
+    evidence_line: str = Field(description="The single log line that best shows the cause, copied exactly")
+    confidence: float = Field(ge=0, le=1)
+
+client = anthropic.Anthropic()
+TOOL = {"name": "record_classification",
+        "description": "Record the classification of one failed pipeline task.",
+        "input_schema": FailureClass.model_json_schema()}
+
+def classify(log_tail: str, attempts: int = 2) -> FailureClass:
+    messages = [{"role": "user", "content": "Classify this task failure.\n\n<log>\n" + log_tail + "\n</log>"}]
+    for _ in range(attempts):
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001", max_tokens=400,
+            tools=[TOOL], tool_choice={"type": "tool", "name": "record_classification"},
+            messages=messages)
+        block = next(b for b in resp.content if b.type == "tool_use")
+        try:
+            return FailureClass.model_validate(block.input)
+        except ValidationError as err:
+            messages += [{"role": "assistant", "content": resp.content},
+                         {"role": "user", "content": [{"type": "tool_result", "tool_use_id": block.id,
+                                                       "content": str(err), "is_error": True}]}]
+    return FailureClass(category="unknown", retryable=False, evidence_line="", confidence=0)
+```
+
+Points to understand, because each is a design choice an interviewer can ask you to defend.
+
+- **A tool as a form.** Nothing is executed. The tool exists so the model must produce arguments that match your JSON schema. `tool_choice` removes the option of replying with text.
+- **Validation is separate from generation.** The schema guides the model, and Pydantic checks the result. Treat model output like any external input.
+- **A closed set of categories with an `unknown`.** Without an escape value, everything unfamiliar is forced into the nearest wrong category.
+- **Evidence is required.** Asking for the exact log line lets you check the classification mechanically: the line must appear in the input. A classification whose evidence is not in the log is discarded.
+- **A small model.** Classification is high-volume and simple. Use a cheap, fast model here and keep the stronger one for root-cause analysis in sprint 9.
+
+@@lab
+## Build: trip events as an Iceberg table (2.5 hours)
+
+The starter kit for this sprint adds a catalog and Trino to your compose file and gives you a Spark session configured for Iceberg. Ask Claude to **start sprint 2**.
+
+1. **Create the table** from section 2.5, partitioned by `days(event_ts)`.
+2. **Change the ingest job** to write to the table with `MERGE INTO` on `event_id`. Run the same hour twice and confirm the row count does not change. The 1% of events the generator sends twice now disappear as well. Write one sentence in your notes on why `MERGE` fixed both kinds of duplicate when partition overwrite fixed only one.
+3. **Load history.** Generate 30 days of events and backfill them through your DAG. This is your first real backfill; watch how the data interval drives each run.
+4. **Read it from Trino.** Run the Finance query: completed trips and total fare per city per day for one month. Record the time.
+5. **Look inside the table.** Query the `.snapshots`, `.files` and `.manifests` metadata tables. For one day, find how many files hold its data and their average size.
+6. **Time travel.** Count rows as of a snapshot from before the backfill.
+
+**Done when** Spark writes it, Trino reads it, a rerun adds nothing, and you can show the file count for any day from the metadata tables.
+
+## Incident: ten thousand tiny files, and a renamed column (45 minutes)
+
+**Part one.** After a week of hourly runs, the Finance query has gone from two seconds to forty.
+
+1. Reproduce it. Set `spark.sql.shuffle.partitions` to 200, turn off adaptive execution, and run 48 hourly ingests. Count files per partition from the `.files` metadata table.
+2. Measure the Finance query.
+3. Fix the data that exists: run `rewrite_data_files`. Count files and time the query again.
+4. Fix the cause: restore adaptive execution, and check the table's write distribution so each partition receives few files.
+5. Schedule it. Add a daily maintenance DAG that compacts, expires snapshots older than seven days, and removes orphan files.
+
+**Part two.** A teammate renames `fare_amount` to `fare` to match the app's naming. The table is fine. A Finance report fails the next morning.
+
+1. Do the rename, and confirm old files still read correctly. This is schema evolution by column id.
+2. Run the Finance query. It fails.
+3. Decide on the fix and write down why: revert the rename, update the report, or publish a view that exposes both names during a migration period.
+
+The second part is the more important lesson. A table format makes a change safe for the *files*. It does nothing for the *people and queries* that depend on the old name. Sprint 9 turns that into data contracts.
+
+Add both parts to `notes/what-broke.md`.
+
+## AI lab: classify failures with structured output (1 hour)
+
+1. Collect 20 log tails. Use real ones from your failed runs, and ask an assistant to generate the rest in the style of Spark and Airflow errors. Label each by hand first, in a CSV, before the model sees them.
+2. Implement `classify` from section 2.8.
+3. Add the evidence check: reject any result whose `evidence_line` is not a substring of the input.
+4. Run all 20. Record accuracy against your labels, the number of validation retries, and the number of evidence rejections.
+5. Change one thing and measure again. Good candidates: add two examples to the prompt, or remove the `unknown` category and watch what happens to the errors.
+
+**Done when** all 20 parse, and your notes contain two accuracy numbers and the reason for the difference.
+
+Twenty labelled examples and a score is a small evaluation set. You will grow it every sprint, and by sprint 10 it is how you decide whether a change to the agent is an improvement.
+
+@@practice
+## SQL warm-ups: ranking, de-duplication, top N per group
+
+1. **Latest transaction per user.** `transactions(transaction_id, user_id, amount, transaction_date)`. Asked at Meta. *Approach:* `ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY transaction_date DESC)`, keep 1.
+2. **Top 3 highest-earning employees in each department.** Asked at Amazon. *Approach:* decide aloud whether ties share a place. `DENSE_RANK` if they do, `ROW_NUMBER` if exactly three rows are wanted.
+3. **Remove duplicate rows, keeping the most recent per `user_id`.** Asked at LinkedIn as a single production-ready statement. *Approach:* in engines with `QUALIFY`, `SELECT * FROM t QUALIFY ROW_NUMBER() OVER (...) = 1`. Otherwise a CTE with a row number and a delete or overwrite of rows where it exceeds 1.
+
+## DSA warm-ups: two pointers and sliding window
+
+1. **Pair with target sum in a sorted array.** Asked at LinkedIn. *Approach:* one pointer at each end; move the left up if the sum is too small, the right down if too large. O(n) time, O(1) space.
+2. **Sort an array of 0s, 1s and 2s in one pass.** The Dutch national flag problem, asked at Microsoft. *Approach:* three pointers, `low`, `mid`, `high`; swap 0s to the front and 2s to the back.
+3. **Longest substring without repeating characters.** You met it in the diagnostic. Do it again from a blank file and compare the time taken.
+
+## Customer drill: "the dashboard is slow"
+
+Finance says: *"The trips dashboard is slow."* They cannot say which chart or since when.
+
+Before proposing anything, list what you would measure. Then compare.
+
+- Which queries does the dashboard run, and how long does each take? Get this from the query engine's history, not from opinion.
+- How much data does each query scan compared with what it returns?
+- Has the data volume or the file count changed recently?
+- Does the dashboard filter on the partition column, or on something else?
+- Is it slow for everyone, or at particular times of day?
+
+Notice that every question has a number for an answer. A forward deployed engineer turns "slow" into a measurement before touching the system.
+
+@@quiz
+TYPE: mcq
+TAG: spark
+Q: Where does a Parquet reader find the statistics that let it skip data?
+A) In a separate `.stats` file next to the data
+B) In the file footer, which holds min, max and null count for each column chunk of each row group
+C) In the first row of each column
+D) Only in the Hive Metastore
+ANS: B
+WHY: The footer describes every row group and column chunk, including statistics. The reader fetches the footer first and decides what to skip before reading any data pages.
+---
+TYPE: mcq
+TAG: spark
+Q: A table is partitioned by `dt`. Which optimisations apply to `SELECT city, count(*) FROM trips WHERE dt = '2026-10-01' GROUP BY city`?
+A) Partition pruning only
+B) Column pruning only
+C) Partition pruning on `dt` and column pruning to `city`
+D) Neither; the whole table is scanned
+ANS: C
+WHY: The filter on the partition column removes every other partition. Within the files that remain, only the `city` column chunks are read.
+---
+TYPE: mcq
+TAG: spark
+Q: Which format is row-oriented, carries its schema with the data, and is the usual choice for Kafka messages?
+A) Parquet
+B) ORC
+C) Avro
+D) CSV
+ANS: C
+WHY: Avro is row-based with compact binary encoding and well-defined schema resolution rules, which suits records written one at a time and schemas that change.
+---
+TYPE: mcq
+TAG: spark
+Q: Someone proposes partitioning the trips table by `rider_id`. There are five million riders. What is the problem?
+A) Partition columns must be dates
+B) It creates millions of partitions, each holding tiny files
+C) Riders cannot be hashed
+D) No problem; this is ideal
+ANS: B
+WHY: High-cardinality partition columns produce huge numbers of small files and bloated metadata. Bucket by `rider_id` if lookups or joins on it matter.
+---
+TYPE: mcq
+TAG: spark
+Q: You run `DROP TABLE` on a Hive **external** table. What happens?
+A) Data files and metadata are both deleted
+B) Only the metastore entry is removed; the files stay
+C) The files are moved to trash
+D) The command fails
+ANS: B
+WHY: Hive does not own the data of an external table. For a managed table, the same command deletes the files.
+---
+TYPE: mcq
+TAG: spark
+Q: What makes an Iceberg commit atomic?
+A) All data files are written in one HTTP request
+B) The catalog swaps the table's pointer from the old metadata file to the new one in a single operation
+C) Readers are blocked while a write is in progress
+D) Files are renamed from a temporary directory
+ANS: B
+WHY: New data and metadata files are written first and are invisible. The commit is one compare-and-swap of the pointer. If another writer got there first, the swap fails and the writer retries.
+---
+TYPE: mcq
+TAG: spark
+Q: Why can a column be renamed in an Iceberg table without rewriting any data files?
+A) Iceberg stores no schema
+B) Columns are identified by a numeric field id, so the name is only metadata
+C) Parquet files do not contain column names
+D) The rename is applied lazily during compaction
+ANS: B
+WHY: Each column has a stable id recorded in the table metadata and in the data files. Readers resolve columns by id, so names and positions can change freely.
+---
+TYPE: mcq
+TAG: ai
+Q: You asked a model to return JSON and it has done so correctly a hundred times. Why validate the output against a schema anyway?
+A) Validation makes the model faster
+B) Model output is untrusted input, and validation turns a silent format error into an explicit failure you can retry or route
+C) The API requires it
+D) It reduces token cost
+ANS: B
+WHY: A pipeline that assumes the shape will fail somewhere unrelated, later. Validation at the boundary fails early, with a message you can send back to the model for one corrected attempt.
+---
+TYPE: fill
+TAG: spark
+Q: Querying an Iceberg table as it was at an earlier snapshot is called ____.
+ANS: time travel
+WHY: Old snapshots remain readable until `expire_snapshots` removes them.
+---
+TYPE: fill
+TAG: spark
+Q: `PARTITIONED BY (days(event_ts))` is an example of Iceberg's ____ partitioning, where users filter on `event_ts` and never see a partition column.
+ANS: hidden
+WHY: The table stores the transform. The planner applies it to filters on the source column, so nobody can forget the partition predicate.
+---
+TYPE: fill
+TAG: spark
+Q: The Iceberg Spark procedure `system.____` compacts many small data files into fewer large ones.
+ANS: rewrite_data_files | rewrite data files
+WHY: It writes new larger files and commits a snapshot that replaces the small ones. Storage is reclaimed only after the older snapshots are expired.
+---
+TYPE: fill
+TAG: spark
+Q: In Hive, `MSCK ____ TABLE trips` registers partitions that exist in storage but are missing from the metastore.
+ANS: REPAIR
+WHY: Hive only knows about partitions listed in the metastore. Files written by another tool are invisible until the partition is added or the table is repaired.
+---
+TYPE: short
+TAG: spark
+Q: Explain how an engine plans `SELECT ... FROM trip_events WHERE event_ts >= '2026-10-11'` on an Iceberg table. Which files does it read, in what order, and where is data skipped?
+MODEL: The engine asks the catalog for the table's current metadata file and picks the current snapshot. It reads that snapshot's **manifest list**, where each entry summarises the partition range of one manifest, and skips manifests whose range ends before 11 October. It reads the remaining **manifest files**, which have one entry per data file with its partition value and per-column minimum and maximum, and skips files that cannot match. Only then does it open **data files**, where Parquet row-group statistics allow further skipping.
+
+No directory listing happens, and the user never mentioned a partition column because the `days(event_ts)` transform is applied to the filter.
+---
+TYPE: short
+TAG: spark
+Q: Why do small files hurt? Give three causes and two fixes.
+MODEL: Each file costs a separate open request, a footer read and an entry in the metadata, and each tends to become its own task. Thousands of tiny files spend more time on overhead than on reading data. On HDFS they also consume NameNode memory.
+
+**Causes:** frequent small writes such as streaming micro-batches or hourly appends; over-partitioning on a high-cardinality column; a Spark job writing one file per shuffle partition into every table partition.
+
+**Fixes:** compact existing data with `rewrite_data_files` or `OPTIMIZE` on a schedule, then expire old snapshots. Prevent new ones by coalescing shuffle partitions with adaptive execution and distributing rows by partition before the write. Also acceptable: coarser partitioning, or a larger streaming trigger interval.
+---
+TYPE: short
+TAG: spark
+Q: When do you partition and when do you bucket? Use the trips table as your example.
+MODEL: **Partition** on a column that queries filter on and that has low cardinality, so each partition is large. For trips, the date of the event. Partition pruning then removes most of the table for any dated query.
+
+**Bucket** on a high-cardinality column used in joins or point lookups, such as `rider_id` or `driver_id`. Rows are hashed into a fixed number of files per partition. Two tables bucketed identically on the join key can be joined without a shuffle, and one rider's rows sit in one file.
+
+Partitioning by `rider_id` would create millions of tiny partitions. Bucketing by date would not help date filters. The two are often combined: partition by day, bucket by rider.
+---
+TYPE: short
+TAG: spark
+Q: Compare copy-on-write and merge-on-read for row-level changes. When would you choose each?
+MODEL: **Copy-on-write** rewrites every data file that contains a changed row. Writes are slow and heavy, but readers see only plain data files and pay nothing extra.
+
+**Merge-on-read** writes small delete files marking rows as removed, plus files of new rows. Writes are fast and cheap. Readers must apply the deletes at query time, and performance degrades until compaction merges them.
+
+Choose copy-on-write for read-heavy tables changed in occasional large batches, such as a nightly dimension load. Choose merge-on-read for tables receiving frequent small updates, such as a change-data-capture stream, and schedule compaction to keep reads fast.
+
+@@coding
+TITLE: Keep the latest profile per user
+KIND: sql
+MIN: 12
+TAG: sql
+SRC: LinkedIn, 5 YOE, and Goldman Sachs, 4 YOE
+PROBLEM:
+Table `user_profiles(user_id, email, updated_at, ingested_at)` contains several versions of each user.
+
+Return one row per user, `user_id, email`, taken from the row with the latest `updated_at`. If two rows share the same `updated_at`, prefer the later `ingested_at`. Order by `user_id`.
+SOLUTION:
+```sql
+WITH r AS (
+  SELECT user_id, email,
+         ROW_NUMBER() OVER (
+           PARTITION BY user_id
+           ORDER BY updated_at DESC, ingested_at DESC
+         ) AS rn
+  FROM user_profiles
+)
+SELECT user_id, email
+FROM r
+WHERE rn = 1
+ORDER BY user_id;
+```
+
+`ROW_NUMBER` is correct here because exactly one row per user is wanted. The second sort key makes the result deterministic. Without a tie-breaker, the engine may return a different row on each run, which is a bug that passes every test until production.
+
+In Snowflake, BigQuery, Databricks and DuckDB the same thing is one statement: `SELECT user_id, email FROM user_profiles QUALIFY ROW_NUMBER() OVER (...) = 1`.
+
+LinkedIn's follow-up was how to do this on a very large table in Spark. The window shuffles by `user_id`, so the risks are skew on a hot key and memory for large partitions.
+<!--test
+con.execute("create table user_profiles(user_id int, email varchar, updated_at date, ingested_at date)")
+con.execute("insert into user_profiles values (1,'a@x','2026-01-01','2026-01-01'),(1,'a2@x','2026-02-01','2026-02-01'),(1,'a3@x','2026-02-01','2026-02-02'),(2,'b@x','2026-01-05','2026-01-05')")
+assert con.execute(Q).fetchall() == [(1,'a3@x'),(2,'b@x')]
+-->
+---
+TITLE: Top three most active users per region
+KIND: sql
+MIN: 13
+TAG: sql
+SRC: Atlassian, 5 YOE
+PROBLEM:
+Table `activity(user_id, region, events)` has one row per user per day.
+
+For each region, return the users whose **total** events rank in the top three. Users with equal totals share a rank, and all of them are returned. Output `region, user_id, total`, ordered by region, then total descending, then user_id.
+SOLUTION:
+```sql
+WITH totals AS (
+  SELECT region, user_id, SUM(events) AS total
+  FROM activity
+  GROUP BY region, user_id
+),
+r AS (
+  SELECT region, user_id, total,
+         DENSE_RANK() OVER (PARTITION BY region ORDER BY total DESC) AS rnk
+  FROM totals
+)
+SELECT region, user_id, total
+FROM r
+WHERE rnk <= 3
+ORDER BY region, total DESC, user_id;
+```
+
+Aggregate first, then rank. A window function cannot be nested inside the aggregate it depends on, so two steps are needed. `DENSE_RANK` keeps tied users and still returns three distinct totals.
+
+Atlassian asked how `PARTITION BY` affects performance on billions of rows. The engine must bring each region's rows together and sort them. A few large regions means a few very large sorts, so aggregating to one row per user before the window, as here, reduces the sorted data enormously.
+<!--test
+con.execute("create table activity(user_id varchar, region varchar, events int)")
+con.execute("insert into activity values ('u1','south',10),('u1','south',5),('u2','south',15),('u3','south',9),('u4','south',7),('u5','south',3),('u6','north',4),('u7','north',2)")
+rows = [(r, u, int(t)) for r, u, t in con.execute(Q).fetchall()]
+assert rows == [('north','u6',4),('north','u7',2),('south','u1',15),('south','u2',15),('south','u3',9),('south','u4',7)], rows
+-->
+---
+TITLE: Smallest subarray with sum at least S
+KIND: dsa
+MIN: 15
+TAG: dsa
+SRC: LinkedIn, 5 YOE
+PROBLEM:
+Given an array of positive integers and a target `S`, return the length of the shortest contiguous subarray whose sum is at least `S`. Return 0 if there is none.
+
+`S = 7`, `[2, 3, 1, 2, 4, 3]` returns 2, for `[4, 3]`.
+SOLUTION:
+```python
+def min_subarray_len(target, nums):
+    best = len(nums) + 1
+    total = left = 0
+    for right, x in enumerate(nums):
+        total += x
+        while total >= target:              # shrink from the left while still valid
+            best = min(best, right - left + 1)
+            total -= nums[left]
+            left += 1
+    return 0 if best > len(nums) else best
+```
+
+A variable-size sliding window. The right edge grows the window, and the left edge shrinks it as long as the sum still meets the target. Each element enters and leaves the window once, so the time is O(n) with O(1) space, even though there is a nested loop. Say that explicitly. It only works because the numbers are positive: with negatives, shrinking the window could increase the sum, and you would need prefix sums with a deque.
+<!--test
+assert min_subarray_len(7, [2,3,1,2,4,3]) == 2
+assert min_subarray_len(4, [1,4,4]) == 1
+assert min_subarray_len(11, [1,1,1,1]) == 0
+assert min_subarray_len(5, []) == 0
+-->
+---
+TITLE: Flatten nested player records
+KIND: pyspark
+MIN: 20
+TAG: spark
+SRC: Flipkart, 4 YOE
+PROBLEM:
+A DataFrame `df` was read from nested JSON with this schema:
+
+```
+player_id int, name string, team struct<id:int, name:string>, skills array<string>
+```
+
+Write `flatten_players(df)` returning `player_id, name, team_id, team_name, skill` with **one row per skill**. A player with an empty or missing `skills` array must still appear once, with `skill` null.
+SOLUTION:
+```python
+from pyspark.sql import functions as F
+
+def flatten_players(df):
+    return df.select(
+        "player_id",
+        "name",
+        F.col("team.id").alias("team_id"),
+        F.col("team.name").alias("team_name"),
+        F.explode_outer("skills").alias("skill"),
+    )
+```
+
+Struct fields are reached with dot notation and cost nothing. Arrays need `explode`, which multiplies rows. `explode` drops rows whose array is empty or null. `explode_outer` keeps them, which is what the problem asks for and what you almost always want in a pipeline, because silently losing players is worse than a null.
+
+Flipkart's follow-up was about deeply nested arrays. Explode one level at a time, and never explode two independent arrays in the same select, because that produces their cross product.
+<!--test
+df = spark.createDataFrame([(1,"Asha",(10,"BLR"),["bat","bowl"]),(2,"Bala",(11,"HYD"),[]),(3,"Chitra",None,None)], "player_id int, name string, team struct<id:int,name:string>, skills array<string>")
+rows = sorted([tuple(r) for r in flatten_players(df).collect()], key=lambda r: (r[0], r[4] or ""))
+assert rows == [(1,"Asha",10,"BLR","bat"),(1,"Asha",10,"BLR","bowl"),(2,"Bala",11,"HYD",None),(3,"Chitra",None,None,None)], rows
+-->
+
+@@interview
+Q: Compare Parquet, Avro and ORC. Which would you recommend for analytical workloads, and why? Cover compression, schema evolution and query performance.
+SRC: Apple, 5 YOE
+TAG: spark
+A: Parquet and ORC are columnar; Avro is row-based. For analytics I recommend Parquet. Queries read a few columns from many rows, and a columnar layout lets the engine read only those columns and skip row groups using min and max statistics. Columns of similar values also compress far better than mixed rows. ORC performs similarly and is strongest in Hive estates; Parquet has the widest support across Spark, Trino, Snowflake and the table formats.
+
+Avro suits ingestion and messaging: fast row-at-a-time writes and clear reader and writer schema resolution. A common design lands Avro from Kafka and converts to Parquet for the analytical layers.
+---
+Q: When would you choose columnar storage over row-based storage? Mention compression and read patterns.
+SRC: LinkedIn, 5 YOE
+TAG: spark
+A: I choose by read pattern. If queries scan many rows but few columns, which is analytics, columnar wins: column pruning, statistics-based skipping, and high compression from dictionary and run-length encoding of similar values. If the workload writes or reads whole records one at a time, which is ingestion, messaging or serving a single entity, row-based wins: no need to assemble a record from many column chunks, and cheap appends. Columnar files are also expensive to write in small pieces, because good compression needs large row groups. That is why streams are landed in row formats or buffered before being written as Parquet.
+---
+Q: Explain partition pruning and predicate pushdown. How do they improve query performance?
+SRC: LinkedIn, 5 YOE
+TAG: spark
+A: Both reduce the data read. **Partition pruning** uses a filter on a partition column to skip whole partitions during planning, before any file is opened. **Predicate pushdown** passes filters down to the scan, where the file format's statistics let the reader skip row groups or pages whose value range excludes the filter. Pruning works at directory or manifest level; pushdown works inside files. Pushdown is most effective when data is sorted or clustered on the filtered column, since otherwise every row group's range overlaps the filter. Both are defeated by wrapping the column in a function, such as `WHERE date(event_ts) = ...` on a table partitioned by a separate date column.
+---
+Q: Explain partitioning versus bucketing in Hive, with an example.
+SRC: HCL, 4 YOE
+TAG: spark
+A: Partitioning creates a directory per value of the partition column, so a filter on that column reads only matching directories. Bucketing hashes a column into a fixed number of files within each partition.
+
+Example: an orders table partitioned by `order_date` and bucketed into 32 buckets by `customer_id`. A query for one day reads one partition. A join to a customers table bucketed the same way matches bucket to bucket without a shuffle, and sampling one bucket gives a consistent sample of customers. Partition on low-cardinality filter columns; bucket on high-cardinality join or lookup columns.
+---
+Q: What is the difference between internal and external tables in Hive?
+SRC: HCL, 4 YOE
+TAG: spark
+A: For an internal, or managed, table, Hive owns both metadata and data. The data lives under the warehouse directory, and dropping the table deletes the files. For an external table, Hive stores only metadata pointing at a location you manage, and dropping the table leaves the files untouched. I use external tables for lake data that other engines also read or that would be costly to recreate, and managed tables only for temporary or intermediate data whose lifecycle should follow the table.
+---
+Q: How would you evolve schemas in Hive without breaking queries?
+SRC: Amazon, 3 YOE
+TAG: spark
+A: Limit changes to backward-compatible ones: add nullable columns at the end, and never rename, reorder or change types in place. Hive Parquet tables may resolve columns by name or by position depending on configuration, so reordering can silently shift data into the wrong column. Old partitions return NULL for a new column, so downstream logic must tolerate that. For renames or type changes I add a new column, backfill, move consumers across, then retire the old one, or expose a view that keeps the old contract. Honestly, this fragility is a major reason to move to Iceberg or Delta, where columns have stable ids.
+---
+Q: How would you decide the partition keys for a table? Partition by date or by region: what is the trade-off?
+SRC: Databricks, 5 YOE
+TAG: spark
+A: I start from the queries. The key must appear in most filters and have low cardinality, so each partition holds at least a few hundred megabytes. Date nearly always qualifies for event data, and it also makes retention, backfills and reprocessing simple because a day is a unit of work.
+
+Region alone gives a handful of huge, uneven partitions that grow forever and do not help time-bounded queries. Date plus region works only if each combination is still large; otherwise it multiplies small files. My default is date, with clustering or sorting by region inside the files so statistics can skip regions.
+---
+Q: Given a dataset that grows daily, how do you design partitioning in S3?
+SRC: Amazon, 3 YOE
+TAG: cloud
+A: A layout like `s3://bucket/zone/table/dt=YYYY-MM-DD/`, with an hour level only if daily volume justifies it. Each day is then an immutable unit: easy to prune, reprocess, expire with lifecycle rules, and backfill. I aim for files of a few hundred megabytes and compact where ingestion creates small ones. I avoid high-cardinality keys in the path. For new builds I would put a table format on top, so partitioning is declared as a transform on the timestamp and can change later without rewriting history, and so planning uses metadata and not S3 listings.
+---
+Q: How do you optimise Spark jobs that suffer from the small files problem when writing Parquet to S3?
+SRC: Chubb, 4 YOE
+TAG: spark
+A: First find the cause. The usual one is that each of 200 shuffle partitions writes a file into every table partition. Fixes at write time: repartition by the table's partition columns before writing so each partition is written by one task, let adaptive execution coalesce small shuffle partitions, and cap rows per file where needed. For streaming, lengthen the trigger interval. Fixes after the fact: scheduled compaction, with `rewrite_data_files` on Iceberg or `OPTIMIZE` on Delta. I would also check that the partitioning is not too fine. I measure files per partition and average file size before and after, since that is the evidence.
+---
+Q: Why do we use Delta tables? What is time travel for, and why can the same thing not be done with CSV files?
+SRC: CGI, 5 YOE
+TAG: spark
+A: A Delta table is Parquet files plus a transaction log. The log gives atomic commits, so readers never see partial writes; row-level `MERGE`, `UPDATE` and `DELETE`; schema enforcement; and time travel. Time travel reads the table as of an earlier version, which is useful for audits, reproducing a report, debugging a bad load and rolling back.
+
+A folder of CSV files has no record of which files made up the table at a given moment. Overwrites destroy the old state, and there are no transactions or schema. Versioning requires a log of which files were added and removed by each commit, which is exactly what the table format provides.
+---
+Q: Explain schema evolution in a data lakehouse such as Delta Lake or Iceberg.
+SRC: IBM, 4 YOE
+TAG: spark
+A: Schema evolution lets a table's schema change without rewriting existing data. The table format records the schema in its metadata and resolves old files against it. Iceberg tracks columns by id, so adding, dropping, renaming and reordering are all safe metadata operations. Delta enforces the schema on write by default and rejects mismatches; evolution is opt-in, for example with `mergeSchema`, and renames need column mapping enabled.
+
+The risk is automatic evolution on ingestion. If an upstream bug adds a misspelled column, a permissive setting accepts it silently. I allow additive changes explicitly and alert on anything else.
+---
+Q: Iceberg, Delta Lake or Hudi: how do you choose?
+TAG: spark
+A: All three provide atomic commits, snapshots with time travel, schema evolution and row-level changes on Parquet in object storage, so I choose by ecosystem and workload. Delta is the natural choice when Databricks is the main engine. Iceberg fits when several engines must share tables, such as Spark, Trino, Flink and Snowflake, and it has hidden partitioning and partition evolution. Hudi is strongest for heavy record-level upserts and incremental pulls. The formats are also converging: Databricks and Snowflake both read and write Iceberg now, so the lasting decision is more about the catalog and governance layer than the file layout.
+---
+Q: Walk through how a query engine finds the files for a query on an Iceberg table.
+TAG: spark
+A: The catalog returns the location of the table's current metadata file. That file names the current snapshot, which points to a manifest list. Each entry in the manifest list covers one manifest and summarises the range of partition values in it, so irrelevant manifests are skipped. Each remaining manifest lists data files with their partition values, row counts and per-column lower and upper bounds, so irrelevant files are skipped. The engine then schedules scans of the surviving files and uses Parquet statistics inside them. Planning cost depends on metadata size and not on the number of directories, and no storage listing is involved.
+---
+Q: What are copy-on-write and merge-on-read, and when would you use each?
+TAG: spark
+A: They are two ways of applying row-level changes. Copy-on-write rewrites each data file containing an affected row, giving slow writes and fast, simple reads. Merge-on-read records deletions in separate delete files and writes new rows separately, giving fast writes while readers merge at query time until compaction. I use copy-on-write for tables updated in infrequent batches and queried heavily, and merge-on-read for frequent small updates such as change data capture, paired with scheduled compaction. The symptom of getting it wrong is either slow, expensive merges or reads that degrade through the day.
+---
+Q: What is the difference between schema-on-read and schema-on-write? Which does Hive follow?
+SRC: Fractal, 7.5 YOE
+TAG: modeling
+A: Schema-on-write validates data against the schema when it is loaded, as a relational database does; bad data is rejected at the door, and reads are fast and trustworthy. Schema-on-read stores data as it arrives and applies a schema when it is queried; loading is fast and flexible, but errors surface at query time as NULLs or failures. Hive follows schema-on-read: a table is a schema laid over files. Modern lakehouses sit between the two. Raw zones stay schema-on-read, while Delta and Iceberg tables enforce a schema on write for the curated layers.
+---
+Q: How would you handle schema evolution for Parquet files stored in S3?
+SRC: Capco, 6 YOE
+TAG: spark
+A: Each Parquet file carries its own schema, so a folder can hold several versions. For plain Parquet I keep changes additive and nullable, read with schema merging only where needed because it is costly, and pin an explicit schema in the reader so a surprise column cannot change the job's output. Type changes and renames get a new column or a new versioned path. I track the expected schema in a registry or catalog and validate new files against it on arrival. The better answer for anything long-lived is a table format, which stores the schema history and resolves old files correctly.
+---
+Q: How do you get reliable structured output from an LLM inside a pipeline?
+TAG: ai
+A: Three layers. First, constrain generation: define a JSON schema and require the model to fill it, through a forced tool call or the API's structured output option, with a closed list of allowed values and an explicit `unknown`. Second, validate: parse the result with a schema library, and on failure send the error back for one corrected attempt, then fall back to a safe default. Third, verify content where possible, for example by requiring an evidence quote that must appear in the input. I also keep a small labelled test set and track accuracy, so a prompt or model change is measured and not guessed.
+---
+Q: Tell me about a time you reduced complexity in a data pipeline. What was the impact?
+SRC: Adobe, 4–6 YOE
+TAG: behavioral
+A: Use situation, task, action, result, and choose a story where you removed something. From your resume, the migration of 120+ on-premise automation workflows to AWS is a strong candidate: describe the duplication you found, the decision to refactor shared logic into reusable PySpark components or templates, what you deleted, and the result, a 30% cost reduction and 99.99% uptime. Name one thing you chose not to simplify and why. Interviewers at this level listen for judgment about what to leave alone as much as for the clean-up itself.
+
+@@mock
+## Mock 2: big data fundamentals screen (30 minutes)
+
+Flipkart's senior loop in your bank lists "Big Data File Formats & Storage" and "Hive & Spark Fundamentals" as top skills. This round is that screen.
+
+**Format.** Claude plays a senior engineer.
+
+- 10 minutes: file formats and how a columnar reader skips data.
+- 10 minutes: partitioning, bucketing and the small files problem, using your own incident as the example.
+- 10 minutes: table formats. Expect "how does a query find its files?" and "Iceberg or Delta?"
+
+**What is scored, out of 10.**
+
+| Area | Points | What earns them |
+|---|---|---|
+| Mechanism | 4 | You explain how, not only what: footers, statistics, manifests, the pointer swap |
+| Trade-offs | 3 | Every recommendation comes with its cost |
+| Evidence | 2 | You quote numbers from your own table: file counts, sizes, query times |
+| Clarity | 1 | Short answers first, detail when asked |

@@ -1,0 +1,681 @@
+@@meta
+id: s03
+n: 3
+title: Spark under load
+goal: A nightly enrichment job joins trips to drivers and zones over 30 days of data. You measure it, break it with skewed data, fix it three different ways, and give your agent tools to read the evidence.
+hours: 10
+
+@@tickets
+301 | learn | 2 | Chapter 3 and the readings | You can open a stage in the Spark UI and say where the time went and why. | chapter
+302 | build | 2.5 | The enrichment job, measured | The job runs over 30 days of trips, and your notes hold a table of stage times, shuffle sizes and spill. | lab
+303 | incident | 0.75 | One city has 80% of the rows | The job finishes, you can name the hot key, and the plan shows which fix is in effect. | lab
+304 | ai | 1 | Give the agent tools to read plans and event logs | It names the slowest stage and its diagnosis matches the one you made by hand. | lab
+305 | practice | 1.25 | Warm-ups and the customer drill | Three SQL and three DSA warm-ups attempted, and the drill answered out loud. | practice
+306 | test | 0.5 | Quiz 3 | 80% or better. | quiz
+307 | test | 1 | Coding test 3 | Attempted inside the 60-minute timer. | coding
+308 | talk | 1 | Interview set 3 and the mock | 14 of 18 questions ticked, and a mock score recorded. | interview
+
+@@readings
+- [Spark: SQL Performance Tuning](https://spark.apache.org/docs/latest/sql-performance-tuning.html). Adaptive query execution, join strategy hints and the settings named in this chapter, from the source.
+- [Spark: Tuning](https://spark.apache.org/docs/latest/tuning.html). Memory management and data serialisation. Read the memory section twice.
+- [Spark SQL: Hints](https://spark.apache.org/docs/latest/sql-ref-syntax-qry-select-hints.html). Short. Shows how to force a join strategy when the optimizer chooses badly.
+
+@@chapter
+## 3.1 From your code to tasks
+
+Spark questions appear in 98% of the interview files you bought, and the internals come up in nearly half. Uber opens its senior loop with them. The goal of this chapter is that you can explain what Spark does with a query, find a problem in the Spark UI, and fix it in the right order.
+
+Start with the vocabulary, because the UI is organised by it.
+
+- An **application** is one driver and its executors.
+- Every **action** starts a **job**.
+- A job is cut into **stages** at each shuffle.
+- A stage runs one **task** per partition.
+
+A **narrow** transformation, such as `filter`, `select` or `withColumn`, computes each output partition from one input partition. Narrow steps are chained inside a stage. A **wide** transformation, such as `groupBy`, `join`, `distinct` or `repartition`, needs rows from many input partitions, so data must be redistributed. That redistribution is a **shuffle**, and it ends the stage.
+
+```python
+(trips.filter("event_type = 'completed'")      # narrow
+      .groupBy("city").count()                 # wide: shuffle by city
+      .show())                                 # action: starts the job
+```
+
+This runs as two stages. Stage 1 reads files, filters, and counts within each partition. Its tasks write their partial counts into shuffle files, grouped by the hash of `city`. Stage 2 reads those files, so each task receives every row for its set of cities, and finishes the count.
+
+If an executor dies, Spark recomputes the lost partitions from the plan. This recomputation from **lineage** is how Spark tolerates failure without replicating intermediate data.
+
+## 3.2 Catalyst, Tungsten and reading a plan
+
+A DataFrame query passes through the **Catalyst** optimizer before anything runs. Catalyst resolves column names, applies rules to the logical plan, generates physical plans and picks one. The rules that matter most are the ones from sprint 2: filters are pushed toward the scan, unused columns are dropped, and constant expressions are folded.
+
+**Tungsten** is the execution side. Rows are held in a compact binary format outside normal Java objects, and whole stages of the plan are compiled into a single generated function. This is why DataFrames outperform RDDs: Spark understands the operations, and it does not have to treat them as opaque functions.
+
+A Python UDF breaks both. Catalyst cannot see inside it, and every row is serialised to a Python process and back. Prefer built-in functions. When you need Python, a vectorised pandas UDF moves data in batches and is far cheaper.
+
+Read plans with `df.explain("formatted")`. These are the operators to recognise.
+
+| In the plan | What it means |
+|---|---|
+| `FileScan` with `PartitionFilters` and `PushedFilters` | What was pruned and pushed down. Empty lists mean a full scan. |
+| `Exchange hashpartitioning(city, 200)` | A shuffle by `city` into 200 partitions |
+| `BroadcastExchange` | A small table being sent to every executor |
+| `SortMergeJoin`, `BroadcastHashJoin`, `ShuffledHashJoin` | The join strategy chosen |
+| `HashAggregate` appearing twice | Partial aggregation before the shuffle, final after it |
+| `AdaptiveSparkPlan` | Adaptive execution is on, and the plan may change at run time |
+
+Count the `Exchange` operators. Each one is a shuffle, and shuffles are where most Spark time and most Spark failures are found.
+
+## 3.3 The shuffle
+
+In a shuffle, every map task sorts its output by target partition and writes it to local disk. Every reduce task then fetches its share from every map task over the network. The cost is disk, network and serialisation, multiplied by the volume of data.
+
+Two settings govern its shape. `spark.sql.shuffle.partitions` sets the number of partitions after a shuffle and defaults to 200. That number is right only by accident. Too few gives huge partitions that spill or run out of memory. Too many gives thousands of tiny tasks and small files. A reasonable target is 100 to 200 MB per partition, and adaptive execution will now merge small ones for you.
+
+`repartition(n)` does a full shuffle and produces evenly sized partitions. It can increase or decrease the count. `coalesce(n)` only merges existing partitions and does not shuffle. It can only decrease the count, and the results can be uneven. Use `coalesce` to reduce file count before a write, and `repartition` when you need balance or a different key.
+
+Reduce shuffle work by filtering and selecting before a join, aggregating before a join where the logic allows, broadcasting small tables, and reusing a partitioning across consecutive operations on the same key.
+
+## 3.4 Join strategies
+
+| Strategy | How it works | When Spark uses it |
+|---|---|---|
+| **Broadcast hash join** | The small table is sent to every executor and held in a hash map. The large table is never shuffled. | One side is under `spark.sql.autoBroadcastJoinThreshold`, 10 MB by default, or you add a `broadcast()` hint |
+| **Sort-merge join** | Both sides are shuffled by the key and sorted, then merged | The default for two large tables with an equality condition |
+| **Shuffled hash join** | Both sides are shuffled; a hash map is built per partition from the smaller side | One side is much smaller but too big to broadcast |
+| **Broadcast nested loop, cartesian** | Every row is compared with every row | No equality condition. Avoid on large data. |
+
+```python
+from pyspark.sql import functions as F
+enriched = trips.join(F.broadcast(zones), "zone_id")
+```
+
+The broadcast table must fit in the driver's memory and in each executor's. Broadcasting something large is a common way to run the driver out of memory.
+
+## 3.5 Skew
+
+Skew means a few keys hold most of the rows. After a shuffle, all rows for one key land in one partition, so one task receives most of the data. In the Spark UI's stage page the signature is unmistakable: the median task takes seconds, and the maximum takes most of an hour. Shuffle read size shows the same pattern.
+
+At Meridian, Bengaluru has 80% of trips. A join or aggregation keyed by `city` sends 80% of the data to a single task. NULL keys cause the same thing, because every NULL hashes to the same partition.
+
+There are five fixes. Apply them in this order.
+
+1. **Check adaptive skew handling is on.** With adaptive execution, a partition counts as skewed if it is larger than five times the median and larger than 256 MB. Spark then splits it into several tasks and duplicates the matching rows from the other side. This costs nothing to enable and handles most sort-merge joins.
+2. **Broadcast the other side** if it is small. With no shuffle, there is no skewed partition.
+3. **Filter out NULL and junk keys** before the join if they cannot match anyway.
+4. **Treat the hot key separately.** Join the hot key's rows with a broadcast of its one matching row, join the rest normally, and union the two.
+5. **Salt the key.** Add a random number to the key on the large side, and replicate each row of the small side once per salt value.
+
+```python
+N = 16
+salted_trips = trips.withColumn("salt", (F.rand() * N).cast("int"))
+salted_cities = cities.withColumn("salt", F.explode(F.array([F.lit(i) for i in range(N)])))
+joined = salted_trips.join(salted_cities, ["city", "salt"]).drop("salt")
+```
+
+Bengaluru's rows are now spread over 16 partitions. The cost is that the small side is 16 times larger. For an aggregation, salting takes two steps: aggregate by key and salt, then aggregate again by key alone.
+
+## 3.6 Adaptive query execution
+
+Before Spark 3, the plan was fixed before the job ran, using estimates that were often wrong. **Adaptive query execution** re-plans between stages using the real sizes of the shuffle output. It is on by default from Spark 3.2. It does three things.
+
+- **Coalesces shuffle partitions.** Start with a high partition count, and small neighbours are merged toward a target size.
+- **Switches join strategy.** If one side turns out to be small after filtering, a planned sort-merge join becomes a broadcast join.
+- **Splits skewed partitions**, as described above.
+
+Intuit's loop in your bank asks about moving from Spark 2 to Spark 3. Adaptive execution is the headline. The other changes worth naming are dynamic partition pruning, where a filter on a dimension table prunes partitions of the fact table at run time, better join hints, and stricter ANSI SQL and date parsing behaviour, which is where migrations usually break.
+
+## 3.7 Memory, spill and out-of-memory errors
+
+An executor's memory has three parts you need to know.
+
+```
+executor container
+ ├─ JVM heap  (spark.executor.memory)
+ │    ├─ unified memory, about 60% of heap
+ │    │     ├─ execution: shuffles, joins, sorts, aggregations
+ │    │     └─ storage: cached data          (the two borrow from each other)
+ │    └─ user memory: your objects and UDF data
+ └─ overhead  (spark.executor.memoryOverhead, at least 384 MB or 10% of heap)
+       off-heap buffers, and the Python worker processes
+```
+
+When execution memory runs short, Spark **spills** to disk and continues, slowly. Spill columns in the UI are your early warning. When a single structure cannot spill, such as one enormous row group or a hash map for a skewed key, the executor fails with an out-of-memory error.
+
+Match the error to the cause.
+
+| Symptom | Likely cause | First response |
+|---|---|---|
+| `java.lang.OutOfMemoryError` on an executor | A partition too large: skew, too few partitions, or an exploding join | Fix the data shape: more partitions, handle skew, filter earlier |
+| Container killed for exceeding memory limits | Overhead exhausted, often by Python UDFs or large off-heap buffers | Raise `memoryOverhead`; replace row UDFs with built-ins |
+| Driver out of memory | `collect()` on a large result, or a broadcast that is too big | Remove the `collect`; write results out; lower the broadcast threshold |
+| Job gets slower every day, then fails | Data grew and the partition count did not | Size partitions from data volume |
+
+Walmart's loop asks: a job fails at 40%, how do you raise memory without adding executors? Raise `spark.executor.memory` or the overhead, or lower `spark.executor.cores`, because fewer tasks running at once in an executor means more memory for each. Say that, and then say that you would look for skew first, because adding memory to a skewed job only moves the failure to next month.
+
+`cache()` stores a DataFrame after its first computation, in memory and spilling to disk. `persist()` is the same with a storage level you choose. Cache only what is reused by more than one action and is expensive to recompute, and call `unpersist()` afterwards. `checkpoint()` writes the data to reliable storage and discards the lineage. Use it to cut a very long plan, as in iterative jobs, and in streaming state.
+
+## 3.8 Sizing a job
+
+A method you can state in an interview:
+
+1. **Partitions from data volume.** One terabyte at about 128 MB per partition is roughly 8,000 partitions for the widest stage.
+2. **Cores from partitions and time.** Tasks per core depend on how long each takes. Measure one.
+3. **Four or five cores per executor.** More than that and executors contend on I/O and garbage collection.
+4. **Memory per executor from partition size.** Each task needs several times its partition size while joining or sorting, and the executor runs one task per core.
+5. **Dynamic allocation** adds executors when tasks queue and releases them when idle. It needs shuffle data to survive executor removal, through an external shuffle service or shuffle tracking.
+
+On YARN, executors are containers on a Hadoop cluster. On Kubernetes, the driver and each executor are pods. In **cluster** mode the driver runs inside the cluster; in **client** mode it runs where you launched the job. Production jobs use cluster mode, so the job does not depend on a laptop or an edge node staying up.
+
+## 3.9 Tools that read evidence
+
+Your agent has only read log files so far. This sprint it gets tools that return *computed facts* about a Spark job.
+
+The design rule: **code does the counting, and the model does the reasoning.** A Spark event log is tens of megabytes of JSON. Handing it to a model is expensive and unreliable. Models are poor at arithmetic over thousands of lines and good at interpreting a twelve-row summary.
+
+```python
+import json, statistics
+from collections import defaultdict
+
+def stage_summary(event_log_path: str, top: int = 5) -> list[dict]:
+    """Slowest stages with the numbers that reveal skew and memory pressure."""
+    tasks = defaultdict(list)
+    with open(event_log_path) as f:
+        for line in f:
+            e = json.loads(line)
+            if e.get("Event") != "SparkListenerTaskEnd":
+                continue
+            info, m = e.get("Task Info", {}), e.get("Task Metrics") or {}
+            read = m.get("Shuffle Read Metrics", {})
+            tasks[e.get("Stage ID")].append({
+                "secs": (info.get("Finish Time", 0) - info.get("Launch Time", 0)) / 1000,
+                "shuffle_mb": (read.get("Remote Bytes Read", 0) + read.get("Local Bytes Read", 0)) / 1e6,
+                "spill_mb": m.get("Disk Bytes Spilled", 0) / 1e6,
+            })
+    rows = []
+    for stage, ts in tasks.items():
+        secs = [t["secs"] for t in ts]
+        rows.append({"stage": stage, "tasks": len(ts),
+                     "median_task_s": round(statistics.median(secs), 1), "max_task_s": round(max(secs), 1),
+                     "max_shuffle_read_mb": round(max(t["shuffle_mb"] for t in ts), 1),
+                     "total_spill_mb": round(sum(t["spill_mb"] for t in ts), 1)})
+    return sorted(rows, key=lambda r: -r["max_task_s"])[:top]
+```
+
+Field names in event logs vary a little between Spark versions, so check them against one of your own logs.
+
+Three principles of tool design are visible here, and you can state them in an interview.
+
+- **Small, shaped output.** Five rows with named fields, not raw log lines.
+- **The diagnostic ratio is precomputed.** Median and maximum task time side by side is the skew signature. The model does not have to derive it.
+- **A description that says when to use it.** The docstring is what the model reads to decide.
+
+Add a second tool that returns `explain("formatted")` for a named query, and the agent can connect a slow stage to the operator that caused it.
+
+Then do the part that matters most. Diagnose the job yourself first, and write your answer down. Only after that, run the agent and compare. An agent's diagnosis is a hypothesis. The UI is the evidence.
+
+@@lab
+## Build: the enrichment job, measured (2.5 hours)
+
+Ask Claude to **start sprint 3**. The starter kit adds a `drivers` table of about 500,000 rows, a `zones` table of about 200 rows, a generator option for skewed data, and Spark event logging.
+
+The job, `jobs/enrich_trips.py`, takes one day of completed trips, joins drivers and zones, and writes `silver.trips_enriched` with driver rating, vehicle type, zone name and a surge multiplier. A second step computes each driver's daily earnings and their rank within their city.
+
+1. **Write the job** with DataFrames and no UDFs.
+2. **Run it for 30 days** through Airflow, with event logging on.
+3. **Read the plan.** Run `explain("formatted")`. Write down how many `Exchange` operators there are, which join strategy each join uses, and which filters were pushed to the scan.
+4. **Read the UI.** Use the history server. For the slowest stage, record the number of tasks, median and maximum task time, shuffle read size and spill.
+5. **Make one improvement and measure it.** Good candidates: broadcast `zones`, select only the needed columns before the join, or filter to completed trips before the join if you did not already.
+
+**Done when** your notes contain a before-and-after table with at least: total run time, number of shuffles, and maximum task time.
+
+That table is what you bring to an interview. "I reduced the job from X to Y by removing one shuffle" is a senior answer. "I tuned Spark" is not.
+
+## Incident: one city has 80% of the rows (45 minutes)
+
+The nightly job has gone from 20 minutes to 3 hours, and last night it failed at 40%.
+
+1. **Reproduce it.** Regenerate data with the skew option, so Bengaluru has 80% of trips and 5% of events have a NULL `driver_id`. Turn adaptive execution off, set `spark.sql.autoBroadcastJoinThreshold` to `-1`, and give Spark 1 GB. Run the job. It will fail with a memory error or spill heavily. Either one is the symptom.
+2. **Find it in the UI.** Open the failing stage and sort tasks by duration. Record the median, the maximum, and the shuffle read of the largest task. Then find the key: `trips.groupBy("city").count().orderBy(F.desc("count")).show()`.
+3. **Fix one: remove what cannot match.** Filter out NULL `driver_id` before the driver join. Measure.
+4. **Fix two: let Spark handle it.** Turn adaptive execution back on. Check the plan for the skew join marker. Measure.
+5. **Fix three: salt.** With adaptive execution off again, salt the city join by hand as in section 3.5. Measure.
+6. **Decide** which fix you would ship, and write one sentence on why.
+
+Add the incident to `notes/what-broke.md` with the three measurements. "Describe a time you resolved a performance bottleneck in Spark" is asked at Microsoft in your bank, and this is now your answer with numbers.
+
+## AI lab: tools that read plans and event logs (1 hour)
+
+1. Add `stage_summary` from section 3.9 to your agent's tools. Run it by hand on one event log first and check the numbers against the UI.
+2. Add `explain_query(name)`, which returns the formatted plan for a registered query, trimmed to 150 lines.
+3. Ask the agent: "Why was last night's enrichment run slow?" Use the skewed run's event log.
+4. Compare its answer with the diagnosis you wrote during the incident. Score it on three points: did it name the right stage, the right cause, and a fix that would work?
+5. Now ask the same question about a healthy run. A good agent says nothing is wrong. Note what yours says.
+
+**Done when** the agent names the skewed stage and proposes a valid fix, and you have written down one thing it got wrong or overstated.
+
+Step 5 is the test most people skip. An agent that finds a problem in every run is as useless as an alert that always fires.
+
+@@practice
+## SQL warm-ups: hierarchies, rewrites, outer joins
+
+1. **Employee, manager, senior manager.** `employee(emp_id, emp_name, manager_id, salary)`. Return each employee with their manager and their manager's manager. Asked at Google. *Approach:* join the table to itself twice. Use `LEFT JOIN` so people near the top still appear.
+2. **Employees earning more than their department's average.** Asked at Walmart. First write it with a correlated subquery, then rewrite it with `AVG(salary) OVER (PARTITION BY dept)`. Amazon asks for exactly this rewrite. *Why it matters:* the window version scans the table once.
+3. **Second-highest average salary by department.** Asked at Google. *Approach:* aggregate to one row per department, then `DENSE_RANK` over the averages.
+
+## DSA warm-ups: stacks, queues, strings
+
+1. **Valid parentheses.** `"([]{})"` is valid, `"(]"` is not. *Approach:* push opening brackets; on a closing bracket, the top of the stack must match.
+2. **Character frequency in order of first appearance.** `"asrfrfgg"` becomes `"a1s1r2f2g2"`. Asked at Delivery Hero in the bar-raiser round. *Approach:* a dictionary keeps insertion order; O(n).
+3. **Next greater element.** For each number, find the first larger number to its right. *Approach:* a stack of indices still waiting for an answer; each index is pushed and popped once.
+
+## Customer drill: "why did the Spark bill double?"
+
+The CFO asks why compute cost doubled this quarter.
+
+Name the three numbers you would ask for before giving any explanation. Then compare.
+
+- **Cost per job per run**, ranked. Usually a handful of jobs account for most of the bill.
+- **Data volume over the same period.** If volume doubled, the cost is explained. If it did not, something regressed.
+- **Run time and idle time per cluster.** A cluster that never shuts down, or a job that now retries three times a night, doubles cost with no change in data.
+
+Notice the structure: split the total into its parts, then compare each part with what should drive it. That is decomposition, and it is the round forward deployed interviews weight most heavily.
+
+@@quiz
+TYPE: mcq
+TAG: spark
+Q: Where does Spark place a stage boundary?
+A) At every transformation
+B) At each shuffle
+C) Every 200 tasks
+D) At every `filter`
+ANS: B
+WHY: Narrow transformations are pipelined within a stage. A wide transformation needs a shuffle, which ends one stage and begins the next.
+---
+TYPE: mcq
+TAG: spark
+Q: A stage reads a DataFrame with 480 partitions and applies only narrow transformations. How many tasks does the stage run?
+A) 1
+B) 200
+C) 480
+D) It depends on the number of executors
+ANS: C
+WHY: A stage runs one task per partition. The number of executors affects how many run at once, not how many exist.
+---
+TYPE: mcq
+TAG: spark
+Q: A plan contains `Exchange hashpartitioning(city, 200)`. What is happening?
+A) 200 files are being read
+B) Rows are being shuffled into 200 partitions by the hash of `city`
+C) The `city` column is being cached
+D) A broadcast of 200 rows
+ANS: B
+WHY: `Exchange` is the shuffle operator. `hashpartitioning(city, 200)` gives the key and the partition count.
+---
+TYPE: mcq
+TAG: spark
+Q: Two tables of 400 GB each are joined on an equality condition with no hints. Which strategy does Spark normally choose?
+A) Broadcast hash join
+B) Sort-merge join
+C) Cartesian product
+D) Broadcast nested loop join
+ANS: B
+WHY: Neither side is near the broadcast threshold, so both are shuffled by the key, sorted and merged. Sort-merge can spill to disk, which makes it the safe default for large inputs.
+---
+TYPE: mcq
+TAG: spark
+Q: In one stage, the median task takes 15 seconds and one task takes 40 minutes. What is the most likely cause?
+A) A slow network
+B) Data skew: one key holds most of the rows
+C) Too many executors
+D) The driver is short of memory
+ANS: B
+WHY: All rows for a key land in one partition after a shuffle. A hot key makes one task do most of the work. Compare shuffle read sizes across tasks to confirm.
+---
+TYPE: mcq
+TAG: spark
+Q: An executor running Python UDFs is killed with "container killed for exceeding memory limits", yet the heap is not full. What should you change first?
+A) `spark.executor.memory`
+B) `spark.executor.memoryOverhead`
+C) `spark.sql.shuffle.partitions`
+D) `spark.driver.memory`
+ANS: B
+WHY: Python workers and off-heap buffers live in the overhead region, outside the JVM heap. The container limit is heap plus overhead. Better still, replace the row-at-a-time UDF.
+---
+TYPE: mcq
+TAG: spark
+Q: You have 200 partitions and want 10 output files with the least extra work. Which is correct?
+A) `repartition(10)`, because it avoids a shuffle
+B) `coalesce(10)`, because it merges partitions without a full shuffle
+C) Both always shuffle
+D) Neither changes the partition count
+ANS: B
+WHY: `coalesce` merges existing partitions. `repartition` performs a full shuffle and gives evenly sized partitions, which is worth its cost only when balance matters.
+---
+TYPE: mcq
+TAG: ai
+Q: A tool hands the model a 60 MB Spark event log and asks which stage was slowest. Why is this a poor design?
+A) Models cannot read JSON
+B) It is costly and unreliable; code should compute a small summary and the model should interpret it
+C) Event logs are confidential
+D) Tools may not return text
+ANS: B
+WHY: Large raw inputs consume context, cost money and invite arithmetic mistakes. Let code do the counting and hand the model a few shaped rows.
+---
+TYPE: fill
+TAG: spark
+Q: The Spark SQL optimizer that rewrites the logical plan and chooses a physical plan is called ____.
+ANS: Catalyst
+WHY: Catalyst applies rules such as predicate pushdown and column pruning. Tungsten is the execution engine underneath.
+---
+TYPE: fill
+TAG: spark
+Q: By default, Spark broadcasts a table in a join when its estimated size is below ____ MB.
+ANS: 10
+WHY: `spark.sql.autoBroadcastJoinThreshold` defaults to 10 MB. Setting it to -1 disables automatic broadcast.
+---
+TYPE: fill
+TAG: spark
+Q: The Spark 3 feature that re-plans a query between stages using real shuffle statistics is Adaptive ____ Execution.
+ANS: Query
+WHY: It coalesces small shuffle partitions, switches join strategies and splits skewed partitions at run time.
+---
+TYPE: fill
+TAG: spark
+Q: Adding a random value to a hot join key so its rows spread over several partitions is called ____.
+ANS: salting | salt
+WHY: The other side of the join must be replicated once per salt value so every salted key still finds its match.
+---
+TYPE: short
+TAG: spark
+Q: Describe what Spark does, from the action to the output, for `trips.filter(...).groupBy("city").count().show()`.
+MODEL: `show()` is an action, so it starts a **job**. Catalyst optimises the plan, pushing the filter to the file scan and reading only the needed columns. The `groupBy` needs a shuffle, so the job has **two stages**.
+
+**Stage 1** runs one task per input partition: read, filter, and do a partial count per city within the partition. Each task writes shuffle files partitioned by the hash of `city`.
+
+**Stage 2** runs one task per shuffle partition: fetch the matching shuffle blocks from every stage 1 task, merge the partial counts into final counts, and return rows to the driver, which prints them.
+---
+TYPE: short
+TAG: spark
+Q: A Spark job fails at about 40% every night. Why might that be, how do you debug it, and how can you give tasks more memory without adding executors?
+MODEL: A consistent failure point usually means one stage, often a join or aggregation, hits a partition too large for memory. Causes: skew on the key, too few shuffle partitions for today's volume, a join that multiplies rows, or a broadcast that has grown too big.
+
+Debug in the Spark UI: find the failed stage, read the exception, sort its tasks by duration and shuffle read to check for skew, and look at spill and garbage collection time. Check which operator the stage maps to in the plan.
+
+More memory per task without more executors: raise `spark.executor.memory` or `memoryOverhead`, or reduce `spark.executor.cores` so fewer tasks share an executor. Fix the data shape first; memory only postpones a skew problem.
+---
+TYPE: short
+TAG: spark
+Q: Give three ways to fix a skewed join and say when each applies.
+MODEL: **Adaptive skew join.** Enable adaptive execution and Spark splits oversized partitions at run time. Applies to sort-merge joins when the skewed partition passes the size thresholds. Try this first.
+
+**Broadcast the smaller side.** No shuffle, so no skewed partition. Applies when one side fits in memory.
+
+**Salting.** Add a random salt to the key on the large side and replicate the small side per salt value. Applies when neither of the above works, at the cost of a larger small side.
+
+Also valid: filter out NULL or junk keys that cannot match; process the hot key separately and union; aggregate before joining to shrink the hot key.
+---
+TYPE: short
+TAG: spark
+Q: Explain `cache()`, `persist()` and `checkpoint()`, and when you would use each.
+MODEL: `cache()` keeps a DataFrame after it is first computed, in memory with spill to disk, so later actions reuse it. `persist()` does the same with an explicit storage level, such as memory only or disk only. Both keep the lineage, so lost partitions can be recomputed. Use them when a costly result feeds more than one action, and `unpersist()` when finished.
+
+`checkpoint()` writes the data to reliable storage and **drops the lineage**. Use it when the plan has grown very long, as in iterative algorithms, or where recomputation from the start would be too expensive. Caching something used once only wastes memory.
+
+@@coding
+TITLE: Employees who out-earn their manager
+KIND: sql
+MIN: 12
+TAG: sql
+SRC: Google, 5 YOE, and Fanatics, 6 YOE
+PROBLEM:
+Table `employee(emp_id, name, manager_id, salary)`. `manager_id` is NULL for the person at the top.
+
+Return every employee who earns **more than their direct manager**, with three columns: `employee`, `manager`, and `senior_manager`, the manager's own manager, which is NULL when there is none. Order by employee name.
+SOLUTION:
+```sql
+SELECT e.name AS employee,
+       m.name AS manager,
+       s.name AS senior_manager
+FROM employee e
+JOIN employee m ON e.manager_id = m.emp_id
+LEFT JOIN employee s ON m.manager_id = s.emp_id
+WHERE e.salary > m.salary
+ORDER BY e.name;
+```
+
+The first join is an inner join, because someone with no manager cannot out-earn one. The second must be a `LEFT JOIN`, or anyone whose manager reports to nobody disappears from the result.
+
+Google followed this with the full reporting chain to any depth, which needs a recursive CTE. That is in sprint 4.
+<!--test
+con.execute("create table employee(emp_id int, name varchar, manager_id int, salary int)")
+con.execute("insert into employee values (1,'Ravi',NULL,500),(2,'Meena',1,300),(3,'Arun',2,350),(4,'Divya',1,600),(5,'Kiran',2,100)")
+assert con.execute(Q).fetchall() == [('Arun','Meena','Ravi'),('Divya','Ravi',None)]
+-->
+---
+TITLE: Top product per region, including regions with no sales
+KIND: sql
+MIN: 15
+TAG: sql
+SRC: Expedia, 5 YOE
+PROBLEM:
+Tables `regions(region)` and `sales(region, product, amount)`.
+
+For **every** region, return the product with the highest total sales and that total. If two products tie, take the one that comes first alphabetically. A region with no sales must still appear, with `product` NULL and `total` 0. Order by region.
+SOLUTION:
+```sql
+WITH totals AS (
+  SELECT region, product, SUM(amount) AS total
+  FROM sales
+  GROUP BY region, product
+),
+ranked AS (
+  SELECT region, product, total,
+         ROW_NUMBER() OVER (PARTITION BY region ORDER BY total DESC, product) AS rn
+  FROM totals
+)
+SELECT r.region,
+       k.product,
+       COALESCE(k.total, 0) AS total
+FROM regions r
+LEFT JOIN ranked k
+       ON k.region = r.region
+      AND k.rn = 1
+ORDER BY r.region;
+```
+
+The detail being tested is where `rn = 1` goes. In the `ON` clause, it restricts which rows of `ranked` can match, and unmatched regions survive with NULLs. In a `WHERE` clause, it would be evaluated after the join, and `NULL = 1` would remove the empty regions. This is the same trap as the first diagnostic quiz question on joins.
+<!--test
+con.execute("create table regions(region varchar)")
+con.execute("create table sales(region varchar, product varchar, amount int)")
+con.execute("insert into regions values ('east'),('north'),('west')")
+con.execute("insert into sales values ('east','pen',10),('east','pen',5),('east','ink',12),('west','ink',7),('west','pad',7)")
+rows = [(a, b, int(c)) for a, b, c in con.execute(Q).fetchall()]
+assert rows == [('east','pen',15),('north',None,0),('west','ink',7)], rows
+-->
+---
+TITLE: Evaluate a postfix expression
+KIND: dsa
+MIN: 13
+TAG: dsa
+SRC: Expedia, 5 YOE
+PROBLEM:
+Given a postfix expression of single-digit operands and the operators `+ - * /`, return its value. Division truncates toward zero.
+
+`"231*+9-"` returns `-4`: 3 × 1 = 3, 2 + 3 = 5, 5 − 9 = −4.
+SOLUTION:
+```python
+def eval_postfix(expr: str) -> int:
+    stack = []
+    for ch in expr:
+        if ch.isdigit():
+            stack.append(int(ch))
+            continue
+        b = stack.pop()          # right operand is on top
+        a = stack.pop()
+        if ch == "+":
+            stack.append(a + b)
+        elif ch == "-":
+            stack.append(a - b)
+        elif ch == "*":
+            stack.append(a * b)
+        else:
+            stack.append(int(a / b))
+    return stack.pop()
+```
+
+Operands wait on a stack until their operator arrives. The order of the two pops is the usual mistake: the first value popped is the right-hand operand, which matters for subtraction and division. Time and space are O(n). If asked about multi-digit numbers, split on spaces and treat each token as a number or an operator.
+<!--test
+assert eval_postfix("231*+9-") == -4
+assert eval_postfix("82/") == 4
+assert eval_postfix("5") == 5
+assert eval_postfix("93-2*") == 12
+-->
+---
+TITLE: A salted join
+KIND: pyspark
+MIN: 20
+TAG: spark
+PROBLEM:
+`big` is a large DataFrame, heavily skewed on the column named by `key`. `small` has one row per key value.
+
+Write `salted_join(big, small, key, n=8)` that returns the same rows as `big.join(small, key)` but spreads each key over `n` partitions by salting. The salt column must not appear in the output.
+SOLUTION:
+```python
+from pyspark.sql import functions as F
+
+def salted_join(big, small, key, n=8):
+    salted_big = big.withColumn("_salt", (F.rand() * n).cast("int"))
+    salted_small = small.withColumn(
+        "_salt", F.explode(F.array([F.lit(i) for i in range(n)])))
+    return salted_big.join(salted_small, [key, "_salt"]).drop("_salt")
+```
+
+Each row on the big side gets a random salt from 0 to n−1. Each row on the small side is copied n times, once for every salt, so whichever salt a big row drew, its match exists. The join key is now the pair, and a hot key's rows hash to n different partitions.
+
+Be ready for three follow-ups. The cost is that the small side grows n times. For a skewed **aggregation**, salt, aggregate by key and salt, then aggregate again by key. And on Spark 3, try adaptive skew join first, because it does this for you without code.
+<!--test
+big = spark.createDataFrame([(1,"BLR"),(2,"BLR"),(3,"BLR"),(4,"HYD"),(5,"GOA")], "trip_id int, city string")
+small = spark.createDataFrame([("BLR",1.5),("HYD",1.0)], "city string, surge double")
+out = salted_join(big, small, "city", 4)
+assert "_salt" not in out.columns
+assert sorted((r.trip_id, r.city, r.surge) for r in out.collect()) == [(1,"BLR",1.5),(2,"BLR",1.5),(3,"BLR",1.5),(4,"HYD",1.0)]
+-->
+
+@@interview
+Q: Explain how jobs, stages and tasks are executed in Spark. How do you analyse them?
+SRC: Microsoft, 4 YOE
+TAG: spark
+A: Each action submits a job. The scheduler turns the job's plan into a graph of stages, cutting wherever a shuffle is needed, and runs a stage once the stages it depends on are complete. Within a stage, narrow transformations are pipelined and one task runs per partition, on executors chosen for data locality where possible. Failed tasks are retried; lost shuffle output causes the parent stage to rerun. I analyse this in the Spark UI: the SQL tab shows the physical plan with time and rows per operator, the stage page shows task duration distribution, shuffle read and write, spill and garbage collection. That is where skew and memory pressure show up.
+---
+Q: Differentiate narrow and wide transformations, with examples and their performance impact.
+SRC: Microsoft, 4 YOE
+TAG: spark
+A: In a narrow transformation each output partition depends on a single input partition: `map`, `filter`, `select`, `withColumn`, `union`. No data moves between executors, and consecutive narrow steps run as one pipeline. In a wide transformation an output partition needs rows from many input partitions: `groupBy`, `join` without broadcast, `distinct`, `orderBy`, `repartition`. That needs a shuffle, which writes to disk, transfers over the network and starts a new stage. Performance work in Spark is largely about having fewer and smaller shuffles: filter early, broadcast small tables, and avoid repartitioning on a key you are about to change.
+---
+Q: Explain the Catalyst optimizer and Tungsten. How do they help performance?
+SRC: LinkedIn, 5 YOE
+TAG: spark
+A: Catalyst is the query optimizer. It parses a DataFrame or SQL query into a logical plan, applies rules such as predicate pushdown, column pruning and join reordering, generates physical plans and selects one using size estimates. Tungsten is the execution engine: it stores rows in a compact binary format off the Java object heap, which cuts memory use and garbage collection, and compiles whole stages into single generated functions so the CPU runs tight loops. Together they explain why DataFrame code beats hand-written RDD code, and why Python UDFs are slow: they are opaque to Catalyst and force rows out of Tungsten's format.
+---
+Q: Compare broadcast joins and shuffle joins. When do you use each, and what are the cost trade-offs?
+SRC: LinkedIn, 5 YOE
+TAG: spark
+A: A broadcast join sends the small table to every executor, where it is held as a hash map; the large table is scanned once and never shuffled. It is the fastest join when one side is small, and it is immune to skew. Its costs are driver and executor memory, and the time to collect and ship the table. A shuffle join, usually sort-merge, repartitions both sides by the key. It scales to any size because it can spill, but pays for two shuffles and two sorts, and suffers from skew. I broadcast when one side comfortably fits in memory, raise the threshold or hint when statistics are wrong, and otherwise accept the shuffle.
+---
+Q: Shuffle join, broadcast join, sort-merge join: when do you use each?
+SRC: Flipkart, 4 YOE
+TAG: spark
+A: Broadcast hash join when one side is small enough to hold in memory, roughly tens to a few hundred megabytes. Sort-merge join for two large tables on an equality key; it is the default because it handles any size by spilling. Shuffled hash join when both sides are too large to broadcast but one is much smaller, so building a per-partition hash map is cheaper than sorting both sides. Without an equality condition, Spark falls back to nested loop or cartesian joins, which I avoid on large data by rewriting the condition, for example bucketing a range join into equal-width bands first.
+---
+Q: How do you detect and fix data skew in a Spark job? Give at least three mitigation strategies.
+SRC: LinkedIn, 5 YOE
+TAG: spark
+A: Detect it in the stage page: a large gap between median and maximum task time, and one task with far more shuffle read than the rest. Confirm by counting rows per key.
+
+Mitigations, in the order I try them: enable adaptive skew join, which splits oversized partitions at run time. Broadcast the smaller side to remove the shuffle. Filter NULL or default keys before the join. Salt the hot key and replicate the other side. Process hot keys in a separate branch and union. For aggregations, aggregate in two steps with a salt. I then verify by comparing the task distribution before and after.
+---
+Q: How do you handle out-of-memory errors in Spark?
+SRC: Google, 5 YOE
+TAG: spark
+A: First identify where: driver or executor, and which stage. Driver errors come from `collect`, large broadcasts or huge task counts; the fix is to stop pulling data to the driver. Executor errors come from oversized partitions: skew, too few shuffle partitions, exploding joins, or caching too much. I fix the data shape before the configuration: more partitions, skew handling, earlier filters, narrower rows. If the container is killed for exceeding limits, the overhead region is too small, typically with Python UDFs. Only then do I raise executor memory or reduce cores per executor. I also check spill and garbage collection time as early signs.
+---
+Q: Your Spark job fails at 40% progress. Why might it fail, how do you debug it, and how can you increase memory without changing the number of executors?
+SRC: Walmart, 3 YOE
+TAG: spark
+A: Failing at the same point each run suggests one heavy stage, usually a join or aggregation after a shuffle, where one partition exceeds memory. I open the Spark UI, find the failed stage and its exception, map the stage to its operator in the plan, and compare task durations and shuffle read sizes to check for skew. I also check whether input volume grew.
+
+To raise memory with the executor count fixed: increase `spark.executor.memory`, increase `spark.executor.memoryOverhead`, or lower `spark.executor.cores` so fewer concurrent tasks share the heap. I would still address skew or partition count, since those are the usual root cause.
+---
+Q: What is the difference between `repartition()` and `coalesce()`? Give a use case for each.
+SRC: LinkedIn, 5 YOE
+TAG: spark
+A: `repartition(n)` or `repartition(col)` performs a full shuffle and produces evenly distributed partitions, optionally by key. It can raise or lower the count. `coalesce(n)` merges existing partitions without a full shuffle and can only lower the count; the result may be uneven.
+
+I use `repartition` before a write partitioned by date, so each date's rows come from one task and produce few files, or to rebalance after a heavy filter. I use `coalesce` to cut the number of output files at the end of a job cheaply. One caution: `coalesce(1)` can pull upstream work into a single task.
+---
+Q: When would you use `cache()`, `persist()` and `checkpoint()`?
+SRC: Flipkart, 4 YOE
+TAG: spark
+A: `cache()` when a DataFrame is expensive to compute and reused by several actions in the same job, such as a cleaned dataset feeding three aggregations. `persist()` when I need a specific storage level, for example disk only for a large intermediate that should not compete with execution memory. I unpersist once the reuse ends. `checkpoint()` when lineage has become long enough to slow planning or make recovery costly, as in iterative jobs, or when I want the result to survive executor loss without recomputation. Caching a DataFrame used once, or caching before a filter that removes most rows, wastes memory.
+---
+Q: What is dynamic allocation in Spark, and how does it help?
+SRC: Flipkart, 4 YOE
+TAG: spark
+A: With dynamic allocation, Spark requests executors when tasks are waiting and releases them after they have been idle for a set time, within configured minimum and maximum bounds. A job gets capacity during its heavy stages and gives it back otherwise, which improves utilisation on shared clusters and lowers cost. Because executors hold shuffle files, removing one could lose data, so it needs an external shuffle service or shuffle tracking. It suits batch jobs with varying stages. For streaming or very short jobs, fixed sizing is often more predictable, because acquiring executors takes time.
+---
+Q: Explain Adaptive Query Execution and its benefits for skew joins.
+SRC: Intuit, 3 YOE
+TAG: spark
+A: Adaptive query execution re-optimises a query during execution, using actual statistics from completed shuffle stages. It coalesces small shuffle partitions toward a target size, converts a sort-merge join to a broadcast join when one side turns out to be small, and handles skew. For skew joins, it detects a shuffle partition much larger than the median and above a size threshold, splits it into several sub-partitions, and reads the matching partition of the other side once for each. The hot key is then processed by several tasks in parallel, with no salting code. It is on by default from Spark 3.2.
+---
+Q: What challenges arise when migrating from Spark 2 to Spark 3?
+SRC: Intuit, 3 YOE
+TAG: spark
+A: Behaviour changes more than API changes. Date and timestamp parsing moved to a stricter calendar and pattern rules, so formats that worked may fail or return different values; there is a legacy parser setting for transition. Some implicit casts became errors under stricter SQL rules. Dependencies need rebuilding for Scala 2.12 and newer Hadoop versions. Plans change because adaptive execution and dynamic partition pruning are available, which is mostly a gain but alters file counts and run times, so tests that count output files can fail. I would migrate job by job, compare outputs against the old version, and re-baseline performance.
+---
+Q: How does Spark decide the number of partitions?
+SRC: Databricks, 5 YOE
+TAG: spark
+A: It depends on the source of the DataFrame. When reading files, Spark splits them by `spark.sql.files.maxPartitionBytes`, 128 MB by default, so the count follows total size and file layout. After a shuffle, the count is `spark.sql.shuffle.partitions`, 200 by default, unless adaptive execution coalesces them. For RDDs created in memory, it follows default parallelism, usually the total cores. Explicit `repartition` or `coalesce` overrides these. Reading from Kafka gives one partition per topic partition. I size shuffle partitions from data volume, aiming for partitions of one to two hundred megabytes.
+---
+Q: Which metrics tell you whether a Spark job is running efficiently?
+SRC: Delivery Hero, 7 YOE
+TAG: spark
+A: Per stage: the spread between median and maximum task duration, which reveals skew; shuffle read and write size, which shows how much data is moving; memory and disk spill, which shows partitions too large for memory; and garbage collection time as a share of task time. Per job: input size against output size, to see whether filters are applied early, the number of shuffles in the plan, and executor utilisation over time, to see idle capacity. Over time: run duration and cost against data volume. A job is healthy when duration grows in line with data and the task distribution is tight.
+---
+Q: How do you estimate resources for a pipeline that ingests 1 TB a day?
+SRC: Zen, 7 YOE
+TAG: spark
+A: Work from data to partitions to cores to memory. One terabyte at about 128 MB per partition is around 8,000 tasks in the widest stage. If a task takes a minute and the job must finish in 30 minutes, I need roughly 270 cores, before allowing for retries. With five cores per executor that is about 55 executors. Memory per executor comes from partition size times a factor for joins and sorts, times five concurrent tasks, plus overhead, so 20 to 30 GB is a reasonable start. Then I run on a sample, measure a real task, and adjust. I state these as assumptions to be tested.
+---
+Q: You want an agent to diagnose slow Spark jobs. How do you design its tools, and how do you know its diagnosis is right?
+TAG: ai
+A: Tools return small, computed summaries, not raw logs: slowest stages with median and maximum task time, shuffle sizes and spill; the physical plan for a query; row counts per key on request. Each tool has a clear description of when to use it, read-only access and bounded output. The model interprets; code does the arithmetic.
+
+To check it, I build a set of past runs with known causes, including healthy runs where the right answer is "nothing is wrong", and score the agent on stage, cause and fix. Any diagnosis must cite numbers from tool output so a person can verify it in the Spark UI.
+---
+Q: Describe a time you resolved a performance bottleneck in Spark.
+SRC: Microsoft, 4 YOE
+TAG: behavioral
+A: Use this sprint's incident if you have no stronger production story, and tell it with numbers. **Situation:** a nightly enrichment job went from 20 minutes to 3 hours and began failing. **Task:** restore the SLA without adding hardware. **Action:** found one task reading most of the shuffle data, traced it to a hot city key and NULL driver ids, removed the NULLs, enabled adaptive skew handling, and compared it with manual salting. **Result:** the measured run time before and after, and a check added so skew is noticed earlier. Finish with what you would do differently. From your resume, the 2M-record DUNS enrichment is another candidate.
+
+@@mock
+## Mock 3: Spark deep dive (35 minutes)
+
+Uber's first round in your bank is "a hard SQL query, then a deep-dive discussion on Spark internals". Microsoft's first round is twelve questions, seven of them on Spark and Hadoop. This is that round.
+
+**Format.** Claude plays a senior data engineer.
+
+- 5 minutes: explain how one query executes, from action to result.
+- 15 minutes: a scenario. You are shown a description of a slow job and must ask for the evidence you need, diagnose it, and propose fixes in order.
+- 10 minutes: rapid questions on joins, memory, caching and partition sizing.
+- 5 minutes: defend the fix you chose in your own incident.
+
+**What is scored, out of 10.**
+
+| Area | Points | What earns them |
+|---|---|---|
+| Diagnosis method | 4 | You ask for the plan and the task distribution before proposing anything |
+| Correctness | 3 | Mechanisms are right: where stages split, what a shuffle does, where memory goes |
+| Order of fixes | 2 | Data shape before configuration, cheap before costly |
+| Numbers | 1 | You use figures from your own job |

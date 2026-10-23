@@ -1,0 +1,783 @@
+@@meta
+id: s01
+n: 1
+title: The walking skeleton
+goal: One ride event travels from a generator through Kafka, Spark and object storage to a SQL answer, scheduled by Airflow, with an LLM script that can explain a failed run. Thin, but every layer exists.
+hours: 10
+
+@@tickets
+101 | learn | 2 | Chapter 1 and the readings | You can draw the skeleton from memory and say what each box does and what it stores. | chapter
+102 | build | 2.5 | Build the walking skeleton | `make up` starts the stack, and one DAG run answers "completed trips per city for this hour". | lab
+103 | incident | 0.75 | A rerun doubles every row | Running the same hour twice leaves the same row count, and `notes/what-broke.md` explains why. | lab
+104 | ai | 1 | Your first agent: explain a failed task | For a deliberately broken run it names the cause and quotes the log line that proves it. | lab
+105 | practice | 1.25 | Warm-ups and the customer drill | Three SQL and three DSA warm-ups attempted, and the drill answered out loud. | practice
+106 | test | 0.5 | Quiz 1 | 80% or better. | quiz
+107 | test | 1 | Coding test 1 | Attempted inside the 60-minute timer. | coding
+108 | talk | 1 | Interview set 1 and the mock | 14 of 18 questions ticked, and a mock score recorded. | interview
+
+@@readings
+- [Kafka documentation: Design](https://kafka.apache.org/43/design/design/). Read the sections on the log, producers and consumers. Skip replication for now; it returns in sprint 5.
+- [Airflow: Architecture Overview](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/overview.html) and [Dag Runs](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dag-run.html). The second explains data intervals, which interviewers ask about.
+- [Anthropic: Building Effective AI Agents](https://www.anthropic.com/engineering/building-effective-agents). The clearest short account of when you need an agent and when a single call is enough.
+- [Claude docs: Build a tool-using agent](https://platform.claude.com/docs/en/agents-and-tools/tool-use/build-a-tool-using-agent). The loop you write in this sprint's AI lab.
+
+@@chapter
+## 1.1 Why you build everything first, badly
+
+A walking skeleton is the thinnest version of a system that still runs end to end. This sprint you will have a generator, a message log, a processing engine, storage, a query layer, a scheduler and an LLM script. Each one will be the simplest thing that works.
+
+The reason to start this way is that data engineering problems live in the joins between tools. Kafka on its own is easy. Kafka feeding a Spark job that writes files a query engine must read, on a schedule that sometimes retries, is where duplicates, small files and late data come from. Interviewers know this. The Uber, Flipkart and Myntra loops in your bank all ask you to walk through one pipeline from ingestion to consumption and explain what breaks.
+
+Here is what Meridian needs by Friday: **completed trips per city, per hour**.
+
+```
+generate.py ──> Kafka topic: trip_events ──> Spark batch job ──> Parquet files in object storage
+                                                                          │
+                              Airflow DAG runs the job every hour         ▼
+                              and checks the row count           SQL: completed trips per city
+```
+
+## 1.2 The terminal and Git you will use every day
+
+You will inspect data from a shell far more often than from a notebook. These commands cover most of it.
+
+```bash
+head -n 3 events.jsonl | jq .                 # look at a few records before loading anything
+wc -l events.jsonl                            # how many rows
+cut -d, -f3 trips.csv | sort | uniq -c | sort -rn | head    # value counts for column 3
+grep -c '"completed"' events.jsonl            # count matching lines
+awk -F, '$5 > 1000 {n++} END {print n}' trips.csv            # rows where column 5 exceeds 1000
+du -sh data/* | sort -h                       # what is taking the space
+tail -f airflow/logs/latest.log               # follow a log as it is written
+```
+
+The pipe is the idea to hold on to. `sort | uniq -c | sort -rn | head` reads a file as a stream and never holds it all in memory, so the same line works on a 40 GB log. That is a standard interview question.
+
+Distributed storage has matching commands:
+
+```bash
+hdfs dfs -ls /data/trips            # list
+hdfs dfs -du -h /data/trips         # sizes
+hdfs dfs -put local.csv /data/      # upload
+aws s3 ls s3://lake/raw/ --recursive --human-readable --summarize
+aws s3 cp local.csv s3://lake/raw/
+```
+
+For Git, know what each of these does and when you would reach for it.
+
+| Situation | Command | Why |
+|---|---|---|
+| Start work | `git switch -c feature/ingest` | One branch per change |
+| Bring in main | `git rebase main` on your own branch | Linear history; never rebase a branch others have pulled |
+| Park half-done work | `git stash` | Clean tree without committing |
+| Undo a pushed commit on main | `git revert <sha>` | Adds a new commit; history stays intact |
+| Undo local commits | `git reset --soft HEAD~1` | Rewrites history; safe only before pushing |
+| Find the commit that broke it | `git bisect` | Binary search over history |
+
+## 1.3 Where the data lives: HDFS and object storage
+
+**HDFS** splits each file into large blocks, 128 MB by default, and stores each block on three different machines. A single **NameNode** holds the metadata: the directory tree and which DataNodes hold which blocks. **DataNodes** hold the bytes. Losing a DataNode is routine, because the NameNode notices the missed heartbeat and re-replicates its blocks. The NameNode is the part that must not be lost, so production clusters run a standby.
+
+HDFS was designed for a few very large files. Millions of tiny files hurt it, because every file and block is an object in the NameNode's memory. Keep this in mind for sprint 2, where small files become your incident.
+
+**Object storage**, such as Amazon S3 or the MinIO container you run locally, has no directories and no blocks. It is a flat map from a key like `raw/trip_events/dt=2026-10-11/hour=09/part-0001.parquet` to an object. The slashes are only characters in the key.
+
+Three differences matter in practice.
+
+| | HDFS | Object storage |
+|---|---|---|
+| Compute and storage | On the same machines | Separate; scale independently |
+| Rename a "directory" | One atomic metadata change | A copy and a delete for every object |
+| Cost model | You pay for the cluster | You pay for bytes stored and requests made |
+
+The rename row explains a great deal. Older Hadoop jobs wrote to a temporary directory and renamed it into place when finished, which made the output appear all at once. On object storage that rename is slow and not atomic, so a reader can see half a result. Table formats such as Iceberg and Delta exist largely to solve this. They commit by swapping one small metadata pointer. That is sprint 2.
+
+Almost all new platforms use object storage. HDFS questions still appear in interviews, at Microsoft, Intuit and most services companies in your bank, so you need to explain both.
+
+## 1.4 Kafka in ten minutes
+
+Kafka is a distributed, append-only log.
+
+- A **topic** is a named stream, such as `trip_events`.
+- A topic is split into **partitions**. Each partition is an ordered log stored on a broker. Order is guaranteed inside a partition and nowhere else.
+- Each message has a position in its partition called an **offset**.
+- A **producer** chooses the partition. With a key, it hashes the key, so every message with the same key lands in the same partition for as long as the partition count stays the same.
+- A **consumer group** shares the partitions among its members. Each partition is read by exactly one consumer in the group. A group records how far it has read by committing offsets.
+- Messages are not deleted when read. They stay for the retention period, so another group, or the same group after a reset, can read them again.
+
+Two consequences follow, and both come up in interviews.
+
+**Parallelism is capped by partition count.** Six partitions means at most six consumers in a group doing useful work. A seventh sits idle.
+
+**The key decides ordering.** Meridian keys trip events by `trip_id`, so `requested`, `accepted`, `started` and `completed` for one trip stay in order. If events were keyed randomly, a consumer could see `completed` before `started`.
+
+Replay is the property that makes Kafka useful for data engineering. When your Spark job has a bug, you fix it and read the same offsets again.
+
+## 1.5 Spark in ten minutes
+
+A Spark application has one **driver** and many **executors**. The driver turns your code into a plan and schedules work. Executors run tasks on partitions of data and hold cached data.
+
+Two kinds of operation exist.
+
+- **Transformations** such as `select`, `filter`, `join` and `groupBy` describe a result. They are lazy, and nothing runs when you call them.
+- **Actions** such as `count`, `collect`, `show` and any write trigger execution.
+
+Laziness lets Spark see the whole query before running it, so it can push a filter down to the file reader or drop columns nobody uses.
+
+This sprint's job reads the topic as a batch, parses the JSON, and writes Parquet partitioned by date and hour.
+
+```python
+from pyspark.sql import functions as F, types as T
+
+schema = T.StructType([
+    T.StructField("event_id", T.StringType()),
+    T.StructField("event_type", T.StringType()),   # requested, accepted, started, completed, cancelled
+    T.StructField("trip_id", T.StringType()),
+    T.StructField("rider_id", T.StringType()),
+    T.StructField("driver_id", T.StringType()),
+    T.StructField("city", T.StringType()),
+    T.StructField("zone_id", T.IntegerType()),
+    T.StructField("fare_amount", T.DoubleType()),
+    T.StructField("event_ts", T.StringType()),     # ISO 8601, UTC
+])
+
+def read_events(spark, start, end):
+    raw = (spark.read.format("kafka")
+           .option("kafka.bootstrap.servers", "localhost:9092")
+           .option("subscribe", "trip_events")
+           .option("startingOffsets", "earliest")
+           .option("endingOffsets", "latest")
+           .load())
+    return (raw.select(F.from_json(F.col("value").cast("string"), schema).alias("e"))
+               .select("e.*")
+               .withColumn("event_ts", F.to_timestamp("event_ts"))
+               .filter((F.col("event_ts") >= start) & (F.col("event_ts") < end))
+               .withColumn("dt", F.to_date("event_ts"))
+               .withColumn("hour", F.hour("event_ts")))
+```
+
+Reading from `earliest` every hour is wasteful, and you will replace it with offset ranges later. A skeleton is allowed to be wasteful. It is not allowed to be wrong, which is the subject of section 1.7.
+
+## 1.6 Airflow in ten minutes
+
+Airflow runs tasks in dependency order on a schedule and records what happened.
+
+- A **DAG** is a set of tasks with dependencies and a schedule.
+- A **task** is one unit of work. An **operator** is a template for a task.
+- The **scheduler** decides what should run. An **executor** decides where it runs: in a local process, on Celery workers, or as a Kubernetes pod per task.
+- Each run covers a **data interval**. An hourly run for 09:00 to 10:00 starts just after 10:00, when that hour is complete.
+- **XCom** passes small values between tasks. It is for a row count or a file path, never for data.
+
+```python
+import pendulum
+from airflow.sdk import dag, task        # Airflow 3. In Airflow 2: from airflow.decorators import dag, task
+
+@dag(schedule="@hourly",
+     start_date=pendulum.datetime(2026, 10, 1, tz="UTC"),
+     catchup=False,
+     default_args={"retries": 2, "retry_delay": pendulum.duration(minutes=2)})
+def trip_events_hourly():
+
+    @task
+    def ingest(data_interval_start=None, data_interval_end=None) -> int:
+        # run the Spark job for exactly this interval and return the row count
+        ...
+
+    @task
+    def check(rows: int):
+        if rows == 0:
+            raise ValueError("no events for this hour")
+
+    check(ingest())
+
+trip_events_hourly()
+```
+
+The most important habit is in the signature of `ingest`. The task processes the interval Airflow hands it. It never calls `now()`. A task that asks the clock gives a different answer on a retry, and a backfill of last Tuesday would process today.
+
+`catchup=True` tells the scheduler to create a run for every interval missed since `start_date`. A **backfill** is the same thing done on purpose for a chosen date range. Both only work if tasks are driven by their interval.
+
+## 1.7 Idempotency: the idea that connects everything
+
+Your job will be retried. Airflow retries on failure. You will rerun an hour by hand after fixing a bug. Someone will backfill a month.
+
+A task is **idempotent** if running it twice for the same input leaves the same result as running it once. The naive write is not:
+
+```python
+events.write.mode("append").partitionBy("dt", "hour").parquet("s3a://lake/raw/trip_events")
+```
+
+Run that twice for the 09:00 hour and every row is there twice. This sprint's incident makes you find that out with real data.
+
+There are three standard fixes. You will use all three during the program.
+
+1. **Overwrite the partition you own.** The run for 09:00 replaces the 09:00 partition and nothing else.
+
+```python
+spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
+events.write.mode("overwrite").partitionBy("dt", "hour").parquet("s3a://lake/raw/trip_events")
+```
+
+Without the `dynamic` setting, `overwrite` deletes every partition in the table. Learn that from this paragraph and not from production.
+
+2. **Merge on a key.** `MERGE INTO target USING source ON target.event_id = source.event_id` updates rows that exist and inserts those that do not. This needs a table format, which arrives next sprint.
+3. **De-duplicate on read.** Keep one row per `event_id` downstream. This hides the problem; it does not fix the write. Use it as a second line of defence.
+
+When an interviewer asks how you make a pipeline safe to rerun, the answer has two parts: each run is bound to a fixed interval, and each write replaces or merges and never blindly appends.
+
+## 1.8 The agent loop
+
+A language model call is text in, text out. An **agent** is a loop around that call in which the model can ask for actions.
+
+1. You send the conversation and a list of **tools**. Each tool has a name, a description and a JSON schema for its input.
+2. The model replies with text, or with a request to call a tool with specific arguments.
+3. Your code runs the tool. The model never runs anything itself.
+4. You append the result to the conversation and call the model again.
+5. Stop when the model answers without asking for a tool, or when you hit your own limit.
+
+```python
+import json, pathlib, anthropic
+
+client = anthropic.Anthropic()            # reads ANTHROPIC_API_KEY from the environment
+MODEL = "claude-sonnet-5-5"
+LOG_ROOT = pathlib.Path("airflow/logs").resolve()
+
+def list_failed_logs(limit: int = 5) -> list[str]:
+    logs = sorted(LOG_ROOT.rglob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
+    return [str(p.relative_to(LOG_ROOT)) for p in logs if "ERROR" in p.read_text(errors="ignore")][:limit]
+
+def read_log(path: str, tail_lines: int = 80) -> str:
+    p = (LOG_ROOT / path).resolve()
+    if LOG_ROOT not in p.parents:         # the model chose this path, so check it
+        raise ValueError("path is outside the log folder")
+    return "\n".join(p.read_text(errors="ignore").splitlines()[-tail_lines:])
+
+TOOLS = [
+    {"name": "list_failed_logs",
+     "description": "List recent Airflow task log files that contain errors, newest first.",
+     "input_schema": {"type": "object", "properties": {"limit": {"type": "integer"}}}},
+    {"name": "read_log",
+     "description": "Read the last lines of one task log. Use a path returned by list_failed_logs.",
+     "input_schema": {"type": "object",
+                      "properties": {"path": {"type": "string"}, "tail_lines": {"type": "integer"}},
+                      "required": ["path"]}},
+]
+FUNCS = {"list_failed_logs": list_failed_logs, "read_log": read_log}
+
+def explain_latest_failure(max_turns: int = 6) -> str:
+    messages = [{"role": "user", "content":
+        "Find the most recent failed Airflow task and explain it. Give the cause, the exact log line "
+        "that shows it, and one suggested fix. If the logs do not show the cause, say so."}]
+    for _ in range(max_turns):
+        resp = client.messages.create(model=MODEL, max_tokens=1024, tools=TOOLS, messages=messages)
+        if resp.stop_reason != "tool_use":
+            return "".join(b.text for b in resp.content if b.type == "text")
+        results = []
+        for block in resp.content:
+            if block.type == "tool_use":
+                try:
+                    out = FUNCS[block.name](**block.input)
+                    results.append({"type": "tool_result", "tool_use_id": block.id, "content": json.dumps(out)})
+                except Exception as exc:
+                    results.append({"type": "tool_result", "tool_use_id": block.id,
+                                    "content": str(exc), "is_error": True})
+        messages.append({"role": "assistant", "content": resp.content})
+        messages.append({"role": "user", "content": results})
+    return "Stopped: turn limit reached."
+```
+
+Four details in that code are the difference between a demo and something you can leave running.
+
+- **The turn limit.** Without `max_turns`, a confused model can call tools forever, and you pay for every call.
+- **Errors go back to the model.** A failed tool returns `is_error` and the message. The model can then try a different path.
+- **The path check.** The model supplies `path`. Anything the model supplies is untrusted input, exactly like a web form.
+- **Permission to say "I don't know".** The prompt allows it. A model that must always produce a cause will invent one.
+
+These tools only read. Every sprint adds one capability, and the first tool that can change anything arrives in sprint 6 with a human approval step in front of it.
+
+@@lab
+## Build: the walking skeleton (2.5 hours)
+
+Ask Claude to **start sprint 1** and it will generate the starter kit into your projects folder: `docker-compose.yml` for Kafka and MinIO, a `Makefile`, the generator, and empty job and DAG files with the function signatures in place. You write the parts marked `TODO`.
+
+**The event.** One JSON object per message on topic `trip_events`, keyed by `trip_id`.
+
+```json
+{"event_id": "c1f0…", "event_type": "completed", "trip_id": "t-88213", "rider_id": "r-104",
+ "driver_id": "d-77", "city": "Bengaluru", "zone_id": 14, "fare_amount": 312.5,
+ "event_ts": "2026-10-11T09:41:07Z"}
+```
+
+The generator deliberately sends about 1% of events twice and delays a few by several minutes. You will need both behaviours in later sprints.
+
+**What you write.**
+
+1. `jobs/ingest_trip_events.py`. Read the topic, parse the JSON with an explicit schema, keep events inside the interval passed on the command line, and write Parquet under `s3a://lake/raw/trip_events/` partitioned by `dt` and `hour`. Start with `mode("append")`. The incident needs it.
+2. `queries/completed_per_city.sql`. Completed trips per city for one hour. Run it with Spark SQL or DuckDB over the Parquet files.
+3. `dags/trip_events_hourly.py`. Three tasks: ingest the interval, fail if the row count is zero, print the query result.
+4. `Makefile` targets: `up`, `down`, `produce`, `ingest`, `query`.
+
+**Done when** a fresh clone followed by `make up`, `make produce` and one DAG run prints completed trips per city for that hour.
+
+**Explain it.** Before moving on, say out loud what happens to one event at each of the five hops. If you cannot say where it is stored at a hop, read that section of the chapter again.
+
+## Incident: a rerun doubles every row (45 minutes)
+
+Operations reports that Bengaluru shows twice as many completed trips for the 09:00 hour as the app does.
+
+1. Reproduce it. Trigger the same DAG run twice, then count rows for that hour and count distinct `event_id` values.
+2. Find the cause in your own code. It is one word.
+3. Fix the write so the 09:00 run owns the 09:00 partition. Section 1.7 has the setting you need.
+4. Prove it. Run the hour three times. The row count must not change.
+5. Now look at the 1% of duplicates the generator sends on purpose. Your fix did not remove those. Add a second query that counts distinct `event_id`, and write down why the two kinds of duplicate have different causes.
+6. Write `notes/what-broke.md` with four headings: what happened, why, the fix, how we would have caught it sooner. Keep it under 200 words.
+
+That note is your first behavioral story. "Tell me about a data quality issue you faced in production" appears across your bank, at Adobe among others.
+
+## AI lab: explain a failed task (1 hour)
+
+1. Create `agents/explain_failure.py` from the code in section 1.8.
+2. Break a run on purpose. Point the job at a bucket that does not exist and trigger the DAG.
+3. Run the script. It should name the missing bucket and quote the log line.
+4. Break it a second way: stop Kafka and trigger the DAG. Check that the explanation changes.
+5. Test the guardrails. Set `max_turns=1` and confirm it stops cleanly. Call `read_log("../../.env")` yourself and confirm it is refused.
+
+**Done when** both failures are explained correctly with the log line quoted, and both guardrail tests behave.
+
+Write two sentences in your notes on what the script got wrong or was vague about. Judging model output is a skill interviewers now test directly.
+
+@@practice
+## SQL warm-ups: joins, aggregation, NULLs
+
+1. **Customers and their order counts, including customers with none.** `customers(id, name)`, `orders(id, customer_id)`. *Approach:* `LEFT JOIN` and `COUNT(o.id)`. `COUNT(*)` would report 1 for a customer with no orders.
+2. **Employees who earn more than their manager.** `employee(emp_id, name, manager_id, salary)`. Asked at Google and Fanatics in your bank. *Approach:* self-join the table on `e.manager_id = m.emp_id`.
+3. **Average transaction amount for users who joined in 2023.** `users(user_id, join_date)`, `transactions(user_id, amount)`. Asked at Meta. *Approach:* filter on a date range, `join_date >= '2023-01-01' AND join_date < '2024-01-01'`, so an index or partition on the date can be used.
+
+## DSA warm-ups: arrays and hash maps
+
+1. **Two Sum.** Return the indices of two numbers that add to a target. Asked at Stripe and Meta. *Approach:* one pass with a map from value to index; look up `target - x` before inserting `x`. O(n).
+2. **First unique character.** `"loveleetcode"` returns 2. Asked at Meta. *Approach:* count characters, then scan for the first with count 1.
+3. **Remove duplicates from a list, keeping order.** Asked at Confluent. *Approach:* a `seen` set and an output list. `list(dict.fromkeys(xs))` does the same in one line; be ready to explain why it works.
+
+For each one, say the time and space complexity out loud before you write code.
+
+## Customer drill: five questions before any SQL
+
+The city operations lead messages you: *"I need to know how many trips we did yesterday."*
+
+Do not write a query. List five questions you would ask first. Then compare with these.
+
+- Which trips count: requested, started, or completed? Do cancelled trips count?
+- Whose yesterday? Midnight to midnight in which time zone?
+- All cities, or one? Rides only, or food delivery too?
+- What decision does the number feed, and how exact must it be?
+- Is this a one-off, or do you need it every morning by a certain time?
+
+The habit of asking before building is the core of forward deployed work, and it is also what design-round interviewers look for in the first five minutes.
+
+@@quiz
+TYPE: mcq
+TAG: cloud
+Q: In HDFS, what does the NameNode store?
+A) The file data blocks
+B) The namespace and the location of every block
+C) Only the logs of failed jobs
+D) A full backup of every DataNode
+ANS: B
+WHY: The NameNode holds metadata in memory: the directory tree, file-to-block mapping and block locations. DataNodes hold the bytes.
+---
+TYPE: mcq
+TAG: cloud
+Q: A job writes 5,000 files to a temporary prefix in S3 and then "renames the directory" into place. What actually happens?
+A) One atomic metadata update
+B) A copy and a delete for each of the 5,000 objects, during which readers can see a partial result
+C) Nothing; S3 does not allow it
+D) The files are compressed into one object
+ANS: B
+WHY: Object storage has no directories. A rename is a per-object copy and delete, so it is slow and not atomic. Table formats avoid this by committing a single metadata pointer.
+---
+TYPE: mcq
+TAG: streaming
+Q: A producer sends every event for trip `t-88213` with key `t-88213`. Where do they go?
+A) Round-robin across all partitions
+B) The same partition, as long as the partition count does not change
+C) A new partition per event
+D) The partition with the fewest messages
+ANS: B
+WHY: The default partitioner hashes the key. Same key and same partition count means same partition, which is what preserves per-trip ordering.
+---
+TYPE: mcq
+TAG: streaming
+Q: A topic has 1 partition. Two consumers join the same consumer group. What happens?
+A) Both receive every message
+B) They alternate messages
+C) One consumer is assigned the partition and the other is idle
+D) The group fails to start
+ANS: C
+WHY: Within a group, each partition is read by exactly one consumer. Extra consumers act only as standbys.
+---
+TYPE: mcq
+TAG: spark
+Q: Which statement about the Spark driver and executors is correct?
+A) Executors build the query plan and the driver runs tasks
+B) The driver builds the plan and schedules tasks; executors run them on partitions of data
+C) There is one executor per row
+D) The driver stores all shuffle data
+ANS: B
+WHY: The driver owns planning and scheduling. Executors do the work and hold cached data. Calling `collect()` pulls results back to the driver, which is why it can run the driver out of memory.
+---
+TYPE: mcq
+TAG: cloud
+Q: An Airflow DAG has `schedule="@hourly"`. When does the run for the interval 09:00 to 10:00 start?
+A) At 09:00
+B) At 09:30
+C) Just after 10:00, when the interval is complete
+D) At midnight
+ANS: C
+WHY: A scheduled run starts at the end of its data interval, so the data it covers is complete. This surprises most people the first time.
+---
+TYPE: mcq
+TAG: cloud
+Q: A bad commit is already pushed to `main` and others have pulled it. What is the safe way to undo it?
+A) `git reset --hard HEAD~1` and force-push
+B) `git revert <sha>`
+C) Delete the repository
+D) `git stash`
+ANS: B
+WHY: `revert` adds a new commit that undoes the change, so shared history stays intact. Rewriting pushed history breaks everyone else's clone.
+---
+TYPE: mcq
+TAG: ai
+Q: The model's response has `stop_reason` equal to `tool_use`. What must your code do next?
+A) Print the response and exit
+B) Run each requested tool and send back a `tool_result` for each, matched by `tool_use_id`
+C) Call the model again with the same messages
+D) Raise an exception
+ANS: B
+WHY: The model is waiting for results. You append its response, then a user message containing one `tool_result` per `tool_use` block, each carrying the matching id.
+---
+TYPE: fill
+TAG: cloud
+Q: By default, HDFS keeps ____ copies of every block.
+ANS: 3 | three
+WHY: The default replication factor is 3, so two machines can fail without losing data.
+---
+TYPE: fill
+TAG: streaming
+Q: A message's position within a Kafka partition is called its ____.
+ANS: offset
+WHY: Offsets are per partition and increase by one per message. A consumer group commits offsets to record its progress.
+---
+TYPE: fill
+TAG: spark
+Q: To make `mode("overwrite")` replace only the partitions present in the DataFrame, set `spark.sql.sources.partitionOverwriteMode` to ____.
+ANS: dynamic
+WHY: The default is `static`, which deletes every partition under the path before writing.
+---
+TYPE: fill
+TAG: cloud
+Q: The shell command `____ -l events.jsonl` prints the number of lines in the file.
+ANS: wc
+WHY: `wc -l` counts newline characters, reading the file as a stream.
+---
+TYPE: short
+TAG: cloud
+Q: Your hourly job uses `mode("append")`. Airflow retries it after a network blip. Explain what is now wrong with the data, and give two different ways to make the task idempotent.
+MODEL: The first attempt may have written some or all of its files before failing, and the retry wrote them again, so the hour contains duplicate rows.
+
+Two fixes. **Overwrite the partition the run owns**, using dynamic partition overwrite, so a rerun replaces the hour. Or **merge on a key** such as `event_id` into a table format, so existing rows are updated and new ones inserted. In both cases the run must be bound to its data interval and never to the current time. De-duplicating downstream is a useful extra check but does not fix the write.
+---
+TYPE: short
+TAG: streaming
+Q: Why does Meridian key trip events by `trip_id`? What could go wrong with a random key, and what could go wrong if the key were `city`?
+MODEL: Kafka only orders messages within a partition, and the key picks the partition. Keying by `trip_id` keeps all events of one trip in order.
+
+With a **random key**, events for one trip spread across partitions, and a consumer may see `completed` before `started`.
+
+Keying by **city** keeps order but causes skew: one large city sends most of the traffic to one partition, which becomes the bottleneck while others sit idle. A good key preserves the ordering you need and spreads load evenly.
+---
+TYPE: short
+TAG: cloud
+Q: What is a data interval in Airflow, and why should a task use it and not the current time?
+MODEL: Each scheduled run covers a fixed window, from `data_interval_start` to `data_interval_end`. The run for 09:00 to 10:00 always means that hour, whenever it executes.
+
+A task that uses the interval gives the same result on a retry, a manual rerun or a backfill months later. A task that calls `now()` processes whatever "now" is when it happens to run, so retries shift the window and backfills process the wrong data.
+---
+TYPE: short
+TAG: ai
+Q: Describe the agent loop in order. Then name two safeguards in your sprint 1 script and what each prevents.
+MODEL: Send messages and tool definitions to the model. If it replies with a tool request, your code executes the tool, appends the model's reply and the tool result to the conversation, and calls the model again. Repeat until the model replies without requesting a tool.
+
+Safeguards: a **turn limit** prevents an endless and expensive loop. A **path check** on `read_log` stops the model reading files outside the log folder, because tool arguments are untrusted input. Also acceptable: returning tool errors to the model with `is_error`, and a prompt that allows "the logs do not show the cause".
+
+@@coding
+TITLE: Riders who never completed a trip
+KIND: sql
+MIN: 12
+TAG: sql
+SRC: variant of "customers who haven't placed any orders", Fanatics, 6 YOE
+PROBLEM:
+Tables `riders(rider_id, name)` and `trips(trip_id, rider_id, status)`.
+
+`trips.rider_id` can be NULL for guest bookings. Status is one of `completed`, `cancelled`, `in_progress`.
+
+Return the `name` of every rider who has **no completed trip**, ordered by name. Riders with no trips at all must be included.
+SOLUTION:
+```sql
+SELECT r.name
+FROM riders r
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM trips t
+  WHERE t.rider_id = r.rider_id
+    AND t.status = 'completed'
+)
+ORDER BY r.name;
+```
+
+`NOT EXISTS` is the safe form. The tempting version, `WHERE rider_id NOT IN (SELECT rider_id FROM trips WHERE status = 'completed')`, returns **no rows at all** here, because the subquery contains a NULL and `x NOT IN (..., NULL)` is never true. This trap is the reason the NULL guest booking is in the problem.
+
+A `LEFT JOIN ... WHERE t.trip_id IS NULL` anti-join also works, with the status condition placed in the `ON` clause.
+<!--test
+con.execute("create table riders(rider_id int, name varchar)")
+con.execute("create table trips(trip_id int, rider_id int, status varchar)")
+con.execute("insert into riders values (1,'Asha'),(2,'Bala'),(3,'Chitra'),(4,'Dev')")
+con.execute("insert into trips values (10,1,'completed'),(11,2,'cancelled'),(12,NULL,'completed'),(13,3,'completed'),(14,3,'cancelled')")
+assert con.execute(Q).fetchall() == [('Bala',),('Dev',)]
+bad = con.execute("select name from riders where rider_id not in (select rider_id from trips where status='completed')").fetchall()
+assert bad == []
+-->
+---
+TITLE: Cancellation rate per city
+KIND: sql
+MIN: 13
+TAG: sql
+SRC: Meta, 3 YOE
+PROBLEM:
+Table `trips(trip_id, city, status)`.
+
+For each city with **at least 3 trips**, return `city`, `total_trips`, `cancelled`, and `cancel_pct`, the percentage of trips that were cancelled, rounded to one decimal place. Order by `cancel_pct` descending, then city.
+SOLUTION:
+```sql
+SELECT city,
+       COUNT(*) AS total_trips,
+       SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled,
+       ROUND(100.0 * SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) / COUNT(*), 1) AS cancel_pct
+FROM trips
+GROUP BY city
+HAVING COUNT(*) >= 3
+ORDER BY cancel_pct DESC, city;
+```
+
+Conditional aggregation computes both counts in one pass. Two things to say aloud: `100.0` forces decimal division, since integer division would give 0 in several engines, and the filter on group size belongs in `HAVING` because it applies after grouping.
+<!--test
+con.execute("create table trips(trip_id int, city varchar, status varchar)")
+con.execute("insert into trips values (1,'BLR','completed'),(2,'BLR','completed'),(3,'BLR','cancelled'),(4,'BLR','in_progress'),(5,'HYD','cancelled'),(6,'HYD','cancelled'),(7,'HYD','completed'),(8,'PUN','cancelled'),(9,'PUN','completed')")
+rows = [(c, int(t), int(x), float(p)) for c, t, x, p in con.execute(Q).fetchall()]
+assert rows == [('HYD',3,2,66.7),('BLR',4,1,25.0)], rows
+-->
+---
+TITLE: Group anagrams
+KIND: dsa
+MIN: 15
+TAG: dsa
+SRC: Walmart, 3 YOE
+PROBLEM:
+Given a list of words, group together the words that are anagrams of each other. Keep groups in order of first appearance, and words in their original order inside each group.
+
+Input: `["mat", "tam", "cute", "beat", "eatb", "teab", "ateb"]`
+
+Output: `[["mat", "tam"], ["cute"], ["beat", "eatb", "teab", "ateb"]]`
+SOLUTION:
+```python
+from collections import defaultdict
+
+def group_anagrams(words):
+    groups = defaultdict(list)
+    for w in words:
+        groups["".join(sorted(w))].append(w)   # anagrams share the same sorted letters
+    return list(groups.values())
+```
+
+The sorted letters are a canonical key. Time is O(n · k log k) for n words of length k. For long words, a 26-slot letter-count tuple as the key brings that to O(n · k). Python dictionaries keep insertion order, which gives the required group order for free.
+<!--test
+assert group_anagrams(["mat","tam","cute","beat","eatb","teab","ateb"]) == [["mat","tam"],["cute"],["beat","eatb","teab","ateb"]]
+assert group_anagrams([]) == []
+-->
+---
+TITLE: Count actions in a large log file
+KIND: python
+MIN: 20
+TAG: dsa
+SRC: Amazon, 3 YOE
+PROBLEM:
+A log file has one event per line: timestamp, user and action, separated by spaces.
+
+```
+2026-10-11T09:00:01Z user_42 login
+2026-10-11T09:00:05Z user_42 purchase
+2026-10-11T09:00:09Z user_7 logout
+```
+
+Write `count_actions(path)` that returns a dictionary of action to count. The file may be far larger than memory. Skip lines that do not have exactly three fields.
+SOLUTION:
+```python
+from collections import Counter
+
+def count_actions(path):
+    counts = Counter()
+    with open(path, encoding="utf-8") as f:
+        for line in f:                 # the file object yields one line at a time
+            parts = line.split()
+            if len(parts) != 3:
+                continue               # malformed line
+            counts[parts[2]] += 1
+    return dict(counts)
+```
+
+Iterating over the file object streams it, so memory use depends on the number of distinct actions and not on file size. `f.read()` or `f.readlines()` would load everything.
+
+The follow-up in the Amazon loop was "extend this to stream processing". The answer is that the loop body does not change. Only the source does: replace the file with a consumer that yields lines, and emit the counts per time window so they stay bounded.
+<!--test
+import tempfile, os
+p = tempfile.NamedTemporaryFile("w", delete=False, suffix=".log")
+p.write("2026-10-11T09:00:01Z user_42 login\n2026-10-11T09:00:05Z user_42 purchase\nbroken line\n\n2026-10-11T09:00:09Z user_7 login\n")
+p.close()
+assert count_actions(p.name) == {"login": 2, "purchase": 1}
+os.unlink(p.name)
+-->
+
+@@interview
+Q: Walk me through your current project. What business problem were you solving, which tools did you use, and what was your role?
+SRC: Databricks, 5 YOE
+TAG: behavioral
+A: Use a fixed five-part shape and keep it under three minutes.
+
+1. **Problem**, in business terms. For example: go-to-market teams waited over an hour for custom object requests to be processed.
+2. **Architecture**, one sentence per hop: source, ingestion, processing, storage, consumers, orchestration.
+3. **Your decisions.** Two choices you made and the alternative you rejected.
+4. **Numbers.** Volume, frequency, and the before and after. Your resume has real ones: request time from 83 minutes to 8, about 2M records enriched, 120+ workflows migrated, 1M+ updates a week through a custom Airflow operator.
+5. **What you would change.** One honest weakness and your fix.
+
+Lead with pipelines, then the agent work. Tier-1 data engineering loops probe scale before they probe AI.
+---
+Q: Explain the architecture of HDFS: NameNode, DataNode, block size and replication factor.
+SRC: Microsoft, 4 YOE
+TAG: cloud
+A: Files are split into blocks, 128 MB by default, and each block is stored on three DataNodes by default. The NameNode keeps all metadata in memory: the directory tree, which blocks make up each file, and where each block lives. Clients ask the NameNode where to read or write, then talk to DataNodes directly. DataNodes send heartbeats; when one stops, the NameNode re-replicates its blocks elsewhere. Because the NameNode is a single point of failure, production clusters run an active and a standby NameNode. The design favours few large files, since every file and block costs NameNode memory.
+---
+Q: How does distributed storage such as HDFS or S3 differ from a traditional file system?
+SRC: Capco, 6 YOE
+TAG: cloud
+A: A local file system stores a file on one machine and assumes the disk is reliable. Distributed storage spreads data across many machines, replicates it, and assumes hardware fails constantly. It is built for large sequential reads and writes, not small random updates: files are written once and appended or replaced. HDFS keeps a hierarchical namespace with atomic renames. Object storage such as S3 goes further and drops the hierarchy: it is a flat key-to-object map reached over HTTP, with no in-place edits and no atomic directory rename, and it scales compute and storage separately.
+---
+Q: HDFS or S3 for a new data platform? How does each stay available when nodes fail?
+SRC: Amazon, 4 YOE
+TAG: cloud
+A: S3 for nearly every new platform. Storage scales independently of compute, there is no cluster to run, durability is managed for you, and clusters can be shut down without losing data. HDFS still makes sense on-premises, or where very low-latency local reads or atomic renames are needed.
+
+On failure: HDFS re-replicates blocks from the remaining copies when a DataNode dies, and fails over to a standby NameNode. S3 stores each object redundantly across multiple facilities in a region and hides failures behind the API. The costs to mention for S3 are request charges and the lack of atomic rename, which table formats work around.
+---
+Q: Explain Kafka's architecture. What is the difference between a topic and a partition?
+SRC: Databricks, 5 YOE
+TAG: streaming
+A: Brokers are the servers that store data. A topic is a named stream. Each topic is split into partitions, and a partition is an ordered, append-only log replicated across brokers, with one replica acting as leader. Producers write to a partition chosen by hashing the message key. Consumers read by offset and belong to consumer groups, where each partition is read by one member. Messages stay for a retention period regardless of being read.
+
+The topic is the logical name. The partition is the unit of ordering, storage and parallelism. Order holds only within a partition.
+---
+Q: How do Kafka partitions, offsets and consumer groups help scale throughput?
+SRC: Flipkart, 4 YOE
+TAG: streaming
+A: Partitions let a topic spread across brokers, so writes and reads happen in parallel. A consumer group divides the partitions among its members, so adding consumers increases read throughput up to the partition count. Offsets make this safe: each group commits how far it has read per partition, so a consumer that crashes or is replaced resumes from the last commit. Different groups keep separate offsets and read the same data independently. The limit to state: you cannot have more active consumers in a group than partitions, and a hot key puts disproportionate load on one partition.
+---
+Q: Explain Airflow fundamentals. What is a DAG, what are operators, and how do XComs work?
+SRC: Delivery Hero, 7 YOE
+TAG: cloud
+A: A DAG is a directed acyclic graph of tasks with a schedule; it defines what runs and in which order. An operator is a template for a task, such as running a Python function, a SQL statement or a Spark job. Sensors are operators that wait for a condition. The scheduler creates a DAG run for each data interval and queues tasks whose upstream tasks have succeeded. XComs are small values a task pushes for downstream tasks to pull, stored in the metadata database, so they suit a file path or row count and not datasets. Good DAGs keep tasks idempotent and driven by the run's data interval.
+---
+Q: What are executors in Airflow?
+TAG: cloud
+A: The executor decides where and how task instances run. The **LocalExecutor** runs tasks as processes on the scheduler machine, which suits small installations. The **CeleryExecutor** sends tasks to a pool of long-running workers through a queue, which suits many short tasks. The **KubernetesExecutor** starts a pod per task, which gives isolation and per-task resources at the cost of start-up time. The choice is about scale and isolation. Heavy work should still run outside Airflow, in Spark or the warehouse, with Airflow only triggering and watching it.
+---
+Q: How do you handle task failures and retries in your orchestrator?
+SRC: Databricks, 5 YOE
+TAG: cloud
+A: Three layers. **Retries** with a delay and backoff for transient faults such as network errors or a busy cluster. **Idempotent tasks**, so a retry cannot duplicate data: each run processes its own interval and overwrites or merges. **Alerting** when retries are exhausted, with the log and the owner attached, and a failure callback that posts to the team channel. I separate failures worth retrying from those that are not: a missing input file may arrive later, but a schema error will fail identically every time and should alert at once. For long jobs, I prefer checkpoints or smaller tasks so a retry does not repeat hours of work.
+---
+Q: What is idempotency in data pipelines and why does it matter?
+SRC: Expedia, 5 YOE
+TAG: cloud
+A: An idempotent task leaves the same result whether it runs once or several times for the same input. It matters because reruns are normal: schedulers retry, engineers rerun after a fix, and backfills replay history. Without it, each rerun duplicates or corrupts data. I get it by binding each run to a fixed data interval, then writing with partition overwrite or a merge on a business key, never a blind append. For streaming, the equivalent is committing offsets and output atomically, or de-duplicating on an event id.
+---
+Q: What is the difference between batch processing and streaming, and when would you choose each?
+SRC: Fanatics, 6 YOE
+TAG: streaming
+A: Batch processes a bounded set of data on a schedule. Streaming processes records continuously as they arrive. Batch is simpler to build, test and reprocess, and cheaper per record, so it fits anything where hours of delay are acceptable: finance reports, daily aggregates, model training sets. Streaming fits decisions that lose value in minutes: surge pricing, fraud checks, live operations dashboards. It costs more to run and to reason about, because of ordering, late data and state. I ask what decision the data feeds and how stale it can be, and choose the simplest option that meets that.
+---
+Q: Explain lazy evaluation in Spark, and the difference between RDD, DataFrame and Dataset.
+SRC: Google, 5 YOE
+TAG: spark
+A: Transformations build a plan and nothing executes until an action is called. That lets the optimizer see the whole query, push filters into the scan, prune columns and choose join strategies.
+
+An **RDD** is a distributed collection of arbitrary objects with no schema, so Spark cannot optimise inside your functions. A **DataFrame** has named, typed columns and goes through the Catalyst optimizer and Tungsten's compact memory format, so it is usually much faster. A **Dataset** adds compile-time types on top of the same engine and exists in Scala and Java only. In Python, DataFrames are the default; RDDs are for the rare case that needs low-level control.
+---
+Q: What are the differences between ETL and ELT? When would you use ELT?
+SRC: LinkedIn, 5 YOE
+TAG: modeling
+A: ETL transforms data before loading it into the target, usually in a separate engine. ELT loads raw data first and transforms it inside the warehouse or lakehouse with SQL. ELT became the default when storage got cheap and warehouses elastic: you keep the raw data, so you can re-transform when logic changes, and transformations are versioned SQL that analysts can read, typically managed with dbt. I still transform before loading when data must be masked or filtered for compliance before it lands, or when the source format needs heavy parsing that suits Spark better than SQL.
+---
+Q: Explain the difference between OLTP and OLAP systems, with examples of each.
+SRC: LinkedIn, 5 YOE
+TAG: modeling
+A: OLTP systems serve the application: many small reads and writes of individual rows, with strict transactions. They are row-oriented and normalised. Examples: the Postgres database behind a ride-booking app, or a payments ledger.
+
+OLAP systems serve analysis: few, large queries that scan many rows but few columns. They are column-oriented and often denormalised. Examples: Snowflake or BigQuery holding trip history, or Trino over Parquet. You do not run analytics on the OLTP database, because long scans compete with customer transactions. Moving data between the two is most of a data engineer's job.
+---
+Q: What is the difference between merge and rebase? How would you undo a bad commit that is already on main?
+TAG: cloud
+A: Merge joins two histories with a merge commit and keeps both as they happened. Rebase replays your commits on top of another branch, producing a linear history but new commit ids. I rebase my own unshared feature branch to keep it current, and merge into shared branches. I never rebase a branch other people have pulled.
+
+For a bad commit on main, `git revert <sha>` creates a new commit that undoes it, so nobody's history breaks. `git reset` with a force-push is only acceptable on a private branch.
+---
+Q: You have a 40 GB log file on a server. How do you find the ten most frequent error codes without loading it into memory?
+TAG: cloud
+A: Stream it through a pipeline:
+
+```bash
+grep ' ERROR ' app.log | awk '{print $5}' | sort | uniq -c | sort -rn | head -10
+```
+
+`grep` and `awk` process a line at a time. `sort` uses temporary files on disk when input exceeds memory, so it handles the size. If sorting 40 GB is too slow, `awk '{c[$5]++} END {for (k in c) print c[k], k}'` counts in a hash map sized by the number of distinct codes, then only the small result is sorted. The principle is the one behind MapReduce: stream, aggregate by key, then rank.
+---
+Q: Describe an agent you have built. What tools did it have, and what stopped it from going wrong?
+TAG: ai
+A: Structure the answer as task, tools, loop, safeguards, result. Use your Salesforce request-processing system: the task (custom object create, add and delete requests arriving in Slack), the tools the agent could call, how approvals were routed, and the outcome (83 minutes to 8 per request).
+
+Then the safeguards, which is what the interviewer is listening for: read-only by default, human approval before any change, validation of the model's output against a schema, a limit on turns and spend, logging of every tool call, and a fallback to a person when confidence is low. Close with one failure you saw and what you changed.
+---
+Q: How do you learn a new technology quickly when you are asked to use something unfamiliar?
+SRC: Amazon, 3 YOE
+TAG: behavioral
+A: Give a method and one real example. A method that works: read the architecture page of the official docs to learn the mental model, build the smallest thing that runs end to end, break it on purpose to see the failure modes, then read one production write-up from a company that runs it at scale. Use AI assistants to speed up the build, and verify what they produce against the docs.
+
+For the example, use the STAR shape: situation, task, action, result. Your move to PySpark on AWS during the 120-workflow migration is a good one. End with the measurable result and what you would do faster next time.
+
+@@mock
+## Mock 1: hiring-manager screen (30 minutes)
+
+Every loop in your bank opens with a version of this round. It decides whether the technical rounds happen.
+
+**Format.** Claude plays a hiring manager at a product company.
+
+- 10 minutes: walk through your current project, with follow-up questions on scale, your own decisions and what failed.
+- 15 minutes: fundamentals from this sprint: storage, Kafka basics, Airflow, idempotency.
+- 5 minutes: one behavioral question.
+
+**What is scored, out of 10.**
+
+| Area | Points | What earns them |
+|---|---|---|
+| Structure | 3 | Problem, architecture, decisions, numbers, in that order, under three minutes |
+| Depth | 3 | You can go one level below any box you draw |
+| Numbers | 2 | Volumes, latencies and before-and-after figures without being asked |
+| Honesty | 2 | You say "I have not used that in production" and then reason about it anyway |

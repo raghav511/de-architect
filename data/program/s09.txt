@@ -1,0 +1,710 @@
+@@meta
+id: s09
+n: 9
+title: Reliability
+goal: Failures stop being silent. Contracts, tests and observability catch bad data before anyone reads it, CI checks every change, and the capstone begins: an on-call agent that reads an Airflow failure, gathers evidence and reports a diagnosis to Slack.
+hours: 10
+
+@@tickets
+901 | learn | 1.75 | Chapter 9 and the readings | You can name the five ways data fails silently and the check that catches each. | chapter
+902 | build | 2.25 | Contracts, tests, CI and a health dashboard | A pull request runs lint, unit tests and `dbt build` in CI, and a dashboard shows freshness, volume and null rates per table. | lab
+903 | incident | 0.75 | 12% of rows vanish overnight | The rename is caught by a contract check before publish, and the backfill restores every row. | lab
+904 | ai | 1.5 | The on-call agent, version 1 | A failed task produces a Slack message with cause, evidence and next step within two minutes, and it scores at least 6 of 8 on your past incidents. | lab
+905 | practice | 1 | Warm-ups and the customer drill | Three SQL and three DSA warm-ups attempted, and the drill answered out loud. | practice
+906 | test | 0.5 | Quiz 9 | 80% or better. | quiz
+907 | test | 1 | Coding test 9 | Attempted inside the 60-minute timer. | coding
+908 | talk | 1.25 | Interview set 9 and the mock | 14 of 18 questions ticked, and a mock score recorded. | interview
+
+@@readings
+- [ZenML LLMOps database: Wix's AI on-call assistant for Airflow](https://www.zenml.io/llmops-database/ai-powered-on-call-assistant-for-airflow-pipeline-debugging). The production system your capstone is modelled on, with its costs and its limits.
+- [Anthropic: Demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents). How to test an agent before you trust it.
+- [OpenMetadata: Data contracts](https://docs.open-metadata.org/v2.0.x/how-to-guides/data-contracts) and [Configure data quality](https://docs.open-metadata.org/v1.13.x/how-to-guides/data-quality-observability/quality/configure). You have used OpenMetadata in production, so this connects the chapter to your own work.
+- [Airflow Summit 2026: Autonomous incident response for Apache Airflow](https://airflowsummit.org/sessions/2026/stop-fighting-fires-autonomous-incident-response-for-apache-airflow-using-ai-powered-agents/). The session abstract shows where the community is taking this idea.
+
+@@chapter
+## 9.1 The failures that do not fail
+
+A job that crashes is the easy case. Someone is paged, and the dashboard shows yesterday's numbers with a warning. The dangerous failures finish successfully and publish wrong data.
+
+Last month, Meridian had three:
+
+- The app team renamed `fare_amount` to `fare`. The ingest job's permissive schema handling filled the old column with NULLs, and a filter on `fare_amount > 0` dropped 12% of trips. Every task was green.
+- A source sent the same day's file twice. Revenue doubled for one day.
+- A source stopped sending one city's data. Totals dipped by 4%, within normal variation, and nobody noticed for a week.
+
+Data can go wrong in five ways, and each needs its own check.
+
+| Dimension | Question | Example check |
+|---|---|---|
+| **Freshness** | Did the data arrive on time? | Newest `event_ts` is less than two hours old |
+| **Volume** | Is the amount plausible? | Row count is within the band expected for this weekday |
+| **Schema** | Is the shape what consumers expect? | Columns, types and nullability match the contract |
+| **Distribution** | Are the values plausible? | Null rate of `driver_id` under 1%; no city's share moved by more than 20% |
+| **Lineage** | What is affected if this breaks? | The list of downstream tables and dashboards, and their owners |
+
+A pipeline is reliable when each of these is checked automatically, at the right place, with an alert that reaches someone who can act.
+
+## 9.2 Testing data pipelines
+
+Testing has three layers, and each runs in a different place.
+
+**Unit tests** check transformation logic with small, hand-written inputs. They run in CI on every change, in seconds, with no cloud access.
+
+```python
+import pytest
+from pyspark.sql import SparkSession
+from jobs.enrich import completed_per_city
+
+@pytest.fixture(scope="session")
+def spark():
+    return SparkSession.builder.master("local[1]").getOrCreate()
+
+def test_counts_only_completed_trips(spark):
+    df = spark.createDataFrame(
+        [("t1", "BLR", "completed"), ("t2", "BLR", "cancelled"), ("t3", "HYD", "completed")],
+        "trip_id string, city string, status string")
+    result = {r.city: r.trips for r in completed_per_city(df).collect()}
+    assert result == {"BLR": 1, "HYD": 1}
+```
+
+This only works if transformations are written as functions that take and return DataFrames, with reading and writing kept at the edges of the job. That design choice makes code testable, and it is worth stating in interviews. External sources are replaced by DataFrames built in the test. External services are replaced with mocks.
+
+**Data tests** check the data itself, every time it is produced: keys unique and not null, values in an allowed set, foreign keys present in the dimension, counts within a band. dbt tests and expectation libraries such as Great Expectations are both this layer. They run in production, as part of the pipeline.
+
+**Integration tests** run the whole pipeline on a small fixed dataset, often with real services in containers, and compare the output with a known answer. They run in CI before a release.
+
+## 9.3 Data contracts
+
+Most bad data starts upstream, in a change made by a team that did not know who depended on its output. A **data contract** makes that dependency explicit.
+
+```yaml
+contract: trip_events
+version: 2.1.0
+owner: rides-app-team
+consumers: [data-platform, pricing]
+schema:
+  event_id:    {type: string, nullable: false, unique: true}
+  event_type:  {type: string, nullable: false, allowed: [requested, accepted, started, completed, cancelled]}
+  trip_id:     {type: string, nullable: false}
+  fare_amount: {type: decimal, nullable: true, description: "Rupees, excluding tip. Set on completed only."}
+  event_ts:    {type: timestamp, nullable: false, description: "UTC, from the device"}
+quality:
+  - freshness: event_ts within 15 minutes of arrival
+  - volume: between 60% and 160% of the same hour last week
+changes:
+  non_breaking: add nullable field
+  breaking: rename, remove, change type or meaning; needs a new major version and 30 days' notice
+```
+
+A contract is useful only if it is enforced in two places.
+
+- **On the producer's side, in CI.** A pull request that changes the event schema runs a check against the contract. A breaking change fails the build before it ships.
+- **On the consumer's side, at ingestion.** Every batch is validated against the contract. A failing batch is quarantined and the producer's owner is alerted.
+
+The renamed column in section 9.1 would have failed the first check. If it had somehow shipped, it would have failed the second, and the 12% would never have reached a dashboard.
+
+## 9.4 Write, audit, publish
+
+The general pattern behind every safe pipeline is **write-audit-publish**.
+
+1. **Write** the new data somewhere consumers cannot see: a staging table, a separate schema, or an Iceberg branch.
+2. **Audit** it: run the data tests and contract checks.
+3. **Publish** only if the audit passes, by swapping tables, switching a view, or fast-forwarding the main branch.
+
+If the audit fails, consumers keep yesterday's good data and someone is alerted. Stale data with a warning is almost always better than fresh wrong data. `dbt build` approximates this by running a model's tests before building the models that depend on it.
+
+## 9.5 Observability
+
+Tests check known rules. Observability watches for the unknown, by tracking metrics over time and noticing change.
+
+For every important table, record per load: freshness lag, row count, null rate of key columns, distinct counts, and a hash of the schema. For every job: duration, retries and cost. Store these as a table, which makes them queryable like any other data.
+
+**Volume anomalies** are found by comparing today with recent history. A simple rule flags a count more than three standard deviations from the mean of the previous seven days. It needs care: weekly seasonality makes Monday look anomalous against Sunday, so compare each day with the same weekday, and require enough history before alerting.
+
+**Service-level objectives** turn reliability into numbers people agree on: "the trips mart is complete by 07:00 IST on 99% of days". Measure against it, and you can say whether last month was acceptable, which is what a stakeholder asking "is the pipeline reliable?" actually wants.
+
+**Lineage** answers "what does this break?" Airflow and Spark can emit lineage events in the OpenLineage format, and catalogs such as OpenMetadata collect them into a graph. In an incident, lineage tells you which dashboards to mark as suspect and whom to tell.
+
+**Alerts** should be few, actionable and routed. Each one says what failed, what it affects, who owns it, and links to the evidence. An alert that fires daily and is ignored is worse than none.
+
+## 9.6 CI/CD for data
+
+Every change goes through the same path.
+
+1. A branch and a pull request.
+2. **CI** runs: linting for Python and SQL, unit tests, `dbt build` against a CI schema on a sample of data, and `terraform plan` if infrastructure changed. dbt can build only the models changed in the pull request and their descendants, reading unchanged parents from production. That keeps CI fast on large projects.
+3. Review and merge.
+4. **Deployment** to production: new DAG files, new job images, `terraform apply`.
+5. **Rollback** is a revert followed by a rerun of the affected intervals. That is only safe because every job is idempotent.
+
+Jobs are packaged as **container images**, so the same code and dependencies run in CI and production. On **Kubernetes**, a container runs inside a pod. A pod declares resource *requests*, which the scheduler reserves, and *limits*, which the container may not exceed. A container that exceeds its memory limit is killed. Airflow can run each task as its own pod, and Spark can run its driver and executors as pods.
+
+## 9.7 Responding to an incident
+
+When something does fail, the order of work matters.
+
+1. **Stop the spread.** Pause downstream jobs. Mark affected dashboards as suspect.
+2. **Tell people.** A short message to the affected teams: what is wrong, what is affected, when the next update will come.
+3. **Find the cause** with evidence, not guesses.
+4. **Fix and backfill.** Repair the code or the data, then rerun the affected intervals.
+5. **Write the postmortem.** What happened, why, what was done, and what will prevent a repeat. Blame the system, not a person.
+
+You have written eight short postmortems in `notes/what-broke.md` across this program. They are now the most valuable thing you own for behavioral rounds, and the evaluation set for your agent.
+
+## 9.8 The on-call agent
+
+Each sprint has added one capability to your agent. This sprint you assemble them into a service. It follows the design of the system Wix runs across 3,500 Airflow pipelines.
+
+```
+Airflow task fails
+   │  on_failure_callback posts dag, task, run and log location
+   ▼
+1. Classify      cheap model, structured output            (sprint 2)
+2. Gather        read_log, stage_summary, table_health,
+                 lineage, search_docs                      (sprints 1, 3, 5, 7)
+3. Diagnose      stronger model, structured plan with evidence
+4. Report        Slack message to the owning team
+5. Propose       optional fix, through approval only        (sprint 6)
+```
+
+The hook in Airflow:
+
+```python
+import requests
+
+def notify_agent(context):
+    ti = context["task_instance"]
+    requests.post(AGENT_URL, timeout=5, json={
+        "dag_id": ti.dag_id, "task_id": ti.task_id, "run_id": context["run_id"],
+        "try_number": ti.try_number, "log_url": ti.log_url})
+
+default_args = {"retries": 2, "on_failure_callback": notify_agent}
+```
+
+The agent's final answer is a structured plan, validated like any model output:
+
+```python
+class Diagnosis(BaseModel):
+    summary: str                 # one sentence a person reads first
+    root_cause: str
+    evidence: list[str]          # exact lines or numbers from tool output
+    confidence: Literal["high", "medium", "low"]
+    next_steps: list[str]
+    owner: str                   # from the table's metadata, not from the model
+    needs_human: bool
+```
+
+Design decisions to be able to defend:
+
+- **Two models.** Classification is frequent and simple, so it uses a small, cheap model. Diagnosis is rarer and harder, so it uses a stronger one. Wix reports about $0.30 per interaction with this split.
+- **Evidence or nothing.** Every claim must cite tool output. A diagnosis without evidence is posted as "unknown, here is what I checked".
+- **The owner comes from metadata.** Routing is a lookup, not a guess.
+- **It reads, and only proposes.** Fixes go through the sprint 6 approval path. Wix found that 28 of 180 generated pull requests merged without human edits, about 15%. The agent saves the first fifteen minutes of every incident; it does not replace the engineer.
+- **It is evaluated.** Your eight incidents, with their known causes, plus healthy runs where the right answer is "nothing wrong", are the test set. Run it after every prompt or tool change.
+- **It has a cost and a log.** Tokens and time per incident are recorded, so you can say what it costs and whether it helps.
+
+@@lab
+## Build: contracts, tests, CI and a health dashboard (2.25 hours)
+
+Ask Claude to **start sprint 9**. The starter kit adds a GitHub Actions workflow skeleton, a `contracts/` folder, and a metrics table definition.
+
+1. **Unit tests.** Refactor two transformations from earlier sprints into pure functions on DataFrames. Write three pytest tests for each, using a shared Spark fixture.
+2. **A contract.** Write `contracts/trip_events.yaml` as in section 9.3. Write a validator that checks a batch against it.
+3. **Write, audit, publish.** Change the silver load to write into an Iceberg branch, run the validator and the dbt tests, and fast-forward main only if they pass. If your catalog does not support branches, use a staging table and a swap.
+4. **CI.** On every pull request: `ruff`, `sqlfluff`, `pytest`, and `dbt build` against a CI target. Confirm a deliberately broken test fails the build.
+5. **Health metrics.** After each load, write freshness lag, row count, `driver_id` null rate and schema hash for the silver and gold tables to `ops.table_health`.
+6. **A dashboard.** Plot those metrics for the last 30 days in any tool you like. Add the anomaly rule from section 9.5 for row counts.
+7. **Lineage.** Enable OpenLineage events from Airflow into OpenMetadata, or draw the graph by hand from your DAGs if that takes too long. You need to be able to answer "what breaks if `silver.trip_events` is wrong?"
+
+**Done when** CI blocks a failing change, and the dashboard shows 30 days of health metrics.
+
+## Incident: 12% of rows vanish overnight (45 minutes)
+
+1. **Reproduce.** The generator's `--rename` option renames `fare_amount` to `fare` for one day. Turn your contract check off, run the day, and query Finance's revenue. It is down, and every task is green.
+2. **Find it** from the health metrics, not from the code. Which metric moved first?
+3. **Turn the contract check back on** and rerun. The batch must be quarantined, and nothing published.
+4. **Decide the fix.** Either map `fare` to `fare_amount` in staging for this version, or reject until the producer reverts. Write down who should make that decision and why.
+5. **Backfill** the affected day once fixed, and confirm Finance's revenue matches the source.
+6. **Write the postmortem** in full: timeline, impact in rows and rupees, root cause, why detection was late, and three actions with owners.
+
+This is your strongest behavioral story so far: a silent failure, found with metrics, prevented with a contract. Practise telling it in two minutes.
+
+## AI lab: the on-call agent, version 1 (1.5 hours)
+
+1. **The service.** A small web service, FastAPI is fine, that receives the callback payload from section 9.8.
+2. **Wire the steps.** Classify with the sprint 2 classifier. Then run the agent loop with your existing tools, plus `table_health(table)` and `downstream(table)` from this sprint's lineage. Return a `Diagnosis`.
+3. **Post to Slack.** One message: summary first, then cause, evidence as a quoted block, next steps, owner, and confidence.
+4. **Add the hook** to your DAGs' `default_args`.
+5. **Evaluate.** Replay your incidents from sprints 1 to 9: the duplicate rerun, small files, skew, late data, poison message, CDC drift, cost spike, the rename. Use a healthy run too. Score each on: right cause, evidence cited, useful next step. Record tokens and seconds per incident.
+6. **Read three answers closely** and write down where the agent was overconfident.
+
+**Done when** a real failure reaches Slack with a diagnosis in under two minutes, and the agent scores at least 6 of 8 incidents correctly with the healthy run reported as healthy.
+
+This is the project you will demonstrate in sprint 12. Commit it with a README that explains the design choices in section 9.8.
+
+@@practice
+## SQL warm-ups: data quality queries
+
+1. **Detect duplicates feeding a dashboard.** Asked at Meta. *Approach:* `GROUP BY` the business key `HAVING COUNT(*) > 1`; then decide whether they are exact copies or conflicting versions, which have different causes.
+2. **Missing ids in a sequence.** `orders(order_id)` should be continuous. *Approach:* `LEAD(order_id)` and report gaps where the next id is more than one greater.
+3. **Days with no data.** *Approach:* generate a calendar of dates for the range, left join the daily counts, and keep dates with no match. Absence never shows up in a `GROUP BY` of the data itself.
+
+## DSA warm-ups: dynamic programming, part 2, and backtracking
+
+1. **All unique permutations of a list with duplicates.** Asked at LinkedIn. *Approach:* sort, then backtrack, skipping an element equal to the previous one when the previous one is unused at this depth.
+2. **Word break.** Can a string be split into dictionary words? *Approach:* `ok[i]` is true if some `ok[j]` is true and `s[j:i]` is a word.
+3. **Longest palindromic subsequence.** Asked at Intuit. *Approach:* `dp[i][j]` over substring bounds; if the ends match, add 2 to the inner answer, otherwise take the better of dropping either end. O(n²).
+
+## Customer drill: "your pipeline is unreliable"
+
+A customer's head of operations tells you: *"Your pipeline is unreliable."*
+
+What do you do in the next ten minutes? Decide, then compare.
+
+- Ask for the last two or three occasions they have in mind, with dates. Reliability complaints are usually about specific memories.
+- Ask what "reliable" means to them: on time, correct, or both? By when do they need the data?
+- Propose a measurable target: data complete by a time on a share of days.
+- Offer to show the last 30 days against that target, with incidents and time to recover.
+- Commit to a weekly report until the number is where it should be.
+
+A vague complaint becomes a service-level objective with a report. The conversation changes from blame to a number both sides can watch.
+
+@@quiz
+TYPE: mcq
+TAG: cloud
+Q: Which problem would a `not_null` and `unique` test on `trip_id` fail to catch?
+A) Duplicate trip ids
+B) Null trip ids
+C) 12% of yesterday's trips missing entirely
+D) A trip id appearing twice in one load
+ANS: C
+WHY: The rows that remain are still unique and not null. Missing data needs a volume check against an expected range or against the source.
+---
+TYPE: mcq
+TAG: cloud
+Q: In a write-audit-publish pipeline, the audit step fails. What do consumers see?
+A) The new, failed data
+B) The previous published data, unchanged
+C) An empty table
+D) Half of the new data
+ANS: B
+WHY: New data is written where consumers cannot see it and published only after the audit passes. A failed audit leaves the last good version in place.
+---
+TYPE: mcq
+TAG: cloud
+Q: Which change to a data contract is breaking?
+A) Adding a new nullable field
+B) Adding documentation to a field
+C) Renaming an existing field
+D) Adding a new consumer to the list
+ANS: C
+WHY: Consumers reference fields by name. A rename breaks every query that uses the old name, so it needs a new major version and a migration period.
+---
+TYPE: mcq
+TAG: cloud
+Q: A dbt project has 900 models. A pull request changes one. What keeps CI fast?
+A) Skipping tests
+B) Building only modified models and their descendants, reading unchanged parents from production
+C) Running CI weekly
+D) Building everything on a larger warehouse
+ANS: B
+WHY: State comparison selects the changed models and everything downstream of them. Unchanged upstream models are referenced from production, so they need not be rebuilt.
+---
+TYPE: mcq
+TAG: cloud
+Q: Which Airflow mechanism runs your code when a task fails, after its retries are exhausted?
+A) A sensor
+B) `on_failure_callback`
+C) XCom
+D) `catchup`
+ANS: B
+WHY: Callbacks receive the task context, including the task instance and run id, and are the standard place to send alerts or notify an agent.
+---
+TYPE: mcq
+TAG: cloud
+Q: A Kubernetes pod running a Spark executor uses more memory than its limit. What happens?
+A) It is slowed down
+B) The container is killed
+C) Kubernetes gives it more memory
+D) Nothing until the node is full
+ANS: B
+WHY: Memory limits are enforced by killing the container, reported as OOMKilled. CPU limits, by contrast, throttle.
+---
+TYPE: mcq
+TAG: cloud
+Q: The objective is "the trips mart is complete by 07:00 on 99% of days". In a 30-day month it was late on 2 days. What does that mean?
+A) The objective was met
+B) The error budget of about 0.3 late days was exceeded
+C) The objective does not apply to months
+D) Nothing; two days is noise
+ANS: B
+WHY: 1% of 30 days is 0.3 days, so even one late day exceeds the budget. That is a signal to prioritise reliability work over new features.
+---
+TYPE: mcq
+TAG: ai
+Q: What is the best evaluation set for your on-call agent?
+A) A few made-up error messages
+B) Your past incidents with known root causes, plus healthy runs where the correct answer is that nothing is wrong
+C) Whatever failures happen next week
+D) A public benchmark of programming questions
+ANS: B
+WHY: Real incidents with known answers measure what matters. Healthy runs catch an agent that invents problems, which is the most common failure of diagnostic agents.
+---
+TYPE: fill
+TAG: cloud
+Q: Writing new data to a hidden location, checking it, and then making it visible is called write-audit-____.
+ANS: publish
+WHY: It is the general pattern behind safe data releases, implemented with staging tables, table swaps or Iceberg branches.
+---
+TYPE: fill
+TAG: cloud
+Q: The open standard for lineage events emitted by tools such as Airflow and Spark is Open____.
+ANS: Lineage
+WHY: Producers emit run, job and dataset events in a common format, and catalogs collect them into a lineage graph.
+---
+TYPE: fill
+TAG: cloud
+Q: In pytest, a reusable object such as a SparkSession that is set up once and passed to tests is called a ____.
+ANS: fixture
+WHY: A session-scoped fixture creates one SparkSession for the whole test run, which keeps tests fast.
+---
+TYPE: fill
+TAG: cloud
+Q: A Kubernetes container killed for exceeding its memory limit shows the status OOM____.
+ANS: Killed
+WHY: The status names the cause directly. Raise the limit, or reduce the memory the task needs.
+---
+TYPE: short
+TAG: cloud
+Q: Name the five dimensions of data observability and give one automated check for each.
+MODEL: - **Freshness:** the newest event timestamp or load time is within the expected lag, for example under two hours.
+- **Volume:** row count is within a band derived from history, for example the same weekday over recent weeks.
+- **Schema:** columns, types and nullability match the contract, or the schema hash is unchanged.
+- **Distribution:** null rates, distinct counts, value ranges and category shares are within expected bounds.
+- **Lineage:** every table's upstream sources and downstream consumers are known, so an alert names what is affected and who owns it.
+---
+TYPE: short
+TAG: cloud
+Q: Outline a data contract between the app team that produces `trip_events` and the data team. What does it contain, and where is it enforced?
+MODEL: **Contents:** owner and consumers; the schema with names, types and nullability per field; meanings and units, such as "rupees, excluding tip, UTC"; allowed values; quality expectations such as freshness and volume bands; a version; and the change policy, defining breaking changes and the notice period for them.
+
+**Enforcement:** on the **producer's** side, a CI check compares any schema change with the contract and fails breaking changes. On the **consumer's** side, ingestion validates every batch and quarantines failures with an alert to the owner. A schema registry can enforce the structural part at publish time. The contract is stored in version control so changes are reviewed.
+---
+TYPE: short
+TAG: cloud
+Q: How would you test a PySpark transformation? Describe each layer and where it runs.
+MODEL: **Structure** the job so transformations are functions from DataFrames to DataFrames, with reading and writing at the edges.
+
+**Unit tests** build small DataFrames in code, call the function, and compare the result with an expected answer, including edge cases such as nulls, duplicates and empty input. They use a shared local SparkSession fixture and run in CI on every pull request.
+
+**Data tests** check real output each time it is produced: uniqueness, nulls, accepted values, referential integrity, volume bands. They run in production as a gate before publishing.
+
+**Integration tests** run the whole job on a fixed sample, with real or containerised services, and compare against a known result. They run in CI before release.
+---
+TYPE: short
+TAG: ai
+Q: Describe the architecture of your on-call agent and the limits you put on it.
+MODEL: **Trigger:** Airflow's failure callback sends the DAG, task, run and log location to a service.
+
+**Steps:** a small model classifies the failure into a fixed set of categories. The agent then calls read-only tools for evidence: logs, Spark stage summaries, table health, lineage and runbook search. A stronger model produces a structured diagnosis with root cause, cited evidence, confidence and next steps. The owner is looked up from metadata. The result is posted to the owning team's Slack channel.
+
+**Limits:** read-only credentials; any fix only as a proposal through human approval; a turn and token limit; evidence required for every claim; "unknown" allowed; every run logged with cost; and an evaluation set of past incidents and healthy runs rerun after each change.
+
+@@coding
+TITLE: Flag anomalous daily row counts
+KIND: sql
+MIN: 15
+TAG: sql
+PROBLEM:
+Table `daily_counts(day, row_count)`, one row per day.
+
+Return each `day, row_count` where the count differs from the **mean of the previous seven days** by more than **three standard deviations** of those seven days. Only evaluate days that have seven previous days. Order by day.
+SOLUTION:
+```sql
+WITH s AS (
+  SELECT day, row_count,
+         AVG(row_count)         OVER w AS mean_7d,
+         STDDEV_SAMP(row_count) OVER w AS sd_7d,
+         COUNT(*)               OVER w AS n_prev
+  FROM daily_counts
+  WINDOW w AS (ORDER BY day ROWS BETWEEN 7 PRECEDING AND 1 PRECEDING)
+)
+SELECT day, row_count
+FROM s
+WHERE n_prev = 7
+  AND ABS(row_count - mean_7d) > 3 * sd_7d
+ORDER BY day;
+```
+
+The frame ends at `1 PRECEDING`, so a day is compared only with the days before it. Including the current day would let a large anomaly pull the mean toward itself.
+
+The `n_prev = 7` guard stops alerts during the first week, when there is too little history.
+
+Two refinements to mention. After an anomaly, it sits in the next seven windows and widens the band, which can hide a second problem; excluding flagged days from the baseline fixes that. And weekly patterns make weekdays and weekends look anomalous against each other, so production checks compare with the same weekday in previous weeks.
+<!--test
+con.execute("create table daily_counts(day date, row_count int)")
+vals = [100,102,98,101,99,100,103,60,101,100]
+con.executemany("insert into daily_counts values (?,?)", [(f"2026-10-{i+1:02d}", v) for i, v in enumerate(vals)])
+rows = [(str(d), int(c)) for d, c in con.execute(Q).fetchall()]
+assert rows == [("2026-10-08", 60)], rows
+-->
+---
+TITLE: A data quality report per load
+KIND: sql
+MIN: 13
+TAG: sql
+PROBLEM:
+`trips(load_date, trip_id, driver_id)` and `drivers(driver_id)`, where `driver_id` is unique in `drivers`.
+
+For each `load_date`, return:
+
+- `total_rows`
+- `duplicate_rows`: rows beyond the first for each `trip_id`
+- `null_driver_pct`: percentage of rows with a NULL `driver_id`, rounded to one decimal
+- `orphan_rows`: rows whose `driver_id` is not NULL but does not exist in `drivers`
+
+Order by `load_date`.
+SOLUTION:
+```sql
+SELECT t.load_date,
+       COUNT(*)                                                         AS total_rows,
+       COUNT(*) - COUNT(DISTINCT t.trip_id)                             AS duplicate_rows,
+       ROUND(100.0 * SUM(CASE WHEN t.driver_id IS NULL THEN 1 ELSE 0 END) / COUNT(*), 1) AS null_driver_pct,
+       SUM(CASE WHEN t.driver_id IS NOT NULL AND d.driver_id IS NULL THEN 1 ELSE 0 END)   AS orphan_rows
+FROM trips t
+LEFT JOIN drivers d ON d.driver_id = t.driver_id
+GROUP BY t.load_date
+ORDER BY t.load_date;
+```
+
+Four checks in one scan. The left join keeps every trip, and a trip whose driver has no match shows a NULL `d.driver_id`. Distinguishing that from a trip with no driver at all is why the orphan condition tests both columns.
+
+The query depends on `drivers.driver_id` being unique. If it were not, the join would multiply trips and every count would be wrong. Say that assumption out loud; checking it is itself a data test.
+
+In a real pipeline this result is written to a metrics table after each load, and the thresholds are applied to it. That is the `ops.table_health` table in this sprint's lab.
+<!--test
+con.execute("create table trips(load_date date, trip_id int, driver_id int)")
+con.execute("create table drivers(driver_id int)")
+con.execute("insert into drivers values (7),(8)")
+con.execute("insert into trips values ('2026-10-01',1,7),('2026-10-01',2,7),('2026-10-01',2,7),('2026-10-01',3,NULL),('2026-10-01',4,99),('2026-10-02',5,8),('2026-10-02',6,8)")
+rows = [(str(d), int(a), int(b), float(c), int(e)) for d, a, b, c, e in con.execute(Q).fetchall()]
+assert rows == [("2026-10-01",5,1,20.0,1),("2026-10-02",2,0,0.0,0)], rows
+-->
+---
+TITLE: Subset sum
+KIND: dsa
+MIN: 15
+TAG: dsa
+SRC: LinkedIn, 5 YOE
+PROBLEM:
+Given a list of non-negative integers and a target, return `True` if some subset of the numbers adds up exactly to the target. Each number can be used at most once.
+
+LinkedIn asked for O(n·W) time and O(W) space, where W is the target.
+SOLUTION:
+```python
+def can_sum(nums, target):
+    reachable = [True] + [False] * target      # reachable[s]: some subset sums to s
+    for x in nums:
+        for s in range(target, x - 1, -1):     # go downwards so x is used at most once
+            if reachable[s - x]:
+                reachable[s] = True
+    return reachable[target]
+```
+
+The full table would be `dp[i][s]`: whether the first i numbers can make s. Each row depends only on the row before, so one array is enough.
+
+The direction of the inner loop is the detail interviewers check. Going down from the target means `reachable[s - x]` still holds the value from before x was considered, so x is counted once. Going upwards would let x be reused, which solves a different problem, the unbounded version used in coin change.
+<!--test
+assert can_sum([3,34,4,12,5,2], 9) is True
+assert can_sum([3,34,4,12,5,2], 30) is False
+assert can_sum([], 0) is True
+assert can_sum([5], 5) is True
+assert can_sum([2,2], 3) is False
+assert can_sum([1,5,11,5], 11) is True
+assert can_sum([3], 6) is False
+-->
+---
+TITLE: Validate a batch against a contract
+KIND: python
+MIN: 17
+TAG: cloud
+SRC: LinkedIn, 5 YOE
+PROBLEM:
+Write `validate(rows, contract)` for a batch of records. `rows` is a list of dictionaries. `contract` looks like:
+
+```python
+{"min_rows": 2,
+ "columns": {"trip_id": {"type": str},
+             "fare":    {"type": float, "nullable": True},
+             "zone_id": {"type": int}}}
+```
+
+Return a **sorted list of distinct violation codes**:
+
+- `min_rows` if there are fewer rows than `min_rows`
+- `missing:<col>` if any row lacks a contract column
+- `null:<col>` if a non-nullable column is `None` in any row
+- `type:<col>` if any non-`None` value has the wrong type. A `bool` is not an `int`.
+- `unexpected:<col>` if any row has a column not in the contract
+
+Return an empty list for a valid batch.
+SOLUTION:
+```python
+def validate(rows, contract):
+    problems = set()
+    if len(rows) < contract.get("min_rows", 0):
+        problems.add("min_rows")
+    columns = contract["columns"]
+    for row in rows:
+        for extra in row.keys() - columns.keys():
+            problems.add(f"unexpected:{extra}")
+        for name, spec in columns.items():
+            if name not in row:
+                problems.add(f"missing:{name}")
+                continue
+            value = row[name]
+            if value is None:
+                if not spec.get("nullable", False):
+                    problems.add(f"null:{name}")
+            elif type(value) is bool and spec["type"] is not bool:
+                problems.add(f"type:{name}")
+            elif not isinstance(value, spec["type"]):
+                problems.add(f"type:{name}")
+    return sorted(problems)
+```
+
+Returning distinct codes, not one message per row, keeps a million-row batch from producing a million errors. The caller can count rows per code separately if needed.
+
+The `bool` line exists because Python treats `True` as an integer, so `isinstance(True, int)` is true. A contract check that misses that will accept `zone_id: True`.
+
+LinkedIn asked how this integrates with CI/CD. The same function runs in two places: in the producer's CI on sample payloads, failing the build, and at ingestion on every batch, quarantining failures.
+<!--test
+c = {"min_rows": 2, "columns": {"trip_id": {"type": str}, "fare": {"type": float, "nullable": True}, "zone_id": {"type": int}}}
+good = [{"trip_id": "t1", "fare": 10.0, "zone_id": 1}, {"trip_id": "t2", "fare": None, "zone_id": 2}]
+assert validate(good, c) == []
+bad = [{"trip_id": "t1", "fare": "10", "zone_id": True}, {"trip_id": None, "zone_id": 3, "extra": 1}]
+assert validate(bad, c) == ["missing:fare", "null:trip_id", "type:fare", "type:zone_id", "unexpected:extra"], validate(bad, c)
+assert validate(good[:1], c) == ["min_rows"]
+-->
+
+@@interview
+Q: How do you ensure data quality across teams?
+SRC: Confluent, 5–6 YOE
+TAG: cloud
+A: Quality problems across teams are mostly ownership problems, so I start there: each dataset has a named owner and documented consumers. Then I make expectations explicit with data contracts covering schema, meaning, freshness and volume, enforced in the producer's CI and validated again at ingestion. Inside the platform, data tests gate publication, with write-audit-publish so bad batches never reach consumers. Observability tracks freshness, volume and distributions over time and routes alerts to owners with lineage context. Finally, I report quality per dataset in a shared place and review the worst offenders regularly, so quality becomes visible and owned rather than a data team problem.
+---
+Q: How would you design a data quality framework that ensures valid, complete and consistent data in ETL pipelines?
+SRC: Accenture, 4 YOE
+TAG: cloud
+A: Define the rules where they belong. **Validity:** types, formats, allowed values and ranges, checked at ingestion against a contract. **Completeness:** null rates on required fields, row counts against expected bands and against the source, and freshness. **Consistency:** uniqueness of keys, referential integrity between facts and dimensions, and reconciliation of totals across layers.
+
+Mechanics: rules declared as configuration or dbt tests, executed as part of each pipeline run; results written to a metrics table; failures either block publication or warn, according to severity; quarantined records kept for inspection; alerts sent to owners. A dashboard of rule results over time shows trends.
+---
+Q: What is a data contract, and how do you enforce one?
+TAG: cloud
+A: A data contract is an agreement between the producer of a dataset and its consumers. It specifies schema, meaning and units of each field, quality expectations such as freshness and volume, ownership, and a versioned change policy that distinguishes breaking from non-breaking changes. Enforcement happens at both ends. The producer's CI checks proposed changes against the contract and blocks breaking ones without a new version. The consumer's ingestion validates every batch and quarantines violations with an alert to the owner. A schema registry enforces the structural part for streams. Without enforcement, a contract is just documentation.
+---
+Q: Write a pytest unit test for a transformation function, and describe how you would mock external data sources.
+SRC: LinkedIn, 5 YOE
+TAG: cloud
+A: I keep transformations pure, taking and returning DataFrames, so tests need no external systems:
+
+```python
+def test_dedup_keeps_latest(spark):
+    df = spark.createDataFrame([("e1", 1), ("e1", 2), ("e2", 1)], "event_id string, ts int")
+    out = {r.event_id: r.ts for r in keep_latest(df).collect()}
+    assert out == {"e1": 2, "e2": 1}
+```
+
+`spark` is a session-scoped fixture. Sources are replaced by DataFrames built in the test. Where code calls a service, such as an API client or S3, I inject the client and pass a fake, or patch it with `unittest.mock`, or use a library that emulates AWS locally. Edge cases get their own tests: empty input, nulls, duplicates.
+---
+Q: How do you test SQL models?
+TAG: cloud
+A: In layers. Data tests on every model: unique and not-null keys, accepted values, relationships, and custom tests written as queries that return failing rows. Unit tests for complex logic, with fixed input rows and the expected output declared in the project, which dbt supports. CI builds changed models and their dependents on sample data in an isolated schema. For refactors, I compare the new model's output with production on the same input and require an empty difference. For metrics, I keep a few known answers, such as last month's audited revenue, as regression tests.
+---
+Q: How would you set up CI/CD for data workflows, including testing, deployment, rollback and validation?
+SRC: Microsoft, 4 YOE
+TAG: cloud
+A: All code in Git: DAGs, Spark jobs, dbt, infrastructure. On every pull request, CI runs linters, unit tests, `dbt build` for changed models against a CI schema, and an infrastructure plan, posting results to the pull request. After review, merge deploys: job images built and pushed, DAGs synced, dbt deployed, infrastructure applied with approval. Validation after deployment runs smoke checks and data tests on the first scheduled run. Rollback is a revert of the commit and a rerun of affected intervals, which works because jobs are idempotent. Separate dev, staging and prod environments with their own credentials.
+---
+Q: Describe your experience with CI/CD in data projects. Have you containerised Spark jobs with Docker?
+SRC: Databricks, 5 YOE
+TAG: cloud
+A: Answer from your own work first: the pipelines you deployed at Salesforce and how changes reached production. Then the practice: a Docker image per job containing the code and pinned dependencies, built in CI, tagged with the commit, and pushed to a registry. The same image runs in CI tests and in production, so environments do not drift. For Spark, the image is used by the driver and executors on Kubernetes or EMR, or the code is packaged as a wheel for a managed platform. Jenkins or GitHub Actions run the stages: lint, test, build, push, deploy, with approval gates for production.
+---
+Q: How do you monitor and report pipeline performance? Which metrics do you track, and with which tools?
+SRC: Databricks, 5 YOE
+TAG: cloud
+A: Two kinds of metric. **Pipeline health:** run duration against its normal range, success and retry rates, lag behind schedule, throughput, error rate, and cost per run. **Data health:** freshness, row counts, null rates and schema changes per table. Metrics are emitted to a time-series system, such as Prometheus with Grafana, Datadog or CloudWatch, and the data health metrics are also stored in a table so they can be queried. Alerts are tied to service-level objectives, such as completion time, and routed to owners. A weekly report shows objective attainment, incidents and time to recover.
+---
+Q: A pipeline breaks at a specific stage. How do you locate and fix the issue, and how do you automate monitoring and alerting?
+SRC: Myntra, senior loop
+TAG: cloud
+A: Locate: the orchestrator shows the failed task; its log shows the error; I check whether the input to that stage changed in schema, volume or content, and whether the code or configuration changed recently. I reproduce with the same input on a small scale. Fix: correct the code or data, test, deploy, then rerun the failed interval and dependants, which is safe because tasks are idempotent. Automate: failure callbacks that alert with context and owner, data checks at each stage boundary, health metrics with anomaly detection, and, increasingly, an agent that gathers the first evidence automatically so the engineer starts from a diagnosis.
+---
+Q: How would you design a data lineage and governance framework for a large organisation?
+SRC: Fanatics, 6 YOE
+TAG: cloud
+A: A central catalog, such as OpenMetadata or Unity Catalog, as the system of record for datasets, owners, descriptions and classifications. Lineage collected automatically, not drawn by hand: OpenLineage events from the orchestrator and Spark, query logs from warehouses, dbt's dependency graph, at table and, where possible, column level. Governance on top: data classified by sensitivity with tags, access policies driven by those tags, owners accountable for quality and access approvals, and data contracts at key boundaries. Lineage is then used operationally: impact analysis before changes, alert routing during incidents, and locating personal data for deletion requests.
+---
+Q: How do you handle a pipeline failure in production?
+SRC: Intuit, 3 YOE
+TAG: cloud
+A: First contain: stop downstream jobs from consuming bad or incomplete data, and mark affected dashboards. Then communicate: tell affected consumers what is wrong and when to expect an update. Diagnose with evidence: logs, recent changes to code, configuration and inputs, and the health metrics. Fix the root cause, not only the symptom, then rerun the failed intervals, relying on idempotent tasks, and verify the output against checks or the source. Close with a blameless postmortem and at least one preventive action, such as a new test, contract or alert.
+---
+Q: A client reports data quality issues in their dashboards. How would you debug and resolve them?
+SRC: Cisco, 4 YOE
+TAG: cloud
+A: Get specifics first: which numbers, which dates, what they expected, and a few example records. Then trace the metric back through lineage, layer by layer, comparing counts and totals at each step against the previous layer and the source, to find where the numbers diverge. Common causes: a definition mismatch, a join that changed the grain, duplicates, late data, a filter or timezone difference, or an upstream schema change. Fix the cause and backfill, explain the difference to the client in their terms, and add a check that would have caught it. Often the fix is a definition agreed with the client, not code.
+---
+Q: How does Airflow run tasks on Kubernetes?
+TAG: cloud
+A: Two common ways. With the KubernetesExecutor, every task instance runs in its own pod, created when the task starts and removed when it ends, so tasks are isolated, can request their own resources and images, and capacity scales to zero. With the KubernetesPodOperator, a task explicitly launches a pod with a given image and command, which suits running arbitrary containers, such as a Spark submit or a dbt run, from any executor. The trade-off is pod start-up time per task. Logs are shipped to remote storage, since pods disappear, and resource requests and limits must be set so tasks are not killed for memory.
+---
+Q: How does your team use Kubernetes clusters?
+SRC: J.P. Morgan, 6 YOE
+TAG: cloud
+A: Answer from your experience, honestly scoped. The common uses on data teams are: running Airflow itself, with tasks as pods; running Spark on Kubernetes, with the driver and executors as pods, often through an operator; hosting internal services such as an API for features or an agent service; and running scheduled jobs as Kubernetes CronJobs. Mention the operational parts you understand: namespaces per team or environment, resource requests and limits, autoscaling, secrets management, and images built in CI. If your exposure has been mostly as a user, say so and describe what you deployed and debugged.
+---
+Q: Design a task scheduler that manages execution, retries and failures, with dependencies between tasks. What changes at ten times the load?
+SRC: Fanatics, 6 YOE
+TAG: design
+A: **Data model:** tasks with definitions and dependencies; task runs with state, attempt number, timestamps, worker and error. States: pending, queued, running, succeeded, failed, retrying. **Scheduler:** a loop that finds runs whose dependencies have succeeded, which is a topological order, and enqueues them. **Workers** pull from a queue, run tasks, heartbeat, and report results. **Retries** with exponential backoff and a maximum; tasks without a heartbeat are marked failed and retried. **Idempotency** is required of tasks.
+
+At ten times: partition the scheduler by workflow with leader election, put state in a scalable store with indexes on state and time, autoscale workers from queue depth, and add per-tenant limits.
+---
+Q: How would you build an AI assistant for pipeline failures, and how would you know it helps?
+TAG: ai
+A: Trigger it from the orchestrator's failure callback. A small model classifies the failure; the agent then calls read-only tools for evidence, such as logs, job metrics, table health, lineage and runbooks; a stronger model returns a structured diagnosis with cited evidence, confidence and next steps; and it posts to the owning team's channel. Fixes are proposals that need human approval.
+
+To know it helps, I measure it: accuracy on a set of past incidents and healthy runs, time from failure to first useful message, engineer ratings of each diagnosis, cost per incident, and time to resolve before and after. Wix reported roughly fifteen minutes saved per incident at about thirty cents each.
+---
+Q: How do you evaluate an agent before trusting it in production?
+TAG: ai
+A: Build a test set from real cases with known correct outcomes, including cases where the right answer is to do nothing or to say "I don't know". Define what correct means per case: right conclusion, right tool calls, evidence cited, no forbidden actions. Run the agent on the whole set after every change to prompts, tools or models, and track scores over time. Grade some outputs with code, others with a rubric applied by a person or a model whose grading you have checked. Test the safety limits directly with adversarial inputs. Start in shadow mode, where the agent's output is recorded but not shown, then roll out gradually.
+---
+Q: Tell me about a time you resolved a critical P1 issue in production.
+SRC: Kotak Mahindra, 6 YOE
+TAG: behavioral
+A: Choose your strongest real incident, and tell it in under three minutes. **Situation:** what broke, who was affected, how it was detected. **Action:** how you contained it first, how you communicated, how you found the cause with evidence, and the fix. **Result:** time to recover, the impact avoided, and the prevention you added. Use numbers. If your production examples are thin, this sprint's renamed-column incident is a credible structure, but label it as a simulation if asked. Interviewers at this level care most about the prevention step, so spend the last thirty seconds there.
+
+@@mock
+## Mock 9: reliability and operations (35 minutes)
+
+Hiring managers in your bank ask a reliability question in almost every loop: how do you ensure quality, how do you handle failures, how do you deploy safely. This round puts them together.
+
+**Format.** Claude plays an engineering manager.
+
+- 10 minutes: "Walk me through how a change to one of your pipelines reaches production." Expect follow-ups on tests, CI and rollback.
+- 10 minutes: an incident. Claude describes a dashboard showing wrong numbers. You lead the response out loud.
+- 10 minutes: your on-call agent. Explain its design, how you evaluated it, and what it got wrong.
+- 5 minutes: one behavioral question about a production failure.
+
+**What is scored, out of 10.**
+
+| Area | Points | What earns them |
+|---|---|---|
+| Prevention | 3 | Contracts, tests and gates are placed at the right points |
+| Incident handling | 3 | Contain, communicate, diagnose, fix, prevent, in that order |
+| Agent design | 2 | Evidence, evaluation and limits, explained with your own numbers |
+| Story | 2 | One real incident told with impact and prevention |

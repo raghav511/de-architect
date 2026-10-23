@@ -1,0 +1,718 @@
+@@meta
+id: s06
+n: 6
+title: Source of truth
+goal: Every insert, update and delete on the orders table in Postgres flows through Debezium and Kafka into an Iceberg table, in order and exactly once in effect. A nightly reconciliation proves the two agree. This sprint ends with your first full mock loop.
+hours: 10
+mockloop: 1
+
+@@tickets
+601 | learn | 1.75 | Chapter 6 and the readings | You can explain how a row change in Postgres becomes a row in the lake, and name four ways it can go wrong. | chapter
+602 | build | 2.25 | Change data capture into Iceberg | An insert, an update and a delete in Postgres each appear correctly in the lake table within a minute. | lab
+603 | incident | 0.75 | The database and the warehouse disagree | The reconciliation DAG finds the drift you planted, and the cause is fixed and written up. | lab
+604 | ai | 1 | A fix the agent proposes and a person approves | The agent drafts a repair, posts it to Slack with the affected row count, and nothing runs until you approve. | lab
+605 | practice | 1 | Warm-ups and the customer drill | Three SQL and three DSA warm-ups attempted, and the drill answered out loud. | practice
+606 | test | 0.5 | Quiz 6 | 80% or better. | quiz
+607 | test | 1 | Coding test 6 | Attempted inside the 60-minute timer. | coding
+608 | talk | 1.75 | Interview set 6 and mock loop 1 | 14 of 18 questions ticked, and all four loop rounds scored. | interview
+
+@@readings
+- [Debezium connector for PostgreSQL](https://debezium.io/documentation/reference/stable/connectors/postgresql.html). Read the overview, how the connector works, and the structure of data change events.
+- [Debezium features](https://debezium.io/documentation/reference/features.html). One page on what log-based capture gives you.
+- [Debezium blog: Incremental snapshots](https://debezium.io/blog/2021/10/07/incremental-snapshots/). How a large table is re-snapshotted while streaming continues.
+- [Flink: Debezium format](https://nightlies.apache.org/flink/flink-docs-master/docs/connectors/table/formats/debezium/). How Flink SQL reads a change stream as a table that updates.
+- [dbt: Change data capture in dbt](https://docs.getdbt.com/best-practices/how-we-handle-cdc/1-intro). The modeling side: what to build on top of change data.
+
+@@chapter
+## 6.1 Why the two systems disagree
+
+Meridian's food orders live in Postgres. An order row is inserted, then updated several times as it is paid, prepared, picked up and delivered. Some are refunded later. Test orders are deleted.
+
+The warehouse gets orders from a nightly job that selects rows where `updated_at` is later than the last run. Finance has noticed that the warehouse total and the application total differ by a small amount every day.
+
+There are four ways to copy a changing table. Know what each one misses.
+
+| Method | How | What it misses or costs |
+|---|---|---|
+| Full extract | Copy the whole table each run | Nothing, but cost grows with the table and intermediate states are lost |
+| Timestamp polling | Select rows changed since the last run | Hard deletes. Intermediate states between polls. Rows whose `updated_at` was not set. Rows committed late with an early timestamp. |
+| Triggers | Database triggers write changes to an audit table | Nothing, but every write to the source becomes slower |
+| Log-based capture | Read the database's own transaction log | Nothing, at low cost to the source. More parts to operate. |
+
+Timestamp polling is why Finance's numbers drift: deleted test orders stay in the warehouse for ever. **Change data capture** from the log is the fix. CDC appears in the LinkedIn, J.P. Morgan and Duck Creek loops in your bank, each time as a design question.
+
+## 6.2 How log-based capture works
+
+Every relational database writes changes to a log before applying them, so it can recover from a crash. In Postgres this is the **write-ahead log**, or WAL. **Logical decoding** turns WAL entries back into row-level changes: this row was inserted with these values, that row changed from these values to those.
+
+A **replication slot** is a bookmark in the WAL owned by one consumer. Postgres keeps all WAL after the bookmark until the consumer confirms it has read it. This guarantees nothing is missed. It also creates the most dangerous failure in CDC: if the consumer stops for days, the WAL piles up and can fill the database server's disk. Monitor slot lag from the day you create a slot.
+
+**Debezium** is the standard open-source tool. It runs as a source connector on **Kafka Connect**, a framework for running connectors that move data into and out of Kafka and that stores their progress in Kafka itself. For each table the connector does two things.
+
+1. **Snapshot.** It reads the existing rows once, so the lake starts complete.
+2. **Stream.** It then follows the replication slot and publishes each change as a Kafka message.
+
+One topic is created per table. Each message is keyed by the row's primary key, so all changes to one order go to one partition and stay in order.
+
+A change event has an envelope:
+
+```json
+{
+  "before": {"order_id": 9131, "status": "placed", "total": 420.00},
+  "after":  {"order_id": 9131, "status": "paid",   "total": 420.00},
+  "op": "u",
+  "ts_ms": 1791700000000,
+  "source": {"lsn": 88213904, "txId": 5521, "table": "orders"}
+}
+```
+
+`op` is `c` for create, `u` for update, `d` for delete and `r` for a row read during the snapshot. For a delete, `after` is null and `before` holds the last values. Debezium follows a delete with a **tombstone**, a message with the same key and a null value, so a compacted topic can remove the key.
+
+`source.lsn` is the position of the change in the WAL. It increases with every change, which makes it the version number you will use to put changes in order.
+
+## 6.3 Applying changes to a table
+
+The topic now holds a changelog. The lake needs a table showing the current state. Applying one to the other correctly takes four rules.
+
+**Rule 1: reduce each batch to the latest change per key.** One micro-batch may hold three changes to the same order. A `MERGE` whose source has several rows for one target row is either an error or picks one arbitrarily. Keep only the change with the highest LSN for each key.
+
+**Rule 2: never let an older change overwrite a newer one.** Replays and retries can deliver old events again. Store the LSN on the target row and update only when the incoming LSN is higher.
+
+**Rule 3: handle deletes on purpose.** Either remove the row, or keep it with `is_deleted = true` so history and downstream incremental models can see the deletion. Most warehouses use the soft form.
+
+**Rule 4: make it idempotent.** Rules 1 and 2 together mean the same batch can be applied twice with no effect.
+
+```python
+from pyspark.sql import functions as F, Window
+
+def apply_cdc(batch_df, batch_id):
+    w = Window.partitionBy("order_id").orderBy(F.col("lsn").desc())
+    latest = (batch_df.withColumn("rn", F.row_number().over(w))
+                      .filter("rn = 1").drop("rn"))
+    latest.createOrReplaceTempView("changes")
+    batch_df.sparkSession.sql("""
+        MERGE INTO lake.silver.orders t
+        USING changes s ON t.order_id = s.order_id
+        WHEN MATCHED AND s.lsn > t.lsn AND s.op = 'd' THEN DELETE
+        WHEN MATCHED AND s.lsn > t.lsn THEN UPDATE SET *
+        WHEN NOT MATCHED AND s.op <> 'd' THEN INSERT *""")
+```
+
+The table should use merge-on-read from sprint 2, because it receives many small changes. Schedule compaction for it.
+
+**Keep the raw changelog as well.** Write every change event, unmodified, to an append-only bronze table. The current-state table can then be rebuilt at any time, and you get a full history of every row for free, which is a Type 2 dimension waiting to be modelled.
+
+## 6.4 The same job in Flink SQL
+
+Flink treats a changelog as a first-class thing. A table in Flink SQL can be a stream of inserts, updates and deletes, and the `debezium-json` format tells Flink to read Debezium messages that way.
+
+```sql
+CREATE TABLE orders_cdc (
+  order_id   BIGINT,
+  rider_id   STRING,
+  status     STRING,
+  total      DECIMAL(10, 2),
+  updated_at TIMESTAMP(3)
+) WITH (
+  'connector' = 'kafka',
+  'topic' = 'meridian.public.orders',
+  'properties.bootstrap.servers' = 'kafka:9092',
+  'scan.startup.mode' = 'earliest-offset',
+  'format' = 'debezium-json'
+);
+
+INSERT INTO lake.silver.orders_flink
+SELECT order_id, rider_id, status, total, updated_at FROM orders_cdc;
+```
+
+With an Iceberg sink configured for upserts on `order_id`, that single statement is the whole pipeline.
+
+Enough Flink to hold a conversation:
+
+- Flink processes one event at a time and keeps **state** per key, usually in an embedded RocksDB store on local disk.
+- A **checkpoint** is a periodic, consistent snapshot of all state and source positions, written to durable storage. On failure, Flink restores the last checkpoint and replays from there.
+- A **savepoint** is a checkpoint you trigger by hand, to upgrade or move a job without losing state.
+- Exactly-once sinks use a **two-phase commit** tied to checkpoints: data written between checkpoints becomes visible only when the checkpoint completes.
+
+You built the Spark version in the lab and will run the Flink statement to compare. In interviews, Spark is the safer default for a team already on it, and Flink is the answer when latency or complex state is the hard part.
+
+## 6.5 Reconciliation
+
+A pipeline that is correct by design still needs proof. **Reconciliation** compares source and target on a schedule and alerts on a difference.
+
+Compare in three levels, from cheap to precise.
+
+1. **Counts** per day or per key range. Catches missing and extra rows.
+2. **Sums and checksums** per bucket: the total of `total`, or a hash of the business columns. Catches values that differ while counts match.
+3. **Row-level difference** for the buckets that failed, to list the exact keys.
+
+The practical problem is that the source keeps changing while you compare. Avoid false alarms by comparing a closed window: only orders last updated more than an hour ago, on both sides. Run it nightly from Airflow, store the results in a table, and alert on any drift.
+
+## 6.6 What goes wrong
+
+| Failure | Symptom | Defence |
+|---|---|---|
+| Connector stopped | Slot lag grows; database disk fills | Alert on slot lag and connector status; a maximum retained WAL size |
+| Duplicate delivery | Same event applied twice | Idempotent merge with the LSN guard |
+| Out-of-order application | An old value reappears | The LSN guard; one partition per key |
+| Deletes ignored | Target has rows the source does not | Handle `op = d`; reconcile counts |
+| Source schema change | Parsing errors, or NULLs in a new column | Schema registry; additive changes only; schema evolution on the table |
+| Very large transaction | One enormous burst of events | Batch size limits; backpressure from sprint 5 |
+| Snapshot of a huge table | Hours of locks or load | Incremental snapshots in chunks while streaming continues |
+
+One design mistake belongs here too. A service that writes to its database and then publishes a message to Kafka can crash between the two, leaving them inconsistent. This is the **dual-write problem**. The fix is the **transactional outbox**: the service writes the event to an `outbox` table in the same database transaction as the business change, and CDC publishes the outbox rows. Either both happen or neither does.
+
+## 6.7 An agent that proposes, a person who approves
+
+Until now your agent could only read. This sprint it finds drift between source and target and drafts the SQL to repair it. Running that SQL is an action with consequences, so the design changes.
+
+The pattern is **propose, approve, execute**.
+
+```python
+import uuid, requests
+
+PENDING = {}
+
+def propose_fix(sql: str, reason: str) -> dict:
+    """Propose a data repair. Nothing is executed. A person must approve it."""
+    first = sql.strip().split()[0].lower()
+    if first not in ("merge", "update", "delete", "insert"):
+        raise ValueError("only a single data-change statement can be proposed")
+    affected = count_affected_rows(sql)            # a dry run using the read-only role
+    pid = uuid.uuid4().hex[:8]
+    PENDING[pid] = {"sql": sql, "reason": reason, "affected": affected}
+    requests.post(SLACK_WEBHOOK_URL, timeout=10, json={"text":
+        f"*Proposed fix {pid}*\n{reason}\nRows affected: {affected}\n```{sql}```\n"
+        f"Approve with: approve {pid}"})
+    return {"proposal_id": pid, "status": "waiting_for_approval", "rows_affected": affected}
+
+def execute_approved(pid: str, approver: str) -> None:
+    proposal = PENDING.pop(pid)                    # a proposal can run only once
+    run_with_write_role(proposal["sql"])
+    write_audit_log(pid, approver, proposal)
+```
+
+The agent's tool list contains `propose_fix` and does not contain `execute_approved`. That one fact is the safety design. Everything else supports it.
+
+- **Separate credentials.** The agent's connection is read-only. Only the approval path holds the write role.
+- **A dry run before asking.** The message shows how many rows would change. A person approving "3 rows" and a person approving "3 million rows" are making different decisions.
+- **The full statement is shown.** The approver sees exactly what will run, not a summary of it.
+- **Run once.** The proposal is removed when executed, so a double click or a retry cannot apply it twice.
+- **An audit log.** Who approved what, when, and what it changed.
+- **No approval, no action.** A proposal that nobody answers expires.
+
+Decide which actions need approval by asking whether the action can be undone. Reading is free. Restarting an idempotent task is low risk. Changing or deleting data needs a person. This is the same reasoning as "retry transient errors, alert on the rest" from sprint 1, applied to an agent.
+
+@@lab
+## Build: change data capture into Iceberg (2.25 hours)
+
+Ask Claude to **start sprint 6**. The starter kit adds Postgres with logical decoding enabled, Kafka Connect with the Debezium connector, a seed script that creates and mutates orders, and Flink for the comparison step.
+
+1. **Register the connector** for the `orders` table and watch the snapshot arrive on the topic.
+2. **Read three events by hand.** Insert an order, update its status, delete it. Read each message with the console consumer and identify `op`, `before`, `after` and `source.lsn`.
+3. **Bronze.** Append every change event unmodified to `lake.bronze.orders_changes`.
+4. **Silver.** Write the streaming job from section 6.3: latest change per key, LSN guard, deletes handled, merging into `lake.silver.orders`.
+5. **Test the four rules.** Run the seed script, which creates 5,000 orders and applies about 15,000 updates and 200 deletes. Then compare the lake table with Postgres by count and by sum of `total`.
+6. **Replay.** Restart the job from the earliest offset with a new checkpoint. The table must not change.
+7. **Flink.** Run the statement from section 6.4 into a second table and compare it with yours.
+
+**Done when** the lake and Postgres match after the seed script, and a full replay changes nothing.
+
+## Incident: the database and the warehouse disagree (45 minutes)
+
+Finance reports that yesterday's order total in the warehouse is ₹18,400 higher than in the application.
+
+1. **Build the detector first.** Write the reconciliation DAG from section 6.5: counts and sums per hour for orders last updated more than an hour ago, on both sides, written to a `recon_results` table.
+2. **Plant the fault.** Stop the connector, run `scripts/drift.sh`, which deletes some orders and updates others, then drop and recreate the replication slot before restarting the connector. The changes made while the slot was gone are lost.
+3. **Detect.** Run the reconciliation. It should flag specific hours.
+4. **Diagnose.** Go to row level for the flagged hours. Classify each bad key: missing in target, extra in target, or different values.
+5. **Repair.** Trigger a targeted re-snapshot of the affected keys, or correct them with a merge from a fresh extract.
+6. **Prevent.** Add an alert on replication slot lag and on connector status.
+
+Add the incident to `notes/what-broke.md`. The interesting sentence to write is why the pipeline reported no error while losing data.
+
+## AI lab: propose, approve, execute (1 hour)
+
+1. Create a Slack workspace or channel for this program and add an incoming webhook.
+2. Implement `propose_fix` and `execute_approved` from section 6.7. For the dry run, wrap the statement's source in a count, or use the row-level difference you already computed.
+3. Give the agent three tools: `recon_summary()`, `diff_keys(hour)` and `propose_fix(sql, reason)`.
+4. Rerun the incident's drift. Ask the agent to investigate and repair it. It should post a proposal with the affected row count to Slack and stop.
+5. Approve from your terminal with a small script that calls `execute_approved`. Rerun the reconciliation.
+6. Test the controls. Try to make the agent run the fix without approval by telling it that approval was already given. It has no tool to do so, and that is what you are confirming. Then approve the same proposal twice and confirm the second attempt fails.
+
+**Done when** a proposal appears in Slack with its row count, the fix runs only after approval, and both control tests behave.
+
+@@practice
+## SQL warm-ups
+
+1. **Third-highest transaction per branch, with ties.** Branches with fewer than three distinct amounts should return NULL. Asked at Kotak Mahindra. *Approach:* `DENSE_RANK` per branch, keep rank 3, then `LEFT JOIN` from the list of branches so the short ones still appear.
+2. **Customers who transacted in all twelve months of a year.** Asked at Zen. *Approach:* group by customer and `HAVING COUNT(DISTINCT month) = 12`.
+3. **Consecutive duplicate transactions by the same user.** `(transaction_id, user_id, amount, transaction_date)`. Asked at Zen. *Approach:* `LAG(amount)` and `LAG(transaction_date)` per user; flag rows equal to the previous one.
+
+## DSA warm-ups: linked lists and trees
+
+1. **Reverse a linked list in groups of k.** The follow-up at Kotak Mahindra. *Approach:* reverse k nodes with the standard three-pointer loop, then recurse or iterate on the rest and connect the pieces.
+2. **Lowest common ancestor in a binary tree.** Asked at Google. *Approach:* recurse left and right; a node is the answer when the two targets are found in different subtrees, or when it is one of them.
+3. **In-order traversal of a binary search tree**, iteratively. *Approach:* a stack; push left children, pop, visit, move right. The output is sorted, which is how a BST is flattened or validated.
+
+## Customer drill: "the refund numbers do not match"
+
+The support lead says: *"Refund totals on your dashboard do not match the finance system."*
+
+Break the problem down before opening a query editor. Then compare.
+
+- **Which two numbers, for which period?** Get both figures and the exact filters.
+- **Same definition?** Refund requested, approved or settled? Gross or net of fees?
+- **Same boundary?** Time zone and cut-off time of each system.
+- **Same moment?** Is one system showing state as of last night and the other as of now?
+- **Five examples.** Ask for five specific refunds that are in one system and not the other. Examples find the cause faster than totals do.
+
+The last step is the one to remember. A total tells you that something is wrong. A specific record tells you what.
+
+@@quiz
+TYPE: mcq
+TAG: streaming
+Q: What is the main advantage of log-based change data capture over polling for rows with a newer `updated_at`?
+A) It needs no network
+B) It captures deletes and every intermediate change, with little load on the source
+C) It works without primary keys
+D) It makes the source database faster
+ANS: B
+WHY: Polling sees only the current state of rows that still exist and whose timestamp was set. The transaction log records every committed change, including deletes.
+---
+TYPE: mcq
+TAG: streaming
+Q: A Debezium event has `"op": "d"`. Where is the row's data?
+A) In `after`; `before` is null
+B) In `before`; `after` is null
+C) In both
+D) In neither; only the key is sent
+ANS: B
+WHY: A delete has no new state. `before` carries the last values of the row, subject to the table's replica identity setting.
+---
+TYPE: mcq
+TAG: streaming
+Q: A Debezium connector for Postgres has been stopped for five days. What is the main risk?
+A) Kafka deletes the topic
+B) The replication slot makes Postgres retain WAL, which can fill the database server's disk
+C) The table is locked for writes
+D) Primary keys are reset
+ANS: B
+WHY: Postgres keeps all WAL after the slot's confirmed position. An inactive slot retains it without limit unless a maximum is configured.
+---
+TYPE: mcq
+TAG: streaming
+Q: Why are change events keyed by the table's primary key?
+A) To compress better
+B) So all changes to one row go to the same partition and stay in order
+C) Because Kafka requires integer keys
+D) So consumers can skip messages
+ANS: B
+WHY: Order is guaranteed only within a partition. Keying by primary key keeps each row's history in sequence and lets compaction keep the latest state per row.
+---
+TYPE: mcq
+TAG: streaming
+Q: A micro-batch contains three change events for the same `order_id`. What must you do before using it as the source of a `MERGE`?
+A) Nothing
+B) Reduce it to the single latest change per key
+C) Sort it by `order_id`
+D) Split it into three batches by hand
+ANS: B
+WHY: A merge source with several rows matching one target row is an error in some engines and non-deterministic in others. Keep the highest LSN per key.
+---
+TYPE: mcq
+TAG: design
+Q: A service saves an order to its database and then publishes an event to Kafka. It crashes between the two steps. Which pattern prevents the resulting inconsistency?
+A) Retry the publish for ever
+B) Transactional outbox: write the event to a table in the same transaction and let CDC publish it
+C) Publish first, then save
+D) Use a larger Kafka cluster
+ANS: B
+WHY: Two separate writes cannot be made atomic by ordering or retries. Writing the event in the same database transaction, and capturing it from the log, makes both happen or neither.
+---
+TYPE: mcq
+TAG: cloud
+Q: A nightly reconciliation shows row counts match exactly, but the sum of `total` differs. What does that suggest?
+A) Rows are missing in the target
+B) Some rows have different values, for example missed or mis-ordered updates
+C) The target has extra rows
+D) Nothing is wrong
+ANS: B
+WHY: Equal counts with unequal sums means the same keys carry different values. Count checks alone cannot see this, which is why sums or checksums are needed.
+---
+TYPE: mcq
+TAG: ai
+Q: You want an agent to repair data it finds to be wrong. Which design is safest?
+A) Give it a tool that runs any SQL
+B) Give it a tool that records a proposal; a separate path with different credentials executes it after a person approves
+C) Tell it in the prompt to be careful
+D) Let it run changes only at night
+ANS: B
+WHY: Safety comes from what the agent is able to do, not from what it is told. If the agent has no execute tool and no write credentials, no prompt can make it change data.
+---
+TYPE: fill
+TAG: streaming
+Q: Postgres logical decoding reads row changes from the write-____ log.
+ANS: ahead
+WHY: The write-ahead log records every change before it is applied, for crash recovery and replication. CDC reuses it.
+---
+TYPE: fill
+TAG: streaming
+Q: A Kafka message with a key and a null value, which tells log compaction to remove that key, is called a ____.
+ANS: tombstone
+WHY: Debezium emits one after each delete event so that compacted topics eventually drop the deleted row.
+---
+TYPE: fill
+TAG: streaming
+Q: Debezium runs as a source connector on Kafka ____.
+ANS: Connect
+WHY: Kafka Connect is the framework that runs connectors, distributes them across workers and stores their offsets in Kafka.
+---
+TYPE: fill
+TAG: streaming
+Q: Flink recovers from failure by restoring the most recent ____, a consistent snapshot of all operator state and source positions.
+ANS: checkpoint | checkpoints
+WHY: Checkpoints are taken automatically at intervals. A savepoint is the same kind of snapshot, triggered by hand for upgrades.
+---
+TYPE: short
+TAG: streaming
+Q: Compare three ways to extract changes from a transactional database, and say what each misses.
+MODEL: **Full extract.** Copy the whole table each run. Simple and self-correcting, but cost grows with table size, and states between runs are lost.
+
+**Timestamp polling.** Select rows whose `updated_at` is newer than the last run. Cheap, but it cannot see hard deletes, misses intermediate states, depends on every writer setting the timestamp, and can skip rows from long transactions that commit late with an early timestamp.
+
+**Log-based CDC.** Read the transaction log. Captures every insert, update and delete in commit order with little load on the source. It costs more to operate: a connector, replication slots to monitor, and schema changes to manage.
+---
+TYPE: short
+TAG: streaming
+Q: A micro-batch of change events arrives. Describe how to apply it to an Iceberg table correctly.
+MODEL: 1. **Reduce to the latest change per key**, using the source log position (LSN) to order them.
+2. **Merge on the primary key** into the target.
+3. **Guard with the version**: update or delete only when the incoming LSN is greater than the LSN stored on the target row, so replays and late events cannot overwrite newer data.
+4. **Handle deletes explicitly**: remove the row, or set a soft-delete flag. Do not insert a row for a delete of a key that does not exist.
+5. The result is **idempotent**: applying the batch again changes nothing.
+
+Also keep the raw events in an append-only table, and compact the target regularly because it receives many small changes.
+---
+TYPE: short
+TAG: cloud
+Q: Design a reconciliation between Postgres and the lake table. How do you avoid false alarms from changes that are still in flight?
+MODEL: Compare in levels. First **counts** per time bucket or key range. Then **sums of numeric columns or a hash** of the business columns per bucket, to catch value differences. For buckets that fail, a **row-level difference** to list the keys as missing, extra or different.
+
+To avoid false alarms, compare only a **closed window**: rows last updated before a cut-off, such as one hour ago, applied identically on both sides, so changes still moving through the pipeline are excluded. Run it on a schedule from the orchestrator, store results in a table for trend, alert on any drift, and rerun a failed bucket once before paging, since a late event may have landed.
+---
+TYPE: short
+TAG: ai
+Q: An agent is allowed to propose data fixes. List the controls you would put around it.
+MODEL: - The agent has a **propose** tool only. Execution is a separate path it cannot call.
+- **Separate credentials**: read-only for the agent, a write role only for the approval path.
+- A **dry run** that reports the number of affected rows with the proposal.
+- The **exact statement** is shown to the approver.
+- **Human approval** is required, and proposals expire if unanswered.
+- **Single execution**: an approved proposal cannot run twice.
+- An **audit log** of who approved what and what changed.
+- **Scope limits**: one statement, allowed tables only, a ceiling on affected rows.
+
+The principle: reversible, read-only actions can be automatic; actions that change or delete data need a person.
+
+@@coding
+TITLE: Reconcile two tables
+KIND: sql
+MIN: 13
+TAG: sql
+PROBLEM:
+`src_orders(order_id, status, total)` is the source. `tgt_orders(order_id, status, total)` is the copy. `total` can be NULL.
+
+Return every `order_id` that is not identical in both, with an `issue` column:
+
+- `missing_in_target` if it is only in the source,
+- `extra_in_target` if it is only in the target,
+- `mismatch` if it is in both but `status` or `total` differ.
+
+Order by `order_id`.
+SOLUTION:
+```sql
+SELECT COALESCE(s.order_id, t.order_id) AS order_id,
+       CASE
+         WHEN t.order_id IS NULL THEN 'missing_in_target'
+         WHEN s.order_id IS NULL THEN 'extra_in_target'
+         ELSE 'mismatch'
+       END AS issue
+FROM src_orders s
+FULL OUTER JOIN tgt_orders t
+  ON s.order_id = t.order_id
+WHERE s.order_id IS NULL
+   OR t.order_id IS NULL
+   OR s.status IS DISTINCT FROM t.status
+   OR s.total  IS DISTINCT FROM t.total
+ORDER BY 1;
+```
+
+A full outer join keeps keys from both sides, which is the only join that can show all three kinds of difference at once.
+
+`IS DISTINCT FROM` is a NULL-safe comparison. With `<>`, a NULL total on one side and 50 on the other compares as unknown and the row is silently passed as fine. Spark SQL writes the same idea as `NOT (a <=> b)`.
+
+On large tables you would not join every row. Compare counts and checksums per bucket first, then run this only for the buckets that differ.
+<!--test
+con.execute("create table src_orders(order_id int, status varchar, total int)")
+con.execute("create table tgt_orders(order_id int, status varchar, total int)")
+con.execute("insert into src_orders values (1,'paid',100),(2,'paid',50),(3,'placed',70),(4,'paid',NULL),(6,'paid',NULL)")
+con.execute("insert into tgt_orders values (1,'paid',100),(2,'placed',50),(4,'paid',40),(5,'paid',10),(6,'paid',NULL)")
+assert con.execute(Q).fetchall() == [(2,'mismatch'),(3,'missing_in_target'),(4,'mismatch'),(5,'extra_in_target')]
+-->
+---
+TITLE: Median order value per city
+KIND: sql
+MIN: 12
+TAG: sql
+SRC: Goldman Sachs, 4 YOE
+PROBLEM:
+Table `orders(order_id, city, total)`.
+
+Return the **median** `total` for each city as `city, median_total`, ordered by city. For an even number of orders, the median is the average of the two middle values. Do not use a built-in median or percentile function.
+SOLUTION:
+```sql
+WITH r AS (
+  SELECT city, total,
+         ROW_NUMBER() OVER (PARTITION BY city ORDER BY total) AS rn,
+         COUNT(*)     OVER (PARTITION BY city)                AS n
+  FROM orders
+)
+SELECT city,
+       AVG(total) AS median_total
+FROM r
+WHERE rn IN (FLOOR((n + 1) / 2.0), FLOOR((n + 2) / 2.0))
+GROUP BY city
+ORDER BY city;
+```
+
+Number the rows in each city and count them. With n rows, the middle positions are `floor((n+1)/2)` and `floor((n+2)/2)`. For an odd n they are the same row. For an even n they are the two middle rows, and `AVG` averages them.
+
+Dividing by `2.0` and applying `FLOOR` is deliberate. Integer division behaves differently across engines: `5 / 2` is 2 in Postgres and Spark SQL, and 2.5 in DuckDB and Snowflake. Writing the rounding explicitly makes the query portable.
+
+In production you would use `PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY total)`, or an approximate percentile on very large data. Goldman asked for the median and then for how to speed it up on billions of rows, where the approximate function is the answer.
+<!--test
+con.execute("create table orders(order_id int, city varchar, total int)")
+con.execute("insert into orders values (1,'BLR',10),(2,'BLR',40),(3,'BLR',20),(4,'BLR',30),(5,'HYD',100),(6,'HYD',5),(7,'HYD',7),(8,'GOA',9)")
+rows = [(c, float(m)) for c, m in con.execute(Q).fetchall()]
+assert rows == [('BLR',25.0),('GOA',9.0),('HYD',7.0)], rows
+-->
+---
+TITLE: Reverse a linked list
+KIND: dsa
+MIN: 12
+TAG: dsa
+SRC: Kotak Mahindra, 6 YOE
+PROBLEM:
+Given the head of a singly linked list, reverse the list in place and return the new head. Use O(1) extra space.
+
+```python
+class ListNode:
+    def __init__(self, val, next=None):
+        self.val = val
+        self.next = next
+```
+SOLUTION:
+```python
+class ListNode:
+    def __init__(self, val, next=None):
+        self.val = val
+        self.next = next
+
+def reverse_list(head):
+    prev = None
+    node = head
+    while node:
+        nxt = node.next      # remember the rest of the list
+        node.next = prev     # point this node backwards
+        prev = node          # advance prev
+        node = nxt           # advance node
+    return prev
+```
+
+Three pointers walk the list once: time O(n), space O(1). The order of the four lines in the loop is the entire problem. Save `next` before overwriting it, or the rest of the list is lost.
+
+The follow-up at Kotak was reversing in groups of k. Reuse this loop for k nodes at a time, and connect each reversed group's tail to the head of the next reversed group. Leave a final group shorter than k as it is.
+<!--test
+def build(xs):
+    head = None
+    for x in reversed(xs):
+        head = ListNode(x, head)
+    return head
+def to_list(n):
+    out = []
+    while n:
+        out.append(n.val); n = n.next
+    return out
+assert to_list(reverse_list(build([1,2,3,4]))) == [4,3,2,1]
+assert to_list(reverse_list(build([7]))) == [7]
+assert reverse_list(None) is None
+-->
+---
+TITLE: Apply a batch of change events
+KIND: pyspark
+MIN: 23
+TAG: streaming
+PROBLEM:
+`target` holds the current state of orders: `order_id, status, total`.
+
+`changes` is a batch of change events: `order_id, op, status, total, lsn`. `op` is `c`, `u` or `d`. For a delete, `status` and `total` are null. A key can appear several times, in any order. A higher `lsn` is a later change.
+
+Write `apply_changes(target, changes)` returning the new state of the table.
+SOLUTION:
+```python
+from pyspark.sql import functions as F, Window
+
+def apply_changes(target, changes):
+    w = Window.partitionBy("order_id").orderBy(F.col("lsn").desc())
+    latest = (changes.withColumn("rn", F.row_number().over(w))
+                     .filter(F.col("rn") == 1)
+                     .drop("rn"))
+    untouched = target.join(latest.select("order_id"), "order_id", "left_anti")
+    upserts = (latest.filter(F.col("op") != "d")
+                     .select("order_id", "status", "total"))
+    return untouched.unionByName(upserts)
+```
+
+Only the last change to each key matters for current state, so the batch is first reduced to one row per key by highest `lsn`. Rows of the target that the batch does not mention pass through with an anti-join. Rows whose last change is not a delete are added. Keys whose last change is a delete are in neither part, so they vanish.
+
+An order created and deleted in the same batch never appears, which is correct. This is the DataFrame form of the `MERGE` in section 6.3. On a real table you would use the merge, so only affected files are rewritten. A production version would also carry `lsn` on the target and refuse changes older than what is already stored.
+<!--test
+target = spark.createDataFrame([(1,"placed",100),(2,"placed",50),(3,"delivered",70)], "order_id int, status string, total int")
+changes = spark.createDataFrame([(1,"u","delivered",100,12),(1,"u","paid",100,10),(2,"d",None,None,11),(4,"c","placed",30,13),(5,"c","placed",20,14),(5,"d",None,None,15)], "order_id int, op string, status string, total int, lsn long")
+out = sorted((r.order_id, r.status, r.total) for r in apply_changes(target, changes).collect())
+assert out == [(1,"delivered",100),(3,"delivered",70),(4,"placed",30)], out
+-->
+
+@@interview
+Q: Explain Debezium, and how you would use CDC to populate a warehouse such as Snowflake or BigQuery. Discuss schema evolution and ordering guarantees.
+SRC: LinkedIn, 5 YOE
+TAG: streaming
+A: Debezium is a set of Kafka Connect source connectors that read a database's transaction log and publish each row change as an event, after an initial snapshot. Events are keyed by primary key, one topic per table. To populate a warehouse I land the raw events in an append-only table, then merge into a current-state table on the key, keeping the latest change per key by log position and handling deletes.
+
+Ordering: guaranteed per key, because a key maps to one partition; I guard merges with the log position so replays cannot regress data. Schema evolution: a schema registry with backward compatibility, additive changes only, and evolution enabled on the landing table.
+---
+Q: Design a CDC system that streams changes from MySQL or Postgres into Snowflake. Explain ordering, transactional guarantees, schema changes and idempotent writes.
+SRC: LinkedIn, 5 YOE
+TAG: design
+A: Source database with log-based replication enabled; Debezium on Kafka Connect; Kafka with one topic per table, keyed by primary key, replication factor 3; a sink that lands raw change events in Snowflake, through the Kafka connector with Snowpipe Streaming; and a scheduled or continuous `MERGE` into current-state tables.
+
+**Ordering:** per key, plus the log position stored on each row as a version guard. **Transactions:** Debezium emits changes in commit order and can emit transaction boundaries if consumers need all-or-nothing visibility. **Schema changes:** registry with compatibility checks; new columns flow through as nullable. **Idempotency:** de-duplicate per key and merge with the version guard. Add reconciliation and slot-lag alerts.
+---
+Q: How would you implement change data capture in a cloud-based pipeline?
+SRC: Bitwise, 3 YOE
+TAG: cloud
+A: On AWS there are two common routes. The managed route is AWS Database Migration Service: it performs a full load and then ongoing replication from the database log, writing change files to S3 or records to Kinesis. The open route is Debezium on managed Kafka Connect with MSK. Either way, changes land in a raw zone, and a Spark or Glue job merges them into an Iceberg or Delta table using the primary key and a version column, with deletes handled explicitly. I add monitoring of replication lag, a reconciliation job against the source, and a documented procedure for re-snapshotting a table.
+---
+Q: How would you capture changes from an on-premise database into an S3 data lake with no missed or duplicated events?
+SRC: Duck Creek Technologies, 4 YOE
+TAG: design
+A: "No missed" comes from the log: a log-based tool with a durable position, such as a replication slot or a stored log sequence number, so a restart resumes exactly where it stopped. "No duplicates" comes from the apply step, because delivery is at-least-once: merge into a table format on the primary key, keep the highest log position per key, and reject older versions. Network path: a secure link from on-premise to the cloud, with the capture agent close to the database. Then proof: nightly reconciliation by counts and checksums, alerts on capture lag, and a tested re-snapshot procedure for when a gap is found.
+---
+Q: How would you design an ETL pipeline for Kafka event data and for relational data captured with Kafka Connect?
+SRC: J.P. Morgan, 6 YOE
+TAG: design
+A: Both arrive as Kafka topics, but they are different kinds of data. Events are immutable facts: append them to a bronze table partitioned by event date, de-duplicate on event id, and aggregate. Captured relational data is a changelog of mutable rows: append raw changes to bronze, then merge to current state in silver by primary key and log position, with deletes applied. Gold joins the two, for example enriching events with the dimension version valid at event time. One stream processor can run both, with separate checkpoints. Schemas for both go through a registry, and each has its own quality checks and lag alerts.
+---
+Q: Does Delta Lake support upserts?
+SRC: J.P. Morgan, 6 YOE
+TAG: spark
+A: Yes, through `MERGE INTO`. You join a source to the target on a condition and specify actions: update when matched, insert when not matched, and optionally delete, each with extra conditions. Delta rewrites only the files containing matched rows, or with deletion vectors marks rows as removed and writes new ones. The source must have at most one row per target row, so I de-duplicate first. For performance I include partition or clustering columns in the merge condition so fewer files are scanned, and compact the table regularly, since frequent merges create many small files.
+---
+Q: How would you design a safe merge condition for incremental data ingestion?
+SRC: Barclays, 5 YOE
+TAG: modeling
+A: Four parts. Match on the true business key, complete and unique, never on a subset. De-duplicate the source to one row per key before merging. Add a version guard, so an update applies only if the incoming row's version or change timestamp is newer than the target's; that makes replays and late data harmless. And narrow the scan by including the partition column in the condition when the key implies it, so the merge does not read the whole table. I also decide explicitly what a missing source row means: usually nothing, unless the feed is a full snapshot, in which case it is a delete.
+---
+Q: Compare full load and incremental load. What are the trade-offs?
+SRC: Barclays, 5 YOE
+TAG: modeling
+A: A full load rebuilds the target from the whole source each run. It is simple, always consistent with the source, picks up deletes and corrections automatically, and needs no change tracking. Its cost and run time grow with the table. An incremental load processes only what changed. It is fast and cheap at scale, and it is the only option for large or frequently refreshed data. Its costs are complexity and risk: change detection, late data, deletes, schema changes, and drift over time. I use full loads for small tables and as a periodic reset, and incremental loads with reconciliation for large ones.
+---
+Q: Design a system to identify and fix source issues that affect downstream pipelines.
+SRC: Myntra, senior loop
+TAG: design
+A: Detect at the boundary, before bad data spreads. On arrival, check each source for freshness, volume against its usual range, schema against the expected contract, and key rules such as nulls and uniqueness. Failing batches are quarantined, and downstream tasks are held by a gate in the orchestrator. Lineage identifies which tables and dashboards depend on the source, so the right owners are told. For fixing: an automated retry for late files, a replay path for corrected data, and idempotent downstream jobs so a re-run repairs everything. Track incidents by source to justify a data contract with the worst offenders.
+---
+Q: Design a solution to migrate data from Hadoop, S3 and an Oracle database into one consolidated S3 bucket. How do you handle error logging, scalability and fault tolerance?
+SRC: PayPal, 3 YOE
+TAG: cloud
+A: Three sources need three movers. Hadoop: DistCp to S3, or DataSync, in parallel by directory. S3 to S3: batch replication or a copy job, preserving prefixes. Oracle: DMS for full load plus ongoing changes, landing Parquet. Everything lands in a raw zone with a consistent layout: source, table, load date.
+
+Fault tolerance: each unit of work is idempotent and tracked in a manifest table with status, so reruns resume. Scalability: partition the work by table and date and run in parallel under an orchestrator. Error logging: per-object success or failure in the manifest, logs in CloudWatch, alerts on failures. Validate with counts and checksums before cutting consumers over.
+---
+Q: How do you implement incremental loads from a warehouse into a data lake using Spark?
+SRC: Airtel, 3 YOE
+TAG: spark
+A: The simplest method tracks a high-water mark: store the maximum `updated_at` loaded so far, read rows above it with a small overlap for late commits, and merge into the lake table on the key. Its limits are that it misses hard deletes and depends on a trustworthy timestamp. Where those matter, I use change data capture from the source log. In both cases the write is a `MERGE` into Delta, Iceberg or Hudi, with the batch reduced to one row per key and guarded by version. The watermark is stored only after a successful commit, and a periodic full comparison catches drift.
+---
+Q: What is the difference between a checkpoint and a savepoint in Flink, and how does Flink achieve exactly-once?
+TAG: streaming
+A: A checkpoint is an automatic, periodic snapshot of all operator state and source offsets, owned by Flink and used for failure recovery. A savepoint is the same kind of snapshot triggered manually and kept until you delete it, used for planned operations: upgrading job code, changing parallelism, migrating clusters.
+
+For exactly-once, Flink injects barriers into the streams so every operator snapshots its state at a consistent point. On failure it restores state and rewinds sources to the checkpointed offsets, so each event affects state once. For external sinks it uses two-phase commit: writes are pre-committed during the checkpoint interval and committed when the checkpoint completes.
+---
+Q: Explain the differences between Hadoop, Spark and Flink. Which would you choose for real-time processing, and why?
+SRC: Amazon, 4 YOE
+TAG: streaming
+A: Hadoop MapReduce is disk-based batch processing: each step reads and writes to HDFS, which makes it robust and slow. Spark keeps data in memory across steps and optimises whole queries, so it is far faster for batch, and it handles streaming as micro-batches with latency of seconds. Flink is built as a streaming engine first: it processes events one at a time with managed state and event-time semantics, giving millisecond latency, and treats batch as a bounded stream. For real-time processing with strict latency or complex state I choose Flink. If seconds are acceptable and the team already runs Spark, Structured Streaming is simpler to operate.
+---
+Q: What is the outbox pattern and what problem does it solve?
+TAG: design
+A: It solves the dual-write problem. A service that updates its database and separately publishes a message can fail between the two, leaving the database and the message stream inconsistent. No ordering or retry of the two writes makes them atomic. With the outbox pattern, the service inserts the event into an outbox table in the same database transaction as the business change. A relay, usually CDC on the outbox table, publishes those rows to Kafka. The event exists if and only if the transaction committed. Consumers must still be idempotent, since the relay delivers at least once.
+---
+Q: How do you reconcile a source system with its copy in the lake?
+TAG: cloud
+A: On a schedule, compare aggregates over a closed window so in-flight changes do not raise false alarms. Start with row counts per time bucket, then sums of key numeric columns or a hash of the business columns per bucket. For buckets that differ, compute a row-level difference and classify keys as missing, extra or mismatched. Store results in a table to see trends, alert on any non-zero drift, and attach the list of keys to the alert. Repair with a targeted re-extract of those keys, then find the cause. I size the buckets so one comparison query is cheap on both systems.
+---
+Q: Write a producer-consumer program using multithreading. When would you use threads, processes or async IO in a data pipeline?
+SRC: Goldman Sachs, 4 YOE
+TAG: dsa
+A: Use a thread-safe bounded queue:
+
+```python
+import threading, queue
+
+q = queue.Queue(maxsize=100)
+
+def producer():
+    for i in range(1000):
+        q.put(i)            # blocks when the queue is full
+    q.put(None)             # signal the end
+
+def consumer():
+    while (item := q.get()) is not None:
+        handle(item)
+
+threading.Thread(target=producer).start()
+threading.Thread(target=consumer).start()
+```
+
+The bounded queue gives backpressure. **Threads** suit I/O-bound work such as API calls and file transfers, since the interpreter lock is released while waiting. **Processes** suit CPU-bound work such as parsing or compression. **Async IO** suits very many concurrent network calls in one thread.
+---
+Q: You want an agent to fix the data problems it finds. How do you keep that safe?
+TAG: ai
+A: By limiting what it can do, not by instructing it. The agent gets read-only credentials and a tool that only records a proposed change. A separate approval path, with its own write credentials, executes it after a person reviews the exact statement and the number of rows it would affect. Proposals expire, run at most once, and are logged with the approver's name. I restrict scope to specific tables and a row ceiling. Low-risk, reversible actions, such as retrying an idempotent task, can be automatic; anything that modifies or deletes data needs approval. I test the controls directly, including attempts to talk the agent past them.
+---
+Q: Tell me about a mistake you made in a project. How did you detect it, and what did you do to fix it?
+SRC: Delivery Hero, 7 YOE
+TAG: behavioral
+A: Choose a real mistake that was yours, had a visible cost, and changed how you work. Structure: what you did and why it seemed reasonable; how it was detected, ideally by a check or by you; the immediate fix; and the lasting change to process or tooling. Say "I" for the mistake and "we" for the recovery. Avoid a disguised strength, and avoid blaming unclear requirements. A good shape for a data engineer: a non-idempotent job that duplicated rows on a rerun, found through a reconciliation mismatch, fixed with a merge on a key, and followed by a uniqueness test added to every fact table.
+
+@@mock
+## Mock loop 1: four rounds in ninety minutes
+
+This is the midpoint. A full loop under time pressure shows where the remaining six sprints should be spent. Do it in one sitting if you can.
+
+Ask Claude to run each round in turn. Record the four scores in your notes, and enter their average below.
+
+| Round | Minutes | Content | Modelled on |
+|---|---|---|---|
+| 1. SQL | 25 | Two problems from sprint 1 to 5 patterns: one ranking or de-duplication, one gaps-and-islands or rolling window. Then "how does this run on a billion rows?" | Uber round 1, Amazon online assessment |
+| 2. DSA | 20 | One medium problem from arrays, sliding window, stacks, intervals or heaps. Complexity stated before coding. | Uber round 2, Stripe round 1 |
+| 3. Spark and streaming | 25 | Explain one execution end to end, diagnose a slow job, then exactly-once and watermarks | Microsoft round 1, Flipkart round 3 |
+| 4. Modeling and behavioral | 20 | A ten-minute model for food delivery, then two behavioral questions | Uber rounds 3 and 5 |
+
+**Scoring.** Each round is out of 10. A tier-1 pass is roughly 7 or more in every round, with no round below 6.
+
+**After the loop.** Tell Claude your four scores. The lowest round decides where the practice ticket's time goes in sprints 7 to 9.

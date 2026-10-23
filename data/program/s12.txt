@@ -1,0 +1,472 @@
+@@meta
+id: s12
+n: 12
+title: Loops
+goal: Five full mock loops in the style of the tier-1 companies in your bank, a demonstrable capstone, a rewritten resume and an application plan. You finish the program interviewing, not studying.
+hours: 10
+mockloop: 3
+
+@@tickets
+1201 | learn | 1 | Chapter 12: the loops and the search | You know the round structure of your five target loops and have asked each recruiter about AI rules. | chapter
+1202 | ai | 1.5 | Capstone: the platform and the on-call agent, ready to show | A public repository with a README, an architecture diagram, evaluation results and a five-minute demo you have rehearsed. | lab
+1203 | build | 0.5 | Resume and application plan | Resume rewritten to lead with pipelines and numbers; a target list in three tiers with dates. | lab
+1204 | talk | 4.5 | Mock loops 3 to 7 | Five company-style loops completed and scored, with one repair action noted after each. | mock
+1205 | practice | 1 | Repair set from your scorecard | The two weakest rounds on your scorecard each get one targeted set. | practice
+1206 | test | 0.5 | Final review quiz | 80% or better, across all rounds. | quiz
+1207 | test | 1 | Final coding test | Attempted inside the timer. | coding
+
+@@readings
+- Your own `notes/what-broke.md`, all twelve sprints of it. Read it end to end once. It is your behavioral material and your evidence.
+- Your scorecard. Sort rounds by score and read your lowest two sprints' quizzes again.
+- [DataVidhya: What changed in data engineering interviews in 2026](https://datavidhya.com/learn/de-interview-prep/the-2026-landscape/what-changed-in-2026/). Re-read the section on AI rules by company before each recruiter call.
+
+@@chapter
+## 12.1 What this sprint is for
+
+You have built a platform, broken it nine ways, written eight design documents, and taken two mock loops. Studying more now has less value than performing under interview conditions. This sprint is almost entirely practice in the format you will face.
+
+## 12.2 Five loops from your bank
+
+These are the structures recorded in the interview files you bought. They are reports from candidates at a point in time, not official descriptions, and loops change. Use them to rehearse, and confirm the current format with each recruiter.
+
+**Amazon, data engineer, 3 to 4 years: up to seven rounds.** An online assessment on HackerRank with five SQL problems: joins, top N per group, `LAG` for consecutive months, running totals, and rewriting a nested query. Technical rounds on SQL, Python and Spark concepts. SQL with system design: a clickstream pipeline that must survive ten times the traffic. Data modeling for food delivery with a slowly changing dimension. A bar raiser round on leadership principles. A round on AWS: skew, partitioning in S3, EMR cost, S3 security. An end-to-end project discussion. Reported to treat undisclosed AI use as cheating.
+
+**Uber, senior data engineer, 5 years or more: five rounds.** A hard SQL query with a deep dive on Spark internals. A hard SQL query with a medium DSA problem from arrays, strings, stacks, linked lists, recursion, binary search or simple dynamic programming. Data modeling for a ride-hailing or food delivery app, with SQL against your model. System design for an executive dashboard, data marts or a streaming pipeline, with trade-offs on formats, ingestion tools and stores. Collaboration and leadership.
+
+**Meta, data engineer, around 3 years: six rounds.** A recruiter screen with SQL and Python basics. A technical screen with medium SQL and four Python problems. Loop rounds: data modeling and SQL for a ride-sharing scenario with business metrics; an ETL design for engagement events with Python problems and a skew question; advanced SQL with product metrics for a new feature; behavioral and ownership. More recent reports describe a combined round of SQL, modeling and product sense in one sitting, and rounds where AI use is expected.
+
+**Atlassian, data engineer, 5 years or more: five rounds.** A 90-minute online round of DSA on intervals and SQL with window functions. A product sense case on click-through and conversion. A techno-managerial round on Delta schema evolution, streaming design and exactly-once. A values round on failure, ownership and openness. A data architecture round on ad-click ETL with bronze, silver and gold, late data and de-duplication.
+
+**Databricks, data engineer, 5 years: five rounds.** A hiring manager round on orchestration, CI/CD and Docker. A take-home or live round on Spark coding, SQL with window functions, Kafka architecture and shuffle reduction. A data design round on ETL, partition keys, data quality, schema evolution, GDPR, retention and monitoring. A Spark coding task merging files with a derived column, plus Kafka ordering. A leadership round. The file in your bank lists Scala; ask whether Python is accepted.
+
+## 12.3 Order your interviews
+
+Interviewing is a skill that improves with repetition, so sequence it.
+
+1. **Practice tier, first two weeks.** Two or three companies you would accept but are not your first choice. Real interviews with lower stakes.
+2. **Target tier, next.** The companies you most want, once your timing and nerves have settled.
+3. **Stretch tier, alongside.** Roles slightly above your level, including forward deployed roles if they interest you.
+
+Try to bring final rounds together within two or three weeks, so offers arrive close to each other.
+
+**Questions for every recruiter:**
+
+- How many rounds, and what is each one?
+- Is AI assistance allowed, required or banned in each technical round?
+- Which language may I use for coding: Python, Scala or either?
+- What level is the role, and what does it pay in fixed salary, variable pay and equity?
+- Is there a take-home, and how is it reviewed?
+
+## 12.4 The capstone, presented
+
+A repository that interviewers can open does more than any claim on a resume. Yours should contain:
+
+- **A README** that starts with one paragraph on what the platform does, then an architecture diagram, then how to run it.
+- **Design decisions** as short records: why Iceberg, why update mode for demand, why the agent only proposes fixes. Your sprint notes contain all of them.
+- **The incident log**, cleaned up. It shows you have operated what you built.
+- **The agent's evaluation table**: incidents, scores, cost per incident.
+- **Honest scope.** Say it is a personal platform on synthetic data, built to learn and demonstrate.
+
+Prepare a **five-minute demo**: thirty seconds on the problem, one minute on the architecture, two minutes on a live failure being diagnosed by the agent and posted to Slack, one minute on the evaluation numbers, thirty seconds on what you would build next. Rehearse it three times. Use it when an interviewer says "tell me about a project".
+
+## 12.5 Your resume
+
+- **Headline:** "Senior Data Engineer", followed by your strongest specialities. Lead with data engineering, since that is the role, and keep AI as the differentiator in the second line.
+- **Each role** opens with the largest system you worked on and its scale.
+- **Every number** must be one you can explain for five minutes: how it was measured, what you did, what others did.
+- **Add the project**: the platform and on-call agent, with the repository link.
+- **Order skills** by what you can defend under questioning, not by what you have heard of.
+
+## 12.6 Offers
+
+Get offers close together, because a competing offer is the strongest negotiation evidence. Compare total compensation over four years, including how equity vests. Ask for the number that would make you accept, with a reason. Be pleasant and specific. Get the final offer in writing before resigning.
+
+## 12.7 After the program
+
+Two habits keep you ready. Do one SQL and one DSA problem twice a week, and keep a list of what you got wrong. Read one engineering blog post a week from a company on your list, and write one paragraph on what you would ask its author. The second habit is also your answer to "how do you stay current?"
+
+@@lab
+## Capstone: ready to show (1.5 hours)
+
+1. **Clean the repository.** Remove secrets, large data files and dead code. Make sure a fresh clone and `make up` work, or document exactly what is needed.
+2. **Write the README** in the order from section 12.4.
+3. **Draw the architecture** as one diagram covering ingest, storage, processing, serving, orchestration, quality and the agent.
+4. **Add three decision records** of half a page each.
+5. **Run the agent's evaluation** one final time and put the table in the README with cost per incident.
+6. **Rehearse the demo** three times against a timer. Record one rehearsal and watch it once.
+
+**Done when** someone who has never seen the project could understand it from the README in five minutes, and your demo fits in five.
+
+## Resume and application plan (30 minutes)
+
+1. Rewrite your resume using section 12.5. Ask Claude to review it as a hiring manager at one of your target companies.
+2. Write `applications.md` with three tiers, the companies in each, the referral or contact for each, and the week you will apply.
+3. For your top three companies, write the "why this company" answer from sprint 11 and the questions you will ask the recruiter.
+
+@@practice
+## Repair set from your scorecard (1 hour)
+
+Open the **Scorecard**. Find the two interview rounds with the lowest quiz percentage or the fewest coding problems solved alone. Tell Claude which two, and ask for a repair set for each: four problems or ten questions aimed at the specific gaps, with the patterns you missed.
+
+If your scores are even across rounds, redo these, timed, from a blank file:
+
+| Problem | First seen | Target |
+|---|---|---|
+| Second-highest salary per department | Diagnostic | 6 minutes |
+| Sessions from a clickstream | Sprint 4 | 10 minutes |
+| Weekly cohort retention | Sprint 10 | 15 minutes |
+| Liability without fan-out | Sprint 7 | 8 minutes |
+| Smallest subarray with sum at least S | Sprint 2 | 8 minutes |
+| Task order with dependencies | Sprint 7 | 12 minutes |
+| Trapping rain water | Sprint 10 | 12 minutes |
+| Slowly changing dimension, Type 2, in PySpark | Sprint 4 | 18 minutes |
+
+@@quiz
+TYPE: mcq
+TAG: sql
+Q: Which is the safe way to find riders with no completed trips when `trips.rider_id` can be NULL?
+A) `WHERE rider_id NOT IN (SELECT rider_id FROM trips WHERE status = 'completed')`
+B) `WHERE NOT EXISTS (SELECT 1 FROM trips t WHERE t.rider_id = r.rider_id AND t.status = 'completed')`
+C) `WHERE rider_id <> ALL (SELECT rider_id FROM trips)`
+D) An inner join with `WHERE t.status IS NULL`
+ANS: B
+WHY: `NOT IN` returns nothing when the subquery contains a NULL. `NOT EXISTS` is unaffected by NULLs.
+---
+TYPE: mcq
+TAG: spark
+Q: A job's slowest stage has a median task time of 10 seconds and a maximum of 25 minutes. What do you check first?
+A) Driver memory
+B) Whether one key holds most of the rows after the shuffle
+C) The number of executors
+D) The Parquet compression codec
+ANS: B
+WHY: A long tail in one stage is the signature of skew. Confirm with shuffle read per task and row counts per key.
+---
+TYPE: mcq
+TAG: streaming
+Q: Which combination gives an exactly-once result from Kafka into a table?
+A) Auto-commit and append
+B) A replayable source, progress in a checkpoint, and an idempotent or transactional sink
+C) Disabling retries
+D) Using one partition only
+ANS: B
+WHY: Delivery can repeat, so the effect is made exactly-once by recording progress durably and making the write safe to repeat.
+---
+TYPE: mcq
+TAG: modeling
+Q: A fact table's totals are too high after a new join was added. What is the most likely cause?
+A) Compression
+B) The join changed the grain, multiplying rows
+C) Partition pruning
+D) A missing index
+ANS: B
+WHY: Joining to a table with several rows per key repeats fact rows. Aggregate the other table to the key first, or join at the correct grain.
+---
+TYPE: mcq
+TAG: spark
+Q: After deleting a person's rows from an Iceberg table, what else is needed before the data is physically gone?
+A) Nothing
+B) Expiring old snapshots and removing the files they referenced, once retention allows
+C) Renaming the table
+D) Adding a partition
+ANS: B
+WHY: Older snapshots still reference the data files. Expiring them and removing unreferenced files completes the deletion.
+---
+TYPE: mcq
+TAG: cloud
+Q: Which design change cuts Athena cost the most for a table queried by date?
+A) Converting row-format JSON to partitioned Parquet
+B) Adding more columns
+C) Running queries at night
+D) Using a larger instance
+ANS: A
+WHY: Athena charges for bytes scanned. Columnar files and partition pruning on date reduce scanned bytes by orders of magnitude.
+---
+TYPE: mcq
+TAG: design
+Q: In the first minutes of a design round, what matters most?
+A) Naming as many technologies as possible
+B) Clarifying requirements and estimating scale, then writing them down
+C) Drawing the database schema
+D) Discussing cost in detail
+ANS: B
+WHY: Every later choice should be justified by the requirements and numbers you established at the start.
+---
+TYPE: mcq
+TAG: ai
+Q: Your agent can investigate pipeline failures. Which control matters most for safety?
+A) A polite system prompt
+B) It has no tool or credential that can change data; changes go through a separate path a person approves
+C) Running it only at night
+D) Using the largest model
+ANS: B
+WHY: Safety comes from capability limits. A prompt can be overridden by injected text; a missing tool cannot.
+---
+TYPE: fill
+TAG: sql
+Q: To keep one row per key in engines that support it, filter a window function directly with the ____ clause.
+ANS: QUALIFY
+WHY: `QUALIFY ROW_NUMBER() OVER (...) = 1` filters on a window result without a subquery, in Snowflake, Databricks, BigQuery and DuckDB.
+---
+TYPE: fill
+TAG: streaming
+Q: In Structured Streaming, the setting that decides when a window is final and its state can be dropped is the ____.
+ANS: watermark
+WHY: It is the maximum event time seen minus the allowed lateness. Events behind it are dropped.
+---
+TYPE: fill
+TAG: modeling
+Q: A dimension that keeps full history by closing the old row and inserting a new one is slowly changing dimension Type ____.
+ANS: 2 | two
+WHY: Facts join to the version valid on their date, so history stays correct.
+---
+TYPE: fill
+TAG: cloud
+Q: Writing to a hidden location, testing, then making data visible is called write-audit-____.
+ANS: publish
+WHY: Consumers keep the last good version if the audit fails.
+---
+TYPE: short
+TAG: design
+Q: In ninety seconds, describe the platform you built in this program and one decision you would defend.
+MODEL: Events from rider and driver apps go to Kafka, keyed by trip. Spark writes them to Iceberg tables on object storage, in batch with merges on event id and in streaming with watermarks and idempotent merges. Order changes in Postgres arrive through Debezium and are merged by primary key with a log-position guard. dbt builds a star schema with a Type 2 driver dimension. Airflow orchestrates, with contracts, tests and write-audit-publish. The batch path runs on AWS through Terraform. An on-call agent reads failures, gathers evidence through tools and posts diagnoses to Slack, proposing fixes only through human approval.
+
+A decision to defend: update mode with merges for the demand stream, because freshness mattered more than finality for pricing, with a separate append-mode table for final numbers.
+---
+TYPE: short
+TAG: behavioral
+Q: Tell the story of one incident from this program in under two minutes, in STAR form.
+MODEL: A strong answer uses the renamed-column incident or the skew incident, with numbers.
+
+**Situation:** a nightly job or a dashboard showed a problem, with impact stated, such as 12% of rows missing or a 3-hour runtime.
+**Task:** restore correct data and prevent a repeat.
+**Action:** found it through health metrics or the Spark UI rather than guessing; contained it; fixed the cause, such as a contract check or skew handling; backfilled the affected interval.
+**Result:** restored figures, the measured improvement, and the preventive control added.
+
+Describe it as a practice incident from your own platform if asked. Honesty about context is part of the score.
+---
+TYPE: short
+TAG: sql
+Q: Name five SQL patterns you now know by heart, with one example problem each.
+MODEL: - **Ranking per group:** `ROW_NUMBER`, `RANK` or `DENSE_RANK` with `PARTITION BY`. Second-highest salary per department.
+- **De-duplication:** `ROW_NUMBER` with a deterministic order, keep 1. Latest profile per user.
+- **Gaps and islands:** date minus row number, or a running sum of change flags. Three consecutive login days; sessions.
+- **Rolling windows:** frames with `ROWS BETWEEN`, or a range join for distinct counts. Seven-day active users.
+- **Anti-join:** `NOT EXISTS`. Riders with no completed trips.
+
+Also strong: aggregate before joining to avoid fan-out; conditional aggregation; point-in-time joins to Type 2 dimensions; cohort retention; funnels with time limits.
+---
+TYPE: short
+TAG: ai
+Q: An interviewer asks: "How has AI changed the way you work as a data engineer, and where do you not trust it?" Answer.
+MODEL: **How it changed the work:** I use assistants daily to draft SQL, PySpark and tests and to read unfamiliar code, which speeds up delivery. I have built systems that use models inside pipelines: classification with structured output and a budget, retrieval over runbooks, and an on-call agent that diagnoses failures with tools.
+
+**Where I do not trust it:** generated code that runs but behaves badly over time, such as full reprocessing, overwriting history or wrong time windows; anything it says without evidence; and any action that changes data. So I review generated code like a pull request, require cited evidence from agents, evaluate on labelled sets, and keep humans in the loop for changes.
+
+@@coding
+TITLE: Teams with more than two consecutive wins
+KIND: sql
+MIN: 12
+TAG: sql
+SRC: Flipkart, 4 YOE
+PROBLEM:
+Table `matches(team, match_date, result)`, where `result` is `W` or `L`. Each team plays at most once per date.
+
+Return every team that had **a run of three or more consecutive wins** in its own sequence of matches. Order by team.
+SOLUTION:
+```sql
+WITH r AS (
+  SELECT team, match_date, result,
+         ROW_NUMBER() OVER (PARTITION BY team ORDER BY match_date)         AS rn_all,
+         ROW_NUMBER() OVER (PARTITION BY team, result ORDER BY match_date) AS rn_result
+  FROM matches
+)
+SELECT DISTINCT team
+FROM r
+WHERE result = 'W'
+GROUP BY team, rn_all - rn_result
+HAVING COUNT(*) >= 3
+ORDER BY team;
+```
+
+Gaps and islands, in its second form. Within a run of wins, both row numbers rise by one per match, so their difference is constant; a loss interrupts the run and changes the difference. Grouping by team and that difference gives each run, and `HAVING` keeps runs of three or more.
+
+"Consecutive" here means consecutive matches, not consecutive dates, which is why row numbers are used and not dates. In the diagnostic, the same idea used dates because the question was about calendar days. Read which one the question asks for.
+<!--test
+con.execute("create table matches(team varchar, match_date date, result varchar)")
+con.execute("insert into matches values ('A','2026-01-01','W'),('A','2026-01-05','W'),('A','2026-01-09','W'),('A','2026-01-12','L'),('B','2026-01-01','W'),('B','2026-01-02','W'),('B','2026-01-03','L'),('B','2026-01-04','W'),('B','2026-01-05','W'),('C','2026-01-01','L'),('C','2026-01-02','W'),('C','2026-01-03','W'),('C','2026-01-04','W'),('C','2026-01-05','W'),('D','2026-01-01','W'),('D','2026-01-02','L'),('D','2026-01-03','W'),('D','2026-01-04','L'),('D','2026-01-05','W')")
+assert con.execute(Q).fetchall() == [('A',),('C',)]
+-->
+---
+TITLE: Top K most frequent words
+KIND: dsa
+MIN: 12
+TAG: dsa
+SRC: Salesforce, 4 YOE
+PROBLEM:
+Given a list of words and an integer `k`, return the `k` most frequent words, most frequent first. Words with equal counts are ordered alphabetically.
+
+`["the","day","is","sunny","the","the","sunny","is","is"]`, `k = 4` returns `["is","the","sunny","day"]`.
+SOLUTION:
+```python
+import heapq
+from collections import Counter
+
+def top_k_words(words, k):
+    counts = Counter(words)
+    return heapq.nsmallest(k, counts, key=lambda w: (-counts[w], w))
+```
+
+Count in O(n). Then select k items with a heap in O(m log k) for m distinct words, which beats sorting all of them when k is small. The key orders by count descending and then by the word itself, which handles ties.
+
+Salesforce asked for a scalable version using a Count-Min Sketch. When the vocabulary is too large to count exactly, a Count-Min Sketch estimates counts in fixed memory with small overestimates, and a heap of size k holds the current top candidates. In a distributed setting, count per partition, then merge counts by word and take the top k, which is a `groupBy` followed by a limit in Spark.
+<!--test
+assert top_k_words(["the","day","is","sunny","the","the","sunny","is","is"], 4) == ["is","the","sunny","day"]
+assert top_k_words(["a","b","a"], 1) == ["a"]
+assert top_k_words(["b","a"], 2) == ["a","b"]
+-->
+---
+TITLE: The most queried table in an audit log
+KIND: pyspark
+MIN: 12
+TAG: spark
+SRC: Walmart, 3 YOE
+PROBLEM:
+A DataFrame `df` was read from `audit.txt` with columns `userid, timestamp, tablename, query_text`.
+
+Write `most_queried(df)` returning a Python list of the table name or names with the highest number of queries, sorted alphabetically. Return all names if several tie.
+SOLUTION:
+```python
+from pyspark.sql import functions as F
+
+def most_queried(df):
+    counts = df.groupBy("tablename").count()
+    top = counts.agg(F.max("count")).first()[0]
+    return [r.tablename for r in counts.filter(F.col("count") == top)
+                                       .orderBy("tablename").collect()]
+```
+
+Count per table, find the maximum, and return every table at the maximum. Ties are the usual follow-up, which is why the result is a list.
+
+Only the small result is collected to the driver. Walmart also asked for a plain Python version; it is a `Counter` over the third field of each line, read as a stream, as in sprint 1.
+<!--test
+df = spark.createDataFrame([(1,"t1","orders","select"),(2,"t2","trips","select"),(1,"t3","orders","select"),(3,"t4","trips","select"),(3,"t5","users","select")], "userid int, timestamp string, tablename string, query_text string")
+assert most_queried(df) == ["orders", "trips"]
+df2 = spark.createDataFrame([(1,"t1","orders","q")], "userid int, timestamp string, tablename string, query_text string")
+assert most_queried(df2) == ["orders"]
+-->
+
+@@interview
+Q: Read a text file into Spark and count words, using `map`, `flatMap` and `reduceByKey`.
+SRC: Databricks, 5 YOE
+TAG: spark
+A: With the RDD API:
+
+```python
+counts = (spark.sparkContext.textFile("s3://bucket/book.txt")
+          .flatMap(lambda line: line.lower().split())
+          .map(lambda word: (word, 1))
+          .reduceByKey(lambda a, b: a + b))
+```
+`flatMap` turns each line into many words. `map` pairs each word with 1. `reduceByKey` combines counts per word, first within each partition and then after the shuffle, which sends less data than `groupByKey`. With DataFrames: `split`, `explode`, then `groupBy("word").count()`, which goes through the optimiser and is what I would use in practice.
+---
+Q: How would you use MapReduce to solve Two Sum over a very large dataset?
+SRC: Amazon, 4 YOE
+TAG: dsa
+A: For each number x, the pair partner is target − x. In the map phase, emit each number keyed by a canonical pair key: the smaller of x and target − x. Both members of a valid pair then arrive at the same reducer. In the reduce phase, check whether both x and target − x are present, counting duplicates when x equals target − x, and emit the pairs. That is one shuffle, and it parallelises across keys. In Spark this is a self-join on `value = target - value`, or the keyed grouping above.
+---
+Q: What happens when multiple consumers in one group read from a single partition?
+SRC: Databricks, 5 YOE
+TAG: streaming
+A: They cannot. Within a consumer group, each partition is assigned to exactly one consumer, so only one of them reads it and the others receive nothing from that partition. They act as standbys and take over after a rebalance if the active consumer fails. Consumers in different groups can each read the same partition independently, each tracking its own offset. To read faster, you add partitions and then consumers, not consumers alone.
+---
+Q: Explain clustered and non-clustered indexes, and when to use each.
+SRC: Adobe, 4–6 YOE
+TAG: sql
+A: A clustered index determines the physical order of rows in the table, so there can be only one; range scans on its key are very efficient. A non-clustered index is a separate structure holding the key and a pointer to the row, so a table can have several, at the cost of extra lookups and slower writes. I put the clustered index on the column used for range queries or the primary access path, often a date or the primary key, and non-clustered indexes on selective lookup columns. In columnar warehouses the equivalents are sort and clustering keys plus metadata pruning, not indexes.
+---
+Q: Explain horizontal and vertical partitioning, and how partition pruning works.
+SRC: Adobe, 4–6 YOE
+TAG: spark
+A: Horizontal partitioning splits rows into groups, by date or region for example, with the same columns in each. Vertical partitioning splits columns into separate tables, such as moving rarely used or sensitive columns out of a hot table; columnar storage gives a similar effect automatically. Partition pruning uses a filter on the partition column to skip partitions entirely at planning time, using directory names or table metadata, so only matching partitions are read. It fails if the filter wraps the column in a function the planner cannot map to partitions.
+---
+Q: What is the difference between `COUNT(*)`, `COUNT(1)` and `COUNT(column)`?
+SRC: Meta, 3 YOE
+TAG: sql
+A: `COUNT(*)` counts rows. `COUNT(1)` also counts rows; the constant is never NULL, and modern optimisers treat both identically, so there is no performance difference. `COUNT(column)` counts rows where that column is not NULL. `COUNT(DISTINCT column)` counts distinct non-NULL values. The practical use: in a left join, count a column from the right-hand table to get zero for rows with no match, where `COUNT(*)` would return one.
+---
+Q: When would you use `HAVING` instead of `WHERE`?
+SRC: Meta, 3 YOE
+TAG: sql
+A: `WHERE` filters rows before grouping; `HAVING` filters groups after aggregation, so it can use aggregate results. For example, customers with more than three orders: `GROUP BY customer_id HAVING COUNT(*) > 3`. Conditions on raw columns belong in `WHERE`, because filtering early reduces the rows grouped. Window function results can be filtered by neither, which is why `QUALIFY` exists in some engines, or a subquery is used.
+---
+Q: Explain when to use `RANK`, `DENSE_RANK` and `ROW_NUMBER`.
+SRC: Stripe, 4 YOE
+TAG: sql
+A: All three number rows within a partition by an ordering. `ROW_NUMBER` gives unique consecutive numbers, breaking ties arbitrarily unless the ordering is complete; use it to pick exactly one row per group, as in de-duplication. `RANK` gives ties the same number and leaves gaps after them, as in a competition: 1, 1, 3. `DENSE_RANK` gives ties the same number with no gaps: 1, 1, 2; use it for "the second-highest distinct value". Choosing between them is a statement about how ties should be treated, so say it aloud.
+---
+Q: What is the difference between a list and a tuple, and between `append` and `extend`?
+SRC: Meta, 3 YOE
+TAG: dsa
+A: A list is mutable; a tuple is immutable. Tuples can be dictionary keys and set members because they are hashable when their contents are, they signal fixed structure such as a record, and they are slightly lighter. Lists suit collections that change. `append(x)` adds x as a single element, so appending a list nests it. `extend(iterable)` adds each element of the iterable. `[1, 2].append([3, 4])` gives `[1, 2, [3, 4]]`; `extend` gives `[1, 2, 3, 4]`.
+---
+Q: What are decorators in Python, and when would you use them?
+SRC: Capgemini, 5 YOE
+TAG: dsa
+A: A decorator is a function that takes a function and returns a new one, usually wrapping the original with extra behaviour, applied with `@name` above a definition. Uses in data engineering: retrying a call with backoff, timing and logging a pipeline step, caching results, checking inputs, and registering functions, as Airflow's `@task`, MCP's `@mcp.tool()` and pytest fixtures do. A wrapper should use `functools.wraps` so the wrapped function keeps its name and docstring.
+---
+Q: What are generators in Python, and why are they memory-efficient?
+SRC: Fractal, 7.5 YOE
+TAG: dsa
+A: A generator is a function that uses `yield` to produce values one at a time, pausing between them. It returns an iterator, and nothing is computed until the next value is requested. Only the current state is held in memory, not the full sequence, so a generator can stream a file of any size, read records page by page from an API, or chain transformations lazily. Generator expressions, written with parentheses, give the same behaviour inline. The trade-off: a generator can be consumed only once.
+---
+Q: What is data locality in Hadoop, and why is it important?
+SRC: J.P. Morgan, 6 YOE
+TAG: spark
+A: Data locality means running a task on the node that already holds its input block, or on the same rack, so data is read from local disk instead of over the network. Hadoop and Spark schedulers prefer local placement and wait briefly for it before falling back. It mattered greatly when compute and storage shared machines in HDFS clusters, because the network was the bottleneck. With object storage, all reads are remote, so locality matters less and the gains come instead from reading fewer bytes and from caching.
+---
+Q: How does YARN schedule applications and allocate resources?
+SRC: Microsoft, 4 YOE
+TAG: spark
+A: YARN separates resource management from job logic. The ResourceManager holds the cluster's resources and a scheduler, usually capacity or fair, that divides them among queues. Each node runs a NodeManager that launches and monitors containers. When an application is submitted, the ResourceManager starts its ApplicationMaster in a container, and the ApplicationMaster requests further containers with stated memory and cores, preferring nodes that hold its data. For Spark, those containers run the executors. Memory limits are enforced per container, which is where "container killed for exceeding memory limits" comes from.
+---
+Q: Compare MapReduce and Spark. When is each preferable?
+SRC: Microsoft, 4 YOE
+TAG: spark
+A: MapReduce writes intermediate results to disk between every map and reduce step, so multi-step jobs are slow but very robust with little memory. Spark keeps data in memory across steps where it can, optimises whole query plans, and offers SQL, streaming and machine learning on one engine, so it is much faster for iterative and multi-stage work. Spark is the default today. MapReduce survives in legacy jobs that work and are not worth rewriting, or in clusters where memory is very constrained.
+---
+Q: How do you make sure NULL values do not distort aggregations such as `AVG()`?
+SRC: Zen, 7 YOE
+TAG: sql
+A: First decide what NULL means. `AVG(column)` ignores NULLs, which is correct if NULL means "not applicable" and wrong if it means zero. If NULL means zero, use `AVG(COALESCE(column, 0))`. If it means unknown, report the share of NULLs beside the average, because a mean over 40% of the rows is misleading. Also watch `COUNT(column)` against `COUNT(*)` in denominators, and NULLs in join keys, which silently fail to match.
+---
+Q: What future challenges do you see in data engineering?
+SRC: Grab, 8 YOE
+TAG: design
+A: Four stand out. **Cost:** data and compute grow faster than budgets, so cost becomes an engineering metric owned per pipeline. **Governance:** privacy laws, AI regulation and more consumers make lineage, access control and deletion first-class requirements. **Semantics:** as language models and agents query data directly, unambiguous definitions in a semantic layer matter more than ever, because a model will confidently use the wrong one. **Reliability at the boundaries:** most incidents come from upstream changes, so contracts and observability become standard. Each points to the same skill: treating data as a product with owners and guarantees.
+---
+Q: How has AI changed the way you work, and where do you not trust it?
+TAG: ai
+A: I use assistants every day to draft SQL, PySpark and tests, and to understand unfamiliar code, which makes delivery noticeably faster. I have also built AI into systems: an agentic request workflow at Salesforce, classification steps with structured output and budgets, and an on-call agent that diagnoses pipeline failures with tools. I do not trust generated code that runs but behaves badly over time, claims without evidence, or any action that changes data. So I review generated code like a pull request, require agents to cite tool output, measure them on labelled cases, and keep a person approving any change.
+---
+Q: What new skills have you taught yourself in data engineering, and how do you stay current?
+SRC: Databricks, 5 YOE
+TAG: behavioral
+A: Answer with this program as evidence, specifically. Over twelve weeks you built a platform covering streaming with watermarks and exactly-once sinks, change data capture, Iceberg internals, Terraform on AWS, Delta and Snowflake, data contracts, and an evaluated on-call agent with MCP tools. Name one thing that surprised you and changed your practice, such as how often generated code was wrong over repeated runs. For staying current: a weekly engineering blog post from companies like Uber and Netflix, documentation release notes for the tools you use, and building small things to test new ideas.
+
+@@mock
+## Mock loops 3 to 7: five companies, five styles (4.5 hours)
+
+Run one loop per sitting, about 55 minutes each. Ask Claude: **"Run the Uber-style loop"**, and so on. Claude follows the round structure from section 12.2, compressed to fit, and scores each round out of 10.
+
+| Loop | Rounds, compressed | Weight toward |
+|---|---|---|
+| 3. Amazon style | SQL assessment, 15 min · SQL with design, 15 · data modeling, 10 · leadership principles, 15 | SQL speed, cost, ownership stories |
+| 4. Uber style | Hard SQL with Spark internals, 15 · SQL with medium DSA, 15 · ride-hailing model, 10 · system design, 15 | Depth in Spark and design |
+| 5. Meta style | Combined SQL, modeling and product sense, 25 · Python and ETL, 15 · behavioral, 15 | Metrics and product thinking |
+| 6. Atlassian style | Intervals and window SQL, 15 · product case, 10 · streaming and Delta, 15 · values, 15 | Exactly-once, openness |
+| 7. Databricks style | Spark coding, 15 · Kafka and shuffles, 10 · data design with GDPR, 15 · leadership, 15 | Platform internals |
+
+After each loop, write one line: the weakest round and the single action you will take before the next real interview.
+
+Record the average of all five loops below. A consistent 7 or higher across rounds is a reasonable signal that you are ready for tier-1 final rounds.
