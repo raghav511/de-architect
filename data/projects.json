@@ -1,0 +1,295 @@
+[
+ {
+  "id": "lakehouse-1",
+  "w": 1,
+  "title": "Lakehouse, part 1: object store, Iceberg and zero-copy Bronze",
+  "status": "ready",
+  "env": "lakehouse",
+  "goal": "Stand up an open-source lakehouse and turn raw Parquet files in an S3 bucket into an Iceberg table without copying a byte.",
+  "stack": [
+   "SeaweedFS (S3 API, MinIO-compatible)",
+   "Apache Iceberg + REST catalog",
+   "Spark 3.5 + Jupyter",
+   "Trino"
+  ],
+  "parts": [
+   "Run the stack in Codespaces or on your MacBook",
+   "Land 7 days of raw ride data with realistic dirt",
+   "Register the files in place with add_files",
+   "Protect Bronze so no engine can delete files it does not own"
+  ],
+  "ms": [
+   [
+    1,
+    "Environment up",
+    "make up-all, then open Jupyter (:8888) and Trino (:8080)"
+   ],
+   [
+    2,
+    "Bronze, zero copy",
+    "make land, then make bronze; read jobs/bronze_zero_copy.py"
+   ]
+  ],
+  "refs": [
+   [
+    "Apache Iceberg docs: Spark procedures (add_files, migrate, snapshot)",
+    "https://iceberg.apache.org/docs/latest/spark-procedures/"
+   ],
+   [
+    "PyIceberg docs",
+    "https://py.iceberg.apache.org/"
+   ]
+  ],
+  "codespaces": "https://codespaces.new/raghav511/de-architect?devcontainer_path=.devcontainer/lakehouse/devcontainer.json",
+  "readme": "projects/lakehouse/README.md"
+ },
+ {
+  "id": "lakehouse-2",
+  "w": 2,
+  "title": "Lakehouse, part 2: Silver, Gold with dbt, Airflow, ClickHouse",
+  "status": "ready",
+  "env": "lakehouse",
+  "goal": "Finish the medallion lakehouse: idempotent Silver with MERGE, Gold metrics, ML features and LLM context with dbt, a daily Airflow DAG, and ClickHouse serving the same tables.",
+  "stack": [
+   "Trino MERGE and PySpark",
+   "dbt-trino",
+   "Apache Airflow",
+   "ClickHouse icebergS3()"
+  ],
+  "parts": [
+   "Dedupe and quarantine bad rows",
+   "Gold: daily metrics, driver features, LLM-ready text",
+   "Daily DAG that can rerun any day safely",
+   "Iceberg internals notebook: snapshots, time travel, evolution, compaction"
+  ],
+  "ms": [
+   [
+    3,
+    "Silver",
+    "make silver (twice: second run changes 0 rows), then make silver-spark"
+   ],
+   [
+    4,
+    "Gold with dbt",
+    "make gold: 3 models, 7 tests"
+   ],
+   [
+    5,
+    "Orchestrate",
+    "run lakehouse_daily in Airflow or make pipeline DAY=2026-10-08"
+   ]
+  ],
+  "refs": [
+   [
+    "Data Engineering Lakehouse repository (viktoriasemaan)",
+    "https://github.com/viktoriasemaan/data-engineering"
+   ],
+   [
+    "Databricks: data engineering for AI",
+    "https://www.databricks.com/blog/data-engineering-for-ai"
+   ],
+   [
+    "ClickHouse icebergS3 table function",
+    "https://clickhouse.com/docs/sql-reference/table-functions/iceberg"
+   ]
+  ],
+  "codespaces": "https://codespaces.new/raghav511/de-architect?devcontainer_path=.devcontainer/lakehouse/devcontainer.json",
+  "readme": "projects/lakehouse/README.md"
+ },
+ {
+  "id": "spark-scale",
+  "w": 3,
+  "title": "Spark under load on your lakehouse",
+  "status": "planned",
+  "goal": "Make the Silver job 10x bigger, then find and fix skew, small files and spills using the Spark UI.",
+  "stack": [
+   "Spark 3.5 + AQE",
+   "Iceberg compaction",
+   "Spark UI / history server"
+  ],
+  "parts": [
+   "Generate a skewed day (one hot city)",
+   "Salting vs AQE skew join",
+   "rewrite_data_files and sort order",
+   "Write a one-page tuning memo"
+  ]
+ },
+ {
+  "id": "nl-assistant",
+  "w": 4,
+  "title": "Natural-language data assistant over the warehouse",
+  "status": "planned",
+  "goal": "A chatbot that answers business questions in plain English by writing validated SQL against Gold.",
+  "stack": [
+   "Trino or DuckDB over Gold",
+   "LangChain / LlamaIndex",
+   "Free LLM: Ollama (local) or Gemini free tier",
+   "Semantic layer (dbt metrics / YAML)"
+  ],
+  "parts": [
+   "Schema + semantic layer as context",
+   "SQL generation with a validator (sqlglot) and a read-only role",
+   "Eval set of 30 questions with expected answers",
+   "Refuse questions the data cannot answer"
+  ],
+  "refs": [
+   [
+    "AI Data Engineering Project for Beginners (nataindata)",
+    "https://github.com/nataindata/ai-data-engineering-project"
+   ]
+  ]
+ },
+ {
+  "id": "streaming-ai",
+  "w": 5,
+  "title": "Real-time AI streaming pipeline",
+  "status": "planned",
+  "goal": "Stream ride events through Kafka, compute windowed features continuously and flag anomalies within seconds.",
+  "stack": [
+   "Redpanda (Kafka API)",
+   "Spark Structured Streaming or Flink",
+   "ClickHouse (real-time sink)",
+   "Python anomaly model"
+  ],
+  "parts": [
+   "Event generator at 1k events/s",
+   "Tumbling and sliding windows with watermarks",
+   "Exactly-once sink to ClickHouse and Iceberg",
+   "Anomaly alerts to a Slack webhook"
+  ]
+ },
+ {
+  "id": "cdc-lake",
+  "w": 6,
+  "title": "CDC from Postgres into the lakehouse",
+  "status": "planned",
+  "goal": "Capture every insert, update and delete from an operational database and apply it to Iceberg with MERGE.",
+  "stack": [
+   "Postgres",
+   "Debezium + Redpanda",
+   "Spark/Flink MERGE into Iceberg",
+   "Reconciliation checks"
+  ],
+  "parts": [
+   "Logical replication slot",
+   "Debezium change events",
+   "Upserts and deletes in Iceberg",
+   "Daily row-count and checksum reconciliation"
+  ]
+ },
+ {
+  "id": "aws-local",
+  "w": 7,
+  "title": "AWS on your laptop: infrastructure as code and cost",
+  "status": "planned",
+  "goal": "Rebuild the lakehouse ingestion with AWS-style services, defined in Terraform, running on LocalStack, with a cost estimate.",
+  "stack": [
+   "LocalStack (S3, SQS, Lambda, IAM)",
+   "Terraform",
+   "Iceberg on S3",
+   "Cost model spreadsheet"
+  ],
+  "parts": [
+   "IAM least privilege for each job",
+   "S3 event → SQS → Lambda → Bronze",
+   "terraform plan/apply locally",
+   "Monthly cost estimate for real AWS"
+  ]
+ },
+ {
+  "id": "rag-pipeline",
+  "w": 8,
+  "title": "Production RAG pipeline with metadata filtering",
+  "status": "planned",
+  "goal": "Ingest support tickets and runbooks, chunk and embed them at scale, and answer questions with citations and filters.",
+  "stack": [
+   "Spark for chunking",
+   "pgvector or Qdrant",
+   "Open embedding model (bge-small)",
+   "LlamaIndex / LangChain"
+  ],
+  "parts": [
+   "Chunking strategies compared",
+   "Embeddings with metadata tags (team, date, product)",
+   "Pre- and post-retrieval filtering",
+   "Retrieval eval: recall@k on 50 questions"
+  ]
+ },
+ {
+  "id": "llm-observability",
+  "w": 9,
+  "title": "LLM output evaluation and observability dashboard",
+  "status": "planned",
+  "goal": "Log, score and monitor LLM responses for drift, latency, cost and hallucination.",
+  "stack": [
+   "Airflow or Dagster",
+   "Postgres",
+   "Python eval suite (LLM-as-judge + rules)",
+   "Grafana or Streamlit"
+  ],
+  "parts": [
+   "Response log schema",
+   "Nightly eval DAG",
+   "Drift and cost metrics",
+   "Dashboard with alerts"
+  ]
+ },
+ {
+  "id": "governed-serving",
+  "w": 10,
+  "title": "Governed lakehouse and serving at scale",
+  "status": "planned",
+  "goal": "Add catalog governance, lineage and a fast serving layer to the lakehouse.",
+  "stack": [
+   "Lakekeeper or Apache Polaris (Iceberg catalogs)",
+   "OpenLineage + Marquez",
+   "ClickHouse serving tables",
+   "Unity Catalog OSS (compare)"
+  ],
+  "parts": [
+   "Role-based access per layer",
+   "Column lineage across dbt and Spark",
+   "p95 query latency budget",
+   "Disaster recovery drill"
+  ]
+ },
+ {
+  "id": "customer-build",
+  "w": 11,
+  "title": "One-day customer build (forward-deployed engineering)",
+  "status": "planned",
+  "goal": "Take a messy customer request, scope it in an hour, build a working slice in a day, and present it.",
+  "stack": [
+   "Your lakehouse",
+   "One project idea from datavidhya.com/projects",
+   "Streamlit demo"
+  ],
+  "parts": [
+   "Discovery questions and a one-page scope",
+   "Working slice end to end",
+   "Demo script and trade-off memo"
+  ],
+  "refs": [
+   [
+    "Data engineering project ideas (datavidhya)",
+    "https://datavidhya.com/projects/"
+   ]
+  ]
+ },
+ {
+  "id": "capstone",
+  "w": 12,
+  "title": "Capstone: AI-ready data platform",
+  "status": "planned",
+  "goal": "Combine lakehouse, streaming, RAG and the assistant into one platform and defend it in an architecture review.",
+  "stack": [
+   "Everything you built"
+  ],
+  "parts": [
+   "C4 diagrams",
+   "Architecture decision records",
+   "Live demo",
+   "Review board mock"
+  ]
+ }
+]

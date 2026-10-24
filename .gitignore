@@ -1,1 +1,4 @@
 __pycache__/
+projects/lakehouse/dbt/target/
+projects/lakehouse/dbt/logs/
+.ipynb_checkpoints/

@@ -1,0 +1,19 @@
+version: 2
+models:
+  - name: daily_city_metrics
+    description: Daily trip, cancellation and revenue metrics per city.
+    columns:
+      - name: trip_date
+        tests: [not_null]
+      - name: cancel_rate_pct
+        tests:
+          - accepted_range:
+              arguments: {min: 0, max: 100}
+  - name: driver_features
+    columns:
+      - name: driver_id
+        tests: [unique, not_null]
+  - name: city_context
+    columns:
+      - name: context_text
+        tests: [not_null]

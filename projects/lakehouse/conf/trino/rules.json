@@ -1,0 +1,11 @@
+{
+  "catalogs": [{"allow": "all"}],
+  "schemas": [
+    {"catalog": "lake", "schema": "bronze", "owner": false},
+    {"owner": true}
+  ],
+  "tables": [
+    {"catalog": "lake", "schema": "bronze", "privileges": ["SELECT"]},
+    {"privileges": ["SELECT", "INSERT", "DELETE", "UPDATE", "OWNERSHIP", "GRANT_SELECT"]}
+  ]
+}

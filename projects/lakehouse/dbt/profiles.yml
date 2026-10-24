@@ -1,0 +1,12 @@
+lakehouse:
+  target: dev
+  outputs:
+    dev:
+      type: trino
+      method: none
+      user: admin
+      host: "{{ env_var('TRINO_HOST', 'trino') }}"
+      port: 8080
+      database: lake
+      schema: gold
+      threads: 2

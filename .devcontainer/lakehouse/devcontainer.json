@@ -1,0 +1,27 @@
+{
+  "name": "Keystone · Lakehouse project (S3 + Iceberg + Spark + Trino + Airflow + ClickHouse)",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "hostRequirements": { "cpus": 4, "memory": "16gb", "storage": "32gb" },
+  "workspaceFolder": "/workspaces/de-architect/projects/lakehouse",
+  "postCreateCommand": "cd /workspaces/de-architect/projects/lakehouse && docker compose --profile airflow --profile clickhouse pull --ignore-buildable && docker compose --profile airflow build",
+  "postStartCommand": "cd /workspaces/de-architect/projects/lakehouse && docker compose --profile airflow up -d",
+  "forwardPorts": [8888, 8080, 8081, 8123, 8333, 4040],
+  "portsAttributes": {
+    "8888": { "label": "Jupyter (Spark + Iceberg)" },
+    "8080": { "label": "Trino UI" },
+    "8081": { "label": "Airflow (admin/admin)" },
+    "8123": { "label": "ClickHouse" },
+    "8333": { "label": "S3 API (object store)" },
+    "4040": { "label": "Spark UI (while a job runs)" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "ms-toolsai.jupyter", "innoverio.vscode-dbt-power-user", "mtxr.sqltools", "ms-azuretools.vscode-docker"]
+    },
+    "codespaces": { "openFiles": ["projects/lakehouse/README.md"] }
+  }
+}

@@ -1,0 +1,83 @@
+# Open-source lakehouse: S3-compatible object store + Apache Iceberg REST catalog + Spark + Trino (+ Airflow, ClickHouse)
+# Start the core:      docker compose up -d
+# Add orchestration:   docker compose --profile airflow up -d
+# Add ClickHouse:      docker compose --profile clickhouse up -d
+name: lakehouse
+x-s3-env: &s3env
+  AWS_ACCESS_KEY_ID: admin
+  AWS_SECRET_ACCESS_KEY: password
+  AWS_REGION: us-east-1
+  AWS_DEFAULT_REGION: us-east-1
+services:
+  s3:
+    # S3-compatible object store, our local "AWS S3". SeaweedFS (Apache 2.0) is used because MinIO no longer
+    # publishes free community images; the S3 API is the same, see README to swap in MinIO or RustFS.
+    image: chrislusf/seaweedfs:3.97
+    command: server -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json -dir=/data -volume.max=20 -master.volumeSizeLimitMB=256
+    ports: ["8333:8333"]
+    volumes: ["./conf/s3/s3.json:/etc/seaweedfs/s3.json:ro", "s3data:/data"]
+    healthcheck: {test: ["CMD-SHELL", "wget -qO- http://localhost:8333/status >/dev/null 2>&1 || exit 1"], interval: 5s, retries: 30}
+  s3-init:
+    image: tabulario/spark-iceberg:3.5.5_1.8.1
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["for b in landing warehouse; do aws --endpoint-url http://s3:8333 s3 mb s3://$$b 2>/dev/null || true; done; aws --endpoint-url http://s3:8333 s3 ls"]
+    environment: *s3env
+    depends_on: {s3: {condition: service_healthy}}
+  rest:
+    # Apache Iceberg REST catalog (reference implementation). Swap for Lakekeeper, Nessie, Polaris or Unity Catalog OSS later.
+    image: apache/iceberg-rest-fixture:1.9.1
+    ports: ["8181:8181"]
+    environment:
+      <<: *s3env
+      CATALOG_WAREHOUSE: s3://warehouse/
+      CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
+      CATALOG_S3_ENDPOINT: http://s3:8333
+      CATALOG_S3_PATH__STYLE__ACCESS: "true"
+      CATALOG_URI: jdbc:sqlite:file:/catalog/iceberg.db
+      CATALOG_JDBC_USER: user
+      CATALOG_JDBC_PASSWORD: password
+    volumes: ["catalog:/catalog"]
+    user: root
+    depends_on: {s3-init: {condition: service_completed_successfully}}
+  spark:
+    # Spark 3.5 + Iceberg 1.8 + Jupyter (http://localhost:8888)
+    image: tabulario/spark-iceberg:3.5.5_1.8.1
+    ports: ["8888:8888", "4040:4040"]
+    environment: *s3env
+    volumes:
+      - ./conf/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
+      - ./notebooks:/home/iceberg/notebooks/lakehouse
+      - ./jobs:/home/iceberg/jobs
+      - ./generator:/home/iceberg/generator
+      - ./checks:/home/iceberg/checks
+    depends_on: [rest]
+  trino:
+    # SQL engine for Silver/Gold and BI (http://localhost:8080, user: admin, no password)
+    image: trinodb/trino:476
+    ports: ["8080:8080"]
+    environment: *s3env
+    volumes: ["./conf/trino/catalog:/etc/trino/catalog:ro", "./conf/trino/access-control.properties:/etc/trino/access-control.properties:ro", "./conf/trino/rules.json:/etc/trino/rules.json:ro"]
+    depends_on: [rest]
+  airflow:
+    profiles: ["airflow"]
+    build: ./airflow
+    image: lakehouse-airflow:local
+    command: standalone
+    ports: ["8081:8080"]
+    environment:
+      <<: *s3env
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+      LAKE: /opt/lakehouse
+    volumes: ["./airflow/dags:/opt/airflow/dags", ".:/opt/lakehouse"]
+    depends_on: [trino]
+  clickhouse:
+    profiles: ["clickhouse"]
+    # Fast OLAP serving; reads the same Iceberg tables straight from S3 (zero copy)
+    image: clickhouse/clickhouse-server:25.3
+    ports: ["8123:8123"]
+    environment: {CLICKHOUSE_USER: admin, CLICKHOUSE_PASSWORD: password, CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"}
+volumes: {s3data: {}, catalog: {}}
