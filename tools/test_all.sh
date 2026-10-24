@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Keystone full test loop: content, banks, scheduler, editor (Pyodide), UI crawl, git labs.
+#   bash tools/test_all.sh [baseUrl]      (default http://localhost:8811/, started here if needed)
+# Needs python3 + duckdb, node + playwright (set PW=/path/to/node_modules/playwright, CHROME=/path/to/chromium if not global).
+set -uo pipefail
+cd "$(dirname "$0")/.."
+BASE="${1:-http://localhost:8811/}"
+if [[ "$BASE" == http://localhost:8811/ ]] && ! curl -s -o /dev/null localhost:8811; then python3 -m http.server 8811 >/dev/null 2>&1 & sleep 1; fi
+fail=0
+step() { echo; echo "=== $1"; shift; "$@" || { echo "!!! FAILED: $*"; fail=1; }; }
+step "content and coding-test references" python3 tools/validate.py
+step "question banks against the runtime" bash -c 'python3 tools/build_bank.py | tail -2 | grep -q "problems: 0" && git diff --quiet data/bank'
+step "scheduler" node tools/sched_test.js "$BASE"
+step "editor: every reference solution passes" node tools/editor_test.js "$BASE"
+step "editor: wrong answers fail" env NEG=1 node tools/editor_test.js "$BASE"
+step "git labs" bash tools/test_gitlabs.sh
+step "UI crawl" node tools/crawl.js "$BASE" ${QUICK:+--quick}
+echo; [[ $fail == 0 ]] && echo "ALL GREEN" || echo "SOME CHECKS FAILED"
+exit $fail

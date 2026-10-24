@@ -29,3 +29,4 @@ for n in $(seq 1 16); do
   if out=$(bash $L check $n 2>&1); then pass=$((pass+1)); else echo "--- lab $n"; echo "$out"; fi
 done
 echo "$pass/16 labs pass with the reference solution"
+[[ $pass == 16 ]]

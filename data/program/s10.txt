@@ -17,8 +17,8 @@ hours: 10
 
 @@readings
 - [Uber: From batch to streaming, accelerating data freshness in Uber's data lake](https://www.uber.com/us/en/blog/from-batch-to-streaming-accelerating-data-freshness-in-ubers-data-lake/). A real migration with the trade-offs written down.
-- [Uber: Operating Apache Pinot at Uber scale](https://www.uber.com/ch/en/blog/operating-apache-pinot/). What a real-time analytics store is for, and what running one costs.
-- [Uber: "Orders Near You" and user-facing analytics on real-time geospatial data](https://www.uber.com/pl/en/blog/orders-near-you/). A worked example of serving fresh aggregates to millions of users.
+- [Uber: Operating Apache Pinot at Uber scale](https://www.uber.com/blog/operating-apache-pinot/). What a real-time analytics store is for, and what running one costs.
+- [Uber: "Orders Near You" and user-facing analytics on real-time geospatial data](https://www.uber.com/blog/orders-near-you/). A worked example of serving fresh aggregates to millions of users.
 - [Anthropic: Building Effective AI Agents](https://www.anthropic.com/engineering/building-effective-agents). Reread the section on workflows and orchestrator-workers before the AI lab.
 
 @@chapter

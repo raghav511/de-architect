@@ -24,13 +24,70 @@ def _q(name):
 
 
 def _lit_sql(v):
+    import datetime as _dt
     if v is None:
         return 'NULL'
     if isinstance(v, bool):
         return 'TRUE' if v else 'FALSE'
     if isinstance(v, (int, float)):
         return repr(v)
+    if isinstance(v, _dt.datetime):
+        return "TIMESTAMP '" + v.isoformat(sep=' ') + "'"
+    if isinstance(v, _dt.date):
+        return "DATE '" + v.isoformat() + "'"
+    if isinstance(v, list):
+        return '[' + ', '.join(_lit_sql(x) for x in v) + ']'
+    if isinstance(v, tuple):
+        return 'ROW(' + ', '.join(_lit_sql(x) for x in v) + ')' if v else 'NULL'
+    if isinstance(v, dict):
+        return 'struct_pack(' + ', '.join(_q(k) + ' := ' + _lit_sql(x) for k, x in v.items()) + ')' if v else 'NULL'
     return "'" + str(v).replace("'", "''") + "'"
+
+
+def _split_top(s, sep=','):
+    out, depth, cur = [], 0, ''
+    for ch in s:
+        if ch in '<(':
+            depth += 1
+        elif ch in '>)':
+            depth -= 1
+        if ch == sep and depth == 0:
+            out.append(cur); cur = ''
+        else:
+            cur += ch
+    if cur.strip():
+        out.append(cur)
+    return [x.strip() for x in out]
+
+
+def _ddl(t):
+    t = t.strip(); tl = t.lower()
+    if tl.startswith('array<'):
+        return _ddl(t[6:-1]) + '[]'
+    if tl.startswith('struct<'):
+        fs = []
+        for f in _split_top(t[7:-1]):
+            n, ty = re.split(r'\s*:\s*|\s+', f, 1)
+            fs.append(_q(n) + ' ' + _ddl(ty))
+        return 'STRUCT(' + ', '.join(fs) + ')'
+    if tl.startswith('map<'):
+        k, v = _split_top(t[4:-1])
+        return 'MAP(' + _ddl(k) + ', ' + _ddl(v) + ')'
+    if tl.startswith('decimal'):
+        return tl.upper()
+    return {'int': 'INTEGER', 'integer': 'INTEGER', 'bigint': 'BIGINT', 'long': 'BIGINT', 'smallint': 'SMALLINT', 'tinyint': 'TINYINT', 'short': 'SMALLINT',
+            'string': 'VARCHAR', 'varchar': 'VARCHAR', 'double': 'DOUBLE', 'float': 'FLOAT', 'boolean': 'BOOLEAN', 'bool': 'BOOLEAN', 'date': 'DATE', 'timestamp': 'TIMESTAMP'}.get(tl, 'VARCHAR')
+
+
+def _schema(schema):
+    """'a int, b struct<x:int,y:string>' or ['a', 'b'] or [('a', 'int'), ...] -> [(name, duckdb type or None)]"""
+    if isinstance(schema, str):
+        out = []
+        for f in _split_top(schema):
+            parts = re.split(r'\s*:\s*|\s+', f, 1)
+            out.append((parts[0], _ddl(parts[1]) if len(parts) > 1 else None))
+        return out
+    return [(x[0], _ddl(x[1]) if x[1] else None) if isinstance(x, tuple) else (x, None) for x in schema]
 
 
 class Column:
@@ -96,9 +153,10 @@ class Column:
 
     def cast(self, t):
         t = t if isinstance(t, str) else getattr(t, 'simpleString', lambda: str(t))()
-        m = {'int': 'INTEGER', 'integer': 'INTEGER', 'long': 'BIGINT', 'bigint': 'BIGINT', 'double': 'DOUBLE', 'float': 'DOUBLE',
-             'string': 'VARCHAR', 'date': 'DATE', 'timestamp': 'TIMESTAMP', 'boolean': 'BOOLEAN'}
-        return Column('CAST(' + self.sql + ' AS ' + m.get(t.lower(), t) + ')', agg=self.agg)
+        d = _ddl(t)
+        if d in ('INTEGER', 'BIGINT', 'SMALLINT', 'TINYINT'):  # Spark truncates toward zero and gives NULL for bad input
+            return Column('TRY_CAST(trunc(TRY_CAST(' + self.sql + ' AS DOUBLE)) AS ' + d + ')', agg=self.agg)
+        return Column('TRY_CAST(' + self.sql + ' AS ' + d + ')', agg=self.agg)
     astype = cast
 
     def desc(self): return Column(self.sql, self._name, self.agg, 'DESC')
@@ -249,6 +307,43 @@ class _F:
     def least(self, *cs): return Column('least(' + ', '.join(_c(c).sql for c in cs) + ')')
     def split(self, c, p): return Column('string_split_regex(' + _c(c).sql + ', ' + _lit_sql(p) + ')')
     def explode(self, c): return Column('unnest(' + _c(c).sql + ')')
+    def explode_outer(self, c):
+        x = _c(c).sql
+        return Column('unnest(CASE WHEN coalesce(len(' + x + '), 0) > 0 THEN ' + x + ' ELSE [NULL] END)')
+    def posexplode(self, c): return Column('unnest(generate_series(0, len(' + _c(c).sql + ') - 1))')
+    def array(self, *cs):
+        cs = _flat(cs)
+        return Column('[' + ', '.join(_c(c).sql for c in cs) + ']')
+    def struct(self, *cs):
+        cs = [_c(c) for c in _flat(cs)]
+        return Column('struct_pack(' + ', '.join(_q(c._name or 'col' + str(i + 1)) + ' := ' + c.sql for i, c in enumerate(cs)) + ')')
+    def array_contains(self, c, v): return Column('list_contains(' + _c(c).sql + ', ' + _lit_sql(v) + ')')
+    def array_distinct(self, c): return Column('list_distinct(' + _c(c).sql + ')')
+    def sort_array(self, c, asc=True): return Column('list_sort(' + _c(c).sql + (", 'ASC')" if asc else ", 'DESC')"))
+    def element_at(self, c, i): return Column('(' + _c(c).sql + ')[' + str(int(i)) + ']')
+    def window(self, c, dur, slide=None):
+        x, iv = _c(c).sql, "INTERVAL '" + dur + "'"
+        st = 'time_bucket(' + iv + ', CAST(' + x + ' AS TIMESTAMP))'
+        return Column('struct_pack("start" := ' + st + ', "end" := ' + st + ' + ' + iv + ')', 'window')
+    def regexp_replace(self, c, p, r): return Column('regexp_replace(' + _c(c).sql + ', ' + _lit_sql(p) + ', ' + _lit_sql(r) + ", 'g')")
+    def substring(self, c, pos, n): return Column('substring(' + _c(c).sql + ', ' + str(int(pos)) + ', ' + str(int(n)) + ')')
+    def date_format(self, c, fmt):
+        m = fmt.replace('yyyy', '%Y').replace('MM', '%m').replace('dd', '%d').replace('HH', '%H').replace('mm', '%M').replace('ss', '%S')
+        return Column('strftime(CAST(' + _c(c).sql + ' AS TIMESTAMP), ' + _lit_sql(m) + ')')
+    def minute(self, c): return Column('minute(' + _c(c).sql + ')')
+    def dayofmonth(self, c): return Column('day(' + _c(c).sql + ')')
+    def weekofyear(self, c): return Column('week(' + _c(c).sql + ')')
+    def last_day(self, c): return Column('last_day(' + _c(c).sql + ')')
+    def initcap(self, c): return Column("list_aggr(list_transform(string_split(lower(" + _c(c).sql + "), ' '), x -> upper(x[1]) || x[2:]), 'string_agg', ' ')")
+    def lpad(self, c, n, p): return Column('lpad(CAST(' + _c(c).sql + ' AS VARCHAR), ' + str(int(n)) + ', ' + _lit_sql(p) + ')')
+    def rpad(self, c, n, p): return Column('rpad(CAST(' + _c(c).sql + ' AS VARCHAR), ' + str(int(n)) + ', ' + _lit_sql(p) + ')')
+    def nvl(self, a, b): return Column('coalesce(' + _c(a).sql + ', ' + _c(b).sql + ')')
+    ifnull = nvl
+    def variance(self, c): return self._agg('var_samp', c)
+    def stddev_pop(self, c): return self._agg('stddev_pop', c)
+    def percentile_approx(self, c, p, acc=None): return Column('approx_quantile(' + _c(c).sql + ', ' + str(p) + ')', agg=True)
+    def count_if(self, c): return Column('count_if(' + _c(c).sql + ')', agg=True)
+    def sum_distinct(self, c): return self._agg('sum', c, True)
     def size(self, c): return Column('len(' + _c(c).sql + ')')
     def regexp_extract(self, c, p, i): return Column('regexp_extract(' + _c(c).sql + ', ' + _lit_sql(p) + ', ' + str(i) + ')')
     def to_date(self, c, fmt=None): return Column('CAST(' + _c(c).sql + ' AS DATE)')
@@ -340,6 +435,8 @@ class DataFrame:
         self._sql = sql
         self._plan = plan or []
         self._name = 't' + str(next(_ids))
+        self._hidden = []   # qualified copies of joined columns, e.g. __q_d__city for col("d.city")
+        self._user_alias = False
 
     # --- core
     def _derive(self, tmpl, step, shuffle=False):
@@ -348,10 +445,21 @@ class DataFrame:
         if shuffle:
             p.append('Exchange hashpartitioning(200)')
         p.append(step)
-        return DataFrame(tmpl.replace('{src}', sub), p)
+        if self._hidden:
+            quals = set(h[4:].split('__', 1)[0] for h in self._hidden)
+            tmpl = re.sub(r'"(' + '|'.join(re.escape(q) for q in quals) + r')"\."([^"]+)"', lambda m: '"__q_' + m.group(1) + '__' + m.group(2) + '"', tmpl)
+        d = DataFrame(tmpl.replace('{src}', sub), p)
+        if self._hidden and tmpl.startswith('SELECT *'):
+            d._hidden = list(self._hidden)
+        return d
+
+    def _vis(self):
+        if not self._hidden:
+            return self._sql
+        return 'SELECT * EXCLUDE (' + ', '.join(_q(h) for h in self._hidden) + ') FROM (' + self._sql + ')'
 
     def _rel(self):
-        return _sql(self._sql)
+        return _sql(self._vis())
 
     @property
     def columns(self):
@@ -374,6 +482,8 @@ class DataFrame:
     def alias(self, a):
         d = DataFrame(self._sql, self._plan)
         d._name = a
+        d._hidden = list(self._hidden)
+        d._user_alias = True
         return d
 
     # --- transformations
@@ -451,8 +561,18 @@ class DataFrame:
         if isinstance(on, str):
             on = [on]
         if isinstance(on, (list, tuple)) and all(isinstance(x, str) for x in on):
-            sel = 'SELECT *' if how in ('semi', 'anti') else 'SELECT *'
-            return DataFrame(sel + ' FROM ' + L + ' ' + kind + ' ' + R + ' USING (' + ', '.join(_q(x) for x in on) + ')', plan)
+            hid, extra = [], []
+            if how not in ('semi', 'anti'):
+                for side, nm in ((self, a._name), (b, b._name)):
+                    if side._user_alias or other._user_alias or self._user_alias:
+                        for c in side.columns:
+                            if c in on:
+                                continue
+                            h = '__q_' + nm + '__' + c
+                            hid.append(h); extra.append(_q(nm) + '.' + _q(c) + ' AS ' + _q(h))
+            d = DataFrame('SELECT *' + ''.join(', ' + e for e in extra) + ' FROM ' + L + ' ' + kind + ' ' + R + ' USING (' + ', '.join(_q(x) for x in on) + ')', plan)
+            d._hidden = hid
+            return d
         cond = on if isinstance(on, Column) else _flat(on)[0]
         if isinstance(on, (list, tuple)):
             cond = on[0]
@@ -468,7 +588,15 @@ class DataFrame:
             lc = self.columns
             rc = [c for c in other.columns if c not in lc]
             sel = ', '.join([_q(la) + '.*'] + [_q(rb) + '.' + _q(c) for c in rc])
-        return DataFrame('SELECT ' + sel + ' FROM ' + L + ' ' + kind + ' ' + R + ' ON ' + sql, plan)
+        hid = []
+        if how not in ('semi', 'anti') and (self._user_alias or other._user_alias):
+            for al, nm, cols in ((la, a._name, self.columns), (rb, other._name, other.columns)):
+                for c in cols:
+                    h = '__q_' + nm + '__' + c
+                    hid.append(h); sel += ', ' + _q(al) + '.' + _q(c) + ' AS ' + _q(h)
+        d = DataFrame('SELECT ' + sel + ' FROM ' + L + ' ' + kind + ' ' + R + ' ON ' + sql, plan)
+        d._hidden = hid
+        return d
 
     def crossJoin(self, other):
         return self.join(other, None, 'cross')
@@ -532,7 +660,7 @@ class DataFrame:
     def show(self, n=20, truncate=True):
         rel = self._rel()
         names = rel.columns
-        rows = _sql('SELECT * FROM (' + self._sql + ') LIMIT ' + str(n + 1)).fetchall()
+        rows = _sql('SELECT * FROM (' + self._vis() + ') LIMIT ' + str(n + 1)).fetchall()
         more = len(rows) > n
         rows = rows[:n]
 
@@ -661,12 +789,19 @@ class SparkSession:
                 rows = [tuple(r[k] for k in schema) for r in rows]
             else:
                 schema = ['_' + str(i + 1) for i in range(len(rows[0]))]
-        if isinstance(schema, str):
-            schema = [s.strip().split(' ')[0].split(':')[0] for s in schema.split(',')]
+        fields = _schema(schema)
+        if rows and isinstance(rows[0], dict):
+            rows = [tuple(r.get(n) for n, _ in fields) for r in rows]
+        elif rows and not isinstance(rows[0], (tuple, list)):
+            rows = [(r,) for r in rows]
         if not rows:
-            raise ValueError('createDataFrame needs at least one row in the practice engine')
+            if all(t for _, t in fields):
+                return DataFrame('SELECT ' + ', '.join('CAST(NULL AS ' + t + ') AS ' + _q(n) for n, t in fields) + ' WHERE FALSE', ['LocalTableScan'])
+            raise ValueError('createDataFrame with no rows needs a typed schema, e.g. "id int, name string"')
         vals = ', '.join('(' + ', '.join(_lit_sql(v) for v in r) + ')' for r in rows)
-        return DataFrame('SELECT * FROM (VALUES ' + vals + ') AS v(' + ', '.join(_q(s) for s in schema) + ')', ['LocalTableScan'])
+        cols = ['c' + str(i + 1) for i in range(len(fields))]
+        sel = ', '.join(('CAST(' + _q(c) + ' AS ' + t + ')' if t else _q(c)) + ' AS ' + _q(n) for c, (n, t) in zip(cols, fields))
+        return DataFrame('SELECT ' + sel + ' FROM (VALUES ' + vals + ') AS v(' + ', '.join(_q(c) for c in cols) + ')', ['LocalTableScan'])
 
     def range(self, a, b=None, step=1):
         if b is None:
@@ -692,10 +827,12 @@ def install(con):
     fm.col, fm.lit, fm.expr = col, lit, expr
     wm.Window = Window
     sqlm.SparkSession, sqlm.DataFrame, sqlm.Row, sqlm.Window, sqlm.functions, sqlm.Column = SparkSession, DataFrame, Row, Window, fm, Column
-    for t in ['StringType', 'IntegerType', 'LongType', 'DoubleType', 'DateType', 'TimestampType', 'BooleanType']:
-        setattr(tm, t, type(t, (), {'simpleString': (lambda self, t=t: t.replace('Type', '').lower().replace('integer', 'int'))}))
-    tm.StructType = lambda fields=None: fields
-    tm.StructField = lambda name, t=None, nullable=True: name
+    for t in ['StringType', 'IntegerType', 'LongType', 'DoubleType', 'FloatType', 'ShortType', 'DateType', 'TimestampType', 'BooleanType']:
+        setattr(tm, t, type(t, (), {'__init__': lambda self, *a, **k: None, 'simpleString': (lambda self, t=t: t.replace('Type', '').lower().replace('integer', 'int'))}))
+    tm.DecimalType = type('DecimalType', (), {'__init__': lambda self, p=10, s=0: setattr(self, 'ps', (p, s)), 'simpleString': lambda self: 'decimal(%d,%d)' % self.ps})
+    tm.ArrayType = type('ArrayType', (), {'__init__': lambda self, e, containsNull=True: setattr(self, 'e', e), 'simpleString': lambda self: 'array<' + self.e.simpleString() + '>'})
+    tm.StructField = lambda name, t=None, nullable=True: (name, t.simpleString() if t is not None else None)
+    tm.StructType = type('StructType', (list,), {'__init__': lambda self, fields=None: list.__init__(self, fields or []), 'simpleString': lambda self: 'struct<' + ','.join(n + ':' + (t or 'string') for n, t in self) + '>'})
     pkg.sql = sqlm
     sys.modules.update({'pyspark': pkg, 'pyspark.sql': sqlm, 'pyspark.sql.functions': fm, 'pyspark.sql.window': wm, 'pyspark.sql.types': tm})
     return SparkSession.builder.getOrCreate()

@@ -1,6 +1,6 @@
 /* Keystone · DE architect prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.2.0';
+const VERSION = '1.2.1';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -38,7 +38,7 @@ let S = load();
 function load() {
   let s = {};
   try { s = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { s = {}; }
-  return Object.assign({ start: null, proj: {}, done: {}, code: {}, solved: {}, runs: {}, hints: {}, secs: {}, quiz: {}, iv: {}, tests: {}, settings: {}, layout: {}, updated: 0, week: null }, s);
+  return Object.assign({ start: null, proj: {}, done: {}, doneAt: {}, undone: {}, code: {}, solved: {}, runs: {}, hints: {}, secs: {}, quiz: {}, iv: {}, tests: {}, settings: {}, layout: {}, updated: 0, week: null }, s);
 }
 let saveT = null;
 function save(touch = true) {
@@ -140,19 +140,27 @@ function chip(k) { const c = chipFor(k); return el('span', { class: 'chip ' + c[
 
 /* ---------------- shell ---------------- */
 const NAV = [['#/today', 'Today', 'today'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/git', 'Git lessons', 'git'], ['#/news', 'What is new in AI', 'news'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/progress', 'Progress', 'prog']];
-const TABS = [['#/today', 'Today', 'today'], ['#/path', 'Path', 'path'], ['#/practice', 'Practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'Design', 'design'], ['#/progress', 'Progress', 'prog']];
+const TABS = [['#/today', 'Today', 'today'], ['#/path', 'Path', 'path'], ['#/practice', 'Coding', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'Design', 'design']];
 function shell(title, eyebrow, body, opts) {
   opts = opts || {};
   const route = location.hash.split('/')[1] || 'today';
   const sc = schedule(), wk = sc.cur, tu = sc.byDay[sc.today] || [], tdone = tu.filter(u => u.isDone).reduce((a, u) => a + u.mins, 0), tall = tu.reduce((a, u) => a + u.mins, 0);
   const nav = NAV.map(([h, t, ic]) => { const href = h.replace('/0', '/' + wk); return el('a', { class: 'nav', href, 'aria-current': href.split('/')[1] === route ? 'page' : null }, [svg(I[ic]), t]); });
   const side = el('nav', { class: 'side', 'aria-label': 'Main' }, [el('a', { class: 'brand', href: '#/today' }, [logo(), 'Keystone'])].concat(nav, [el('a', { class: 'week', href: '#/path/' + wk, style: { color: 'inherit', textDecoration: 'none' } }, [el('span', { class: 'lbl', style: { color: '#9FB0BF' }, text: 'Module ' + modLabel(wk) + ' · week ' + weekOf(sc.today) }), el('b', { style: { color: '#fff' }, text: modTitle(wk) }), el('div', { class: 'bar' }, el('i', { style: { width: (tall ? Math.round(100 * tdone / tall) : 0) + '%' } })), el('span', { style: { fontSize: '13px' }, text: 'Today: ' + tdone + ' of ' + tall + ' min done' })])]));
-  const tabbar = el('nav', { class: 'tabbar', 'aria-label': 'Main' }, TABS.map(([h, t, ic]) => el('a', { href: h, 'aria-current': h.split('/')[1] === route ? 'page' : null }, [svg(I[ic], 22), t])));
+  const inTabs = TABS.some(x => x[0].split('/')[1] === route);
+  const more = el('button', { class: 'tabmore', 'aria-label': 'More sections', 'aria-current': inTabs ? null : 'page', onclick: () => {
+    const sc2 = el('div', { class: 'scrim sheetwrap', onclick: e => { if (e.target === sc2) sc2.remove(); } }, [el('div', { class: 'sheet', role: 'dialog', 'aria-label': 'All sections' }, [el('div', { class: 'row' }, [el('b', { class: 'grow', style: { fontSize: '18px' }, text: 'All sections' }), el('button', { class: 'btn icon sm', 'aria-label': 'Close', onclick: () => sc2.remove(), text: '×' })]),
+      el('div', { class: 'sheetgrid' }, NAV.map(([h, t, ic]) => { const href = h.replace('/0', '/' + wk); return el('a', { href, onclick: () => sc2.remove(), 'aria-current': href.split('/')[1] === route ? 'page' : null }, [svg(I[ic], 22), t]); }).concat([el('button', { onclick: () => { sc2.remove(); settings(); } }, [svg(I.gear, 22), 'Settings'])]))])]);
+    document.body.appendChild(sc2);
+    const k = e => { if (e.key === 'Escape') { sc2.remove(); document.removeEventListener('keydown', k); } }; document.addEventListener('keydown', k);
+  } }, [svg('<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>', 22), 'More']);
+  const tabbar = el('nav', { class: 'tabbar', 'aria-label': 'Main' }, TABS.map(([h, t, ic]) => el('a', { href: h, 'aria-current': h.split('/')[1] === route ? 'page' : null }, [svg(I[ic], 22), t])).concat([more]));
   const top = el('header', { class: 'top' }, [
     opts.back ? el('a', { class: 'btn icon', href: opts.back, 'aria-label': 'Back' }, svg(I.back)) : null,
     el('div', { class: 'title' }, [eyebrow ? el('span', { class: 'lbl', text: eyebrow }) : null, el('b', { text: title })]),
     opts.extra || null,
     el('div', { class: 'row topbtns', style: { gap: '8px' } }, [
+      el('button', { class: 'btn icon', onclick: () => openSearch(), title: 'Search (⌘K or /)', 'aria-label': 'Search' }, svg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>', 18)),
       el('button', { class: 'btn', onclick: doUpdate, title: 'Check for a new version', 'aria-label': 'Update app' }, [svg(I.update, 18), el('span', { class: 't', text: 'Update app' })]),
       el('button', { class: 'btn', id: 'syncBtn', onclick: doSync, title: 'Sync progress across your devices', 'aria-label': 'Sync progress' }, [svg(I.sync, 18), el('span', { class: 't', text: syncLabel() })]),
       el('button', { class: 'btn icon', onclick: settings, 'aria-label': 'Settings' }, svg(I.gear, 18))])]);
@@ -182,7 +190,7 @@ function route() {
     else if (r === 'practice') vPractice(p[1] || 'all');
     else if (r === 'design') vDesign(p[1]);
     else if (r === 'quiz') vQuiz(p[1]);
-    else if (r === 'interview') vInterview(p[1]);
+    else if (r === 'interview') vInterview(p[1], p[2]);
     else if (r === 'progress') vProgress();
     else if (r === 'projects') vProjects();
     else if (r === 'project') vProject(p[1]);
@@ -693,7 +701,7 @@ async function vQuiz(m) {
 }
 
 /* ---------------- Interview ---------------- */
-async function vInterview(m) {
+async function vInterview(m, focus) {
   m = MOD[midOf(m)] ? midOf(m) : curMid(); const w = qk(m);
   shell('Interview set', 'Module ' + modLabel(m) + ' · past questions with model answers', [el('p', { class: 'muted', text: 'Loading…' })], { back: '#/today' });
   let s; try { s = await sprint(m); } catch (e) { return; }
@@ -706,7 +714,8 @@ async function vInterview(m) {
     const show = el('button', { class: 'btn sm', 'aria-expanded': 'false', onclick: () => { const o = ans.style.display === 'none'; ans.style.display = o ? 'block' : 'none'; show.textContent = o ? 'Hide model answer' : 'Show model answer'; show.setAttribute('aria-expanded', String(o)); } }, 'Show model answer');
     page.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row', style: { alignItems: 'flex-start' } }, [tick, el('div', { class: 'grow stack', style: { gap: '4px' } }, [el('b', { style: { fontSize: '16.5px' }, html: mdi(q.Q) }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: [q.TAG, q.SRC].filter(Boolean).join(' · ') })])]), show, ans]));
   });
-  if (s.raw.mock) page.appendChild(el('section', { class: 'card pad' }, [el('h2', { text: 'Mock interview' }), mdEl(s.raw.mock)]));
+  if (!s.interview.length) page.appendChild(el('section', { class: 'card pad' }, [el('p', { style: { margin: 0 }, text: 'This module has no interview set. ' }), el('a', { href: '#/path/' + m, text: 'Back to the module' })]));
+  if (s.raw.mock) { const mk = el('section', { class: 'card pad', id: 'mock' }, [el('h2', { text: 'Mock interview' }), mdEl(s.raw.mock)]); page.appendChild(mk); if (focus === 'mock') setTimeout(() => mk.scrollIntoView({ block: 'start' }), 50); }
 }
 
 /* ---------------- Progress ---------------- */
@@ -715,9 +724,9 @@ function vProgress() {
   const sqlW = DATA.sql.filter(x => x.k === 'W'), sqlO = DATA.sql.filter(x => x.k === 'O'), spW = DATA.spark.filter(x => x.k === 'W'), spO = DATA.spark.filter(x => x.k === 'O');
   const quizP = (() => { let got = 0, n = 0; for (const w in S.quiz) if (S.quiz[w].sub) { n++; } return Math.round(100 * n / MODS.length); })();
   const ivP = (() => { let t = 0; for (const w in S.iv) t += Object.values(S.iv[w]).filter(Boolean).length; return Math.min(100, Math.round(t / 2)); })();
-  const rows = [['DSA', pct(DATA.dsa), 'var(--teal)'], ['SQL write', pct(sqlW), '#164C7E'], ['SQL optimize', pct(sqlO), '#164C7E'], ['PySpark write', pct(spW), '#8A3A0C'], ['PySpark optimize', pct(spO), '#8A3A0C'], ['Weekly quizzes', quizP, 'var(--blue)'], ['Interview sets', ivP, 'var(--plum)']];
+  const rows = [['DSA', pct(DATA.dsa), 'var(--teal)'], ['SQL write', pct(sqlW), '#164C7E'], ['SQL optimize', pct(sqlO), '#164C7E'], ['PySpark write', pct(spW), '#8A3A0C'], ['PySpark optimize', pct(spO), '#8A3A0C'], ['Module quizzes', quizP, 'var(--blue)'], ['Interview sets', ivP, 'var(--plum)']];
   const grid = el('div', { class: 'dsa-grid', 'aria-label': '84 daily DSA problems' }, DATA.dsa.map((x, i) => el('a', { href: '#/dsa/' + x.id, title: (i + 1) + '. ' + x.t, class: S.solved[x.id] ? 'done' : i === dayIndex() % 84 ? 'today' : '' })));
-  shell('Progress', 'Readiness and sync', [
+  shell('Progress', 'Program, readiness and sync', [programCard(),
     el('div', { class: 'grid2' }, [
       el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Readiness by interview round' })].concat(rows.map(([n, p, c]) => el('div', { style: { display: 'grid', gridTemplateColumns: '140px minmax(0,1fr) 44px', gap: '10px', alignItems: 'center' } }, [el('span', { style: { fontWeight: 600 }, text: n }), el('div', { class: 'bar' }, el('i', { style: { width: p + '%', background: c } })), el('b', { style: { textAlign: 'right' }, text: p + '%' })])))),
       el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('span', { class: 'lbl grow', text: 'DSA ladder · 84 days' }), el('b', { text: DATA.dsa.filter(x => S.solved[x.id]).length + ' solved' })]), grid, el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Each row is two weeks. Tap a square to open that problem.' })])]),
@@ -732,14 +741,17 @@ function settings() {
   const f = (id, label, val, type, ph) => el('div', { class: 'field' }, [el('label', { for: id, class: 'lbl', text: label }), el('input', { id, type: type || 'text', value: val || '', placeholder: ph || '', autocomplete: 'off' })]);
   const body = el('div', { class: 'stack' }, [
     f('st_start', 'Program start (a Monday)', S.start, 'date'),
+    el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: '10px' } }, [f('st_wd', 'Weekday minutes', S.settings.capWd || 60, 'number'), f('st_we', 'Weekend minutes', S.settings.capWe || 120, 'number'), f('st_time', 'Study time', S.settings.studyTime || '07:00', 'time')]),
+    el('div', { class: 'field' }, [el('label', { for: 'st_theme', class: 'lbl', text: 'Theme' }), el('select', { id: 'st_theme', class: 'btn' }, [['auto', 'Match my device'], ['light', 'Light'], ['dark', 'Dark']].map(([v, t]) => el('option', { value: v, selected: (S.settings.theme || 'auto') === v ? 'selected' : null, text: t })))]),
     f('st_sync', 'Sync URL (Google Apps Script web app)', S.settings.syncUrl, 'url', 'https://script.google.com/macros/s/…/exec'),
     f('st_key', 'Coach AI key (optional, Anthropic API key, kept only on this device)', S.settings.aiKey, 'password', 'sk-ant-…'),
-    f('st_model', 'Coach model', S.settings.aiModel || 'claude-haiku-4-5', 'text'),
+    f('st_model', 'Coach model', S.settings.aiModel || 'claude-haiku-5-5', 'text'),
     el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'The key never leaves this device except to call the AI provider. Without a key the coach still gives the step-by-step hints.' })]);
   confirmBox('Settings', body, [{ t: 'Save', cls: 'pri', v: 1 }, { t: 'Cancel', v: null }]).then(v => {
     if (!v) return;
     const g = id => body.querySelector('#' + id).value.trim();
-    S.start = g('st_start') || S.start; S.settings.syncUrl = g('st_sync'); S.settings.aiKey = g('st_key'); S.settings.aiModel = g('st_model') || 'claude-haiku-4-5';
+    S.start = g('st_start') || S.start; S.settings.syncUrl = g('st_sync'); S.settings.aiKey = g('st_key'); S.settings.aiModel = g('st_model') || 'claude-haiku-5-5';
+    const wd = Math.round(+g('st_wd')), we = Math.round(+g('st_we')); S.settings.capWd = wd >= 15 && wd <= 600 ? wd : 60; S.settings.capWe = we >= 15 && we <= 720 ? we : 120; S.settings.studyTime = g('st_time') || '07:00'; S.settings.theme = g('st_theme') || 'auto'; applyTheme();
     S.updated = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Could not save settings in this browser.'); return; }
     toast('Settings saved'); route();
   });
@@ -765,6 +777,12 @@ function mergeState(a, b) {
   ['done', 'solved'].forEach(k => { out[k] = Object.assign({}, a[k] || {}, b[k] || {}); });
   ['code', 'runs', 'hints', 'secs', 'quiz', 'iv', 'layout'].forEach(k => { out[k] = (b.updated || 0) >= (a.updated || 0) ? Object.assign({}, a[k] || {}, b[k] || {}) : Object.assign({}, b[k] || {}, a[k] || {}); });
   ['runs', 'hints', 'secs'].forEach(k => { for (const id in (a[k] || {})) out[k][id] = Math.max(a[k][id] || 0, (b[k] || {})[id] || 0); });
+  /* un-ticked steps stay un-ticked: a later "undone" on either device beats an older "done" */
+  out.doneAt = Object.assign({}, a.doneAt || {}, b.doneAt || {}); out.undone = Object.assign({}, a.undone || {}, b.undone || {});
+  for (const id in out.doneAt) out.doneAt[id] = Math.max((a.doneAt || {})[id] || 0, (b.doneAt || {})[id] || 0);
+  for (const id in out.undone) { out.undone[id] = Math.max((a.undone || {})[id] || 0, (b.undone || {})[id] || 0); if (out.undone[id] > (out.doneAt[id] || 0)) delete out.done[id]; }
+  out.proj = {};
+  new Set(Object.keys(a.proj || {}).concat(Object.keys(b.proj || {}))).forEach(id => { const x = (a.proj || {})[id] || { ms: {} }, y = (b.proj || {})[id] || { ms: {} }; out.proj[id] = Object.assign({}, x, y, { ms: {} }); new Set(Object.keys(x.ms || {}).concat(Object.keys(y.ms || {}))).forEach(k => { out.proj[id].ms[k] = !!((x.ms || {})[k] || (y.ms || {})[k]); }); });
   out.updated = Math.max(a.updated || 0, b.updated || 0);
   return out;
 }
@@ -819,13 +837,15 @@ async function askCoach(q, ctx, box) {
     if (ctx.img) content.push({ type: 'image', source: { type: 'base64', media_type: ctx.img.split(';')[0].slice(5), data: ctx.img.split(',')[1] } });
     content.push({ type: 'text', text: 'Page: ' + (ctx.title || ctx.page || '') + (ctx.problem ? '\nProblem: ' + ctx.problem : '') + (ctx.code ? '\nMy code:\n' + ctx.code.slice(0, 4000) : '') + '\n\nMy question: ' + (q || 'Give me a hint.') });
     const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: S.settings.aiModel || 'claude-haiku-4-5', max_tokens: 600, system: 'You are a data engineering interview coach for a senior data engineer preparing for tier-1 and architect roles. Give intuition and a guiding question before answers. Never give a full solution unless the user explicitly asks for it. Keep replies under 150 words, plain language.', messages: [{ role: 'user', content }] }) });
+      body: JSON.stringify({ model: S.settings.aiModel || 'claude-haiku-5-5', max_tokens: 600, system: 'You are a data engineering interview coach for a senior data engineer preparing for tier-1 and architect roles. Give intuition and a guiding question before answers. Never give a full solution unless the user explicitly asks for it. Keep replies under 150 words, plain language.', messages: [{ role: 'user', content }] }) });
     const j = await r.json();
     reply.innerHTML = md((j.content || []).map(c => c.text || '').join('') || (j.error && j.error.message) || 'No answer.');
   } catch (e) { reply.textContent = 'The coach could not reach the AI service. Check the key in Settings and your connection.'; }
 }
 
 /* ---------------- boot ---------------- */
+function applyTheme() { const t = S.settings.theme; if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
+applyTheme();
 window.addEventListener('hashchange', route);
 window.addEventListener('keydown', e => { if (e.key === '`' && (e.ctrlKey || e.metaKey)) { const b = Array.from(document.querySelectorAll('.otab')).find(x => x.textContent === 'Terminal'); if (b) { e.preventDefault(); b.click(); } } });
 (async () => {

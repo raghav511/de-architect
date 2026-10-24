@@ -60,6 +60,7 @@ function modUnits(m) {
       for (let i = 0; i < n; i++) add({ uid: m + ':' + t.id + (n > 1 ? '.' + (i + 1) : ''), kind: t.type === 'ai' ? 'ai' : t.type === 'incident' ? 'incident' : 'build', mins: Math.round(mins / n), title: t.title + (n > 1 ? ' · session ' + (i + 1) + ' of ' + n : ''), goal: (k >= 0 ? 'Lab: ' + M.lab[k] + '. ' : '') + (n > 1 ? (i === 0 ? 'Read the whole lab first, then start the steps.' : 'Pick up where your notes say you stopped.') : 'Follow the lab steps in order.'), done: n > 1 && i < n - 1 ? 'You stop at a working checkpoint and write one line in notes/progress.md saying where you are.' : t.done, href: '#/learn/' + m + '/lab' + (k >= 0 ? '/' + k + '-' + k : ''), cta: 'Open lab', links: pj && pj.env === 'ai' ? [['Project and environment', '#/project/' + pj.id]] : [] });
     } else if (t.tab === 'practice') add({ uid: m + ':' + t.id, kind: 'practice', mins: Math.min(mins, 30), title: t.title, goal: (M.pr.length ? 'Warm-ups: ' + M.pr.join(' · ') + '. ' : '') + (mins > 30 ? 'The SQL and DSA warm-ups also count toward the coding track, so only the drill sits in this hour.' : ''), done: t.done, href: '#/learn/' + m + '/practice', cta: 'Practise' });
     else if (t.tab === 'quiz') add({ uid: m + ':' + t.id, kind: 'quiz', mins: Math.max(20, mins), title: t.title, goal: 'Multiple choice, fill in the blank and short answers on this module. No notes.', done: t.done, href: '#/quiz/' + m, cta: 'Start', auto: () => S.quiz[qk(m)] && S.quiz[qk(m)].sub });
+    else if (t.tab === 'mock') { const n = Math.max(1, Math.ceil(mins / 60)); for (let i = 0; i < n; i++) add({ uid: m + ':' + t.id + '.' + (i + 1), kind: 'talk', mins: Math.round(mins / n), title: t.title + ' · session ' + (i + 1) + ' of ' + n, goal: 'One full mock loop under time, then score it with the rubric and write one repair action.', done: i === n - 1 ? t.done : 'One loop done and scored, with a repair action written down.', href: '#/interview/' + m + '/mock', cta: 'Open mock' }); }
     else if (t.tab === 'interview') add({ uid: m + ':' + t.id, kind: 'talk', mins: Math.min(60, mins), title: t.title, goal: 'Answer each question out loud first, then open the model answer and tick the ones you nailed.', done: t.done, href: '#/interview/' + m, cta: 'Practise' });
     else add({ uid: m + ':' + t.id, kind: 'learn', mins: Math.min(60, mins), title: t.title, goal: '', done: t.done, href: '#/learn/' + m + '/chapter', cta: 'Open' });
   });
@@ -103,7 +104,7 @@ function curMid() { return schedule().cur; }
 function weeksText(sp) { if (!sp || !sp.first) return 'done'; const a = weekOf(sp.first), b = weekOf(sp.last); return (a === b ? 'Week ' + a : 'Weeks ' + a + '–' + b) + ' · ' + shortDate(sp.first) + (sp.first !== sp.last ? ' – ' + shortDate(sp.last) : ''); }
 const KIND = { learn: ['Lesson', 'c-core'], build: ['Lab', 'c-dsa'], ai: ['AI lab', 'c-ai'], incident: ['Incident', 'c-spark'], practice: ['Drill', 'c-sql'], quiz: ['Quiz', 'c-test'], talk: ['Interview', 'c-test'], git: ['Git', 'c-git'], design: ['Design', 'c-arch'], news: ['What is new', 'c-ai'], project: ['Project', 'c-dsa'] };
 function kchip(k) { const c = KIND[k] || [k, 'c-test']; return el('span', { class: 'chip ' + c[1], text: c[0] }); }
-function toggleUnit(u) { if (S.done[u.uid] || u.isDone) { delete S.done[u.uid]; if (u.auto && u.auto()) toast('This one is marked done automatically (quiz submitted or milestones verified).'); } else S.done[u.uid] = iso(new Date()); save(); route(); }
+function toggleUnit(u) { S.undone = S.undone || {}; S.doneAt = S.doneAt || {}; if (S.done[u.uid] || u.isDone) { delete S.done[u.uid]; S.undone[u.uid] = Date.now(); if (u.auto && u.auto()) toast('This one is marked done automatically (quiz submitted or milestones verified).'); } else { S.done[u.uid] = iso(new Date()); S.doneAt[u.uid] = Date.now(); delete S.undone[u.uid]; } save(); route(); }
 
 /* one unit as a card: what, why, done when, where */
 function unitCard(u, opts) {
@@ -176,16 +177,20 @@ function vToday(off) {
     el('div', { class: 'row wrap', style: { gap: '6px' } }, [el('span', { class: 'lbl grow', style: { color: 'var(--plum-d)' }, text: 'Design problem · module ' + modLabel(m) }), el('span', { class: 'chip c-arch', text: du ? (du.isDone ? 'done' : (du.day === sc.today ? 'today' : 'planned ' + shortDate(du.day))) + ' · 40 min' : '40 min' })]),
     el('b', { style: { fontSize: '17px' }, text: D.title }), el('span', { style: { fontSize: '14.5px' }, text: D.prompt }), el('span', { class: 'muted', style: { fontSize: '14px' } }, [el('b', { text: 'Hand in: ' }), D.deliverable]),
     el('a', { class: 'btn', href: '#/design/' + m, style: { alignSelf: 'flex-start' }, text: 'Open in the design studio' })]) : null;
+  const nx = off === 0 ? (us.find(u => !u.isDone) || sc.next) : null;
+  const hero = nx ? el('section', { class: 'hero' }, [el('div', { class: 'grow stack', style: { gap: '3px', minWidth: '200px' } }, [el('span', { class: 'lbl', text: (us.includes(nx) ? 'Up next' : 'Ahead of plan · next') + ' · ' + nx.mins + ' min · module ' + modLabel(nx.mid) }), el('b', { text: nx.title })]), el('a', { class: 'btn', href: nx.href, text: nx.cta + ' ›' })]) : null;
   shell(off === 0 ? 'Today' : 'Plan · ' + shortDate(k), 'Module ' + modLabel(m) + ' · ' + weekText(k), [
-    el('div', { class: 'stack', style: { gap: '4px' } }, [el('h1', { text: (hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + ', Raghavendra' }), el('span', { class: 'muted', text: 'One hour on weekdays, two on Saturday and Sunday. Coding practice runs on its own track.' })]),
+    el('div', { class: 'stack', style: { gap: '4px' } }, [el('h1', { text: (hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + ', Raghavendra' }), el('span', { class: 'muted', text: (+S.settings.capWd || 60) + ' min on weekdays, ' + (+S.settings.capWe || 120) + ' on Saturday and Sunday (change in Settings). Coding practice runs on its own track.' })]),
+    hero,
     nav,
     el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [modCard, codingTrack(off), desCard])]),
-    el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'This week' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'minutes planned / budget · tap a day to see it' })]), weekStrip(sc, k)])]);
+    el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'This week' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'minutes planned / budget · tap a day to see it' }), el('button', { class: 'btn sm', onclick: exportIcs, text: 'Add to calendar' })]), weekStrip(sc, k)])]);
 }
 function weekText(k) { return 'Week ' + weekOf(k); }
 function modLinks(m) {
   const pj = DATA.projects.find(p => p.mod === m), M = MOD[m] || {};
-  const L = [['Chapter', '#/learn/' + m + '/chapter'], ['Readings', '#/learn/' + m + '/readings'], ['Labs', '#/learn/' + m + '/lab'], ['Warm-ups', '#/learn/' + m + '/practice'], ['Quiz', '#/quiz/' + m], ['Interview', '#/interview/' + m]];
+  const R = (DATA.sprints[m] || {}).raw || {}, has = k => (R[k] || '').trim().length > 0;
+  const L = [['Chapter', '#/learn/' + m + '/chapter'], has('readings') && ['Readings', '#/learn/' + m + '/readings'], has('lab') && ['Labs', '#/learn/' + m + '/lab'], has('practice') && ['Warm-ups', '#/learn/' + m + '/practice'], has('quiz') && ['Quiz', '#/quiz/' + m], has('interview') && ['Interview', '#/interview/' + m], has('mock') && ['Mock', '#/interview/' + m + '/mock']].filter(Boolean);
   const g = DATA.git.length ? DATA.git[MODS.indexOf(m) % DATA.git.length] : null; if (g) L.push(['Git ' + g.n, '#/git/' + g.n]);
   if (DATA.design[m]) L.push(['Design', '#/design/' + m]);
   if (pj) L.push(['Project', '#/project/' + pj.id]);
@@ -217,6 +222,7 @@ function vPath(m) {
   const road = el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Roadmap' }), el('button', { class: 'btn sm', onclick: async () => { const v = await confirmBox('Restart the calendar?', 'Week 1 becomes this week. Your progress is kept; only the week numbers change.', [{ t: 'Make this week 1', cls: 'pri', v: 1 }, { t: 'Cancel', v: null }]); if (v) { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); S.start = iso(d); save(); route(); } }, text: 'Make this week 1' })]),
     el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'AI first (AI 1–3), then setup and the data engineering modules. A module ends when its steps are done, not on a fixed week. After the last module, new Extra modules arrive every week: big-tech papers and problems, plus fresh questions on earlier topics.' }),
     el('div', { class: 'list' }, MODS.map(x => { const s = sc.span[x]; return el('a', { class: 'item', href: '#/path/' + x }, [el('span', { class: 'chip ' + modColor(x), style: { flex: 'none', minWidth: '62px', justifyContent: 'center' }, text: modLabel(x) }), el('span', { class: 'grow' }, [el('span', { class: 't', text: modTitle(x) }), el('br'), el('span', { class: 's', text: weeksText(s) })]), el('span', { class: 's', style: { fontWeight: 700, flex: 'none' }, text: s.done === s.n ? '✓ done' : x === sc.cur ? 'now · ' + s.done + '/' + s.n : s.done + '/' + s.n })]); }))]);
+  setTimeout(() => { const c = pick.querySelector('[aria-current=true]'); if (c && pick.scrollWidth > pick.clientWidth) pick.scrollLeft = c.offsetLeft - 16; }, 0);
   shell('Path', 'Module ' + modLabel(m) + ' · ' + MODS.length + ' modules so far', [pick, el('div', { class: 'grid2 wide' }, [el('div', { class: 'stack', style: { gap: '18px' } }, [head, steps]), el('div', { class: 'stack', style: { gap: '18px' } }, [road])])].concat(extra));
 }
 
@@ -269,9 +275,9 @@ function vGit(n) {
       el('section', { class: 'card pad stack' }, [el('h3', { text: 'The commands' }), el('pre', { class: 'schema', style: { whiteSpace: 'pre-wrap' }, text: g.commands })]),
       el('section', { class: 'card pad stack', style: { borderColor: '#BFE3D6' } }, [el('h3', { text: 'Practise on a real broken repo' }),
         el('span', { style: { fontSize: '14.5px' }, text: 'The lab script builds a small repository with the problem already in it, prints your task, and checks your fix. Run it in any Codespace of this repo (iPad, iPhone or Mac) or in a clone on your MacBook.' }),
-        el('pre', { class: 'schema', style: { whiteSpace: 'pre-wrap' }, text: 'bash labs/git/gitlab.sh setup ' + g.n + '    # builds ~/git-labs/' + nn + ' and prints the task\ncd ~/git-labs/' + nn + (g.n === 11 ? '/me' : '') + '\n# … fix it with the commands above …\nbash ~/de-architect/labs/git/gitlab.sh check ' + g.n + '   # PASS / FAIL per check' }),
+        el('pre', { class: 'schema', style: { whiteSpace: 'pre-wrap' }, text: 'L=$PWD/labs/git/gitlab.sh     # run this line in the repo folder\nbash $L setup ' + g.n + '    # builds ~/git-labs/' + nn + ' and prints the task\ncd ~/git-labs/' + nn + (g.n === 11 ? '/me' : '') + '\n# … fix it with the commands above …\nbash $L check ' + g.n + '    # PASS / FAIL per check' }),
         el('div', { class: 'row wrap' }, [el('a', { class: 'btn pri', href: 'https://codespaces.new/raghav511/de-architect?devcontainer_path=.devcontainer/ai/devcontainer.json', target: '_blank', rel: 'noopener', text: 'Open a Codespace (2-core is enough)' }), u ? el('button', { class: 'btn', onclick: () => toggleUnit(u), text: u.isDone ? 'Mark not done' : 'Mark this lesson done' }) : null]),
-        el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'In a Codespace the repo is the current folder, so use bash labs/git/gitlab.sh check ' + g.n + ' from /workspaces/de-architect. On a Mac, clone first: git clone https://github.com/raghav511/de-architect' })]),
+        el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'In a Codespace the terminal already starts in the repo folder (/workspaces/de-architect). On a Mac, clone first: git clone https://github.com/raghav511/de-architect && cd de-architect' })]),
       el('section', { class: 'card pad stack' }, [el('h3', { text: 'The mistake people make' }), el('div', { html: mdi(g.mistake) }), el('h3', { text: 'Interview question' }), el('div', { html: mdi(g.interview) })])]),
     el('section', { class: 'card pad stack' }, [el('h3', { text: 'All Git lessons' }), list])])], { back: '#/today' });
 }
@@ -283,4 +289,97 @@ function vNews() {
   shell('What is new in AI', 'Updated ' + (N.updated || '') + ' · refreshed weekly', [
     el('section', { class: 'card pad stack' }, [el('p', { style: { margin: 0 }, text: N.note || '' }), u ? el('button', { class: 'btn', style: { alignSelf: 'flex-start' }, onclick: () => toggleUnit(u), text: u.isDone ? 'Mark not done' : 'Mark this week\'s reading done' }) : null]),
     el('div', { class: 'stack' }, N.items.map(x => el('section', { class: 'card pad stack' }, [el('b', { style: { fontSize: '18px' }, text: x.title }), el('span', { text: x.summary }), el('span', {}, [el('b', { style: { color: 'var(--plum-d)' }, text: 'Why it matters: ' }), x.why]), x.try ? el('span', {}, [el('b', { style: { color: 'var(--teal-d)' }, text: 'Test it yourself: ' }), x.try]) : null, x.url ? el('a', { href: x.url, target: '_blank', rel: 'noopener', style: { fontWeight: 600 }, text: 'Source: ' + (x.source || new URL(x.url).hostname) + ' ›' }) : null])))], { back: '#/today' });
+}
+
+/* ---------------- Search (⌘K or /) ---------------- */
+function searchIndex() {
+  const ix = [];
+  MODS.forEach(m => {
+    const M = MOD[m];
+    ix.push([modLabel(m) + ' · ' + M.title, 'Module', '#/path/' + m]);
+    M.ch.forEach((h, i) => ix.push([h, 'Chapter · ' + modLabel(m), '#/learn/' + m + '/chapter/' + i + '-' + i]));
+    M.lab.forEach((h, i) => ix.push([h, 'Lab · ' + modLabel(m), '#/learn/' + m + '/lab/' + i + '-' + i]));
+    (DATA.sprints[m].coding || []).forEach((c, i) => ix.push([c.TITLE, 'Coding test · ' + modLabel(m), '#/test/' + m + '/' + i]));
+    (DATA.sprints[m].interview || []).forEach(q => ix.push([q.Q.replace(/[*`]/g, '').slice(0, 140), 'Interview · ' + modLabel(m), '#/interview/' + m]));
+  });
+  [['dsa', 'DSA'], ['sql', 'SQL'], ['spark', 'PySpark']].forEach(([k, n]) => DATA[k].forEach(x => ix.push([x.t, n + ' · ' + x.lv, '#/' + k + '/' + x.id])));
+  DATA.git.forEach(g => ix.push([g.title, 'Git lesson ' + g.n, '#/git/' + g.n]));
+  Object.keys(DATA.design).forEach(m => ix.push([DATA.design[m].title, 'Design problem · ' + modLabel(m), '#/design/' + m]));
+  DATA.projects.forEach(p => ix.push([p.title, 'Project · ' + modLabel(p.mod), '#/project/' + p.id]));
+  return ix;
+}
+function openSearch() {
+  if (document.querySelector('.searchwrap')) return;
+  const ix = searchIndex();
+  const inp = el('input', { type: 'search', placeholder: 'Search lessons, labs, questions, Git, designs…', 'aria-label': 'Search', autocomplete: 'off', class: 'grow' });
+  const list = el('div', { class: 'list', style: { maxHeight: '60vh', overflow: 'auto' } });
+  const close = () => { wrap.remove(); document.removeEventListener('keydown', key); };
+  let hits = [], sel = 0;
+  const paint = () => {
+    const q = inp.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const RANK = ['Module', 'Chapter', 'Lab', 'Project', 'Design', 'Git', 'Coding test', 'DSA', 'SQL', 'PySpark', 'Interview'];
+    const score = x => { const t = x[0].toLowerCase(); let sc = RANK.findIndex(k => x[1].startsWith(k)) * 2; if (q.every(w => new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(t))) sc -= 6; if (t.startsWith(q[0])) sc -= 4; return sc; };
+    hits = q.length ? ix.filter(x => q.every(w => (x[0] + ' ' + x[1]).toLowerCase().includes(w))).map(x => [x, score(x)]).sort((a, b) => a[1] - b[1]).map(x => x[0]).slice(0, 40) : [];
+    sel = Math.min(sel, Math.max(0, hits.length - 1));
+    list.textContent = '';
+    if (q.length && !hits.length) list.appendChild(el('p', { class: 'muted', style: { margin: '6px 2px' }, text: 'Nothing found. Try fewer words.' }));
+    hits.forEach((x, i) => list.appendChild(el('a', { class: 'item', href: x[2], 'aria-current': String(i === sel), onclick: close }, [el('span', { class: 'grow' }, [el('span', { class: 't', text: x[0] }), el('br'), el('span', { class: 's', text: x[1] })])])));
+  };
+  const key = e => {
+    if (e.key === 'Escape') close();
+    else if (e.key === 'ArrowDown') { sel = Math.min(hits.length - 1, sel + 1); paint(); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { sel = Math.max(0, sel - 1); paint(); e.preventDefault(); }
+    else if (e.key === 'Enter' && hits[sel]) { location.hash = hits[sel][2]; close(); }
+  };
+  inp.addEventListener('input', () => { sel = 0; paint(); });
+  document.addEventListener('keydown', key);
+  const wrap = el('div', { class: 'scrim searchwrap', onclick: e => { if (e.target === wrap) close(); } }, [el('div', { class: 'dialog', role: 'dialog', 'aria-label': 'Search', style: { width: 'min(640px, 100%)', alignSelf: 'flex-start', marginTop: '8vh' } }, [el('div', { class: 'row' }, [svg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>', 20), inp, el('button', { class: 'btn icon sm', 'aria-label': 'Close search', onclick: close, text: '×' })]), list, el('span', { class: 'muted', style: { fontSize: '12.5px' }, text: ix.length + ' items · ↑ ↓ to move · Enter to open · Esc to close' })])]);
+  document.body.appendChild(wrap); inp.focus();
+}
+window.addEventListener('keydown', e => {
+  const t = e.target && e.target.tagName;
+  if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(t))) { e.preventDefault(); openSearch(); }
+});
+
+/* ---------------- Calendar export: the next 4 weeks of planned study as .ics ---------------- */
+function exportIcs() {
+  const sc = schedule(), t = S.settings.studyTime || '07:00', [hh, mm] = t.split(':').map(Number);
+  const pad = n => String(n).padStart(2, '0'), stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+  const esc2 = s => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Keystone//Study plan//EN', 'CALSCALE:GREGORIAN'];
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  for (let i = 0; i < 28; i++) {
+    const k = iso(d), us = (sc.byDay[k] || []).filter(u => !u.isDone);
+    if (us.length) {
+      const mins = us.reduce((a, u) => a + u.mins, 0), st = new Date(d); st.setHours(hh, mm || 0, 0, 0); const en = new Date(st.getTime() + mins * 60000);
+      const f = x => x.getFullYear() + pad(x.getMonth() + 1) + pad(x.getDate()) + 'T' + pad(x.getHours()) + pad(x.getMinutes()) + '00';
+      L.push('BEGIN:VEVENT', 'UID:keystone-' + k + '@raghav511.github.io', 'DTSTAMP:' + stamp, 'DTSTART:' + f(st), 'DTEND:' + f(en),
+        'SUMMARY:' + esc2('Keystone · ' + mins + ' min · ' + modLabel(us[0].mid)), 'DESCRIPTION:' + esc2(us.map(u => '• ' + u.title + ' (' + u.mins + ' min)').join('\n') + '\n\nOpen: https://raghav511.github.io/de-architect/#/today'),
+        'BEGIN:VALARM', 'TRIGGER:-PT10M', 'ACTION:DISPLAY', 'DESCRIPTION:Keystone study block', 'END:VALARM', 'END:VEVENT');
+    }
+    d.setDate(d.getDate() + 1);
+  }
+  L.push('END:VCALENDAR');
+  const a = el('a', { href: URL.createObjectURL(new Blob([L.join('\r\n')], { type: 'text/calendar' })), download: 'keystone-plan.ics' });
+  document.body.appendChild(a); a.click(); a.remove();
+  toast('Calendar file ready: open it to add the next 4 weeks at ' + t + '. Re-export after big changes.', null, 6000);
+}
+
+/* ---------------- Progress: program card with streak and activity heatmap ---------------- */
+function programCard() {
+  const sc = schedule(), U = sc.units, done = U.filter(u => u.isDone), mins = U.reduce((a, u) => a + u.mins, 0), dm = done.reduce((a, u) => a + u.mins, 0);
+  const last = U.length ? U[U.length - 1].day : sc.today;
+  const per = {}; done.forEach(u => { if (u.day !== '0000-00-00') per[u.day] = (per[u.day] || 0) + u.mins; });
+  let streak = 0; const d = new Date(); d.setHours(0, 0, 0, 0); if (!per[iso(d)]) d.setDate(d.getDate() - 1);
+  while (per[iso(d)]) { streak++; d.setDate(d.getDate() - 1); }
+  const start = new Date(); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - 7 * 11 - ((start.getDay() + 6) % 7));
+  const cells = [];
+  for (let i = 0; i < 84; i++) { const x = new Date(start); x.setDate(start.getDate() + i); const k = iso(x), v = per[k] || 0; cells.push(el('span', { title: shortDate(k) + ': ' + v + ' min', class: 'hm' + (v >= 90 ? ' h3' : v >= 45 ? ' h2' : v > 0 ? ' h1' : '') + (k === sc.today ? ' now' : '') })); }
+  const stat = (n, t) => el('div', { class: 'stack', style: { gap: '0' } }, [el('b', { style: { font: '800 26px var(--display)' }, text: n }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: t })]);
+  return el('section', { class: 'card pad stack' }, [
+    el('div', { class: 'row wrap' }, [el('span', { class: 'lbl grow', text: 'Program' }), el('a', { href: '#/path', style: { fontWeight: 600, fontSize: '14px' }, text: 'Open the path ›' })]),
+    el('div', { class: 'statrow' }, [stat(done.length + '/' + U.length, 'steps done'), stat(Math.round(dm / 60) + ' / ' + Math.round(mins / 60) + ' h', 'study hours'), stat(streak + (streak === 1 ? ' day' : ' days'), 'study streak'), stat(shortDate(last).slice(4), 'planned finish (week ' + weekOf(last) + ')')]),
+    el('div', { class: 'bar' }, el('i', { style: { width: Math.round(100 * dm / Math.max(1, mins)) + '%' } })),
+    el('span', { class: 'lbl', text: 'Last 12 weeks · minutes studied per day' }), el('div', { class: 'heat', 'aria-label': 'Study activity, last 12 weeks' }, cells),
+    el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Columns are weeks, rows are Monday to Sunday. Darker means more minutes.' })]);
 }
