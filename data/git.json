@@ -1,0 +1,130 @@
+[
+ {
+  "n": 1,
+  "title": "Commit hygiene: amend, and what a good commit looks like",
+  "why": "Small commits with clear messages make reviews fast and bisect possible. `--amend` fixes the last commit before anyone else has it.",
+  "commands": "git status\ngit add dag.py\ngit commit --amend -m \"add pipeline and dag\"   # rewrites the LAST commit\ngit log --oneline -3",
+  "mistake": "Never amend a commit you already pushed to a shared branch; others have built on it.",
+  "interview": "What makes a good commit message? (imperative subject under 50 chars, why in the body, one logical change)"
+ },
+ {
+  "n": 2,
+  "title": "Merge conflicts, calmly",
+  "why": "Two people changed the same lines. Git cannot guess which idea wins, so it marks the region and stops.",
+  "commands": "git merge feature            # CONFLICT in report.sql\ngit status                   # lists conflicted files\n# edit: keep the parts you need, delete <<<<<<< ======= >>>>>>> markers\ngit add report.sql\ngit commit                   # finishes the merge\n# panic button: git merge --abort",
+  "mistake": "Resolving by deleting one side without reading it. Always run the code/tests after resolving.",
+  "interview": "How do you resolve a merge conflict, and how do you reduce how often they happen?"
+ },
+ {
+  "n": 3,
+  "title": "Rebase vs merge",
+  "why": "Rebase replays your commits on top of the new main, giving a straight history that is easy to read and bisect. Merge keeps history exactly as it happened.",
+  "commands": "git switch feature\ngit rebase main               # replay feature commits on top of main\n# on conflict: fix, git add, git rebase --continue   (or --abort)\ngit push --force-with-lease  # only for YOUR feature branch",
+  "mistake": "Rebasing a branch others use. Golden rule: rebase private branches, merge shared ones.",
+  "interview": "When do you rebase and when do you merge?"
+ },
+ {
+  "n": 4,
+  "title": "Squash messy commits",
+  "why": "Reviewers want one meaningful commit, not 'wip 1..5'.",
+  "commands": "git reset --soft main        # keep all changes, drop the commits\ngit commit -m \"add work file\"\n# or: git rebase -i main  and mark commits as 'squash'",
+  "mistake": "Squashing after pushing to a shared branch.",
+  "interview": "What does git reset --soft vs --mixed vs --hard do?"
+ },
+ {
+  "n": 5,
+  "title": "Undo safely: revert vs reset",
+  "why": "Once a commit is pushed, never rewrite it. `revert` adds a new commit that undoes it.",
+  "commands": "git log --oneline\ngit revert <bad-sha>         # new commit that undoes the bad one\ngit push\n# local-only mistakes: git reset --hard <good-sha>   (destroys uncommitted work!)",
+  "mistake": "Using reset --hard on a shared branch, or with uncommitted work you wanted.",
+  "interview": "A bad commit is in production. How do you undo it?"
+ },
+ {
+  "n": 6,
+  "title": "Nothing is lost: reflog",
+  "why": "Every move of HEAD is recorded for ~90 days. Deleted branches and 'lost' commits are usually one command away.",
+  "commands": "git reflog                    # find the commit\ngit branch experiment <sha>   # bring the branch back\n# also works after a bad reset or rebase: git reset --hard HEAD@{2}",
+  "mistake": "Panicking and re-cloning, which throws the reflog away.",
+  "interview": "You deleted a branch with unmerged work. How do you get it back?"
+ },
+ {
+  "n": 7,
+  "title": "Stash: switch context without losing work",
+  "why": "A production bug arrives while your work is half done.",
+  "commands": "git stash push -m \"half feature\"\n# fix the hotfix, commit it\ngit stash list\ngit stash pop                 # bring the work back (apply + drop)",
+  "mistake": "Forgetting stashes for weeks. Prefer a WIP commit on a branch for anything longer than an hour.",
+  "interview": "What is git stash and when would you avoid it?"
+ },
+ {
+  "n": 8,
+  "title": "Cherry-pick a hotfix",
+  "why": "The fix is on main but the release branch must get only that fix.",
+  "commands": "git log --oneline main        # find the fix sha\ngit switch release\ngit cherry-pick <fix-sha>\n# conflicts: resolve, git add, git cherry-pick --continue",
+  "mistake": "Cherry-picking many commits instead of merging; you lose the link between them.",
+  "interview": "How do you ship one fix to an older release?"
+ },
+ {
+  "n": 9,
+  "title": "Find the breaking commit with bisect",
+  "why": "A metric went wrong somewhere in the last 50 commits. Bisect finds it in about 6 steps.",
+  "commands": "git bisect start HEAD <known-good-sha>\ngit bisect run ./test.sh      # automatic: exit 0 = good, non-zero = bad\n# or manually: git bisect good / git bisect bad\ngit bisect reset",
+  "mistake": "Not having a reproducible test; write the 3-line check first.",
+  "interview": "How would you find which change broke a pipeline?"
+ },
+ {
+  "n": 10,
+  "title": "Detached HEAD",
+  "why": "Checking out a commit (not a branch) puts you in detached HEAD. Commits made there belong to no branch.",
+  "commands": "git switch -c rescue          # name the work where you are\ngit switch main",
+  "mistake": "Switching away without naming the commits; they become reflog-only.",
+  "interview": "What is detached HEAD and how do you get out of it?"
+ },
+ {
+  "n": 11,
+  "title": "A teammate force-pushed",
+  "why": "Your commit disappeared from the remote. Do not force-push back; merge their history with yours.",
+  "commands": "git fetch\ngit log --oneline --graph --all\ngit pull --rebase origin main    # or a merge\ngit push                          # no --force\n# protect main: branch protection, and --force-with-lease if you must",
+  "mistake": "Answering a force-push with another force-push.",
+  "interview": "Why use --force-with-lease instead of --force?"
+ },
+ {
+  "n": 12,
+  "title": "A secret was committed",
+  "why": "Deleting the file in a new commit does not help: it is still in history. Rotate the key first, then rewrite history.",
+  "commands": "# 1. ROTATE the key now.\n# 2. rewrite history (preferred tool: git filter-repo)\ngit filter-repo --path .env --invert-paths\n# built-in fallback:\ngit filter-branch --index-filter 'git rm --cached --ignore-unmatch .env' -- --all\necho .env >> .gitignore\n# 3. force-push with the team's agreement; ask GitHub support to purge caches",
+  "mistake": "Thinking a new 'remove .env' commit fixes it.",
+  "interview": "You pushed an API key to GitHub. What do you do, in order?"
+ },
+ {
+  "n": 13,
+  "title": "Conflicts in generated files",
+  "why": "Lock files, compiled outputs and notebooks conflict badly. Do not hand-merge them; regenerate.",
+  "commands": "git merge feature\ngit checkout --ours lock.json      # take main's version\n# re-run the tool that generates it (pip-compile, npm install, dbt deps...)\ngit add lock.json && git commit",
+  "mistake": "Hand-editing JSON lock files and shipping a broken environment.",
+  "interview": "How do you handle conflicts in lock files or notebooks?"
+ },
+ {
+  "n": 14,
+  "title": "Worktrees: two branches at once",
+  "why": "Review a PR or hotfix without stashing your current work.",
+  "commands": "git worktree add ../hotfix hotfix\ncd ../hotfix && ...commit...\ngit worktree remove ../hotfix",
+  "mistake": "Leaving old worktrees around; list them with git worktree list.",
+  "interview": "How do you work on a hotfix while a long build runs on your branch?"
+ },
+ {
+  "n": 15,
+  "title": "Hooks: stop bad commits before they exist",
+  "why": "A pre-commit hook can block secrets, run formatters and tests.",
+  "commands": "cat > .git/hooks/pre-commit <<'H'\n#!/bin/sh\ngit diff --cached | grep -q 'sk-live-' && { echo 'secret!'; exit 1; }\nH\nchmod +x .git/hooks/pre-commit\n# teams share hooks with the pre-commit framework (pre-commit.com)",
+  "mistake": "Relying on hooks alone; CI must run the same checks because hooks can be skipped.",
+  "interview": "What would you put in a pre-commit hook for a data repo?"
+ },
+ {
+  "n": 16,
+  "title": "The pull-request flow",
+  "why": "How real teams ship: branch, small commits, push, PR with description, review, squash-merge.",
+  "commands": "git switch -c feat/readme\n...edit, commit...\ngit push -u origin feat/readme\ngh pr create --fill\ngh pr view --web",
+  "mistake": "Huge PRs. Aim for under 400 lines and one idea.",
+  "interview": "Walk me through your team's PR process."
+ }
+]

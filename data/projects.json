@@ -1,7 +1,154 @@
 [
  {
+  "id": "ai-1",
+  "mod": "a01",
+  "title": "Agent toolkit, part 1: the loop, budgets, prompt economics, automation",
+  "status": "ready",
+  "env": "ai",
+  "codespaces": "https://codespaces.new/raghav511/de-architect?devcontainer_path=.devcontainer/ai/devcontainer.json",
+  "readme": "projects/ai-foundations/README.md",
+  "goal": "Build your own agent harness from scratch: a tool loop, stop conditions, traces, measured prompts and a scheduled automation.",
+  "stack": [
+   "Python harness (no framework)",
+   "Mock / Gemini free tier / Ollama / Anthropic",
+   "pytest",
+   "GitHub Actions"
+  ],
+  "parts": [
+   "Lab 1: the agent loop with tools",
+   "Lab 2: budgets, stop conditions and traces",
+   "Lab 3: prompt quality vs cost table",
+   "Lab 4: a scheduled automation that writes a daily report"
+  ],
+  "ms": [
+   [
+    1,
+    "Agent loop",
+    "pytest tests/test_lab1.py"
+   ],
+   [
+    2,
+    "Stop conditions + trace",
+    "pytest tests/test_lab2.py"
+   ],
+   [
+    3,
+    "Prompt economics",
+    "reports/lab3.md"
+   ],
+   [
+    4,
+    "Automation",
+    "workflow ran on schedule"
+   ]
+  ],
+  "refs": [
+   [
+    "Anthropic: Building effective agents",
+    "https://www.anthropic.com/engineering/building-effective-agents"
+   ]
+  ]
+ },
+ {
+  "id": "ai-2",
+  "mod": "a02",
+  "title": "Agent toolkit, part 2: evals, self-fixing and self-improving agents",
+  "status": "ready",
+  "env": "ai",
+  "codespaces": "https://codespaces.new/raghav511/de-architect?devcontainer_path=.devcontainer/ai/devcontainer.json",
+  "readme": "projects/ai-foundations/README.md",
+  "goal": "Agents that check and improve their own work, inside guardrails, measured with evals.",
+  "stack": [
+   "Eval harness (code + rubric judge)",
+   "Self-fixing loop with run_tests",
+   "Prompt optimiser with held-out set",
+   "Lessons memory"
+  ],
+  "parts": [
+   "Lab 5: three graders",
+   "Lab 6: self-fixing coding agent",
+   "Lab 7: a prompt that improves itself",
+   "Lab 8: lessons memory"
+  ],
+  "ms": [
+   [
+    5,
+    "Evals",
+    "reports/lab5.md"
+   ],
+   [
+    6,
+    "Self-fixing agent",
+    "python labs/lab6_selffix.py --reset"
+   ],
+   [
+    7,
+    "Self-improving prompt",
+    "python labs/lab7_optimise.py"
+   ],
+   [
+    8,
+    "Lessons memory",
+    "fewer iterations on run 2"
+   ]
+  ],
+  "refs": [
+   [
+    "Reflexion paper",
+    "https://arxiv.org/abs/2303.11366"
+   ],
+   [
+    "DSPy",
+    "https://dspy.ai/"
+   ]
+  ]
+ },
+ {
+  "id": "ai-3",
+  "mod": "a03",
+  "title": "Agent toolkit, part 3: MCP and an on-call agent for the lakehouse",
+  "status": "ready",
+  "env": "ai",
+  "codespaces": "https://codespaces.new/raghav511/de-architect?devcontainer_path=.devcontainer/ai/devcontainer.json",
+  "readme": "projects/ai-foundations/README.md",
+  "goal": "An autonomous, evaluated on-call agent with read-only MCP tools and an approval gate.",
+  "stack": [
+   "MCP Python SDK",
+   "DuckDB / Trino",
+   "Your harness",
+   "The lakehouse project (labs 10–11)"
+  ],
+  "parts": [
+   "Lab 9: a read-only MCP server",
+   "Lab 10: the on-call agent",
+   "Lab 11: evaluate it on injected failures"
+  ],
+  "ms": [
+   [
+    9,
+    "MCP server",
+    "python labs/lab9_client.py"
+   ],
+   [
+    10,
+    "On-call agent",
+    "reports/incident-<date>.md"
+   ],
+   [
+    11,
+    "Agent eval",
+    "cause rate, unsafe = 0"
+   ]
+  ],
+  "refs": [
+   [
+    "Model Context Protocol",
+    "https://modelcontextprotocol.io/"
+   ]
+  ]
+ },
+ {
   "id": "lakehouse-1",
-  "w": 1,
   "title": "Lakehouse, part 1: object store, Iceberg and zero-copy Bronze",
   "status": "ready",
   "env": "lakehouse",
@@ -41,11 +188,11 @@
    ]
   ],
   "codespaces": "https://codespaces.new/raghav511/de-architect?devcontainer_path=.devcontainer/lakehouse/devcontainer.json",
-  "readme": "projects/lakehouse/README.md"
+  "readme": "projects/lakehouse/README.md",
+  "mod": "s01"
  },
  {
   "id": "lakehouse-2",
-  "w": 2,
   "title": "Lakehouse, part 2: Silver, Gold with dbt, Airflow, ClickHouse",
   "status": "ready",
   "env": "lakehouse",
@@ -94,11 +241,11 @@
    ]
   ],
   "codespaces": "https://codespaces.new/raghav511/de-architect?devcontainer_path=.devcontainer/lakehouse/devcontainer.json",
-  "readme": "projects/lakehouse/README.md"
+  "readme": "projects/lakehouse/README.md",
+  "mod": "s02"
  },
  {
   "id": "spark-scale",
-  "w": 3,
   "title": "Spark under load on your lakehouse",
   "status": "planned",
   "goal": "Make the Silver job 10x bigger, then find and fix skew, small files and spills using the Spark UI.",
@@ -112,11 +259,11 @@
    "Salting vs AQE skew join",
    "rewrite_data_files and sort order",
    "Write a one-page tuning memo"
-  ]
+  ],
+  "mod": "s03"
  },
  {
   "id": "nl-assistant",
-  "w": 4,
   "title": "Natural-language data assistant over the warehouse",
   "status": "planned",
   "goal": "A chatbot that answers business questions in plain English by writing validated SQL against Gold.",
@@ -137,11 +284,11 @@
     "AI Data Engineering Project for Beginners (nataindata)",
     "https://github.com/nataindata/ai-data-engineering-project"
    ]
-  ]
+  ],
+  "mod": "s04"
  },
  {
   "id": "streaming-ai",
-  "w": 5,
   "title": "Real-time AI streaming pipeline",
   "status": "planned",
   "goal": "Stream ride events through Kafka, compute windowed features continuously and flag anomalies within seconds.",
@@ -156,11 +303,11 @@
    "Tumbling and sliding windows with watermarks",
    "Exactly-once sink to ClickHouse and Iceberg",
    "Anomaly alerts to a Slack webhook"
-  ]
+  ],
+  "mod": "s05"
  },
  {
   "id": "cdc-lake",
-  "w": 6,
   "title": "CDC from Postgres into the lakehouse",
   "status": "planned",
   "goal": "Capture every insert, update and delete from an operational database and apply it to Iceberg with MERGE.",
@@ -175,11 +322,11 @@
    "Debezium change events",
    "Upserts and deletes in Iceberg",
    "Daily row-count and checksum reconciliation"
-  ]
+  ],
+  "mod": "s06"
  },
  {
   "id": "aws-local",
-  "w": 7,
   "title": "AWS on your laptop: infrastructure as code and cost",
   "status": "planned",
   "goal": "Rebuild the lakehouse ingestion with AWS-style services, defined in Terraform, running on LocalStack, with a cost estimate.",
@@ -194,11 +341,11 @@
    "S3 event → SQS → Lambda → Bronze",
    "terraform plan/apply locally",
    "Monthly cost estimate for real AWS"
-  ]
+  ],
+  "mod": "s07"
  },
  {
   "id": "rag-pipeline",
-  "w": 8,
   "title": "Production RAG pipeline with metadata filtering",
   "status": "planned",
   "goal": "Ingest support tickets and runbooks, chunk and embed them at scale, and answer questions with citations and filters.",
@@ -213,11 +360,11 @@
    "Embeddings with metadata tags (team, date, product)",
    "Pre- and post-retrieval filtering",
    "Retrieval eval: recall@k on 50 questions"
-  ]
+  ],
+  "mod": "s08"
  },
  {
   "id": "llm-observability",
-  "w": 9,
   "title": "LLM output evaluation and observability dashboard",
   "status": "planned",
   "goal": "Log, score and monitor LLM responses for drift, latency, cost and hallucination.",
@@ -232,11 +379,11 @@
    "Nightly eval DAG",
    "Drift and cost metrics",
    "Dashboard with alerts"
-  ]
+  ],
+  "mod": "s09"
  },
  {
   "id": "governed-serving",
-  "w": 10,
   "title": "Governed lakehouse and serving at scale",
   "status": "planned",
   "goal": "Add catalog governance, lineage and a fast serving layer to the lakehouse.",
@@ -251,11 +398,11 @@
    "Column lineage across dbt and Spark",
    "p95 query latency budget",
    "Disaster recovery drill"
-  ]
+  ],
+  "mod": "s10"
  },
  {
   "id": "customer-build",
-  "w": 11,
   "title": "One-day customer build (forward-deployed engineering)",
   "status": "planned",
   "goal": "Take a messy customer request, scope it in an hour, build a working slice in a day, and present it.",
@@ -274,11 +421,11 @@
     "Data engineering project ideas (datavidhya)",
     "https://datavidhya.com/projects/"
    ]
-  ]
+  ],
+  "mod": "s11"
  },
  {
   "id": "capstone",
-  "w": 12,
   "title": "Capstone: AI-ready data platform",
   "status": "planned",
   "goal": "Combine lakehouse, streaming, RAG and the assistant into one platform and defend it in an architecture review.",
@@ -290,6 +437,7 @@
    "Architecture decision records",
    "Live demo",
    "Review board mock"
-  ]
+  ],
+  "mod": "s12"
  }
 ]

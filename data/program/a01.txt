@@ -1,0 +1,324 @@
+@@meta
+id: a01
+n: 1
+title: Loops, harnesses and prompts that pay for themselves
+goal: Build a working agent from scratch: a loop, tools, budgets, a trace, and prompts measured for quality and cost. By Sunday a scheduled automation runs one of your daily tasks without you.
+hours: 8
+
+@@tickets
+A101 | learn | 0.75 | Chapter part 1: what an agent is, and the loop | You can draw the agent loop and name its three stop conditions without notes. | chapter:0-1
+A102 | learn | 0.75 | Chapter part 2: harness engineering | You can list the five layers of a harness and give a failure each one prevents. | chapter:2-3
+A103 | learn | 0.75 | Chapter part 3: prompts that work and cost less | You can rewrite a vague prompt into the six-part structure and explain where caching applies. | chapter:4-6
+A104 | build | 1 | Lab 1: your first agent loop with tools | `python labs/lab1_loop.py` answers the three lab questions using tools, and the trace shows every step. | lab
+A105 | build | 1 | Lab 2: budgets, stop conditions and a trace | The agent stops on a token budget, a step limit and a repeated-action check, each proven by a test. | lab
+A106 | ai | 1 | Lab 3: measure prompts for quality and cost | A table of 3 prompt versions with accuracy, input tokens, output tokens and cost per 100 runs. | lab
+A107 | build | 1 | Lab 4: automate a daily task | A GitHub Actions workflow (or cron) runs your agent on a schedule and writes its report to the repo. | lab
+A108 | test | 0.5 | Quiz A1 | 80% or better. | quiz
+A109 | talk | 0.75 | Interview set A1 | 6 of 8 answered out loud and ticked. | interview
+A110 | practice | 0.5 | Prompt drills | Five prompt rewrites done and compared with the model answers. | practice
+
+@@readings
+- [Anthropic: Building effective agents](https://www.anthropic.com/engineering/building-effective-agents). Read "workflows vs agents" and the five workflow patterns. It is the clearest short map of the field.
+- [Claude docs: Prompt engineering overview](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/overview). Skim the list, then read "Be clear and direct" and "Use XML tags".
+- [Claude docs: Prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching). Read the pricing table and "what invalidates the cache".
+- [Faros: Harness engineering](https://www.faros.ai/blog/harness-engineering). The five layers of a production harness, and why the term appeared in 2026.
+
+@@chapter
+## A1.1 What an agent really is
+
+A language model on its own does one thing: it reads text and writes text. It cannot run code, open a file, query a table or remember yesterday. Everything that makes an "agent" feel capable is built **around** the model by ordinary software. A short formula captures it:
+
+> **Agent = model + harness**
+
+The **harness** is your code: it sends the model a task, offers it tools, runs the tools the model asks for, feeds results back, keeps memory, enforces limits and records what happened. The same model inside a careless harness wastes money and makes things up. Inside a good one it fixes pipelines on its own.
+
+A **workflow** is a fixed sequence you design (call A, then B, then C). An **agent** decides its own next step in a loop. Start with workflows; use an agent only when the steps cannot be known in advance, because every loop iteration costs time and tokens.
+
+## A1.2 The loop
+
+Every agent, from a 20-line script to a coding assistant that runs for hours, is this loop:
+
+```
+messages = [task]
+while True:
+    reply = model(messages, tools)          # think
+    if reply asks for tools:
+        results = run(reply.tool_calls)     # act
+        messages += [reply, results]        # observe
+    else:
+        return reply.text                   # done
+```
+
+The model never executes anything. It returns a structured request such as `{"tool": "run_sql", "input": {"query": "..."}}`. Your code runs it and sends back the output. That separation is what lets you add safety: you can refuse, sandbox or ask a human before running anything.
+
+**Three stop conditions you always need:**
+
+1. **Done:** the model answers without asking for a tool.
+2. **Budget:** a step limit and a token or money limit. Without them a confused agent loops forever.
+3. **No progress:** the same tool with the same input twice in a row, or the same error three times. Stop and report instead of retrying blindly.
+
+**Self-improving loops** are the same loop with a second judge in it: produce something, check it (run tests, score it against examples, ask a reviewer model), and feed the verdict back as the next observation. Module A2 is about these.
+
+## A1.3 Harness engineering
+
+"Harness engineering" became a common term in 2026, after prompt engineering (2022–23) and context engineering (2024–25). The idea is simple: when an agent makes a mistake, do not just reword the prompt; **change the environment so that mistake cannot happen again**. A production harness has five layers:
+
+| Layer | What it does | Failure it prevents |
+|---|---|---|
+| Tools and orchestration | Small, well-named tools with clear inputs; retries with backoff; timeouts | Agent invents a tool or passes garbage; one slow call hangs everything |
+| Verification | Run tests, linters, schema checks, row counts after each step | "Done" when nothing works |
+| Context and memory | Give only what the step needs; keep a notes file of decisions and lessons | Context overflow, repeating old mistakes |
+| Guardrails | Budgets, read-only roles, sandboxes, human approval for irreversible actions | Dropped tables, runaway bills, prompt injection doing damage |
+| Observability | A trace of every call: input, output, tokens, cost, time | Not knowing why it failed or what it cost |
+
+Known failure modes that harnesses fix: stopping early and declaring success, rushing when the context fills up, and trying to do too much in one pass. The fixes are structural: a checklist the agent must tick with evidence, a fresh context per sub-task, and one change per iteration.
+
+## A1.4 Context engineering
+
+What the model sees is the only thing it knows. Good context is **small and relevant**:
+
+- Put stable material first (instructions, tool descriptions, schema) and changing material last (the current question). This also makes caching work.
+- Give **examples of the output you want**, two or three, including an edge case.
+- Summarise long histories instead of resending them. Keep a short "state" block: goal, done so far, next step.
+- For data work, give table and column descriptions, a few sample rows, and the business definitions (what "active rider" means). This is the semantic layer you will build in the text-to-SQL project.
+
+## A1.5 Prompts that work
+
+A reliable prompt has six parts. Use XML-style tags so the model can tell them apart:
+
+```
+<role>You are a data reliability engineer.</role>
+<task>Explain why this Airflow task failed and propose one fix.</task>
+<context>{log tail, DAG code, last good run}</context>
+<constraints>Quote the log line that proves the cause. If unsure, say so. Max 120 words.</constraints>
+<output_format>JSON: {"cause": str, "evidence": str, "fix": str, "confidence": "low|medium|high"}</output_format>
+<examples>{one good example}</examples>
+```
+
+Rules that change results the most:
+
+1. **Say what "good" looks like.** Success criteria beat adjectives. "Quote the log line" beats "be accurate".
+2. **Ask for structured output** when code will read the answer. Validate it; on failure, send the validation error back once.
+3. **Let it think when the task is hard, and not when it is easy.** Reasoning costs tokens. Use it for diagnosis and design, not for formatting.
+4. **One job per prompt.** Split "classify, then summarise, then draft a fix" into steps you can test separately.
+5. **Test prompts like code.** Keep 20 inputs with expected answers and score every prompt change against them (lab 3).
+
+## A1.6 Spending fewer credits for the same result
+
+Cost is input tokens + output tokens × the price of the model. Levers, roughly in order of impact:
+
+- **Pick the smallest model that passes your eval.** Route easy steps (classification, extraction) to a small model and hard ones (diagnosis, design) to a large one.
+- **Prompt caching.** On the Claude API, a cache read costs a small fraction of normal input (0.1× by default, less on some current models). A 5-minute cache write costs 1.25× and a 1-hour write 2×. It only works on an **identical prefix**, so put tools, system prompt and long documents first, and never put timestamps or IDs before the cache breakpoint. Check `cache_read_input_tokens` in the response to prove it worked.
+- **Cap output.** Set `max_tokens`, ask for short structured answers, and do not ask the model to repeat the input.
+- **Send less.** Retrieve the 5 relevant rows, not the table; the log tail, not the whole log.
+- **Batch** non-urgent work (batch APIs are discounted) and **stop loops early** with the stop conditions above.
+- **Measure.** Log tokens and cost per task in the trace; you cannot cut what you do not count.
+
+## A1.7 Automating tasks and prompts
+
+A prompt you run by hand every day is a script waiting to be written. The ladder:
+
+1. **Script:** the prompt plus code that gathers its inputs, in a file in git.
+2. **Schedule:** cron, a GitHub Actions `schedule:` workflow, or Airflow. GitHub Actions is free for public repos and has a free monthly allowance for private ones.
+3. **Idempotent output:** the job writes to a dated file or upserts a row, so reruns do not duplicate.
+4. **Alerting:** on failure, send a message (Slack webhook, email) with the trace link.
+5. **Review:** a weekly look at cost and accuracy; turn repeated corrections into prompt or tool changes.
+
+Secrets (API keys) live in the CI secret store, never in the repo.
+
+@@lab
+## Setup (once)
+
+Open the **AI foundations** environment from the app (Projects → AI foundations → Open in Codespaces), or on your MacBook:
+
+```bash
+cd projects/ai-foundations
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env    # choose a provider: mock (free, offline), gemini (free tier), ollama (local), anthropic
+```
+
+The labs run with `PROVIDER=mock` out of the box, so you can build and test the harness without spending anything. Switch to a real model when the tests pass.
+
+## Lab 1: your first agent loop with tools (1 hour)
+
+Open `labs/lab1_loop.py`. The `run_agent` loop is missing its middle. Fill the three `TODO`s: call the model with the tools, run any tool calls with `harness.tools.run`, append results, and return when the model stops asking.
+
+Done when `python labs/lab1_loop.py` answers all three questions (one needs `calculator`, one needs `read_file`, one needs both) and `python -m pytest tests/test_lab1.py` passes.
+
+## Lab 2: budgets, stop conditions and a trace (1 hour)
+
+Read `harness/agent.py`, the reference harness. It has the three stop conditions (`max_steps`, `max_tokens_total`, and "same tool + same input twice in a row") and writes every model and tool call to `traces/<run_id>.jsonl` with tokens, cost and time. `tests/test_lab2.py` triggers each condition.
+
+Now add the same three conditions and a trace to **your** loop from lab 1, and copy `tests/test_lab2.py` to `tests/test_lab2_mine.py` pointing at your loop.
+
+Done when both test files pass and `python -m harness.trace traces/<run_id>.jsonl` prints a readable timeline of one of your runs.
+
+## Lab 3: measure prompts for quality and cost (1 hour)
+
+`labs/lab3_prompts.py` classifies 20 Airflow log tails into `{oom, schema_change, timeout, upstream_missing, permission}`. Write three prompt versions in `prompts/`: a one-line prompt, the six-part prompt, and the six-part prompt with two examples. Run `python labs/lab3_prompts.py` with a real provider.
+
+Done when `reports/lab3.md` shows, for each version: accuracy on the 20 cases, average input and output tokens, and estimated cost per 100 runs, plus two sentences on which you would ship and why.
+
+## Lab 4: automate a daily task (1 hour)
+
+Pick one thing you do every day (summarise yesterday's failed DAG runs, or this app's practice log). Wrap it as `automations/daily_report.py` using your harness. Copy `.github/workflows/daily-report.yml.example` to the repo's `.github/workflows/`, add your provider key as a repository secret, and push.
+
+Done when the workflow ran at least once on schedule (or via "Run workflow"), committed `reports/daily/<date>.md`, and a rerun on the same day overwrote the file instead of adding a second one.
+
+@@practice
+## Prompt drills (30 minutes)
+
+Rewrite each prompt using the six-part structure. Then compare with the model answers below.
+
+1. "Fix my SQL."
+2. "Summarise this incident."
+3. "Is this data good?"
+4. "Write a DAG for this."
+5. "Explain Kafka."
+
+**Model answer for 1:** `<role>` senior analytics engineer; `<task>` find why this query returns duplicate rows and give a corrected query; `<context>` the query, table DDL, expected row count; `<constraints>` keep the same output columns, explain the cause in one sentence, do not change filters; `<output_format>` corrected SQL in a code block, then the one-sentence cause. The key additions are the **symptom**, the **expected result**, and **what must not change**.
+
+**Model answer for 3:** ask for checks, not an opinion: "Run these 5 checks on the attached profile (nulls in keys, duplicates on trip_id, row count vs yesterday ±20%, negative fares, future timestamps). Return a table: check, value, pass/fail." A yes/no question invites a confident guess.
+
+**Model answers for 2, 4, 5:** each needs the **audience** (on-call engineer, interviewer, new hire), the **length**, and the **format** (timeline table, a DAG file plus test, a 5-bullet explanation with one diagram).
+
+@@quiz
+TYPE: mcq
+TAG: ai
+Q: In a tool-using agent, who actually executes a tool call?
+A) The model provider's servers
+B) Your harness code, after the model returns a structured request
+C) The tool runs itself when its name appears in the text
+D) Nobody; the model predicts the result
+ANS: B
+WHY: The model only asks. The harness decides whether to run it, runs it, and sends the result back. That is where guardrails live.
+---
+TYPE: mcq
+TAG: ai
+Q: Which is NOT one of the three stop conditions every agent loop needs?
+A) The model answers without a tool call
+B) A step or token budget is reached
+C) The same action repeats with no progress
+D) The model's answer is longer than 100 words
+ANS: D
+WHY: Length is not a stop condition. Done, budget and no-progress are.
+---
+TYPE: mcq
+TAG: ai
+Q: An agent keeps declaring "done" while the tests still fail. Which harness layer fixes this best?
+A) A longer system prompt
+B) Verification: run the tests and only accept "done" with passing evidence
+C) A bigger model
+D) More tools
+ANS: B
+WHY: Harness engineering fixes the environment: the loop cannot end until the verifier passes.
+---
+TYPE: fill
+TAG: ai
+Q: Agent = model + ____.
+ANS: harness
+WHY: Everything beyond text in, text out comes from the code around the model.
+---
+TYPE: mcq
+TAG: ai
+Q: Your prompt starts with "Current time: 10:42:13" and then a 6,000-token schema. Why is prompt caching not saving money?
+A) The schema is too short to cache
+B) The prefix changes every request, so the cache never matches
+C) Caching only works on output tokens
+D) Caching needs a bigger model
+ANS: B
+WHY: Caching needs an identical prefix. Put stable content first and the timestamp after the cache breakpoint.
+---
+TYPE: mcq
+TAG: ai
+Q: Which change usually cuts cost the most for a high-volume classification step?
+A) Asking the model to think step by step
+B) Routing it to the smallest model that passes the eval set
+C) Adding more examples every call
+D) Raising max_tokens
+ANS: B
+WHY: Model price dominates. Measure accuracy on an eval set, then pick the cheapest model that meets it.
+---
+TYPE: fill
+TAG: ai
+Q: In the Claude API response, the field that proves a cache hit is `cache_read_input_____`.
+ANS: tokens
+WHY: `cache_read_input_tokens` > 0 means part of the prompt came from cache.
+---
+TYPE: mcq
+TAG: ai
+Q: When should you prefer a fixed workflow over an agent?
+A) Never; agents are always better
+B) When the steps are known in advance
+C) Only when there are no tools
+D) When the task is long
+ANS: B
+WHY: Workflows are cheaper, faster and easier to test. Use an agent when the next step depends on what it finds.
+---
+TYPE: mcq
+TAG: ai
+Q: A scheduled automation runs twice on the same day after a retry. What keeps the output correct?
+A) Running it only manually
+B) Writing to a dated file or upserting, so a rerun overwrites
+C) A longer timeout
+D) A bigger model
+ANS: B
+WHY: Same idea as idempotent pipelines: reruns must not duplicate.
+---
+TYPE: short
+TAG: ai
+Q: Name the six parts of a reliable prompt.
+MODEL: Role, task, context, constraints, output format, examples (in tags such as <role>, <task>...).
+ANS: role, task, context, constraints, output format, examples
+WHY: Each part removes a guess the model would otherwise make.
+---
+TYPE: short
+TAG: ai
+Q: Give two ways to stop an agent from looping forever.
+MODEL: A step/token budget, and a no-progress check (same tool and input repeated, or the same error three times).
+ANS: budget; no-progress check
+WHY: Both are cheap to implement and prevent runaway cost.
+---
+TYPE: mcq
+TAG: ai
+Q: Where should an API key used by a scheduled GitHub Actions workflow live?
+A) In the workflow YAML
+B) In a repository secret, read as an environment variable
+C) In a commit message
+D) In the prompt
+ANS: B
+WHY: Secrets are encrypted and not visible in logs or the repo.
+
+@@interview
+Q: What is the difference between an AI workflow and an AI agent, and when would you choose each?
+TAG: ai
+A: A **workflow** is a fixed sequence of model and tool calls that I design: extract, then classify, then summarise. An **agent** chooses its next step in a loop based on what it observes. I choose a workflow when the steps are known, because it is cheaper, faster and testable step by step. I choose an agent when the path depends on what it finds, such as diagnosing a failed pipeline. Even then I constrain it: few tools, budgets, and a verifier that must pass before it can say done.
+---
+Q: Walk me through the agent loop and where you would add safety.
+TAG: ai
+A: The harness sends the task and tool definitions; the model either answers or returns tool calls; the harness runs the tools and sends results back; repeat. Safety goes in the harness because that is where execution happens: allow-listed tools only, read-only credentials for data, a human approval gate for anything irreversible (drops, deletes, sends), step and cost budgets, a no-progress stop, and a full trace for audit.
+---
+Q: What is harness engineering?
+TAG: ai
+A: Treating the code around the model as the product. When the agent makes a mistake, I change its environment so the mistake cannot recur: a better tool, a verification step, tighter context, a guardrail. The five layers are tools and orchestration, verification, context and memory, guardrails, and observability. Example: an agent kept reporting success on broken SQL, so I made "done" require a passing row-count check.
+---
+Q: How do you reduce LLM cost in production without losing quality?
+TAG: ai
+A: Measure first with an eval set and a trace of tokens per task. Then: route each step to the smallest model that passes its eval; use prompt caching with stable content first; send only relevant context (retrieve rows, tail logs); cap output with structured short answers; batch non-urgent work; stop loops early. I report cost per successful task, not per call.
+---
+Q: How would you know a prompt change made things better?
+TAG: ai
+A: A fixed eval set of representative inputs with expected outputs, scored automatically (exact match, schema validation, or a rubric), plus cost and latency. I compare old vs new on the same set, look at the failures, and keep a held-out set to avoid tuning to the test.
+---
+Q: What goes into the context for a text-to-SQL assistant?
+TAG: ai
+A: Table and column descriptions, keys and joins, business definitions (what counts as an active rider), a few sample rows, two or three example questions with correct SQL, and rules (read-only, always filter on the partition column). Stable parts go first for caching; the user question goes last.
+---
+Q: Your scheduled AI job produced a wrong report and nobody noticed for a week. What do you change?
+TAG: ai
+A: Add verification and alerting: the job checks its own output (row counts, required sections, numbers reconcile to source) and fails loudly; failures page or post to Slack with the trace. Add a weekly human review of a sample, and turn every correction into an eval case so it cannot regress.
+---
+Q: When do you let the model "think" before answering?
+TAG: ai
+A: For multi-step reasoning: diagnosis, planning, design trade-offs, tricky SQL. Not for formatting, extraction or simple classification, where it only adds cost and latency. I decide per step using the eval: if accuracy does not improve, I turn it off.

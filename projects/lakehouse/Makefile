@@ -35,3 +35,8 @@ ps:
 	$(DC) --profile airflow --profile clickhouse ps
 logs:
 	$(DC) logs -f --tail 50
+break:         ## inject a failure for the on-call agent: make break CASE=schema|dupes
+	@case=$(or $(CASE),schema); \
+	if [ $$case = schema ]; then $(SPARK) python3 -c "import pyarrow.parquet as pq, pyarrow.fs as fs, io; s=fs.S3FileSystem(endpoint_override='http://s3:8333',access_key='admin',secret_key='password',scheme='http',region='us-east-1'); t=pq.read_table('landing/trips/dt=2026-10-07/part-0000.parquet',filesystem=s); t=t.rename_columns(['fare' if c=='fare_inr' else c for c in t.column_names]); pq.write_table(t,'landing/trips/dt=2026-10-09/part-0000.parquet',filesystem=s); print('wrote a day where fare_inr was renamed to fare')"; \
+	elif [ $$case = dupes ]; then $(SPARK) aws --endpoint-url http://s3:8333 s3 cp s3://landing/trips/dt=2026-10-07/part-0000.parquet s3://landing/trips/dt=2026-10-07/part-0001.parquet; echo "re-uploaded a day under a new file name"; fi; \
+	$(SPARK) python3 /home/iceberg/jobs/bronze_zero_copy.py | head -2; $(DC) exec -T trino trino --file /dev/stdin < jobs/silver.sql >/dev/null 2>&1; echo "pipeline re-ran; now run: make check"

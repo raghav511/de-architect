@@ -1,0 +1,20 @@
+{"log": "Container killed: exit code 137 after 41 minutes in stage 4", "label": "oom"}
+{"log": "java.lang.OutOfMemoryError: Java heap space at ShuffleExternalSorter", "label": "oom"}
+{"log": "ExecutorLostFailure: container exceeded memory limits 12.1 GB of 12 GB", "label": "oom"}
+{"log": "Killed by signal 9 (exit code 137) while writing parquet", "label": "oom"}
+{"log": "AnalysisException: cannot resolve column 'fare_amt' given input columns", "label": "schema_change"}
+{"log": "Column rider_uuid not found in schema of table bronze.trips", "label": "schema_change"}
+{"log": "Parquet schema mismatch: expected INT64 for trip_id, found BINARY", "label": "schema_change"}
+{"log": "dbt: column \"city_name\" does not exist", "label": "schema_change"}
+{"log": "Task exceeded timeout of 3600 seconds", "label": "timeout"}
+{"log": "ReadTimeoutError: HTTPSConnectionPool timed out after 300s", "label": "timeout"}
+{"log": "SnowflakeOperator: statement timed out after 2 hours", "label": "timeout"}
+{"log": "Sensor timed out waiting for s3://landing/trips/dt=2026-10-02/_SUCCESS", "label": "upstream_missing"}
+{"log": "FileNotFoundError: s3://landing/events/dt=2026-10-03/ does not exist", "label": "upstream_missing"}
+{"log": "upstream task load_orders in state upstream_failed", "label": "upstream_missing"}
+{"log": "No data for partition 2026-10-04 in source table orders_raw", "label": "upstream_missing"}
+{"log": "AccessDenied: s3:PutObject on arn:aws:s3:::warehouse", "label": "permission"}
+{"log": "psycopg2.errors.InsufficientPrivilege: permission denied for table payments", "label": "permission"}
+{"log": "403 Forbidden: service account lacks bigquery.jobs.create", "label": "permission"}
+{"log": "Trino: Access Denied: Cannot drop table lake.bronze.trips", "label": "permission"}
+{"log": "Exit code 137 in task transform_trips, node memory pressure", "label": "oom"}

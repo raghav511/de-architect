@@ -1,0 +1,240 @@
+@@meta
+id: a03
+n: 3
+title: Autonomous agents for data engineering, and what is new
+goal: An agent that runs on its own against your lakehouse: it plans, works in steps with checkpoints, uses tools through MCP, reports with evidence, and asks before anything irreversible. Plus the newest ideas in agents and how to judge them.
+hours: 8
+
+@@tickets
+A301 | learn | 0.75 | Chapter part 1: long-running agents | You can explain checkpoints, progress files and resumability, and why one change per step matters. | chapter:0-1
+A302 | learn | 0.75 | Chapter part 2: multi-agent systems and MCP | You can say when a second agent helps, and what an MCP server exposes. | chapter:2-3
+A303 | learn | 0.75 | Chapter part 3: the on-call data agent, and what is new | You can design an on-call agent end to end and explain two current developments. | chapter:4-6
+A304 | build | 1.25 | Lab 9: an MCP server for your lakehouse | Your MCP server exposes read-only `run_sql`, `list_tables` and `describe_table`, and a client lists them. | lab
+A305 | build | 1.25 | Lab 10: the on-call agent | Given a broken pipeline run, the agent finds the cause, proposes a patch as a diff and stops for approval. | lab
+A306 | ai | 1 | Lab 11: evaluate the agent end to end | 10 injected failures, scored on correct cause, safe actions and cost per incident. | lab
+A307 | test | 0.5 | Quiz A3 | 80% or better. | quiz
+A308 | talk | 0.75 | Interview set A3 | 6 of 8 answered out loud and ticked. | interview
+A309 | practice | 0.5 | Agent design drills | Three agent designs critiqued and compared with the model answers. | practice
+
+@@readings
+- [Model Context Protocol](https://modelcontextprotocol.io/). Read "Introduction" and "Server concepts" (tools, resources, prompts).
+- [Anthropic: Effective harnesses for long-running agents](https://www.anthropic.com/engineering). Search the engineering blog; read the parts on progress files and initialiser agents.
+- [Anthropic: How we built our multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system). When parallel subagents pay off, and what they cost.
+- [OWASP: excessive agency](https://genai.owasp.org/llm-top-10/). The risk list for agents that act.
+
+@@chapter
+## A3.1 Long-running agents
+
+A task that takes hours (migrating 40 dbt models, backfilling a month) does not fit in one context window. Long-running harnesses split work into **sessions** that each start fresh and pick up from files:
+
+- **Plan file**: the full list of sub-tasks with a status each. The first session writes it; later ones only update it.
+- **Progress file**: what was done, what is next, open questions, links to evidence.
+- **Checkpoints**: commit after each sub-task, so a bad step can be reverted and a crash loses at most one step.
+- **One change per step**, verified before moving on. Agents that try to do everything at once leave half-finished work.
+- **Initialiser + worker**: one agent sets up the environment and plan; workers each take the next open item.
+
+Resumability is the test: kill the agent mid-task, start a new session, and it should continue from the files without redoing work.
+
+## A3.2 Planning, budgets and honesty
+
+Autonomous agents need explicit rules for when to stop:
+
+- **Definition of done** per sub-task, checked by code (tests, row counts, checks).
+- **Escalate instead of guessing**: if the same error appears three times, write the question to the progress file and stop.
+- **Budget per sub-task and overall**; report cost per completed item.
+- **Report with evidence**: every claim links to a log line, query result or test output.
+
+## A3.3 Multi-agent systems
+
+An **orchestrator** splits a task and gives parts to **subagents**, each with its own fresh context, then merges the results. It helps when parts are **independent and parallel** (research 6 sources, review 10 files). It hurts when parts are tightly coupled (one SQL model), because handoffs lose context and cost multiplies; multi-agent runs can use several times the tokens of a single agent.
+
+Good patterns: **reviewer** agent with a different prompt checking the worker's output; **cheap small-model subagents** for search and summarising, a **large model** only for decisions.
+
+## A3.4 MCP: tools as a standard
+
+The **Model Context Protocol** is an open standard for giving agents tools and data. An **MCP server** exposes:
+
+- **Tools**: functions the model can call (`run_sql`, `list_dag_runs`).
+- **Resources**: read-only data (a table schema, a runbook).
+- **Prompts**: reusable templates.
+
+Any MCP-capable client (coding assistants, desktop apps, your own harness) can then use them. For data platforms: wrap your warehouse with a **read-only** role, limit rows returned, log every query, and never expose credentials to the model.
+
+## A3.5 The on-call data agent
+
+A complete design you will build in lab 10:
+
+```
+Airflow failure ──► trigger ──► agent
+   tools: get_task_log(tail), get_dag_code, run_sql (read-only), get_recent_changes(git log),
+          propose_patch (writes a branch + diff, cannot merge)
+   loop:  read log tail → form hypothesis → gather evidence → verify with a query → propose fix
+   stop:  confident with evidence → post report + diff, ask for approval
+          budget hit or no progress → post what it knows and the open question
+```
+
+Evaluation: inject 10 known failures (schema change, OOM, late upstream, bad credentials, duplicate rerun). Score: correct cause, cited evidence, no unsafe action, minutes and cost per incident.
+
+## A3.6 What is new in agents (October 2026)
+
+The field moves weekly, so this section is refreshed by the program's weekly research update. Concepts worth knowing now, with reports to read:
+
+- **Very long-horizon harnesses.** Product teams report agents running a single task for over a day, built on the progress-file and checkpoint patterns above, plus **model routers** that pick a model per step. ([news roundup](https://aiagentstore.ai/ai-agent-news/2026-october))
+- **Small models with very long context for subagents.** Cheap models with around a million tokens of context make "read everything, then summarise for the big model" practical. Anthropic's Claude Haiku 5.5 is one such model. Use them for search, triage and extraction steps.
+- **Always-on agents** that keep working toward a goal between conversations. The engineering questions are the ones in A3.2: budgets, escalation and evidence.
+- **Agent swarms**: some open models are reported to coordinate very large numbers of parallel agents. Treat claims like this with the A3.3 test: are the parts really independent, and what does it cost per useful result?
+- **Harness engineering as a discipline** (see A1.3): teams now measure agents by cost per merged pull request or per resolved incident, not by demo quality.
+
+How to judge any new development: what problem does it remove, what does it cost per successful task, can you evaluate it on your own eval set within a day, and what new risk does it add?
+
+## A3.7 From your lab to an interview story
+
+You will be asked: "Have you built an agent that runs in production?" Your answer: the on-call agent. Problem, harness design, guardrails, evals with numbers, cost per incident, one failure you found and the harness change that fixed it.
+
+@@lab
+## Lab 9: an MCP server for your lakehouse (1 hour 15 minutes)
+
+`labs/lab9_mcp_server.py` uses the official MCP Python SDK. Implement three tools against Trino (or DuckDB if the lakehouse is not running): `list_tables`, `describe_table(name)`, `run_sql(query)` with a read-only check (reject anything that is not `SELECT`/`WITH`/`SHOW`/`DESCRIBE`), a 200-row limit and a log line per query. Run `python labs/lab9_client.py` to list and call the tools.
+
+## Lab 10: the on-call agent (1 hour 15 minutes)
+
+Use the lakehouse project. Break something on purpose: `make break CASE=schema` renames a column in landing files. Then `python labs/lab10_oncall.py`: the agent reads `make check` output and job logs through tools, queries Bronze and Silver, and writes `reports/incident-<date>.md` with cause, evidence and a proposed patch as a diff. It must stop and ask before changing any file.
+
+## Lab 11: evaluate the agent end to end (1 hour)
+
+`labs/lab11_eval.py` runs 10 injected cases. Report: correct cause rate, evidence quoted rate, unsafe action count (must be 0), mean steps, mean cost. Add the two worst transcripts to `reports/lab11.md` with the harness change you would make.
+
+@@practice
+## Agent design drills (30 minutes)
+
+Critique each design, then check the model answers.
+
+1. "An agent with admin credentials that fixes any failed DAG and reruns it."
+2. "Ten subagents, each writes one part of the same SQL model."
+3. "A nightly agent that summarises Slack and posts a digest."
+
+**Model answers:** 1, excessive agency: give read-only tools, let it propose a patch on a branch, require approval to merge and rerun, add budgets and evidence. 2, tightly coupled parts: use one agent with a plan file, or one writer and one reviewer. 3, fine as a workflow, not an agent: fetch, summarise, post; treat message content as data (injection), cap length, idempotent per date.
+
+@@quiz
+TYPE: mcq
+TAG: ai
+Q: What lets a long-running agent resume after a crash without redoing work?
+A) A longer context window
+B) Plan and progress files plus a commit after each verified sub-task
+C) Running it twice
+D) A bigger model
+ANS: B
+WHY: Files and checkpoints carry state across fresh sessions.
+---
+TYPE: mcq
+TAG: ai
+Q: When do multiple agents beat a single agent?
+A) Always
+B) When parts of the task are independent and can run in parallel
+C) When the task is one tightly coupled SQL model
+D) When you want lower cost
+ANS: B
+WHY: Coupled work loses context in handoffs, and multi-agent runs cost more tokens.
+---
+TYPE: fill
+TAG: ai
+Q: MCP stands for Model Context ____.
+ANS: Protocol
+WHY: An open standard for exposing tools, resources and prompts to agents.
+---
+TYPE: mcq
+TAG: ai
+Q: Which three things can an MCP server expose?
+A) Models, weights and GPUs
+B) Tools, resources and prompts
+C) Users, roles and passwords
+D) Tables, views and indexes
+ANS: B
+WHY: Tools are callable, resources are readable data, prompts are templates.
+---
+TYPE: mcq
+TAG: ai
+Q: The on-call agent is confident it found the cause. What should it do next?
+A) Apply the fix and rerun production
+B) Post the report with evidence and a proposed diff, then wait for approval
+C) Delete the failed run
+D) Keep searching until the budget is used
+ANS: B
+WHY: Irreversible actions need a human gate.
+---
+TYPE: mcq
+TAG: ai
+Q: The same error appears three times in an autonomous run. Best behaviour?
+A) Retry forever
+B) Escalate: write the open question to the progress file and stop
+C) Switch to admin credentials
+D) Delete the logs
+ANS: B
+WHY: Escalate instead of guessing; it is cheaper and safer.
+---
+TYPE: short
+TAG: ai
+Q: Give four questions to ask about any new AI development before adopting it.
+MODEL: What problem does it remove? What does it cost per successful task? Can I evaluate it on my eval set quickly? What new risk does it add?
+ANS: problem; cost per success; evaluable; new risk
+WHY: Hype filter.
+---
+TYPE: mcq
+TAG: ai
+Q: A good use of a small, cheap, long-context model inside an agent system is...
+A) Final design decisions
+B) Reading large inputs and extracting what the big model needs
+C) Approving merges
+D) Writing passwords
+ANS: B
+WHY: Route cheap bulk reading to small models, decisions to large ones.
+---
+TYPE: mcq
+TAG: ai
+Q: How should an MCP `run_sql` tool for a warehouse be protected?
+A) Admin role, no limits
+B) Read-only role, statement allow-list, row limit and query log
+C) Let the model choose the role
+D) Disable logging for speed
+ANS: B
+WHY: Least privilege and observability.
+---
+TYPE: short
+TAG: ai
+Q: How do you score an on-call agent?
+MODEL: Injected failures with known causes; correct cause rate, evidence quoted, zero unsafe actions, steps and cost per incident.
+ANS: correct cause; evidence; unsafe actions; cost
+WHY: Outcome, honesty, safety and cost.
+
+@@interview
+Q: Tell me about an agent you built that runs without a human.
+TAG: ai
+A: Use the on-call agent: trigger on Airflow failure; tools for log tail, DAG code, read-only SQL and git history; loop of hypothesis and evidence; output is a report and a proposed diff that waits for approval. Numbers: cause found in 8 of 10 injected incidents, zero unsafe actions, about N cents and M minutes per incident. One failure: it blamed the wrong table when two had similar names; fix was a describe_table tool and a rule to verify with a query before concluding.
+---
+Q: How do you design an agent for a task that takes many hours?
+TAG: ai
+A: Initialiser writes a plan file and sets up the environment; workers take one sub-task at a time in a fresh context, verify it with code, commit, and update a progress file. Budgets per item and overall; escalate on repeated failure; resumable from files at any point.
+---
+Q: When would you use multiple agents?
+TAG: ai
+A: When parts are independent and parallel, such as researching many sources or reviewing many files, and a reviewer agent with a different prompt for quality. Not for tightly coupled work, where one agent with a plan is cheaper and more coherent.
+---
+Q: What is MCP and why does it matter for data teams?
+TAG: ai
+A: An open protocol for exposing tools, resources and prompts to any agent client. A data team writes one governed MCP server for the warehouse and pipelines (read-only, limited, logged) and every assistant uses it, instead of each tool getting its own credentials and ad-hoc integration.
+---
+Q: How do you stop an autonomous agent from doing damage?
+TAG: ai
+A: Least privilege, approval gates for irreversible actions, budgets, sandboxed execution, content treated as data to prevent injection, traces and alerts, and an eval suite that includes attack cases.
+---
+Q: How do you keep up with AI developments without chasing hype?
+TAG: ai
+A: A weekly review of a few primary sources; for anything promising, I ask what problem it removes, its cost per successful task and its risks, and I test it on my own eval set within a day before adopting it.
+---
+Q: What would you measure to decide if agents are worth it for your team?
+TAG: ai
+A: Cost and time per resolved task compared with the human baseline, quality (rework rate, defects), and risk incidents. For coding agents, cost per merged PR and review time; for on-call, time to diagnosis and false-cause rate.
+---
+Q: How do you route work between small and large models?
+TAG: ai
+A: Per step, using the eval: classification, extraction and search on small models; diagnosis and design on large ones; escalate to the large model when the small one's confidence or a verifier fails. Track cost per successful task to confirm the routing saves money.

@@ -1,0 +1,82 @@
+{
+ "a01": {
+  "title": "An LLM gateway for your company",
+  "prompt": "Every team calls LLM APIs directly with their own keys. Design one gateway: 40 services, 2 million requests a day, peak 5x average, average 1,500 input and 300 output tokens. Needs: per-team budgets, model routing (small vs large), prompt caching, retries, logging of cost per request, and no keys in services.",
+  "deliverable": "A one-page design: diagram (clients → gateway → providers), the request path, how routing and budgets work, a cost estimate per day at two model prices, and two trade-offs."
+ },
+ "a02": {
+  "title": "An evaluation platform for LLM features",
+  "prompt": "Ten product teams ship prompts and agents. Design a platform that stores eval sets, runs them on every prompt or model change in CI, supports code graders and calibrated model judges, and blocks releases that regress. 50 suites × 200 cases, run on every pull request.",
+  "deliverable": "Diagram, data model (suite, case, run, score), the CI flow, how judges are calibrated, cost per full run, and what you would cut for version 1."
+ },
+ "a03": {
+  "title": "A platform for autonomous data agents",
+  "prompt": "Agents will triage pipeline failures, answer data questions and propose dbt fixes for 300 data users. Design the runtime: MCP tool servers, permissions, approval gates, budgets, traces and evaluation. Agents must never write to production without approval.",
+  "deliverable": "Diagram, permission model per tool, the approval flow, what is logged and for how long, how you measure success, and the riskiest failure mode with its mitigation."
+ },
+ "s00": {
+  "title": "Your study system as a data product",
+  "prompt": "Warm-up: design how this app could store your progress for 3 devices with offline use and sync once a day.",
+  "deliverable": "Five boxes, where state lives, and one conflict case with how you resolve it."
+ },
+ "s01": {
+  "title": "Rides analytics from scratch",
+  "prompt": "A ride-hailing company has 2 million trips a day in 6 cities. Product wants hourly completed trips per city with at most 1 hour delay. Design ingestion, storage, processing, serving and orchestration.",
+  "deliverable": "Back-of-envelope (events/s, GB/day), a five-box diagram, where each tool sits, and a decision record for Kafka vs direct writes."
+ },
+ "s02": {
+  "title": "A lake that survives growth",
+  "prompt": "Trips grow 10x to 20 million a day. Queries over 2 years of data take minutes and small files keep appearing. Design the table layout and maintenance.",
+  "deliverable": "Partitioning and sort choices with reasons, file size targets, compaction and snapshot expiry schedule, and before/after query cost estimate."
+ },
+ "s03": {
+  "title": "Spark at 20x scale",
+  "prompt": "The daily Silver job grows from 30 GB to 600 GB and one city is 40% of the data. Design cluster sizing and the job so it finishes within 1 hour.",
+  "deliverable": "Executor sizing maths, how you handle skew, shuffle partitions, and what you monitor in the Spark UI."
+ },
+ "s04": {
+  "title": "A warehouse people trust",
+  "prompt": "Finance and product disagree on \"revenue\". Design the dimensional model and the semantic layer so both get the same number.",
+  "deliverable": "Fact and dimension tables with grain, SCD choices, metric definitions, tests, and ownership."
+ },
+ "s05": {
+  "title": "Surge pricing in real time",
+  "prompt": "Compute supply and demand per city zone every 30 seconds from 50,000 events per second, with late events up to 2 minutes.",
+  "deliverable": "Streaming topology, windowing and watermarks, state size estimate, exactly-once sink, and what happens when the job restarts."
+ },
+ "s06": {
+  "title": "Source of truth with CDC",
+  "prompt": "Orders live in Postgres (5,000 writes/s). Analytics needs every change in the lakehouse within 5 minutes, including deletes.",
+  "deliverable": "CDC pipeline, ordering and deduplication, how deletes and schema changes flow, and the reconciliation check."
+ },
+ "s07": {
+  "title": "Move it to AWS for under $3,000 a month",
+  "prompt": "Lift the platform to AWS. Budget $3,000/month. Design services, IAM, networking and cost controls.",
+  "deliverable": "Service map, IAM roles per job, a monthly cost table, and three cost guardrails."
+ },
+ "s08": {
+  "title": "Two engines, one set of tables",
+  "prompt": "Data science uses Databricks, analytics uses Snowflake. Design storage and governance so both read the same tables without copies.",
+  "deliverable": "Table format and catalog choice, access control model, lineage, and the interop trade-offs."
+ },
+ "s09": {
+  "title": "Reliability you can measure",
+  "prompt": "The CEO dashboard was wrong three times last quarter. Design SLOs, data contracts, tests and on-call for the top 20 tables.",
+  "deliverable": "SLO definitions, contract format, test layers, alert routing, and the incident process."
+ },
+ "s10": {
+  "title": "A full design round (45 minutes)",
+  "prompt": "Design a real-time driver earnings service: 1 million drivers check earnings 5 times a day; numbers must match payouts.",
+  "deliverable": "Follow the six steps: requirements, estimate, high-level design, deep dive, trade-offs, wrap-up."
+ },
+ "s11": {
+  "title": "In front of the customer",
+  "prompt": "A logistics customer wants \"AI insights on delays\" in 6 weeks. Run discovery and design the smallest useful first release.",
+  "deliverable": "Ten discovery questions, a metric tree, a v1 scope, and a one-page proposal with risks."
+ },
+ "s12": {
+  "title": "Architecture review board",
+  "prompt": "Present your platform to a review board. Defend three decisions and answer \"what breaks at 10x?\".",
+  "deliverable": "C4 context and container diagrams, three ADRs, and a 10x risk list."
+ }
+}

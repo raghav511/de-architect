@@ -1,6 +1,6 @@
 /* Keystone · DE architect prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -25,6 +25,7 @@ const I = {
   quiz: '<path d="M9 6h11M9 12h11M9 18h11M4 6h1M4 12h1M4 18h1"/>', proj: '<path d="M3 7l9-4 9 4-9 4z"/><path d="M3 12l9 4 9-4M3 17l9 4 9-4"/>', prog: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', sync: '<path d="M20 11a8 8 0 00-14-5L4 8M4 13a8 8 0 0014 5l2-2M4 4v4h4M20 20v-4h-4"/>',
   update: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>', back: '<path d="M15 18l-6-6 6-6"/>', fwd: '<path d="M9 6l6 6-6 6"/>', dbl_l: '<path d="M18 6l-6 6 6 6M11 6l-6 6 6 6"/>', dbl_r: '<path d="M6 6l6 6-6 6M13 6l6 6-6 6"/>',
   check: '<path d="M5 12l5 5 9-10" stroke="#fff" stroke-width="3"/>', spark: '<path d="M12 3l1.8 4.6L18 9.4l-4.2 1.8L12 16l-1.8-4.8L6 9.4l4.2-1.8z"/><path d="M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
+  git: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 7v10M18 11c0 4-6 3-11 7"/>', news: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/>',
   term: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'
 };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -77,13 +78,14 @@ async function loadData() {
   const [d, q, p] = await Promise.all(['dsa', 'sql', 'spark'].map(n => fetch('data/bank/' + n + '.json').then(r => r.json())));
   DATA.dsa = d; DATA.sql = q; DATA.spark = p;
   try { DATA.projects = await fetch('data/projects.json').then(r => r.json()); } catch (e) { DATA.projects = []; }
+  await loadModules();
 }
 const byWeek = (arr, w) => arr.filter(x => x.w === w);
 const findQ = id => DATA.dsa.find(x => x.id === id) || DATA.sql.find(x => x.id === id) || DATA.spark.find(x => x.id === id);
-function sprintFile(w) { return 'data/program/s' + String(w).padStart(2, '0') + '.txt'; }
 async function sprint(w) {
+  w = midOf(w);
   if (DATA.sprints[w]) return DATA.sprints[w];
-  const t = await fetch(sprintFile(w)).then(r => { if (!r.ok) throw new Error('missing'); return r.text(); });
+  const t = await fetch('data/program/' + w + '.txt').then(r => { if (!r.ok) throw new Error('missing'); return r.text(); });
   return (DATA.sprints[w] = parseSprint(t));
 }
 function splitSections(text) { const out = {}; let name = null, buf = []; text.split(/\r?\n/).forEach(l => { const m = /^@@([a-z]+)\s*$/.exec(l); if (m) { if (name) out[name] = buf.join('\n'); name = m[1]; buf = []; } else buf.push(l); }); if (name) out[name] = buf.join('\n'); return out; }
@@ -133,19 +135,18 @@ function confirmBox(title, body, actions) {
 }
 function lightbox(src) { const lb = el('div', { class: 'lightbox', role: 'dialog', 'aria-label': 'Image', onclick: () => lb.remove() }, [el('img', { src, alt: '' })]); document.body.appendChild(lb); }
 function mdEl(s, cls) { const d = el('div', { class: cls || 'prose', html: md(s) }); d.querySelectorAll('table').forEach(t => { const w = el('div', { class: 'scroll' }); t.parentNode.insertBefore(w, t); w.appendChild(t); }); d.querySelectorAll('a[href^="http"]').forEach(a => { a.target = '_blank'; a.rel = 'noopener'; }); d.querySelectorAll('img').forEach(i => { i.loading = 'lazy'; i.addEventListener('click', () => lightbox(i.src)); }); return d; }
-function chipFor(k) { return { dsa: ['DSA', 'c-dsa'], core: ['Core DE', 'c-core'], arch: ['Architecture', 'c-arch'], ai: ['Agentic AI', 'c-ai'], sql: ['SQL', 'c-sql'], spark: ['PySpark', 'c-spark'], test: ['Check', 'c-test'], talk: ['Interview', 'c-test'] }[k] || [k, 'c-test']; }
+function chipFor(k) { return { dsa: ['DSA', 'c-dsa'], core: ['Core DE', 'c-core'], arch: ['Architecture', 'c-arch'], ai: ['Agentic AI', 'c-ai'], git: ['Git', 'c-git'], sql: ['SQL', 'c-sql'], spark: ['PySpark', 'c-spark'], test: ['Check', 'c-test'], talk: ['Interview', 'c-test'] }[k] || [k, 'c-test']; }
 function chip(k) { const c = chipFor(k); return el('span', { class: 'chip ' + c[1], text: c[0] }); }
 
 /* ---------------- shell ---------------- */
-const NAV = [['#/today', 'Today', 'today'], ['#/path', '12-week path', 'path'], ['#/learn/' + 0, 'Lessons', 'book'], ['#/practice', 'Practice', 'code'], ['#/projects', 'Weekly projects', 'proj'], ['#/design', 'System design', 'design'], ['#/quiz/0', 'Quizzes and mocks', 'quiz'], ['#/progress', 'Progress', 'prog']];
+const NAV = [['#/today', 'Today', 'today'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/git', 'Git lessons', 'git'], ['#/news', 'What is new in AI', 'news'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/progress', 'Progress', 'prog']];
 const TABS = [['#/today', 'Today', 'today'], ['#/path', 'Path', 'path'], ['#/practice', 'Practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'Design', 'design'], ['#/progress', 'Progress', 'prog']];
 function shell(title, eyebrow, body, opts) {
   opts = opts || {};
   const route = location.hash.split('/')[1] || 'today';
-  const wk = curWeek();
+  const sc = schedule(), wk = sc.cur, tu = sc.byDay[sc.today] || [], tdone = tu.filter(u => u.isDone).reduce((a, u) => a + u.mins, 0), tall = tu.reduce((a, u) => a + u.mins, 0);
   const nav = NAV.map(([h, t, ic]) => { const href = h.replace('/0', '/' + wk); return el('a', { class: 'nav', href, 'aria-current': href.split('/')[1] === route ? 'page' : null }, [svg(I[ic]), t]); });
-  const doneW = Object.keys(S.done).filter(k => k.startsWith('w' + wk + 'd')).length;
-  const side = el('nav', { class: 'side', 'aria-label': 'Main' }, [el('a', { class: 'brand', href: '#/today' }, [logo(), 'Keystone'])].concat(nav, [el('div', { class: 'week' }, [el('span', { class: 'lbl', style: { color: '#9FB0BF' }, text: 'Week ' + wk }), el('b', { style: { color: '#fff' }, text: WEEKS[wk - 1][0] }), el('div', { class: 'bar' }, el('i', { style: { width: Math.min(100, doneW / 0.35) + '%' } })), el('span', { style: { fontSize: '13px' }, text: doneW + ' blocks done this week' })])]));
+  const side = el('nav', { class: 'side', 'aria-label': 'Main' }, [el('a', { class: 'brand', href: '#/today' }, [logo(), 'Keystone'])].concat(nav, [el('a', { class: 'week', href: '#/path/' + wk, style: { color: 'inherit', textDecoration: 'none' } }, [el('span', { class: 'lbl', style: { color: '#9FB0BF' }, text: 'Module ' + modLabel(wk) + ' · week ' + weekOf(sc.today) }), el('b', { style: { color: '#fff' }, text: modTitle(wk) }), el('div', { class: 'bar' }, el('i', { style: { width: (tall ? Math.round(100 * tdone / tall) : 0) + '%' } })), el('span', { style: { fontSize: '13px' }, text: 'Today: ' + tdone + ' of ' + tall + ' min done' })])]));
   const tabbar = el('nav', { class: 'tabbar', 'aria-label': 'Main' }, TABS.map(([h, t, ic]) => el('a', { href: h, 'aria-current': h.split('/')[1] === route ? 'page' : null }, [svg(I[ic], 22), t])));
   const top = el('header', { class: 'top' }, [
     opts.back ? el('a', { class: 'btn icon', href: opts.back, 'aria-label': 'Back' }, svg(I.back)) : null,
@@ -169,17 +170,19 @@ function route() {
   const p = location.hash.replace(/^#\/?/, '').split('/');
   const r = p[0] || 'today';
   try {
-    if (r === 'today') vToday();
-    else if (r === 'path') vPath(+p[1] || curWeek());
-    else if (r === 'learn') vLearn(+p[1] || curWeek(), p[2] || 'chapter');
+    if (r === 'today') vToday(p[1]);
+    else if (r === 'path') vPath(p[1]);
+    else if (r === 'learn') vLearn(p[1] === '0' ? '' : p[1], p[2] || 'chapter', p[3]);
+    else if (r === 'git') vGit(p[1]);
+    else if (r === 'news') vNews();
     else if (r === 'dsa') vWork('dsa', p[1]);
     else if (r === 'sql') vWork('sql', p[1]);
     else if (r === 'spark') vWork('spark', p[1]);
-    else if (r === 'test') vWork('test', p[1] + '/' + p[2]);
+    else if (r === 'test') vWork('test', midOf(p[1]) + '/' + p[2]);
     else if (r === 'practice') vPractice(p[1] || 'all');
-    else if (r === 'design') vDesign();
-    else if (r === 'quiz') vQuiz(+p[1] || curWeek());
-    else if (r === 'interview') vInterview(+p[1] || curWeek());
+    else if (r === 'design') vDesign(p[1]);
+    else if (r === 'quiz') vQuiz(p[1]);
+    else if (r === 'interview') vInterview(p[1]);
     else if (r === 'progress') vProgress();
     else if (r === 'projects') vProjects();
     else if (r === 'project') vProject(p[1]);
@@ -187,113 +190,11 @@ function route() {
   } catch (e) { console.error(e); shell('Something went wrong', '', [el('div', { class: 'card pad' }, [el('p', { text: String(e.message || e) }), el('a', { class: 'btn', href: '#/today', text: 'Back to Today' })])]); }
 }
 
-/* ---------------- Today ---------------- */
-function plan(w, d) {
-  const ds = byWeek(DATA.dsa, w), qs = byWeek(DATA.sql, w), ps = byWeek(DATA.spark, w), W = WEEKS[w - 1];
-  const B = (id, tr, mins, title, sub, href, cta) => ({ id: 'w' + w + 'd' + d + id, tr, mins, title, sub, href, cta });
-  const dsa = ds[d] ? B('dsa', 'dsa', '20 min', ds[d].t, 'DSA ' + (7 * (w - 1) + d + 1) + ' of 84 · ' + ds[d].lv + ' · ' + W[4], '#/dsa/' + ds[d].id, 'Solve') : null;
-  const sq = i => qs[i] ? B('sql' + i, 'sql', '15 min', qs[i].t, 'SQL · ' + (qs[i].k === 'O' ? 'optimize' : 'write') + ' · ' + qs[i].lv, '#/sql/' + qs[i].id, qs[i].k === 'O' ? 'Optimize' : 'Write') : null;
-  const sp = i => ps[i] ? B('spark' + i, 'spark', '15 min', ps[i].t, 'PySpark · ' + (ps[i].k === 'O' ? 'optimize' : 'write') + ' · ' + ps[i].lv, '#/spark/' + ps[i].id, ps[i].k === 'O' ? 'Optimize' : 'Write') : null;
-  const pj = DATA.projects.find(x => x.w === w);
-  const proj = () => pj ? B('proj', 'core', pj.status === 'ready' ? '2–3 h' : 'plan', 'Weekly project: ' + pj.title, pj.status === 'ready' ? 'Real environment in Codespaces or on your MacBook' : 'Brief and plan; the environment comes in a later update', '#/project/' + pj.id, pj.status === 'ready' ? 'Build' : 'Read') : null;
-  const days = [
-    [dsa, B('les1', 'core', '30 min', 'Lesson: ' + W[0] + ' (part 1)', W[1], '#/learn/' + w + '/chapter', 'Read'), sq(0)],
-    [dsa, B('les2', 'core', '30 min', 'Lesson part 2 and the readings', W[5], '#/learn/' + w + '/readings', 'Read'), B('agent', 'ai', '25 min', 'Agent lab: ' + W[3], 'Build it in your repo, then check it here', '#/learn/' + w + '/lab', 'Build'), sp(0)],
-    [dsa, B('arch', 'arch', '25 min', 'Architecture drill: ' + W[2], 'Estimate, draw, defend one trade-off', '#/design', 'Design'), sq(1), sp(1)],
-    [dsa, B('build', 'core', '40 min', 'Build: this week\'s piece of the platform', 'Follow the lab steps', '#/learn/' + w + '/lab', 'Open lab'), sq(2), sp(2)],
-    [dsa, B('practice', 'core', '25 min', 'Practice set and warm-ups', 'SQL and DSA warm-ups from your interview files', '#/learn/' + w + '/practice', 'Practise'), sq(3), sp(3)],
-    [dsa, B('quiz', 'test', '20 min', 'Weekly quiz', 'Multiple choice, fill in the blank, short answer', '#/quiz/' + w, 'Start'), B('ctest', 'test', '60 min', 'Timed coding test', 'Sprint coding test with real tests', '#/practice/tests', 'Open'), sq(4)],
-    [dsa, B('iv', 'talk', '45 min', 'Interview set and mock', 'Past questions with model answers', '#/interview/' + w, 'Practise'), proj(), sp(4)]
-  ];
-  return days[d].filter(Boolean);
-}
-function vToday() {
-  const w = curWeek(), d = curDay();
-  const DN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const blocks = plan(w, d);
-  const list = el('div', { class: 'stack', style: { gap: '10px' } });
-  const draw = () => {
-    list.textContent = '';
-    blocks.forEach(b => {
-      const done = !!S.done[b.id];
-      list.appendChild(el('div', { class: 'block' + (done ? ' done' : '') }, [
-        el('button', { class: 'check', 'aria-pressed': String(done), 'aria-label': (done ? 'Mark not done: ' : 'Mark done: ') + b.title, onclick: () => { if (done) delete S.done[b.id]; else S.done[b.id] = 1; save(); draw(); count.textContent = cnt(); } }, done ? svg(I.check, 16) : null),
-        el('div', { class: 'grow stack', style: { gap: '3px' } }, [el('div', { class: 'row', style: { gap: '8px' } }, [chip(b.tr), el('span', { class: 'muted', style: { fontSize: '13px' }, text: b.mins })]), el('span', { class: 't', text: b.title }), el('span', { class: 's', text: b.sub })]),
-        el('a', { class: 'btn', href: b.href, text: b.cta })]));
-    });
-  };
-  const cnt = () => blocks.filter(b => S.done[b.id]).length + ' of ' + blocks.length + ' done';
-  const count = el('span', { class: 'muted', text: cnt() });
-  draw();
-  const dayPicker = el('div', { class: 'row wrap', style: { gap: '6px' } }, [el('label', { class: 'lbl', for: 'wk', text: 'Week' }),
-    el('select', { id: 'wk', class: 'btn sm', onchange: e => { S.week = +e.target.value || null; S.dayPick = 0; save(); vToday(); } }, [el('option', { value: '', text: 'Auto (week ' + Math.min(12, Math.floor(dayIndex() / 7) + 1) + ')' })].concat(WEEKS.map((x, i) => el('option', { value: i + 1, selected: S.week === i + 1 ? 'selected' : null, text: (i + 1) + ' · ' + x[0] })))),
-    S.week ? el('div', { class: 'seg' }, DN.map((n, i) => el('button', { 'aria-selected': String(i === d), onclick: () => { S.dayPick = i; save(); vToday(); }, text: n.slice(0, 3) }))) : null]);
-  const map = MAPS[w - 1];
-  const flow = el('div', { class: 'flow', 'aria-label': 'Mental map: ' + map.join(' to ') }, map.map((m, i) => el('span', { style: { background: PALETTE[i][0], color: PALETTE[i][1] }, text: m })).concat([el('span', { class: 'dot' })]));
-  const ds = byWeek(DATA.dsa, w);
-  const streak = (() => { let n = 0; for (let i = 7 * (w - 1) + d - 1; i >= 0; i--) { const x = DATA.dsa[i]; if (x && S.solved[x.id]) n++; else break; } return n; })();
-  const h = new Date().getHours();
-  shell('Today', 'Week ' + w + ' · ' + DN[d] + ' · ' + WEEKS[w - 1][0], [
-    el('div', { class: 'stack', style: { gap: '4px' } }, [el('h1', { text: (h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening') + ', Raghavendra' }), el('span', { class: 'muted', text: 'About 90 minutes. Every block works on the same platform, so the pieces connect.' })]),
-    dayPicker,
-    el('div', { class: 'grid2' }, [
-      el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('h2', { class: 'grow', text: 'Today\'s plan' }), count]), list]),
-      el('div', { class: 'stack', style: { gap: '18px' } }, [
-        el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('h3', { class: 'grow', text: 'Mental map of the week' }), el('a', { href: '#/learn/' + w, text: 'Open lesson' })]), flow, el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Orange dot: one trip event moving through this week\'s platform. The map grows each week.' })]),
-        el('section', { class: 'card pad stack', style: { borderColor: '#D9C6E6' } }, [el('span', { class: 'lbl', style: { color: 'var(--plum-d)' }, text: 'Architect lens · week ' + w }), el('b', { style: { fontSize: '17px' }, text: WEEKS[w - 1][2] }), el('span', { class: 'muted', text: 'Write a five-line decision record: context, options, choice, cost, what would make you change it.' }), el('a', { class: 'btn', href: '#/design', style: { alignSelf: 'flex-start' }, text: 'Open the design studio' })]),
-        el('section', { class: 'card pad row' }, [el('div', { class: 'grow stack', style: { gap: '2px' } }, [el('span', { class: 'lbl', text: 'DSA streak' }), el('b', { style: { font: '800 30px var(--display)' }, text: streak + (streak === 1 ? ' day' : ' days') }), el('span', { class: 'muted', text: WEEKS[w - 1][4] })]),
-          el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(7,18px)', gap: '5px' }, 'aria-label': 'This week\'s DSA problems' }, ds.map((x, i) => el('a', { href: '#/dsa/' + x.id, title: x.t, style: { width: '18px', height: '18px', borderRadius: '4px', display: 'block', background: S.solved[x.id] ? 'var(--teal)' : i === d ? '#fff' : '#E6E9E2', border: i === d && !S.solved[x.id] ? '2px solid var(--amber-b)' : '0' } })))])])])]);
-}
-
-/* ---------------- Path ---------------- */
-function vPath(w) {
-  const W = WEEKS[w - 1];
-  const weeks = el('div', { class: 'weeks', role: 'tablist', 'aria-label': 'Weeks' }, WEEKS.map((x, i) => el('button', { 'aria-current': String(i + 1 === w), class: i + 1 === curWeek() ? 'cur' : '', 'aria-label': 'Week ' + (i + 1) + ': ' + x[0], onclick: () => { location.hash = '#/path/' + (i + 1); }, text: String(i + 1) })));
-  const sec = (title, kind, items, href) => el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [chip(kind), el('h3', { class: 'grow', text: title })]),
-    el('div', { class: 'list' }, items.map(x => el('a', { class: 'item', href: href(x) }, [el('span', { class: 'grow' }, [el('span', { class: 't', text: x.t }), el('br'), el('span', { class: 's', text: (x.k ? (x.k === 'O' ? 'Optimize · ' : 'Write · ') : '') + x.lv })]), S.solved[x.id] ? el('span', { class: 'ok', text: '✓' }) : null])))]);
-  shell('12-week path', 'Week ' + w + ' of 12', [weeks,
-    el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Week ' + w }), el('h1', { text: W[0] }),
-      el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', {}, [el('b', { style: { color: 'var(--blue-d)' }, text: 'Core DE. ' }), W[1]]), el('span', {}, [el('b', { style: { color: 'var(--plum-d)' }, text: 'Architecture. ' }), W[2]]), el('span', {}, [el('b', { style: { color: 'var(--amber-d)' }, text: 'Agentic AI. ' }), W[3]]), el('span', {}, [el('b', { style: { color: 'var(--teal-d)' }, text: 'DSA pattern. ' }), W[4]]), el('span', {}, [el('b', { text: 'Books. ' }), W[5]])]),
-      el('div', { class: 'row wrap' }, [el('a', { class: 'btn pri', href: '#/learn/' + w, text: 'Open the lesson' }), el('a', { class: 'btn', href: '#/quiz/' + w, text: 'Weekly quiz' }), el('a', { class: 'btn', href: '#/interview/' + w, text: 'Interview set' }), el('button', { class: 'btn', onclick: () => { S.week = w; S.dayPick = 0; save(); location.hash = '#/today'; }, text: 'Make this my current week' })])]),
-    el('div', { class: 'cols3' }, [sec('DSA · 7 problems', 'dsa', byWeek(DATA.dsa, w), x => '#/dsa/' + x.id), sec('SQL · 5 questions', 'sql', byWeek(DATA.sql, w), x => '#/sql/' + x.id), sec('PySpark · 5 questions', 'spark', byWeek(DATA.spark, w), x => '#/spark/' + x.id)])]);
-}
-
-/* ---------------- Learn ---------------- */
-async function vLearn(w, tab) {
-  const TABS2 = [['chapter', 'Chapter'], ['readings', 'Readings'], ['lab', 'Lab and agent'], ['practice', 'Warm-ups']];
-  const tabs = el('div', { class: 'tabs', role: 'tablist' }, TABS2.map(([k, n]) => el('button', { role: 'tab', 'aria-selected': String(k === tab), onclick: () => { location.hash = '#/learn/' + w + '/' + k; }, text: n })));
-  const weekSel = el('select', { class: 'btn sm', 'aria-label': 'Week', onchange: e => { location.hash = '#/learn/' + e.target.value + '/' + tab; } }, WEEKS.map((x, i) => el('option', { value: i + 1, selected: i + 1 === w ? 'selected' : null, text: 'Week ' + (i + 1) + ' · ' + x[0] })));
-  const body = el('div', { class: 'stack' }, [el('p', { class: 'muted', text: 'Loading the lesson…' })]);
-  shell('Lesson · ' + WEEKS[w - 1][0], 'Week ' + w + ' · Core DE', [el('div', { class: 'row wrap' }, [weekSel, tabs]), body], { back: '#/today' });
-  let s;
-  try { s = await sprint(w); } catch (e) { body.textContent = ''; body.appendChild(el('div', { class: 'card pad', text: 'This week\'s lesson could not be loaded. Check your connection, then tap Update app.' })); return; }
-  body.textContent = '';
-  if (tab === 'chapter') {
-    if (w === 1) body.appendChild(kafkaLesson());
-    else body.appendChild(weekMap(w));
-    const ch = mdEl(s.raw.chapter || '_No chapter this week._');
-    const toc = el('nav', { class: 'toc', 'aria-label': 'In this chapter' });
-    ch.querySelectorAll('h2').forEach((h, i) => { h.id = 'sec' + i; toc.appendChild(el('a', { href: '#', text: h.textContent, onclick: e => { e.preventDefault(); h.scrollIntoView({ behavior: 'smooth', block: 'start' }); } })); });
-    const toggle = el('button', { class: 'btn sm', 'aria-expanded': 'true', onclick: () => { const open = toc.style.display !== 'none'; toc.style.display = open ? 'none' : 'flex'; toggle.setAttribute('aria-expanded', String(!open)); toggle.firstChild.replaceWith(svg(open ? I.dbl_r : I.dbl_l, 16)); } }, [svg(I.dbl_l, 16), 'Sections']);
-    body.appendChild(el('div', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('span', { class: 'lbl grow', text: 'In this chapter' }), toggle]), toc]));
-    body.appendChild(el('article', { class: 'card pad' }, ch));
-  } else if (tab === 'readings') {
-    body.appendChild(el('section', { class: 'card pad stack' }, [el('h2', { text: 'Read deeper' }), el('p', { class: 'muted', style: { margin: 0 }, text: 'Books: ' + WEEKS[w - 1][5] }), mdEl(s.raw.readings || '_No extra readings._')]));
-    body.appendChild(videoCard(w));
-  } else if (tab === 'lab') body.appendChild(el('article', { class: 'card pad' }, mdEl(s.raw.lab || '_No lab this week._')));
-  else body.appendChild(el('article', { class: 'card pad' }, mdEl(s.raw.practice || '_No warm-ups this week._')));
-}
 const VIDEOS = { 1: [['Kafka 101: events and logs', 'https://developer.confluent.io/courses/apache-kafka/events/'], ['Topics', 'https://developer.confluent.io/courses/apache-kafka/topics/'], ['Partitions', 'https://developer.confluent.io/courses/apache-kafka/partitions/'], ['Consumers and groups', 'https://developer.confluent.io/courses/apache-kafka/consumers/']], 5: [['Kafka 101: producers', 'https://developer.confluent.io/courses/apache-kafka/producers/'], ['Stream processing', 'https://developer.confluent.io/courses/apache-kafka/stream-processing/']], 6: [['Kafka Connect', 'https://developer.confluent.io/courses/apache-kafka/kafka-connect/']] };
 function videoCard(w) {
   const v = VIDEOS[w];
   if (!v) return el('section', { class: 'card pad stack' }, [el('h3', { text: 'Video' }), el('p', { class: 'muted', style: { margin: 0 }, text: 'This week\'s videos come with the next content update. Use the readings and the animated map above for now.' })]);
   return el('section', { class: 'card pad stack' }, [el('h3', { text: 'Watch (free Confluent course, opens in a new tab)' }), el('div', { class: 'list' }, v.map(([t, u]) => el('a', { class: 'item', href: u, target: '_blank', rel: 'noopener' }, [el('span', { class: 'grow t', text: '▶ ' + t }), el('span', { class: 's', text: 'confluent.io' })])))]);
-}
-function weekMap(w) {
-  const map = MAPS[w - 1];
-  return el('section', { class: 'fig', 'aria-label': 'Mental map for week ' + w }, [el('div', { class: 'row' }, [el('b', { text: 'Mental map: where this week fits' }), el('span', { class: 'step', text: 'Week ' + w })]),
-    el('div', { class: 'flow' }, map.map((m, i) => el('span', { style: { background: PALETTE[i][0], color: PALETTE[i][1] }, text: m })).concat([el('span', { class: 'dot' })])),
-    el('span', { style: { fontSize: '14.5px' } }, [el('b', { text: 'How to read it: ' }), 'each box is one part of the platform you build this week, left to right in the order data flows. The orange dot is one event. The chapter below explains each box; the lab builds it.'])]);
 }
 /* Kafka lesson: step-through diagrams with ‹ › controls */
 function kafkaLesson() {
@@ -361,13 +262,13 @@ let REPL = [];
 function vWork(kind, id) {
   let Q, lang, title, eyebrow;
   if (kind === 'test') {
-    const [w, i] = id.split('/'); const sp = DATA.sprints[+w];
-    if (!sp) { sprint(+w).then(() => vWork(kind, id)); shell('Loading…', '', [el('p', { class: 'muted', text: 'Loading the coding test…' })]); return; }
+    const [w, i] = id.split('/'); const sp = DATA.sprints[w];
+    if (!sp) { sprint(w).then(() => vWork(kind, id)); shell('Loading…', '', [el('p', { class: 'muted', text: 'Loading the coding test…' })]); return; }
     const c = sp.coding[+i];
     if (!c) { location.hash = '#/practice/tests'; return; }
-    Q = { id: 't' + w + '_' + i, t: c.TITLE, lv: c.MIN + ' min', p: c.PROBLEM, sol: c.CODE || c.SOLUTION, solMd: c.SOLUTION, test: c.TEST, kind2: c.KIND, src: c.SRC, h: ['Read the problem twice and write down the inputs and the output grain.', 'Solve a tiny example by hand first.', 'Check NULLs, empty inputs and duplicates.'], w: +w };
+    Q = { id: 't' + qk(w) + '_' + i, t: c.TITLE, lv: c.MIN + ' min', p: c.PROBLEM, sol: c.CODE || c.SOLUTION, solMd: c.SOLUTION, test: c.TEST, kind2: c.KIND, src: c.SRC, h: ['Read the problem twice and write down the inputs and the output grain.', 'Solve a tiny example by hand first.', 'Check NULLs, empty inputs and duplicates.'], w: w };
     lang = c.KIND === 'sql' ? 'sql' : c.KIND === 'pyspark' ? 'spark' : 'python';
-    title = c.TITLE; eyebrow = 'Coding test · week ' + w + ' · ' + c.KIND + (c.SRC ? ' · ' + c.SRC : '');
+    title = c.TITLE; eyebrow = 'Coding test · module ' + modLabel(w) + ' · ' + c.KIND + (c.SRC ? ' · ' + c.SRC : '');
   } else {
     Q = (DATA[kind] || []).find(x => x.id === id);
     if (!Q) { location.hash = '#/practice'; return; }
@@ -411,7 +312,7 @@ function vWork(kind, id) {
     Q.why ? el('div', { class: 'why' }, [el('b', { text: 'Why a data engineer cares: ' }), Q.why]) : null,
     lang !== 'python' ? tablesBox() : null,
     Q.rec ? el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'lbl', text: 'On full data (typical estimate)' }), el('div', { class: 'hint', style: { background: 'var(--red-l)', borderColor: '#F0C4B8' } }, [el('b', { text: 'Before: ' }), Q.rec[0]]), el('div', { class: 'hint' }, [el('b', { text: 'Target: ' }), Q.rec[1]])]) : null,
-    kind !== 'test' ? el('a', { href: '#/path/' + Q.w, style: { fontWeight: 600 }, text: 'See this week\'s full list' }) : null]);
+    kind !== 'test' ? el('a', { href: '#/path/' + Q.w, style: { fontWeight: 600 }, text: 'See this topic in its module' }) : null]);
 
   /* middle: editor + output */
   const ta = el('textarea', { class: 'code', spellcheck: 'false', autocapitalize: 'off', autocomplete: 'off', 'aria-label': 'Your code' });
@@ -602,14 +503,14 @@ function vProjects() {
   const cards = DATA.projects.map(x => {
     const ms = x.ms || [], d = msDone(x.id), n = ms.filter(m => d[m[0]]).length;
     return el('a', { class: 'item', href: '#/project/' + x.id, style: { alignItems: 'flex-start', padding: '12px 14px' } }, [
-      el('span', { class: 'chip ' + (x.status === 'ready' ? 'c-dsa' : 'c-test'), style: { flex: 'none' }, text: 'Week ' + x.w }),
+      el('span', { class: 'chip ' + (x.status === 'ready' ? 'c-dsa' : 'c-test'), style: { flex: 'none' }, text: modLabel(x.mod) }),
       el('span', { class: 'grow' }, [el('span', { class: 't', text: x.title }), el('br'), el('span', { class: 's', text: x.goal })]),
       el('span', { class: 's', style: { flex: 'none', fontWeight: 700 }, text: x.status === 'ready' ? (ms.length ? n + '/' + ms.length : '') : 'brief' })]);
   });
-  shell('Weekly projects', 'One real build at the end of every week · open source and free tier only', [
+  shell('Projects', 'One real build per module · open source and free tier only', [
     el('section', { class: 'card pad stack' }, [el('h2', { text: 'How projects work' }),
       el('p', { style: { margin: 0 }, text: 'Every week ends with a project you build for real. The brief, steps, lessons and checks live here. The environment (object store, Iceberg, Spark, Trino, Airflow, ClickHouse, Git and VS Code) opens with one button in GitHub Codespaces, which runs in the browser on your iPad, iPhone or MacBook and is free for about 30 hours a month on a 4-core machine. You can also run it on your MacBook with Docker.' }),
-      el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'Ready now: the lakehouse (weeks 1–2). The other projects show their brief and plan; their environments come in later updates.' })]),
+      el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'Ready now: the AI agent toolkit (modules AI 1–3, a light 2-core Codespace) and the lakehouse (DE 1–2). The other projects show their brief and plan; their environments come in later updates.' })]),
     el('div', { class: 'list' }, cards)]);
 }
 async function vProject(id) {
@@ -632,12 +533,12 @@ async function vProject(id) {
     save(); paintMs(); codeOut.textContent = 'Verified: milestones ' + done.join(', ') + ' marked done.'; toast('Milestones verified');
   };
   const envCard = x.status === 'ready' ? el('section', { class: 'card pad stack', style: { borderColor: '#BFE3D6' } }, [el('h3', { text: 'Open the environment' }),
-    el('div', { class: 'row wrap' }, [el('a', { class: 'btn pri', href: x.codespaces, target: '_blank', rel: 'noopener', text: 'Open in GitHub Codespaces' }), el('a', { class: 'btn', href: 'https://github.com/raghav511/de-architect/tree/main/projects/lakehouse', target: '_blank', rel: 'noopener', text: 'Code on GitHub' })]),
-    el('span', { style: { fontSize: '14.5px' }, html: 'Choose the <b>4-core</b> machine. First start ≈ 10 min (images download), later ≈ 1 min. VS Code, Git, a terminal, Jupyter, Trino, Airflow and ClickHouse open as tabs. <b>Stop the codespace</b> when you finish so your free hours last.' }),
-    el('details', {}, [el('summary', { style: { cursor: 'pointer', fontWeight: 700 }, text: 'Run on your MacBook instead' }), el('pre', { class: 'schema', style: { whiteSpace: 'pre-wrap' }, text: 'Install Docker Desktop (8 GB+ memory)\ngit clone https://github.com/raghav511/de-architect\ncd de-architect/projects/lakehouse\nmake up-all\n# Jupyter :8888 · Trino :8080 · Airflow :8081 (admin/admin)' })]),
-    el('div', { class: 'stack', style: { gap: '6px', borderTop: '1px solid var(--line)', paddingTop: '10px' } }, [el('b', { text: 'Finished a milestone? Paste the code from make check' }), el('div', { class: 'row' }, [codeIn, el('button', { class: 'btn', onclick: verify, text: 'Verify' })]), codeOut])]) : el('section', { class: 'card pad' }, [el('p', { style: { margin: 0 }, text: 'This project\'s environment comes in a later update. Use the brief to plan it, sketch the architecture in the design studio, and note the questions you want answered.' })]);
+    el('div', { class: 'row wrap' }, [el('a', { class: 'btn pri', href: x.codespaces, target: '_blank', rel: 'noopener', text: 'Open in GitHub Codespaces' }), el('a', { class: 'btn', href: 'https://github.com/raghav511/de-architect/tree/main/projects/' + (x.env === 'ai' ? 'ai-foundations' : 'lakehouse'), target: '_blank', rel: 'noopener', text: 'Code on GitHub' })]),
+    x.env === 'ai' ? el('span', { style: { fontSize: '14.5px' }, html: 'The default <b>2-core</b> machine is enough. It opens VS Code with Python, the harness and the labs ready. Every lab runs offline with the mock model first; add a free Gemini or Groq key, or a local Ollama, in <code>.env</code> to use a real model. <b>Stop the codespace</b> when you finish.' }) : el('span', { style: { fontSize: '14.5px' }, html: 'Choose the <b>4-core</b> machine. First start ≈ 10 min (images download), later ≈ 1 min. VS Code, Git, a terminal, Jupyter, Trino, Airflow and ClickHouse open as tabs. <b>Stop the codespace</b> when you finish so your free hours last.' }),
+    el('details', {}, [el('summary', { style: { cursor: 'pointer', fontWeight: 700 }, text: 'Run on your MacBook instead' }), el('pre', { class: 'schema', style: { whiteSpace: 'pre-wrap' }, text: x.env === 'ai' ? 'git clone https://github.com/raghav511/de-architect\ncd de-architect/projects/ai-foundations\npython3 -m venv .venv && source .venv/bin/activate\npip install -r requirements.txt && cp .env.example .env\npytest -q   # lab tests' : 'Install Docker Desktop (8 GB+ memory)\ngit clone https://github.com/raghav511/de-architect\ncd de-architect/projects/lakehouse\nmake up-all\n# Jupyter :8888 · Trino :8080 · Airflow :8081 (admin/admin)' })]),
+    x.env !== 'lakehouse' ? el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Tick each milestone below when its check passes.' }) : el('div', { class: 'stack', style: { gap: '6px', borderTop: '1px solid var(--line)', paddingTop: '10px' } }, [el('b', { text: 'Finished a milestone? Paste the code from make check' }), el('div', { class: 'row' }, [codeIn, el('button', { class: 'btn', onclick: verify, text: 'Verify' })]), codeOut])]) : el('section', { class: 'card pad' }, [el('p', { style: { margin: 0 }, text: 'This project\'s environment comes in a later update. Use the brief to plan it, sketch the architecture in the design studio, and note the questions you want answered.' })]);
   const body = [
-    el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Week ' + x.w + ' project' + (x.status === 'ready' ? ' · ready to build' : ' · brief') }), el('h1', { style: { fontSize: '26px' }, text: x.title }), el('p', { style: { margin: 0, fontSize: '17px' }, text: x.goal }),
+    el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Module ' + modLabel(x.mod) + ' project · ' + weeksText(schedule().span[x.mod]) + (x.status === 'ready' ? ' · ready to build' : ' · brief') }), el('h1', { style: { fontSize: '26px' }, text: x.title }), el('p', { style: { margin: 0, fontSize: '17px' }, text: x.goal }),
       el('div', { class: 'row wrap', style: { gap: '6px' } }, x.stack.map(t => el('span', { class: 'chip c-core', text: t }))),
       el('ul', { style: { margin: 0, paddingLeft: '20px' } }, x.parts.map(t => el('li', { text: t })))]),
     envCard,
@@ -646,7 +547,7 @@ async function vProject(id) {
     x.refs ? el('section', { class: 'card pad stack' }, [el('h3', { text: 'References' }), el('div', { class: 'list' }, x.refs.map(([t, u]) => el('a', { class: 'item', href: u, target: '_blank', rel: 'noopener' }, [el('span', { class: 'grow t', text: t }), el('span', { class: 's', text: new URL(u).hostname })])))]) : null];
   const guide = el('article', { class: 'card pad' }, [el('p', { class: 'muted', text: x.readme ? 'Loading the project guide…' : '' })]);
   if (x.readme) body.push(guide);
-  shell(x.title, 'Week ' + x.w + ' project', body, { back: '#/projects' });
+  shell(x.title, 'Module ' + modLabel(x.mod) + ' project', body, { back: '#/projects' });
   if (x.readme) { try { const t = await fetch(x.readme).then(r => r.text()); guide.textContent = ''; guide.appendChild(el('h2', { text: 'Project guide and lessons' })); guide.appendChild(mdEl(t)); } catch (e) { guide.textContent = 'Could not load the guide. It is also in the repo at ' + x.readme; } }
 }
 /* Iceberg metadata tree + zero copy vs copy, step by step */
@@ -687,13 +588,12 @@ async function vPractice(f) {
   const tabs = [['all', 'All'], ['dsa', 'DSA'], ['sql', 'SQL'], ['spark', 'PySpark'], ['opt', 'Optimize only'], ['tests', 'Coding tests']];
   const tb = el('div', { class: 'tabs', role: 'tablist' }, tabs.map(([k, n]) => el('button', { role: 'tab', 'aria-selected': String(k === f), onclick: () => { location.hash = '#/practice/' + k; }, text: n })));
   const body = el('div', { class: 'stack' });
-  shell('Practice', 'DSA · SQL · PySpark · coding tests', [tb, body]);
+  shell('Coding practice', 'DSA · SQL · PySpark · coding tests · separate from the daily hour', [tb, body]);
   if (f === 'tests') {
     body.appendChild(el('p', { class: 'muted', style: { margin: 0 }, text: 'Timed coding tests from the course, with hidden tests that run in your browser.' }));
-    for (let w = 0; w <= 12; w++) {
-      let s; try { s = await sprint(w); } catch (e) { continue; }
-      if (!s.coding.length) continue;
-      body.appendChild(el('section', { class: 'card pad stack' }, [el('h3', { text: w === 0 ? 'Before week 1' : 'Week ' + w + ' · ' + WEEKS[w - 1][0] }), el('div', { class: 'list' }, s.coding.map((c, i) => el('a', { class: 'item', href: '#/test/' + w + '/' + i }, [chip(c.KIND === 'sql' ? 'sql' : c.KIND === 'pyspark' ? 'spark' : 'dsa'), el('span', { class: 'grow' }, [el('span', { class: 't', text: c.TITLE }), el('br'), el('span', { class: 's', text: (c.MIN || '?') + ' min' + (c.SRC ? ' · ' + c.SRC : '') })]), S.solved['t' + w + '_' + i] ? el('span', { class: 'ok', text: '✓' }) : null])))]));
+    for (const w of MODS) {
+      const s = DATA.sprints[w]; if (!s || !s.coding.length) continue;
+      body.appendChild(el('section', { class: 'card pad stack' }, [el('h3', { text: 'Module ' + modLabel(w) + ' · ' + modTitle(w) }), el('div', { class: 'list' }, s.coding.map((c, i) => el('a', { class: 'item', href: '#/test/' + w + '/' + i }, [chip(c.KIND === 'sql' ? 'sql' : c.KIND === 'pyspark' ? 'spark' : 'dsa'), el('span', { class: 'grow' }, [el('span', { class: 't', text: c.TITLE }), el('br'), el('span', { class: 's', text: (c.MIN || '?') + ' min' + (c.SRC ? ' · ' + c.SRC : '') })]), S.solved['t' + qk(w) + '_' + i] ? el('span', { class: 'ok', text: '✓' }) : null])))]));
     }
     return;
   }
@@ -703,13 +603,17 @@ async function vPractice(f) {
     if (f === 'all' || f === 'sql' || f === 'opt') items = items.concat(byWeek(DATA.sql, w).filter(x => f !== 'opt' || x.k === 'O').map(x => ['sql', x]));
     if (f === 'all' || f === 'spark' || f === 'opt') items = items.concat(byWeek(DATA.spark, w).filter(x => f !== 'opt' || x.k === 'O').map(x => ['spark', x]));
     const solved = items.filter(([, x]) => S.solved[x.id]).length;
-    body.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('h3', { class: 'grow', text: 'Week ' + w + ' · ' + WEEKS[w - 1][0] }), el('span', { class: 'muted', text: solved + ' / ' + items.length })]),
+    body.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('h3', { class: 'grow', text: 'Set ' + w + ' · ' + WEEKS[w - 1][4] }), el('span', { class: 'muted', text: solved + ' / ' + items.length })]),
       el('div', { class: 'list' }, items.map(([k, x]) => el('a', { class: 'item', href: '#/' + k + '/' + x.id }, [chip(k), el('span', { class: 'grow' }, [el('span', { class: 't', text: x.t }), el('br'), el('span', { class: 's', text: (x.k ? (x.k === 'O' ? 'Optimize · ' : 'Write · ') : '') + x.lv })]), S.solved[x.id] ? el('span', { class: 'ok', text: '✓' }) : null])))]));
   }
 }
 
 /* ---------------- Design studio ---------------- */
-function vDesign() {
+function vDesign(m) {
+  const sc = schedule();
+  const withD = MODS.filter(x => DATA.design[x]);
+  m = DATA.design[midOf(m)] ? midOf(m) : (DATA.design[sc.cur] ? sc.cur : withD[0]);
+  const D = DATA.design[m], du = sc.units.find(u => u.uid === m + ':design');
   const STEPS = [['Requirements', 'Ask before you draw. Who reads the data, how fresh, how much, what breaks if it is wrong?', 'System Design Interview ch. 3 · Fundamentals of DE ch. 3'], ['Estimate', 'Events per second, storage per year, peak vs average. Use the calculator.', 'System Design Interview ch. 2'], ['High-level design', 'Five to seven boxes: source, ingest, store, process, serve, orchestrate, observe.', 'DDIA ch. 1 · Fundamentals of DE ch. 2'], ['Deep dive', 'Pick the riskiest box. Partitioning, ordering, exactly-once, schema evolution.', 'DDIA ch. 6 and 11'], ['Trade-offs', 'For each box, say what you chose, what you rejected, and the cost.', 'DDIA ch. 12'], ['Wrap up', 'Failure modes, monitoring, cost, and what you would build next.', 'System Design Interview ch. 1']];
   let step = +(S.layout.dstep || 0);
   const v = Object.assign({ trips: 2000000, events: 6, bytes: 800, peak: 3, years: 1, repl: 3 }, S.layout.calc || {});
@@ -718,7 +622,7 @@ function vDesign() {
     const perDay = v.trips * v.events, avg = perDay / 86400, peak = avg * v.peak, perYear = perDay * v.bytes * 365 * v.years * v.repl;
     const f = n => n >= 1e12 ? (n / 1e12).toFixed(1) + ' TB' : n >= 1e9 ? (n / 1e9).toFixed(1) + ' GB' : (n / 1e6).toFixed(1) + ' MB';
     out.textContent = '';
-    [['Events per day', Math.round(perDay).toLocaleString()], ['Average events / s', Math.round(avg).toLocaleString()], ['Peak events / s', Math.round(peak).toLocaleString()], ['Storage (raw, replicated)', f(perYear)], ['Kafka partitions (5k/s per consumer)', String(Math.max(1, Math.ceil(peak / 5000)))]].forEach(([k, x]) => out.appendChild(el('div', { class: 'row' }, [el('span', { class: 'grow', text: k }), el('b', { class: 'mono', text: x })])));
+    [['Requests or events per day', Math.round(perDay).toLocaleString()], ['Average per second', Math.round(avg).toLocaleString()], ['Peak per second', Math.round(peak).toLocaleString()], ['Storage (raw, replicated)', f(perYear)], ['Partitions (5k/s per consumer)', String(Math.max(1, Math.ceil(peak / 5000)))]].forEach(([k, x]) => out.appendChild(el('div', { class: 'row' }, [el('span', { class: 'grow', text: k }), el('b', { class: 'mono', text: x })])));
     S.layout.calc = v; save(false);
   };
   const inp = (k, label) => { const i = el('input', { type: 'number', inputmode: 'decimal', value: v[k], min: '0', id: 'c_' + k }); i.addEventListener('input', () => { v[k] = +i.value || 0; calc(); }); return el('div', { class: 'field' }, [el('label', { for: 'c_' + k, class: 'lbl', text: label }), i]); };
@@ -727,41 +631,51 @@ function vDesign() {
   const paint = () => {
     tabs.textContent = ''; STEPS.forEach((s, i) => tabs.appendChild(el('button', { role: 'tab', 'aria-selected': String(i === step), onclick: () => { step = i; S.layout.dstep = i; save(false); paint(); }, text: (i + 1) + ' · ' + s[0] })));
     stepBox.textContent = '';
-    stepBox.append(el('h2', { text: STEPS[step][0] }), el('p', { style: { margin: 0 }, text: STEPS[step][1] }), el('span', { class: 'muted', text: 'Read: ' + STEPS[step][2] }));
-    const notesKey = 'design_' + step;
-    const ta = el('textarea', { class: 'code', style: { minHeight: '160px', border: '1px solid var(--line2)', borderRadius: '10px' }, 'aria-label': 'Your notes for this step', placeholder: 'Write your answer here. It is saved and synced.' });
+    stepBox.append(el('h2', { text: 'Step ' + (step + 1) + ' · ' + STEPS[step][0] }), el('p', { style: { margin: 0 }, text: STEPS[step][1] }), el('span', { class: 'muted', text: 'Read: ' + STEPS[step][2] }));
+    const notesKey = 'design_' + m + '_' + step;
+    const ta = el('textarea', { class: 'code', style: { minHeight: '160px', border: '1px solid var(--line2)', borderRadius: '10px' }, 'aria-label': 'Your answer for this step', placeholder: 'Your answer for "' + D.title + '", step ' + (step + 1) + '. Saved and synced.' });
     ta.value = S.code[notesKey] || ''; ta.addEventListener('input', () => { S.code[notesKey] = ta.value; save(); });
     stepBox.append(ta);
   };
   paint(); calc();
-  let secs = 0, run = false; const clock = el('b', { class: 'mono', style: { fontSize: '22px' }, text: '45:00' });
-  const t = setInterval(() => { if (run) { secs++; const r = Math.max(0, 2700 - secs); clock.textContent = Math.floor(r / 60) + ':' + String(r % 60).padStart(2, '0'); } }, 1000); cleanup.push(() => clearInterval(t));
-  const tb = el('button', { class: 'btn', onclick: () => { run = !run; tb.textContent = run ? 'Pause' : 'Start the 45-minute round'; } }, 'Start the 45-minute round');
-  shell('System design studio', 'Architecture · week ' + curWeek() + ' · ' + WEEKS[curWeek() - 1][2], [tabs,
+  let secs = 0, run = false; const clock = el('b', { class: 'mono', style: { fontSize: '22px' }, text: '40:00' });
+  const t = setInterval(() => { if (run) { secs++; const r = Math.max(0, 2400 - secs); clock.textContent = Math.floor(r / 60) + ':' + String(r % 60).padStart(2, '0'); } }, 1000); cleanup.push(() => clearInterval(t));
+  const tb = el('button', { class: 'btn', onclick: () => { run = !run; tb.textContent = run ? 'Pause' : 'Start the 40-minute round'; } }, 'Start the 40-minute round');
+  const sel = el('select', { class: 'btn sm', 'aria-label': 'Design problem', onchange: e => { location.hash = '#/design/' + e.target.value; } }, withD.map(x => el('option', { value: x, selected: x === m ? 'selected' : null, text: modLabel(x) + ' · ' + DATA.design[x].title })));
+  const when = du ? (du.isDone ? 'Done' : du.day === sc.today ? 'Planned for today' : 'Planned for ' + dayName(du.day) + ' ' + shortDate(du.day).slice(4) + ' (week ' + weekOf(du.day) + ')') : '';
+  const problem = el('section', { class: 'card pad stack', style: { borderColor: '#D9C6E6' } }, [
+    el('div', { class: 'row wrap', style: { gap: '8px' } }, [el('span', { class: 'chip c-arch', text: 'Module ' + modLabel(m) }), el('span', { class: 'chip c-test', text: when + ' · 40 min' }), el('span', { class: 'grow' }), sel]),
+    el('h1', { style: { fontSize: '26px' }, text: D.title }),
+    el('div', { class: 'stack', style: { gap: '4px' } }, [el('span', { class: 'lbl', text: 'Problem statement' }), el('p', { style: { margin: 0, fontSize: '16.5px' }, text: D.prompt })]),
+    el('div', { class: 'stack', style: { gap: '4px' } }, [el('span', { class: 'lbl', text: 'What you hand in' }), el('p', { style: { margin: 0 }, text: D.deliverable })]),
+    el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Work through the six steps below in one sitting, writing your answer in each box. Then ask the coach (bottom right) to review it like an interviewer.' }),
+    du ? el('button', { class: 'btn', style: { alignSelf: 'flex-start' }, onclick: () => toggleUnit(du), text: du.isDone ? 'Mark not done' : 'Mark this design done' }) : null]);
+  shell('System design studio', 'Design problem · module ' + modLabel(m), [problem, tabs,
     el('div', { class: 'grid2' }, [el('section', { class: 'card pad stack' }, [stepBox]),
       el('div', { class: 'stack', style: { gap: '18px' } }, [
-        el('section', { class: 'card pad stack' }, [el('h3', { text: 'Back-of-envelope calculator' }), el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '10px' } }, [inp('trips', 'Trips per day'), inp('events', 'Events per trip'), inp('bytes', 'Bytes per event'), inp('peak', 'Peak ÷ average'), inp('years', 'Years kept'), inp('repl', 'Replication factor')]), out]),
-        el('section', { class: 'card pad row wrap' }, [el('div', { class: 'grow stack', style: { gap: '2px' } }, [el('span', { class: 'lbl', text: 'Mock round timer' }), clock]), tb, el('button', { class: 'btn', onclick: () => { secs = 0; clock.textContent = '45:00'; }, text: 'Reset' })])])])]);
+        el('section', { class: 'card pad stack' }, [el('h3', { text: 'Back-of-envelope calculator' }), el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '10px' } }, [inp('trips', 'Users or trips per day'), inp('events', 'Events per user'), inp('bytes', 'Bytes per event'), inp('peak', 'Peak ÷ average'), inp('years', 'Years kept'), inp('repl', 'Replication factor')]), out]),
+        el('section', { class: 'card pad row wrap' }, [el('div', { class: 'grow stack', style: { gap: '2px' } }, [el('span', { class: 'lbl', text: 'Round timer' }), clock]), tb, el('button', { class: 'btn', onclick: () => { secs = 0; clock.textContent = '40:00'; }, text: 'Reset' })])])])]);
 }
 
 /* ---------------- Quiz ---------------- */
-async function vQuiz(w) {
-  shell('Weekly quiz', 'Week ' + w, [el('p', { class: 'muted', text: 'Loading…' })], { back: '#/today' });
-  let s; try { s = await sprint(w); } catch (e) { $('#page').textContent = 'Could not load this quiz.'; return; }
+async function vQuiz(m) {
+  m = MOD[midOf(m)] ? midOf(m) : curMid(); const w = qk(m);
+  shell('Module quiz', 'Module ' + modLabel(m) + ' · ' + modTitle(m), [el('p', { class: 'muted', text: 'Loading…' })], { back: '#/today' });
+  let s; try { s = await sprint(m); } catch (e) { $('#page').textContent = 'Could not load this quiz.'; return; }
   const qs = s.quiz; const st = S.quiz[w] = S.quiz[w] || { a: {}, sub: false, i: 0 };
   const page = $('#page'); let i = Math.min(st.i || 0, qs.length - 1);
-  const weekSel = el('select', { class: 'btn sm', 'aria-label': 'Week', onchange: e => { location.hash = '#/quiz/' + e.target.value; } }, WEEKS.map((x, k) => el('option', { value: k + 1, selected: k + 1 === w ? 'selected' : null, text: 'Week ' + (k + 1) })));
+  const weekSel = el('select', { class: 'btn sm', 'aria-label': 'Module', onchange: e => { location.hash = '#/quiz/' + e.target.value; } }, MODS.map(x => el('option', { value: x, selected: x === m ? 'selected' : null, text: modLabel(x) + ' · ' + modTitle(x) })));
   const grade = (q, a) => { if (a == null || a === '') return 0; if (q.TYPE === 'mcq') return a === q.ANS ? 1 : 0; if (q.TYPE === 'fill') { const ok = q.ANS.split('|').map(x => x.trim().toLowerCase()); return ok.includes(String(a).trim().toLowerCase()) ? 1 : 0; } return a.self || 0; };
   function draw() {
     page.textContent = '';
     st.i = i; save(false);
     const answered = qs.filter((q, k) => st.a[k] !== undefined && st.a[k] !== '').length;
     page.appendChild(el('div', { class: 'row wrap' }, [weekSel, el('span', { class: 'muted grow', text: answered + ' of ' + qs.length + ' answered' }),
-      el('button', { class: 'btn sm', onclick: async () => { const v = await confirmBox('Reset this quiz?', 'All answers for week ' + w + ' are cleared. Undo is available for 10 seconds.', [{ t: 'Reset and exit', cls: 'warn', v: 1 }, { t: 'Cancel', v: null }]); if (v) { const snap = JSON.stringify(st); S.quiz[w] = { a: {}, sub: false, i: 0 }; save(); location.hash = '#/today'; setTimeout(() => toast('Quiz reset', () => { S.quiz[w] = JSON.parse(snap); save(); }), 50); } }, text: 'Reset and exit' }),
+      el('button', { class: 'btn sm', onclick: async () => { const v = await confirmBox('Reset this quiz?', 'All answers for module ' + modLabel(m) + ' are cleared. Undo is available for 10 seconds.', [{ t: 'Reset and exit', cls: 'warn', v: 1 }, { t: 'Cancel', v: null }]); if (v) { const snap = JSON.stringify(st); S.quiz[w] = { a: {}, sub: false, i: 0 }; save(); location.hash = '#/today'; setTimeout(() => toast('Quiz reset', () => { S.quiz[w] = JSON.parse(snap); save(); }), 50); } }, text: 'Reset and exit' }),
       el('button', { class: 'btn sm', onclick: async () => { const v = await confirmBox('Leave the quiz?', 'Your answers are kept. You can come back and finish later.', [{ t: 'Leave, keep answers', cls: 'pri', v: 1 }, { t: 'Stay', v: null }]); if (v) location.hash = '#/today'; }, text: 'Leave' })]));
     if (st.sub) {
       const score = qs.reduce((a, q, k) => a + grade(q, st.a[k]), 0);
-      page.appendChild(el('section', { class: 'card pad stack' }, [el('h2', { text: 'Score: ' + score + ' of ' + qs.length + ' (' + Math.round(100 * score / qs.length) + '%)' }), el('div', { class: 'row wrap' }, [el('button', { class: 'btn pri', onclick: () => { S.quiz[w] = { a: {}, sub: false, i: 0 }; save(); vQuiz(w); }, text: 'Retake' }), el('a', { class: 'btn', href: '#/today', text: 'Back to Today' })])]));
+      page.appendChild(el('section', { class: 'card pad stack' }, [el('h2', { text: 'Score: ' + score + ' of ' + qs.length + ' (' + Math.round(100 * score / qs.length) + '%)' }), el('div', { class: 'row wrap' }, [el('button', { class: 'btn pri', onclick: () => { S.quiz[w] = { a: {}, sub: false, i: 0 }; save(); vQuiz(m); }, text: 'Retake' }), el('a', { class: 'btn', href: '#/today', text: 'Back to Today' })])]));
       qs.forEach((q, k) => page.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('span', { class: 'lbl grow', text: 'Q' + (k + 1) }), el('span', { class: 'badge ' + (grade(q, st.a[k]) ? 'b-ok' : 'b-bad'), text: grade(q, st.a[k]) ? 'Right' : 'Review' })]), el('div', { html: mdi(q.Q) }), el('div', { class: 'muted', html: '<b>Answer:</b> ' + mdi(q.TYPE === 'mcq' ? q.ANS + ') ' + ((q.opts || []).find(o => o[0] === q.ANS) || ['', ''])[1] : q.TYPE === 'fill' ? q.ANS.split('|')[0] : (q.MODEL || q.ANS || '')) }), q.WHY ? el('div', { class: 'why', html: mdi(q.WHY) }) : null])));
       return;
     }
@@ -779,15 +693,16 @@ async function vQuiz(w) {
 }
 
 /* ---------------- Interview ---------------- */
-async function vInterview(w) {
-  shell('Interview set', 'Week ' + w + ' · past questions with model answers', [el('p', { class: 'muted', text: 'Loading…' })], { back: '#/today' });
-  let s; try { s = await sprint(w); } catch (e) { return; }
+async function vInterview(m) {
+  m = MOD[midOf(m)] ? midOf(m) : curMid(); const w = qk(m);
+  shell('Interview set', 'Module ' + modLabel(m) + ' · past questions with model answers', [el('p', { class: 'muted', text: 'Loading…' })], { back: '#/today' });
+  let s; try { s = await sprint(m); } catch (e) { return; }
   const page = $('#page'); page.textContent = '';
   const st = S.iv[w] = S.iv[w] || {};
-  page.appendChild(el('select', { class: 'btn sm', 'aria-label': 'Week', style: { alignSelf: 'flex-start' }, onchange: e => { location.hash = '#/interview/' + e.target.value; } }, WEEKS.map((x, k) => el('option', { value: k + 1, selected: k + 1 === w ? 'selected' : null, text: 'Week ' + (k + 1) + ' · ' + x[0] }))));
+  page.appendChild(el('select', { class: 'btn sm', 'aria-label': 'Module', style: { alignSelf: 'flex-start' }, onchange: e => { location.hash = '#/interview/' + e.target.value; } }, MODS.map(x => el('option', { value: x, selected: x === m ? 'selected' : null, text: modLabel(x) + ' · ' + modTitle(x) }))));
   s.interview.forEach((q, k) => {
     const ans = mdEl(q.A || ''); ans.style.display = 'none';
-    const tick = el('button', { class: 'check', 'aria-pressed': String(!!st[k]), 'aria-label': 'I can answer this', style: st[k] ? { background: 'var(--teal)', borderColor: 'var(--teal)' } : {}, onclick: () => { st[k] = !st[k]; save(); vInterview(w); } }, st[k] ? svg(I.check, 16) : null);
+    const tick = el('button', { class: 'check', 'aria-pressed': String(!!st[k]), 'aria-label': 'I can answer this', style: st[k] ? { background: 'var(--teal)', borderColor: 'var(--teal)' } : {}, onclick: () => { st[k] = !st[k]; save(); vInterview(m); } }, st[k] ? svg(I.check, 16) : null);
     const show = el('button', { class: 'btn sm', 'aria-expanded': 'false', onclick: () => { const o = ans.style.display === 'none'; ans.style.display = o ? 'block' : 'none'; show.textContent = o ? 'Hide model answer' : 'Show model answer'; show.setAttribute('aria-expanded', String(o)); } }, 'Show model answer');
     page.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row', style: { alignItems: 'flex-start' } }, [tick, el('div', { class: 'grow stack', style: { gap: '4px' } }, [el('b', { style: { fontSize: '16.5px' }, html: mdi(q.Q) }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: [q.TAG, q.SRC].filter(Boolean).join(' · ') })])]), show, ans]));
   });
@@ -798,10 +713,10 @@ async function vInterview(w) {
 function vProgress() {
   const pct = arr => arr.length ? Math.round(100 * arr.filter(x => S.solved[x.id]).length / arr.length) : 0;
   const sqlW = DATA.sql.filter(x => x.k === 'W'), sqlO = DATA.sql.filter(x => x.k === 'O'), spW = DATA.spark.filter(x => x.k === 'W'), spO = DATA.spark.filter(x => x.k === 'O');
-  const quizP = (() => { let got = 0, n = 0; for (const w in S.quiz) if (S.quiz[w].sub) { n++; } return Math.round(100 * n / 12); })();
+  const quizP = (() => { let got = 0, n = 0; for (const w in S.quiz) if (S.quiz[w].sub) { n++; } return Math.round(100 * n / MODS.length); })();
   const ivP = (() => { let t = 0; for (const w in S.iv) t += Object.values(S.iv[w]).filter(Boolean).length; return Math.min(100, Math.round(t / 2)); })();
   const rows = [['DSA', pct(DATA.dsa), 'var(--teal)'], ['SQL write', pct(sqlW), '#164C7E'], ['SQL optimize', pct(sqlO), '#164C7E'], ['PySpark write', pct(spW), '#8A3A0C'], ['PySpark optimize', pct(spO), '#8A3A0C'], ['Weekly quizzes', quizP, 'var(--blue)'], ['Interview sets', ivP, 'var(--plum)']];
-  const grid = el('div', { class: 'dsa-grid', 'aria-label': '84 daily DSA problems' }, DATA.dsa.map((x, i) => el('a', { href: '#/dsa/' + x.id, title: (i + 1) + '. ' + x.t, class: S.solved[x.id] ? 'done' : i === (curWeek() - 1) * 7 + curDay() ? 'today' : '' })));
+  const grid = el('div', { class: 'dsa-grid', 'aria-label': '84 daily DSA problems' }, DATA.dsa.map((x, i) => el('a', { href: '#/dsa/' + x.id, title: (i + 1) + '. ' + x.t, class: S.solved[x.id] ? 'done' : i === dayIndex() % 84 ? 'today' : '' })));
   shell('Progress', 'Readiness and sync', [
     el('div', { class: 'grid2' }, [
       el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Readiness by interview round' })].concat(rows.map(([n, p, c]) => el('div', { style: { display: 'grid', gridTemplateColumns: '140px minmax(0,1fr) 44px', gap: '10px', alignItems: 'center' } }, [el('span', { style: { fontWeight: 600 }, text: n }), el('div', { class: 'bar' }, el('i', { style: { width: p + '%', background: c } })), el('b', { style: { textAlign: 'right' }, text: p + '%' })])))),
