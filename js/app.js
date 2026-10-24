@@ -164,7 +164,8 @@ function shell(title, eyebrow, body, opts) {
       el('button', { class: 'btn', onclick: doUpdate, title: 'Check for a new version', 'aria-label': 'Update app' }, [svg(I.update, 18), el('span', { class: 't', text: 'Update app' })]),
       el('button', { class: 'btn', id: 'syncBtn', onclick: doSync, title: 'Sync progress across your devices', 'aria-label': 'Sync progress' }, [svg(I.sync, 18), el('span', { class: 't', text: syncLabel() })]),
       el('button', { class: 'btn icon', onclick: settings, 'aria-label': 'Settings' }, svg(I.gear, 18))])]);
-  const main = el('div', { class: 'main' }, [top, opts.raw ? body : el('main', { class: 'page', id: 'page' }, body)]);
+  const pageEl = opts.raw ? body : el('main', { class: 'page', id: 'page' }, body);
+  const main = el('div', { class: 'main' }, [top, pageEl.querySelector && pageEl.querySelector('h1') ? null : el('h1', { class: 'sr', text: title }), pageEl]);
   const app = el('div', { class: 'app' }, [side, main]);
   const root = $('#root'); root.textContent = ''; root.appendChild(app); root.appendChild(tabbar); root.appendChild(coachFab());
   window.scrollTo(0, 0);

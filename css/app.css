@@ -322,3 +322,4 @@ select.btn{max-width:100%;text-overflow:ellipsis}
 .hm{width:14px;height:14px;border-radius:3px;background:var(--line)}
 .hm.h1{background:#9FD8C8}.hm.h2{background:#2FA58C}.hm.h3{background:#0B5E4F}.hm.now{outline:2px solid var(--amber-b)}
 @media (max-width:700px){.modpick{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:3px 2px}.modpick::-webkit-scrollbar{display:none}.modpick a{flex:none}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}

@@ -16,7 +16,7 @@ const bad = (vp, r, m) => issues.push(`[${vp}] ${r} :: ${m}`);
 const editor = r => /^#\/(dsa|sql|spark|test)\//.test(r);
 const norm = h => h.replace(/\/$/, '');
 
-async function load(p, r) { await p.goto('about:blank'); await p.goto(BASE + r, { timeout: 15000 }); }
+async function load(p, r) { await p.goto('about:blank'); await p.goto(BASE + r, { timeout: 15000 }); await p.waitForFunction(() => document.querySelector('.top') && !/Loading/.test((document.querySelector('#page') || document.body).innerText.slice(0, 300)), null, { timeout: 8000 }).catch(() => {}); }
 async function pageCheck(p, vp, r, errs) {
   const info = await p.evaluate(() => {
     const main = document.querySelector('#page') || document.querySelector('.main') || document.body;
@@ -80,7 +80,7 @@ async function pageCheck(p, vp, r, errs) {
           const label = ((await bs[i].innerText()) || (await bs[i].getAttribute('aria-label')) || '').trim().slice(0, 40);
           if (/Update app/.test(label)) continue;
           if (process.env.DEBUG) console.log('  click', i, label);
-          if (!(await bs[i].isVisible())) continue;
+          if (!(await bs[i].isVisible()) || !(await bs[i].isEnabled())) continue;
           if (/^Mark (not )?done/.test(label) && ++checks > 2) continue;
           try { await bs[i].click({ timeout: 2000 }); } catch (e) { bad(vp, r, 'cannot click "' + label + '": ' + e.message.split('\n')[0]); continue; }
           await p.waitForTimeout(250);
