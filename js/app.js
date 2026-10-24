@@ -1,6 +1,6 @@
 /* Keystone · DE architect prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.2.2';
+const VERSION = '1.2.3';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -853,7 +853,8 @@ window.addEventListener('keydown', e => { if (e.key === '`' && (e.ctrlKey || e.m
   try { await loadData(); } catch (e) { $('#root').innerHTML = '<div style="padding:24px">Could not load the question bank. Check your connection and reload.</div>'; return; }
   route();
   if ('serviceWorker' in navigator) {
+    const hadController = !!navigator.serviceWorker.controller; /* first install: no reload; later updates: reload once */
     navigator.serviceWorker.register('sw.js').catch(() => { });
-    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!window.__reloading) { window.__reloading = true; location.reload(); } });
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !window.__reloading) { window.__reloading = true; location.reload(); } });
   }
 })();
