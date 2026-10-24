@@ -1,6 +1,6 @@
 /* Keystone · DE architect prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.2.1';
+const VERSION = '1.2.2';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);

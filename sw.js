@@ -1,6 +1,6 @@
 /* Network-first for app files so updates arrive; cache as offline fallback. Pyodide comes from the CDN and is cached by the browser. */
-const CACHE = 'keystone-1.2.1';
-const CORE = ['./', 'index.html', 'css/app.css?v=1.2.1', 'js/plan.js?v=1.2.1', 'js/app.js?v=1.2.1', 'js/py.js?v=1.2.1', 'js/worker.js', 'py/minispark.py', 'py/runtime.py', 'data/bank/dsa.json', 'data/bank/sql.json', 'data/bank/spark.json', 'data/projects.json', 'data/design.json', 'data/git.json', 'data/news.json', 'data/extensions.json', 'manifest.webmanifest'];
+const CACHE = 'keystone-1.2.2';
+const CORE = ['./', 'index.html', 'css/app.css?v=1.2.2', 'js/plan.js?v=1.2.2', 'js/app.js?v=1.2.2', 'js/py.js?v=1.2.2', 'js/worker.js', 'py/minispark.py', 'py/runtime.py', 'data/bank/dsa.json', 'data/bank/sql.json', 'data/bank/spark.json', 'data/projects.json', 'data/design.json', 'data/git.json', 'data/news.json', 'data/extensions.json', 'manifest.webmanifest'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).catch(() => {})); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('message', e => { if (e.data === 'skip') self.skipWaiting(); });
