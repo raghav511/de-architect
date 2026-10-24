@@ -1,6 +1,6 @@
 /* Keystone · DE architect prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -732,8 +732,10 @@ function settings() {
     el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'The key never leaves this device except to call the AI provider. Without a key the coach still gives the step-by-step hints.' })]);
   confirmBox('Settings', body, [{ t: 'Save', cls: 'pri', v: 1 }, { t: 'Cancel', v: null }]).then(v => {
     if (!v) return;
-    S.start = $('#st_start').value || S.start; S.settings.syncUrl = $('#st_sync').value.trim(); S.settings.aiKey = $('#st_key').value.trim(); S.settings.aiModel = $('#st_model').value.trim() || 'claude-haiku-4-5';
-    save(); toast('Settings saved'); route();
+    const g = id => body.querySelector('#' + id).value.trim();
+    S.start = g('st_start') || S.start; S.settings.syncUrl = g('st_sync'); S.settings.aiKey = g('st_key'); S.settings.aiModel = g('st_model') || 'claude-haiku-4-5';
+    S.updated = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Could not save settings in this browser.'); return; }
+    toast('Settings saved'); route();
   });
 }
 async function doSync() {
