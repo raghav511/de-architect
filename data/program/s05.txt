@@ -217,7 +217,7 @@ Three engineering points separate working retrieval from a demo.
 @@lab
 ## Build: trip demand per zone, streaming (2.5 hours)
 
-Ask Claude to **start sprint 5**. The starter kit adds a schema registry to the compose file, an Avro version of the generator, and a streaming job skeleton.
+Paste this lab into a chat with Claude and ask it to **generate the DE 5 starter kit**. The starter kit adds a schema registry to the compose file, an Avro version of the generator, and a streaming job skeleton.
 
 1. **The stream.** Read `trip_events`, keep `requested` events, set a two-minute watermark, drop duplicate `event_id` values within the watermark, and count per one-minute window and zone.
 2. **The fresh sink.** Write with update mode and `foreachBatch`, merging into `lake.gold.zone_demand`. Trigger every 10 seconds.

@@ -15,7 +15,7 @@ An AI-first study app for senior data engineer and data architect roles. It runs
 
 ## Test loop
 
-`bash tools/test_all.sh` runs everything: content checks (`tools/validate.py`, including every coding test's reference solution), the question banks (`tools/build_bank.py`), the scheduler (`tools/sched_test.js`), every reference solution through the in-browser editor and wrong answers that must fail (`tools/editor_test.js`), the Git labs (`tools/test_gitlabs.sh`), and a crawler that opens every screen at Mac, iPad and iPhone sizes and clicks every button (`tools/crawl.js`). Needs Python with duckdb and Node with Playwright.
+`bash tools/test_all.sh` runs everything: content checks (`tools/validate.py`, including every coding test's reference solution), the question banks (`tools/build_bank.py`), the scheduler (`tools/sched_test.js`), every reference solution through the in-browser editor and wrong answers that must fail (`tools/editor_test.js`), the Git labs (`tools/test_gitlabs.sh`), 30+ user journeys such as ticking steps, quizzes, editor hints, backup and sync (`tools/flows.js`), axe accessibility checks in light and dark (`tools/a11y.js`), and a crawler that opens every screen at Mac, iPad and iPhone sizes and clicks every button (`tools/crawl.js`). Needs Python with duckdb and Node with Playwright.
 
 ## Publish on GitHub Pages
 

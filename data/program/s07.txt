@@ -208,7 +208,7 @@ An MCP server is an API whose caller is a model. Three risks follow.
 
 **Before anything else:** create a billing alarm at a few dollars and a budget alert, and decide on one region. Tag every resource `Project=meridian`.
 
-Ask Claude to **start sprint 7**. The starter kit contains a Terraform skeleton with empty modules, and a script that uploads one day of your raw trip events.
+Paste this lab into a chat with Claude and ask it to **generate the DE 7 starter kit**. The starter kit contains a Terraform skeleton with empty modules, and a script that uploads one day of your raw trip events.
 
 1. **Remote state.** Create the state bucket by hand once, then configure the backend.
 2. **Storage.** A module for an S3 zone with encryption, versioning, public access blocked and a lifecycle rule. Use it for `raw` and `silver`.

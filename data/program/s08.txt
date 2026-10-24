@@ -185,7 +185,7 @@ For work that can wait, providers offer batch endpoints that process large sets 
 @@lab
 ## Build: the same data on two platforms (2.5 hours)
 
-Start both trials now. Set every cluster to terminate after ten minutes of inactivity and every warehouse to suspend after one minute. Ask Claude to **start sprint 8**.
+Start both trials now. Set every cluster to terminate after ten minutes of inactivity and every warehouse to suspend after one minute. Paste this lab into a chat with Claude and ask it to **generate the DE 8 starter kit**.
 
 **Part A: Databricks (75 minutes)**
 

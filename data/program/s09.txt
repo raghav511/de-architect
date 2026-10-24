@@ -206,7 +206,7 @@ Design decisions to be able to defend:
 @@lab
 ## Build: contracts, tests, CI and a health dashboard (2.25 hours)
 
-Ask Claude to **start sprint 9**. The starter kit adds a GitHub Actions workflow skeleton, a `contracts/` folder, and a metrics table definition.
+Paste this lab into a chat with Claude and ask it to **generate the DE 9 starter kit**. The starter kit adds a GitHub Actions workflow skeleton, a `contracts/` folder, and a metrics table definition.
 
 1. **Unit tests.** Refactor two transformations from earlier sprints into pure functions on DataFrames. Write three pytest tests for each, using a shared Spark fixture.
 2. **A contract.** Write `contracts/trip_events.yaml` as in section 9.3. Write a validator that checks a batch against it.

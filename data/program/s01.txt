@@ -298,7 +298,7 @@ These tools only read. Every sprint adds one capability, and the first tool that
 @@lab
 ## Build: the walking skeleton (2.5 hours)
 
-Ask Claude to **start sprint 1** and it will generate the starter kit into your projects folder: `docker-compose.yml` for Kafka and MinIO, a `Makefile`, the generator, and empty job and DAG files with the function signatures in place. You write the parts marked `TODO`.
+Paste this lab into a chat with Claude and ask it to **generate the DE 1 starter kit** into your projects folder: `docker-compose.yml` for Kafka and MinIO, a `Makefile`, the generator, and empty job and DAG files with the function signatures in place. You write the parts marked `TODO`.
 
 **The event.** One JSON object per message on topic `trip_events`, keyed by `trip_id`.
 

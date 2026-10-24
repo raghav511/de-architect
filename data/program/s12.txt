@@ -11,13 +11,13 @@ mockloop: 3
 1202 | ai | 1.5 | Capstone: the platform and the on-call agent, ready to show | A public repository with a README, an architecture diagram, evaluation results and a five-minute demo you have rehearsed. | lab
 1203 | build | 0.5 | Resume and application plan | Resume rewritten to lead with pipelines and numbers; a target list in three tiers with dates. | lab
 1204 | talk | 4.5 | Mock loops 3 to 7 | Five company-style loops completed and scored, with one repair action noted after each. | mock
-1205 | practice | 1 | Repair set from your scorecard | The two weakest rounds on your scorecard each get one targeted set. | practice
+1205 | practice | 1 | Repair set from your weakest rounds | The two weakest rounds on the Progress page each get one targeted set. | practice
 1206 | test | 0.5 | Final review quiz | 80% or better, across all rounds. | quiz
 1207 | test | 1 | Final coding test | Attempted inside the timer. | coding
 
 @@readings
 - Your own `notes/what-broke.md`, all twelve sprints of it. Read it end to end once. It is your behavioral material and your evidence.
-- Your scorecard. Sort rounds by score and read your lowest two sprints' quizzes again.
+- The Progress page (readiness by round). Sort rounds by score and read your lowest two sprints' quizzes again.
 - [DataVidhya: What changed in data engineering interviews in 2026](https://datavidhya.com/learn/de-interview-prep/the-2026-landscape/what-changed-in-2026/). Re-read the section on AI rules by company before each recruiter call.
 
 @@chapter
@@ -104,9 +104,9 @@ Two habits keep you ready. Do one SQL and one DSA problem twice a week, and keep
 3. For your top three companies, write the "why this company" answer from sprint 11 and the questions you will ask the recruiter.
 
 @@practice
-## Repair set from your scorecard (1 hour)
+## Repair set from your weakest rounds (1 hour)
 
-Open the **Scorecard**. Find the two interview rounds with the lowest quiz percentage or the fewest coding problems solved alone. Tell Claude which two, and ask for a repair set for each: four problems or ten questions aimed at the specific gaps, with the patterns you missed.
+Open **Progress** and look at readiness by round. Find the two interview rounds with the lowest quiz percentage or the fewest coding problems solved alone. Tell Claude which two, and ask for a repair set for each: four problems or ten questions aimed at the specific gaps, with the patterns you missed.
 
 If your scores are even across rounds, redo these, timed, from a blank file:
 

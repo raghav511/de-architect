@@ -208,7 +208,7 @@ Then change one thing in the context and score again. That loop of change, measu
 @@lab
 ## Build: a star schema in dbt (2.5 hours)
 
-Ask Claude to **start sprint 4**. Start your Snowflake trial now, not earlier. The starter kit has a dbt project skeleton, a loader that copies a month of `silver.trips_enriched`, drivers and zones into Snowflake, and an Airflow DAG that runs dbt. If you would prefer to keep the trial for later, the same project runs locally on DuckDB with the `dbt-duckdb` adapter.
+Paste this lab into a chat with Claude and ask it to **generate the DE 4 starter kit**. Start your Snowflake trial now, not earlier. The starter kit has a dbt project skeleton, a loader that copies a month of `silver.trips_enriched`, drivers and zones into Snowflake, and an Airflow DAG that runs dbt. If you would prefer to keep the trial for later, the same project runs locally on DuckDB with the `dbt-duckdb` adapter.
 
 1. **Write the grain first.** In `models/marts/README.md`, one sentence per table: "`fct_trips`: one row per trip."
 2. **Staging models** for trips, drivers and zones: rename, cast, de-duplicate. Nothing else.

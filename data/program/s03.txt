@@ -216,7 +216,7 @@ Then do the part that matters most. Diagnose the job yourself first, and write y
 @@lab
 ## Build: the enrichment job, measured (2.5 hours)
 
-Ask Claude to **start sprint 3**. The starter kit adds a `drivers` table of about 500,000 rows, a `zones` table of about 200 rows, a generator option for skewed data, and Spark event logging.
+Paste this lab into a chat with Claude and ask it to **generate the DE 3 starter kit**. The starter kit adds a `drivers` table of about 500,000 rows, a `zones` table of about 200 rows, a generator option for skewed data, and Spark event logging.
 
 The job, `jobs/enrich_trips.py`, takes one day of completed trips, joins drivers and zones, and writes `silver.trips_enriched` with driver rating, vehicle type, zone name and a surge multiplier. A second step computes each driver's daily earnings and their rank within their city.
 

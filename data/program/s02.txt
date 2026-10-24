@@ -238,7 +238,7 @@ Points to understand, because each is a design choice an interviewer can ask you
 @@lab
 ## Build: trip events as an Iceberg table (2.5 hours)
 
-The starter kit for this sprint adds a catalog and Trino to your compose file and gives you a Spark session configured for Iceberg. Ask Claude to **start sprint 2**.
+The starter kit for this sprint adds a catalog and Trino to your compose file and gives you a Spark session configured for Iceberg. Paste this lab into a chat with Claude and ask it to **generate the DE 2 starter kit**.
 
 1. **Create the table** from section 2.5, partitioned by `days(event_ts)`.
 2. **Change the ingest job** to write to the table with `MERGE INTO` on `event_id`. Run the same hour twice and confirm the row count does not change. The 1% of events the generator sends twice now disappear as well. Write one sentence in your notes on why `MERGE` fixed both kinds of duplicate when partition overwrite fixed only one.

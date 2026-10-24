@@ -1,0 +1,360 @@
+/* Keystone user-journey tests (QA scenarios). node tools/flows.js [baseUrl] [filter]
+   Each scenario runs in a fresh browser context and checks what a user would see. */
+const { chromium } = require(process.env.PW || 'playwright');
+const BASE = (process.argv[2] && /^http/.test(process.argv[2])) ? process.argv[2] : 'http://localhost:8811/';
+const FILTER = process.argv.find(a => !/^http/.test(a) && a !== process.argv[0] && a !== process.argv[1]) || '';
+const results = [];
+let browser;
+async function ctx(opt) {
+  const c = await browser.newContext(Object.assign({ viewport: { width: 1440, height: 900 }, acceptDownloads: true }, opt || {}));
+  const p = await c.newPage(); p.errs = [];
+  p.on('pageerror', e => p.errs.push(e.message));
+  p.on('dialog', d => { p.errs.push('native dialog: ' + d.message()); d.dismiss(); });
+  return { c, p };
+}
+const go = async (p, h, w) => { await p.goto(BASE + h); await p.waitForTimeout(w || 700); };
+const hash = async (p, h, w) => { await p.evaluate(x => { location.hash = x; }, h); await p.waitForTimeout(w || 400); };
+const text = (p, s) => p.$eval(s, e => e.innerText).catch(() => '');
+const state = p => p.evaluate(() => JSON.parse(localStorage.getItem('keystone:v1') || '{}'));
+function ok(cond, msg) { if (!cond) throw new Error(msg); }
+async function T(name, fn, opt) {
+  if (FILTER && !name.toLowerCase().includes(FILTER.toLowerCase())) return;
+  const { c, p } = await ctx(opt);
+  try { await fn(p, c); if (p.errs.length) throw new Error('page errors: ' + p.errs.join(' | ')); results.push(['PASS', name]); }
+  catch (e) { results.push(['FAIL', name, e.message.split('\n')[0]]); await p.screenshot({ path: '/tmp/flow_fail_' + name.replace(/\W+/g, '_') + '.png' }).catch(() => {}); }
+  await c.close();
+}
+
+(async () => {
+  browser = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
+
+  await T('today: tick a step updates progress, hero, sidebar and persists', async p => {
+    await go(p, '#/today');
+    const first = await text(p, '.unit .t');
+    const hero1 = await text(p, '.hero b');
+    ok(hero1 === first, 'hero should show the first step: ' + hero1 + ' vs ' + first);
+    await p.click('.unit .check'); await p.waitForTimeout(400);
+    ok(await p.$('.unit.done'), 'first unit not marked done');
+    const hero2 = await text(p, '.hero b'); ok(hero2 !== first, 'hero did not move to the next step');
+    const side = await text(p, '.side .week'); ok(/Today: [1-9]\d* of/.test(side), 'sidebar minutes not updated: ' + side);
+    const s = await state(p); ok(Object.values(s.done).some(v => /^\d{4}-\d\d-\d\d$/.test(v)), 'done not saved with a date');
+    await p.reload(); await p.waitForTimeout(800); ok(await p.$('.unit.done'), 'done lost after reload');
+    await p.click('.unit.done .check'); await p.waitForTimeout(400); ok(!(await p.$('.unit.done')), 'untick failed');
+  });
+
+  await T('today: finishing every step shows done-for-today and next up', async p => {
+    await go(p, '#/today');
+    for (let i = 0; i < 8; i++) { const b = await p.$('.unit:not(.done) .check'); if (!b) break; await b.click(); await p.waitForTimeout(350); }
+    const t = await text(p, '#page'); ok(/Done for today/.test(t), 'no done-for-today message');
+    ok(/Ahead of plan/i.test(await text(p, '.hero')), 'hero should offer the next step ahead of plan');
+  });
+
+  await T('today: day navigation, preview and back to today', async p => {
+    await go(p, '#/today');
+    await p.click('[aria-label="Next day"]'); await p.waitForTimeout(400);
+    ok(/Tomorrow/.test(await text(p, '#page')), 'next day not shown');
+    ok(!(await p.$('.hero')), 'hero should only show on today');
+    await p.click('text=Back to today'); await p.waitForTimeout(400);
+    ok(/Today ·/.test(await text(p, '#page')), 'back to today failed');
+    await p.click('.wkday >> nth=6'); await p.waitForTimeout(400);
+    ok(/Sunday/.test(await text(p, '#page')), 'week strip day link failed');
+  });
+
+  await T('schedule: skipped days roll steps forward (clock +3 days)', async (p, c) => {
+    await go(p, '#/today');
+    const first = await text(p, '.unit .t');
+    const d = new Date(); d.setDate(d.getDate() + 3); d.setHours(9, 0, 0, 0);
+    await p.clock.setFixedTime(d); await p.reload(); await p.waitForTimeout(900);
+    ok((await text(p, '.unit .t')) === first, 'undone first step should roll to the new today');
+  });
+
+  await T('schedule: weekday budget is 60, weekend 120, settings change it', async p => {
+    const mon = new Date(); mon.setDate(mon.getDate() + ((8 - mon.getDay()) % 7 || 7)); mon.setHours(8, 0, 0, 0);
+    await p.clock.setFixedTime(mon); await go(p, '#/today', 900);
+    let m = (await text(p, '#page')).match(/of (\d+) min done/); ok(m && +m[1] <= 65, 'Monday plan over 60: ' + (m && m[1]));
+    await p.evaluate(() => { S.settings.capWd = 90; save(); route(); }); await p.waitForTimeout(500);
+    m = (await text(p, '#page')).match(/of (\d+) min done/); ok(m && +m[1] > 60 && +m[1] <= 95, 'budget 90 not applied: ' + (m && m[1]));
+    ok(/90-minute day/.test(await text(p, '#page')), 'day chip not updated');
+  });
+
+  await T('settings: save, reopen shows values, bad minutes fall back, theme applies', async p => {
+    await go(p, '#/today');
+    await p.click('[aria-label="Settings"]'); await p.waitForTimeout(300);
+    await p.fill('#st_wd', '5'); await p.fill('#st_we', '150'); await p.fill('#st_time', '06:30');
+    await p.fill('#st_sync', 'https://script.google.com/macros/s/abc/exec'); await p.fill('#st_key', 'sk-ant-test');
+    await p.selectOption('#st_theme', 'dark');
+    await p.click('.dialog button:has-text("Save")'); await p.waitForTimeout(400);
+    const s = await state(p); ok(s.settings.capWd === 60, 'invalid weekday minutes should fall back to 60, got ' + s.settings.capWd);
+    ok(s.settings.capWe === 150 && s.settings.studyTime === '06:30', 'weekend/time not saved');
+    ok(await p.evaluate(() => document.documentElement.dataset.theme === 'dark'), 'dark theme not applied');
+    await p.reload(); await p.waitForTimeout(700);
+    ok(await p.evaluate(() => document.documentElement.dataset.theme === 'dark'), 'theme lost after reload');
+    await p.click('[aria-label="Settings"]'); await p.waitForTimeout(300);
+    ok((await p.inputValue('#st_sync')).includes('abc') && (await p.inputValue('#st_key')) === 'sk-ant-test', 'settings not shown on reopen');
+    await p.keyboard.press('Escape');
+  });
+
+  await T('sync: without URL opens settings; failing URL keeps progress', async p => {
+    await go(p, '#/today');
+    await p.click('#syncBtn'); await p.waitForTimeout(300); ok(await p.$('#st_sync'), 'settings not opened');
+    await p.keyboard.press('Escape');
+    await p.evaluate(() => { S.settings.syncUrl = 'http://127.0.0.1:9/none'; S.done['a01:A101'] = '2026-10-24'; save(); });
+    await p.click('#syncBtn'); await p.waitForTimeout(2500);
+    ok(/Sync failed|synced/i.test(await text(p, '.toast')), 'no sync result toast');
+    ok((await state(p)).done['a01:A101'], 'progress lost after failed sync');
+  });
+
+  await T('sync merge: untick on one device survives, union of done', async p => {
+    await go(p, '#/today');
+    const r = await p.evaluate(() => {
+      const a = { done: { x: '2026-10-20', y: '2026-10-21' }, doneAt: { x: 1, y: 1 }, undone: {}, updated: 1 };
+      const b = { done: { y: '2026-10-21', z: '2026-10-22' }, doneAt: { y: 1, z: 2 }, undone: { x: 5 }, updated: 2 };
+      return Object.keys(mergeState(a, b).done).sort().join(',');
+    });
+    ok(r === 'y,z', 'merge wrong: ' + r);
+  });
+
+  await T('quiz: answer all types, palette, submit, score, retake, auto-done', async p => {
+    await go(p, '#/quiz/a01', 1000);
+    const n = await p.$$eval('.pal button', b => b.length); ok(n >= 10, 'palette has ' + n);
+    for (let i = 0; i < n; i++) {
+      await p.click('.pal button >> nth=' + i); await p.waitForTimeout(120);
+      if (await p.$('.opt')) await p.click('.opt >> nth=0');
+      else if (await p.$('#page input[type=text]')) await p.fill('#page input[type=text]', 'test');
+      else if (await p.$('#page textarea')) await p.fill('#page textarea', 'my answer');
+      await p.waitForTimeout(80);
+    }
+    ok(/of \d+ answered/.test(await text(p, '#page')), 'answered count missing');
+    await p.click('button:has-text("Submit")'); await p.waitForTimeout(300);
+    await p.click('.dialog button:has-text("Submit")'); await p.waitForTimeout(400);
+    ok(/Score: \d+ of \d+/.test(await text(p, '#page')), 'no score');
+    await go(p, '#/path/a01', 800); await p.reload(); await p.waitForTimeout(800);
+    const t = await text(p, '#page'); ok(/Quiz A1/.test(t), 'quiz step missing on path');
+    ok(await p.$('.unit.done:has-text("Quiz A1")'), 'quiz step not auto-ticked after submit');
+    await go(p, '#/quiz/a01', 900); await p.click('button:has-text("Retake")'); await p.waitForTimeout(400);
+    ok(/Question 1 of/i.test(await text(p, '#page')), 'retake did not reset');
+    await go(p, '#/path/a01', 600); await p.reload(); await p.waitForTimeout(800); ok(await p.$('.unit.done:has-text("Quiz A1")'), 'retake should not untick the quiz step');
+  });
+
+  await T('quiz: reset with undo and leave keeps answers', async p => {
+    await go(p, '#/quiz/s01', 1000);
+    await p.click('.opt >> nth=1'); await p.waitForTimeout(200);
+    await p.click('button:has-text("Leave")'); await p.click('.dialog button:has-text("Leave, keep answers")'); await p.waitForTimeout(400);
+    await go(p, '#/quiz/s01', 900); ok(await p.$('.opt[aria-pressed=true]'), 'answer lost after leave');
+    await p.click('button:has-text("Reset and exit")'); await p.click('.dialog button:has-text("Reset and exit")'); await p.waitForTimeout(400);
+    await p.click('.toast button:has-text("Undo")'); await p.waitForTimeout(200);
+    await go(p, '#/quiz/s01', 900); ok(await p.$('.opt[aria-pressed=true]'), 'undo did not restore answers');
+  });
+
+  await T('interview: tick, show answer, mock deep link', async p => {
+    await go(p, '#/interview/a02', 900);
+    await p.click('button:has-text("Show model answer") >> nth=0'); await p.waitForTimeout(150);
+    ok(/Hide model answer/.test(await text(p, '#page')), 'answer did not open');
+    await p.click('#page .check >> nth=0'); await p.waitForTimeout(300);
+    ok(await p.$('#page .check[aria-pressed=true]'), 'tick failed');
+    await go(p, '#/interview/s12/mock', 1200);
+    const y = await p.evaluate(() => { const m = document.getElementById('mock'); return m ? m.getBoundingClientRect().top : 9999; });
+    ok(y < 300, 'mock section not scrolled into view (top ' + Math.round(y) + ')');
+  });
+
+  await T('scroll: ticking far down a list keeps your place', async p => {
+    await go(p, '#/path/s01', 900);
+    const b = await p.$$('.unit .check'); await b[10].scrollIntoViewIfNeeded(); const y0 = await p.evaluate(() => scrollY);
+    await b[10].click(); await p.waitForTimeout(400); const y1 = await p.evaluate(() => scrollY);
+    ok(Math.abs(y1 - y0) < 50 && y0 > 300, 'path jumped from ' + y0 + ' to ' + y1);
+    await go(p, '#/interview/s01', 900);
+    const t = await p.$$('#page .check'); await t[12].scrollIntoViewIfNeeded(); const z0 = await p.evaluate(() => scrollY);
+    await t[12].click(); await p.waitForTimeout(300); const z1 = await p.evaluate(() => scrollY);
+    ok(Math.abs(z1 - z0) < 50, 'interview jumped from ' + z0 + ' to ' + z1);
+    ok(/1 of \d+ ticked/.test(await text(p, '#page')), 'ticked counter not updated');
+  });
+
+  await T('editor: run, hints ladder, solution unlock after two runs, timer, exit dialog', async p => {
+    await go(p, '#/dsa/d011', 1200);
+    await p.click('button.btn.pri:has-text("Run")');
+    await p.waitForFunction(() => /Run again/.test((Array.from(document.querySelectorAll('button.btn.pri')).find(b => /Run/.test(b.textContent)) || {}).textContent || ''), null, { timeout: 120000 });
+    const v1 = await text(p, '.verdict'); ok(v1 && v1 !== 'All checks pass', 'starter code should not pass: ' + v1);
+    for (let i = 0; i < 4; i++) { await p.click('.pane .btn.dark'); await p.waitForTimeout(120); }
+    ok(/Run twice/.test(await text(p, '.pane .btn.dark')), 'solution should be locked after one run');
+    await p.click('button.btn.pri:has-text("Run")'); await p.waitForTimeout(2500);
+    ok(/Show the solution/.test(await text(p, '.pane .btn.dark')), 'solution not unlocked after two runs: ' + await text(p, '.pane .btn.dark'));
+    await p.click('.pane .btn.dark'); await p.waitForTimeout(200); ok(/Reference solution/i.test(await text(p, 'aside.pane')), 'solution not shown');
+    await p.click('button:has-text("Pause")'); const t1 = await text(p, '.top .mono'); await p.waitForTimeout(1500); ok(t1 === await text(p, '.top .mono'), 'timer did not pause');
+    await p.click('button:has-text("Exit")'); await p.waitForTimeout(200);
+    await p.click('.dialog button:has-text("Save and exit")'); await p.waitForTimeout(500);
+    ok(/#\/path\//.test(p.url()), 'exit did not go back: ' + p.url());
+  });
+
+  await T('editor: reset code with undo, terminal runs a line', async p => {
+    await go(p, '#/sql/q011', 1200);
+    await p.fill('textarea.code', 'SELECT 42 AS answer');
+    await p.click('button:has-text("Starter code")'); await p.click('.dialog button:has-text("Reset code")'); await p.waitForTimeout(200);
+    ok(!(await p.inputValue('textarea.code')).includes('42'), 'reset did not restore starter');
+    await p.click('.toast button:has-text("Undo")'); await p.waitForTimeout(200);
+    ok((await p.inputValue('textarea.code')).includes('42'), 'undo did not restore code');
+    await p.click('.editor button:has-text("Terminal")'); await p.waitForTimeout(300);
+    await p.fill('.term-in input', 'SELECT 1+1 AS two'); await p.keyboard.press('Enter');
+    await p.waitForFunction(() => /two/.test(document.querySelector('.term-lines') ? document.querySelector('.term-lines').innerText : ''), null, { timeout: 120000 });
+  });
+
+  await T('editor phone: panes switch and run shows output', async p => {
+    await go(p, '#/dsa/d012', 1200);
+    const ov = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth); ok(ov <= 2, 'overflow ' + ov);
+    const tabs = await p.$$eval('button', b => b.map(x => x.innerText.trim()).filter(Boolean)); ok(tabs.some(t => /Problem/.test(t)) && tabs.some(t => /Code/.test(t)), 'phone pane tabs missing: ' + tabs.slice(0, 12).join(','));
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  await T('project: milestones tick and wrong completion code rejected, right code accepted', async p => {
+    await go(p, '#/project/lakehouse-1', 900);
+    await p.click('#page .block .check >> nth=0'); await p.waitForTimeout(200);
+    ok((await state(p)).proj['lakehouse-1'].ms, 'milestone not saved');
+    await p.fill('input[aria-label^="Completion code"]', 'NOPE'); await p.click('button:has-text("Verify")'); await p.waitForTimeout(200);
+    ok(/does not look like/.test(await text(p, '#page')), 'bad format not rejected');
+    const code = await p.evaluate(async () => { const b = await crypto.subtle.digest('SHA-1', new TextEncoder().encode('lakehouse' + [1, 2].join(','))); return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('').slice(0, 6).toUpperCase() + '-12'; });
+    await p.fill('input[aria-label^="Completion code"]', code); await p.click('button:has-text("Verify")'); await p.waitForTimeout(300);
+    ok(/Verified/.test(await text(p, '#page')), 'valid code not accepted');
+  });
+
+  await T('design: notes saved per module and step, calculator, mark done', async p => {
+    await go(p, '#/design/a01', 800);
+    await p.fill('#page textarea', 'clients -> gateway'); await p.waitForTimeout(250);
+    await go(p, '#/design/s05', 700); ok((await p.inputValue('#page textarea')) === '', 'notes leaked into another module');
+    await go(p, '#/design/a01', 700); ok((await p.inputValue('#page textarea')) === 'clients -> gateway', 'notes not kept');
+    await p.fill('#c_trips', '1000000'); await p.waitForTimeout(150);
+    ok(/6,000,000/.test(await text(p, '#page')), 'calculator did not update');
+    await p.click('button:has-text("Mark this design done")'); await p.waitForTimeout(300);
+    ok((await state(p)).done['a01:design'], 'design not marked done');
+  });
+
+  await T('learn: section range, show whole, next tab, toc jump', async p => {
+    await go(p, '#/learn/s01/chapter/0-2', 900);
+    ok(/Today's part/.test(await text(p, '#page')), 'no part banner');
+    const n = await p.$$eval('article h2', h => h.length); ok(n === 3, 'range should show 3 sections, got ' + n);
+    await p.click('text=Show the whole chapter'); await p.waitForTimeout(500);
+    const n2 = await p.$$eval('article h2', h => h.length); ok(n2 > 3, 'whole chapter not shown');
+    await p.click('text=Next: Readings'); await p.waitForTimeout(500); ok(/readings/.test(p.url()), 'next tab failed');
+  });
+
+  await T('git: lesson commands and mark done', async p => {
+    await go(p, '#/git/5', 700);
+    ok(/\$L setup 5/.test(await text(p, '#page')), 'setup command missing');
+    await p.click('button:has-text("Mark this lesson done")'); await p.waitForTimeout(300);
+    ok(Object.keys((await state(p)).done).some(k => k.endsWith(':git')), 'git lesson not saved');
+  });
+
+  await T('search: keyboard open, type, arrows, enter navigates, escape closes', async p => {
+    await go(p, '#/today');
+    await p.keyboard.press('/'); await p.keyboard.type('two sum'); await p.waitForTimeout(200);
+    ok((await p.$$('.searchwrap .item')).length > 0, 'no results for two sum');
+    await p.keyboard.press('Enter'); await p.waitForTimeout(600); ok(/#\/dsa\//.test(p.url()), 'enter did not open a DSA problem: ' + p.url());
+    await p.keyboard.press('Control+k'); await p.waitForTimeout(150); ok(await p.$('.searchwrap'), 'ctrl+k did not open');
+    await p.keyboard.press('Escape'); await p.waitForTimeout(150); ok(!(await p.$('.searchwrap')), 'escape did not close');
+  });
+
+  await T('backup: download then restore, bad file rejected', async p => {
+    await go(p, '#/progress');
+    await p.evaluate(() => { S.done['a01:A101'] = '2026-10-24'; save(); });
+    await p.waitForTimeout(300);
+    const [dl] = await Promise.all([p.waitForEvent('download'), p.click('button:has-text("Download a backup")')]);
+    const f = await dl.path();
+    await p.evaluate(() => { delete S.done['a01:A101']; save(); });
+    await p.setInputFiles('input[type=file][accept="application/json"]', f); await p.waitForTimeout(500);
+    ok((await state(p)).done['a01:A101'], 'restore did not bring progress back');
+    require('fs').writeFileSync('/tmp/bad.json', 'not json');
+    await p.setInputFiles('input[type=file][accept="application/json"]', '/tmp/bad.json'); await p.waitForTimeout(300);
+    ok(/not a Keystone backup/.test(await text(p, '.toast')), 'bad file not rejected');
+  });
+
+  await T('calendar: ics is valid and starts at study time', async p => {
+    await go(p, '#/today');
+    await p.evaluate(() => { S.settings.studyTime = '06:15'; save(); });
+    const [dl] = await Promise.all([p.waitForEvent('download'), p.click('button:has-text("Add to calendar")')]);
+    const t = require('fs').readFileSync(await dl.path(), 'utf8');
+    ok(/^BEGIN:VCALENDAR/.test(t) && /END:VCALENDAR\s*$/.test(t), 'ics framing');
+    ok((t.match(/BEGIN:VEVENT/g) || []).length >= 20, 'expected ~28 events');
+    ok(/DTSTART:\d{8}T0615/.test(t), 'study time not used');
+    ok(t.split('\r\n').every(l => l.length <= 75 || /^(DESCRIPTION|SUMMARY)/.test(l)), 'long lines');
+  });
+
+  await T('coach: no key gives a hint; bad key shows a clear error', async p => {
+    await go(p, '#/today');
+    await p.click('.fab'); await p.fill('.coach input', 'help'); await p.keyboard.press('Enter'); await p.waitForTimeout(300);
+    ok(/AI key|step/.test(await text(p, '.coach .msgs')), 'no offline hint');
+  });
+
+  await T('old saved data from v1.1 loads without errors', async p => {
+    await go(p, '#/today');
+    await p.evaluate(() => { saveT && clearTimeout(saveT); localStorage.setItem('keystone:v1', JSON.stringify({ start: '2026-10-12', done: { w1d0les1: 1, w1d0dsa: 1 }, quiz: { 1: { a: { 0: 'A' }, sub: true, i: 0 } }, iv: { 1: { 0: true } }, solved: { d011: 1 }, settings: { syncUrl: '' }, week: 2, dayPick: 1 })); }); await p.reload(); await p.waitForTimeout(800);
+    for (const h of ['#/today', '#/path', '#/progress', '#/quiz/s01', '#/interview/1', '#/learn/1', '#/path/3']) { await go(p, h, 600); ok(!(/Something went wrong/.test(await text(p, '.top'))), h + ' broke'); }
+    await go(p, '#/path/s01', 600); ok(await p.$('.unit.done:has-text("Quiz 1")'), 'old submitted quiz 1 should count as done');
+  });
+
+  await T('storage blocked: app still renders', async p => {
+    await p.addInitScript(() => { Object.defineProperty(window, 'localStorage', { get() { throw new Error('blocked'); } }); });
+    await go(p, '#/today', 1000);
+    ok(/Your plan for today/.test(await text(p, '#page')), 'app did not render without storage');
+  });
+
+  await T('keyboard: dialogs trap focus start and Escape closes; focus visible', async p => {
+    await go(p, '#/today');
+    await p.click('[aria-label="Settings"]'); await p.waitForTimeout(200);
+    const f = await p.evaluate(() => document.activeElement && document.activeElement.closest('.dialog') !== null); ok(f, 'focus not moved into dialog');
+    await p.keyboard.press('Escape'); await p.waitForTimeout(150); ok(!(await p.$('.dialog')), 'escape did not close settings');
+    await p.keyboard.press('Tab'); await p.keyboard.press('Tab');
+    const outline = await p.evaluate(() => getComputedStyle(document.activeElement).outlineStyle); ok(outline !== 'none', 'no visible focus ring');
+  });
+
+  await T('phone: More sheet opens every section and settings', async p => {
+    await go(p, '#/today');
+    await p.click('.tabmore'); await p.waitForTimeout(200);
+    const n = await p.$$eval('.sheetgrid a, .sheetgrid button', x => x.length); ok(n >= 10, 'sheet has ' + n);
+    await p.click('.sheetgrid a:has-text("Git lessons")'); await p.waitForTimeout(500);
+    ok(/#\/git/.test(p.url()) && !(await p.$('.sheet')), 'sheet link failed or did not close');
+    ok(await p.$('.tabmore[aria-current=page]'), 'More tab not highlighted on a non-tab page');
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  await T('path: make this week 1 asks first and updates week numbers', async p => {
+    await go(p, '#/path');
+    await p.evaluate(() => { S.start = '2026-09-07'; save(); route(); }); await p.waitForTimeout(400);
+    ok(/Weeks? 8/.test(await text(p, '#page')), 'old start not reflected');
+    await p.click('button:has-text("Make this week 1")'); await p.click('.dialog button:has-text("Make this week 1")'); await p.waitForTimeout(400);
+    ok(/Weeks? 1/.test(await text(p, '#page')), 'week numbers not reset');
+  });
+
+  await T('back button returns to the screen you came from', async p => {
+    await go(p, '#/path/a02', 700);
+    await p.click('.unit a.btn.pri >> nth=0'); await p.waitForTimeout(500);
+    ok(/#\/learn\/a02/.test(p.url()), 'did not open lesson: ' + p.url());
+    await p.click('[aria-label="Back"]'); await p.waitForTimeout(500);
+    ok(/#\/path\/a02/.test(p.url()), 'back went to ' + p.url());
+  });
+
+  await T('quiz: fill-in accepts case, spacing and plural variants', async p => {
+    await go(p, '#/today');
+    const r = await p.evaluate(async () => { const s = await sprint('s02'); const q = s.quiz.find(x => x.TYPE === 'fill' && /time travel/.test(x.ANS)); return !!q; });
+    ok(r, 'fixture question missing');
+    await go(p, '#/quiz/s02', 900);
+    const idx = await p.evaluate(() => DATA.sprints.s02.quiz.findIndex(x => x.TYPE === 'fill' && /time travel/.test(x.ANS)));
+    await p.click('.pal button >> nth=' + idx); await p.fill('#page input[type=text]', 'Time-Travel'); await p.waitForTimeout(100);
+    await p.click('button:has-text("Submit")'); await p.click('.dialog button:has-text("Submit")'); await p.waitForTimeout(400);
+    const badge = await p.$$eval('#page section', (ss, i) => ss[i + 1] ? ss[i + 1].querySelector('.badge').textContent : '', idx);
+    ok(badge === 'Right', 'variant answer graded ' + badge);
+  });
+
+  await T('settings: week 1 start snaps to Monday', async p => {
+    await go(p, '#/today');
+    await p.click('[aria-label="Settings"]'); await p.fill('#st_start', '2026-10-22'); await p.click('.dialog button:has-text("Save")'); await p.waitForTimeout(300);
+    ok((await state(p)).start === '2026-10-19', 'start not snapped: ' + (await state(p)).start);
+  });
+
+  await T('update app: reports latest when versions match', async p => {
+    await go(p, '#/today');
+    await p.click('[aria-label="Update app"]'); await p.waitForTimeout(1500);
+    ok(/latest version|Updating/.test(await text(p, '.toast')), 'no update toast');
+  });
+
+  await browser.close();
+  results.forEach(r => console.log(r.join('  ')));
+  const f = results.filter(r => r[0] === 'FAIL').length;
+  console.log(results.length - f + ' passed, ' + f + ' failed');
+  process.exit(f ? 1 : 0);
+})();

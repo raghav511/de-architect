@@ -142,7 +142,7 @@ How to use the assistant well when it is allowed:
 @@lab
 ## Build: a one-day customer build (2.25 hours)
 
-Ask Claude to **start sprint 11**. The starter kit contains a fictional customer, **Swiftline Logistics**, with a one-page brief from their operations director and four messy CSV files: orders, driver assignments, pickups and deliveries. The data has the problems real customers have: timestamps in mixed time zones, duplicated status events, missing promised times for some orders, and a city code that changed spelling in the middle of the month.
+Paste this lab into a chat with Claude and ask it to **generate the DE 11 starter kit**. The starter kit contains a fictional customer, **Swiftline Logistics**, with a one-page brief from their operations director and four messy CSV files: orders, driver assignments, pickups and deliveries. The data has the problems real customers have: timestamps in mixed time zones, duplicated status events, missing promised times for some orders, and a city code that changed spelling in the middle of the month.
 
 Work in four timed blocks. Stop each one when its time is up.
 

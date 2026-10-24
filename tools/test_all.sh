@@ -14,6 +14,8 @@ step "scheduler" node tools/sched_test.js "$BASE"
 step "editor: every reference solution passes" node tools/editor_test.js "$BASE"
 step "editor: wrong answers fail" env NEG=1 node tools/editor_test.js "$BASE"
 step "git labs" bash tools/test_gitlabs.sh
+step "user journeys" node tools/flows.js "$BASE"
+step "accessibility (axe, light and dark)" node tools/a11y.js "$BASE"
 step "UI crawl" node tools/crawl.js "$BASE" ${QUICK:+--quick}
 echo; [[ $fail == 0 ]] && echo "ALL GREEN" || echo "SOME CHECKS FAILED"
 exit $fail

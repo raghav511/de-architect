@@ -6,7 +6,7 @@ goal: Find out where you stand before sprint 1, set up your machine, and learn h
 hours: 2.5
 
 @@tickets
-001 | learn | 0.5 | Read how the program works | You can name the eight tickets every sprint contains and the two rules about using AI. | chapter
+001 | learn | 0.5 | Read how the program works | You can name the steps a module contains, the daily time budget, and the two rules about using AI. | chapter
 002 | test | 0.5 | Diagnostic quiz, 20 questions | Answered in one sitting without looking anything up. | quiz
 003 | test | 1 | Diagnostic coding test, 4 problems | Attempted under the 60-minute timer and marked honestly. | coding
 004 | build | 0.5 | Set up your machine | Docker runs a container, Python 3.11+ is installed, and an empty `meridian-platform` repo exists. | lab
@@ -14,11 +14,13 @@ hours: 2.5
 @@chapter
 ## How this program works
 
-You have twelve sprints of about ten hours each. Every sprint has the same shape, so you never have to decide what to do next. You only have to decide when.
+The program is AI first. Modules **AI 1–3** teach agent loops, harness engineering, prompts that save credits, evals, and agents that review and fix their own work. Then come this setup module and the data engineering modules **DE 1–12**. After DE 12, **Extra** modules arrive every week: one big-tech engineering problem or research paper, plus new questions on earlier topics.
 
-You play the first data engineer at **Meridian**, a fictional ride-hailing and food-delivery company operating in Indian cities. Each sprint the business asks for something. Delivering it needs several technologies working together, and at some point in the week something breaks. The interview material is attached to that work: you learn Spark tuning because your job is slow, and you learn watermarks because surge pricing is using stale data.
+Time is boxed, not the modules. The plan gives you **60 minutes on weekdays and 120 on Saturday and Sunday** (change both in Settings). Each module is split into steps that fit one day. Anything you do not finish moves to the next free day, so a module takes as many weeks as it needs and the dates on Today and Path always stay true. Coding practice (DSA, SQL, PySpark and the timed coding tests) runs on its own track, outside that hour.
 
-Ride-hailing was chosen on purpose. In your purchased question bank, Uber, Meta, Google and Grab all use it for data modeling and system design rounds. By sprint 10 you will have built the system those rounds ask you to design.
+You play the first data engineer at **Meridian**, a fictional ride-hailing and food-delivery company operating in Indian cities. Each module the business asks for something. Delivering it needs several technologies working together, and at some point something breaks. The interview material is attached to that work: you learn Spark tuning because your job is slow, and watermarks because surge pricing is using stale data.
+
+Ride-hailing was chosen on purpose. In your question bank, Uber, Meta, Google and Grab all use it for data modeling and system design rounds. By DE 10 you will have built the system those rounds ask you to design.
 
 ## The platform you will build
 
@@ -35,30 +37,25 @@ Ride-hailing was chosen on purpose. In your purchased question bank, Uber, Meta,
  An on-call agent watches Airflow, reads failures, and reports to Slack.
 ```
 
-Sprint 1 builds a thin version of this whole picture. Later sprints deepen one layer at a time while the rest keeps running. In sprint 7 the platform moves to AWS.
+DE 1 builds a thin version of this whole picture. Later modules deepen one layer at a time while the rest keeps running. In DE 7 the platform moves to AWS.
 
-## The eight tickets in every sprint
+## What a module contains
 
-| Ticket | Hours | What it is |
-|---|---|---|
-| Learn | 2.0 | The sprint's chapter, written for this program, plus two or three outside readings |
-| Build | 2.5 | Work on the platform with clear done-criteria |
-| Incident | 0.75 | An injected failure you diagnose, fix and write up |
-| AI lab | 1.0 | One agent skill, building toward the on-call agent |
-| Practice | 1.25 | Three SQL and three DSA warm-ups, and one customer drill |
-| Quiz | 0.5 | 16 questions: multiple choice, fill in the blank, short answer |
-| Coding test | 1.0 | 60 minutes: two SQL, one DSA, one PySpark or Python |
-| Interview set and mock | 1.0 | 18 questions with model answers, and one live round with Claude |
+| Step | What it is |
+|---|---|
+| Chapter parts | The module's chapter, split into 30–45 minute parts, plus readings |
+| Labs | Hands-on work with clear done-criteria, split into sessions of up to an hour |
+| Incident | An injected failure you diagnose, fix and write up (DE modules) |
+| AI lab | One agent skill, building toward the on-call agent |
+| Git | One real-world Git problem on a broken repo (20 minutes) |
+| Design problem | A system design question with a problem statement and a deliverable (40 minutes) |
+| What is new in AI | Short items on new developments, each with a way to test the claim (15 minutes) |
+| Drill | The customer or prompt drill (the SQL and DSA warm-ups sit on the coding track) |
+| Quiz | Multiple choice, fill in the blank and short answers |
+| Interview set and mock | Past questions with model answers, and mock rounds in DE 12 |
+| Project | A weekend build in a real environment (Codespaces or your MacBook) |
 
-A workable weekly pattern is one hour on each weekday evening and two and a half hours on each weekend day. Put the chapter early in the week and both tests on the weekend.
-
-## What ten hours a week costs you
-
-The first plan assumed fifteen hours. At ten, three things were cut, and you should know what they are.
-
-- **Builds are narrower.** You will not write every file from scratch. At the start of each sprint, ask Claude in the chat to "start sprint N". Claude will generate that sprint's starter kit into your projects folder, and you fill in the parts that teach something.
-- **Tests are shorter.** Quizzes have 16 questions and coding tests have 4 problems.
-- **DSA coverage is the thinnest part.** You get four DSA problems a week across practice and the coding test. If you find a spare hour in any week, spend it there. It is the first-round filter at Uber, Stripe, LinkedIn, Visa, Google, Atlassian, Microsoft, PayPal and Intuit in your bank.
+Today shows the steps for the day in order, each with what to do, how you know it is done, and a button to the exact section. Path shows every step of every module with its planned day.
 
 ## Two rules about using AI
 
@@ -67,14 +64,14 @@ The first plan assumed fifteen hours. At ten, three things were cut, and you sho
 
 ## How scoring works
 
-- Multiple-choice and fill-in questions mark themselves. Short answers show a model answer and you mark yourself: got it, partly, or missed.
-- Coding problems are marked by you: solved alone, solved with hints, or not solved.
-- A sprint is ready to close when the quiz is at 80% or better and at least half the coding problems are solved alone. Below that, ask Claude for a repair set on the weak topic before moving on.
-- The **Scorecard** at the top of the sprint list adds everything up by interview round, so you can see whether SQL, Spark, streaming or design is your weakest round at any time.
+- Multiple-choice and fill-in questions mark themselves. Short answers show a model answer and you mark yourself: I got it, or not yet.
+- Coding problems are checked by real tests in your browser. Hints come one step at a time; the solution unlocks after two runs or 15 minutes.
+- A module is ready to close when the quiz is at 80% or better and at least half of the coding problems are solved alone. Below that, revisit the weak sections (search finds any topic with ⌘K or /) before moving on.
+- **Progress** adds everything up: steps and hours done, your study streak, the planned finish date, and readiness by interview round (DSA, SQL, PySpark, quizzes, interview sets).
 
 ## What happens after this diagnostic
 
-Tell Claude your diagnostic results in the chat, or just say they are recorded. Claude can read the scorecard, and will adjust where the practice time goes. A low DSA score moves practice time toward DSA. A high SQL score lets you skip the easier SQL warm-ups.
+Record your diagnostic quiz and coding test here. If DSA is weak, give the coding track extra time; if SQL is strong, skip the easier SQL warm-ups. Then carry on with DE 1 on Today.
 
 @@lab
 ## Set up your machine
@@ -104,9 +101,9 @@ Open each account in the sprint that needs it. Free trials are time-limited and 
 | AWS account | Sprint 7 | Set a billing alarm at a few dollars before creating anything else. |
 | Databricks trial | Sprint 8 | Do not start it earlier. |
 
-## Then start sprint 1
+## Then start DE 1
 
-When the diagnostic is done, open the chat and send: **start sprint 1**. Claude will set up the starter kit with you.
+When the diagnostic is done, go back to Today: DE 1 is next. Its lab explains how to get the starter kit (paste the lab into a chat with Claude and ask for the DE 1 starter kit).
 
 @@quiz
 TYPE: mcq

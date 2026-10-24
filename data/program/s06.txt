@@ -206,7 +206,7 @@ Decide which actions need approval by asking whether the action can be undone. R
 @@lab
 ## Build: change data capture into Iceberg (2.25 hours)
 
-Ask Claude to **start sprint 6**. The starter kit adds Postgres with logical decoding enabled, Kafka Connect with the Debezium connector, a seed script that creates and mutates orders, and Flink for the comparison step.
+Paste this lab into a chat with Claude and ask it to **generate the DE 6 starter kit**. The starter kit adds Postgres with logical decoding enabled, Kafka Connect with the Debezium connector, a seed script that creates and mutates orders, and Flink for the comparison step.
 
 1. **Register the connector** for the `orders` table and watch the snapshot arrive on the topic.
 2. **Read three events by hand.** Insert an order, update its status, delete it. Read each message with the console consumer and identify `op`, `before`, `after` and `source.lsn`.

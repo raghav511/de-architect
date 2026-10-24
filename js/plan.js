@@ -13,7 +13,7 @@ function modTitle(m) { return (MOD[m] && MOD[m].title) || modLabel(m); }
 function modColor(m) { return m[0] === 'a' ? 'c-ai' : m[0] === 's' ? 'c-core' : 'c-arch'; }
 function dayName(k) { const d = new Date(k + 'T00:00:00'); return DN[(d.getDay() + 6) % 7]; }
 function shortDate(k) { const d = new Date(k + 'T00:00:00'); return DN[(d.getDay() + 6) % 7].slice(0, 3) + ' ' + d.getDate() + ' ' + d.toLocaleString('en', { month: 'short' }); }
-function weekOf(k) { const s = new Date(S.start + 'T00:00:00'), d = new Date(k + 'T00:00:00'); return Math.floor(Math.round((d - s) / 864e5) / 7) + 1; }
+function weekOf(k) { const s = new Date(S.start + 'T00:00:00'), d = new Date(k + 'T00:00:00'); return Math.max(1, Math.floor(Math.round((d - s) / 864e5) / 7) + 1); }
 function capOf(d) { const we = d.getDay() === 0 || d.getDay() === 6; return we ? (+S.settings.capWe || 120) : (+S.settings.capWd || 60); }
 
 /* ---------- module files ---------- */
@@ -203,7 +203,7 @@ function vPath(m) {
   const sc = schedule();
   m = MOD[midOf(m)] ? midOf(m) : sc.cur;
   const M = MOD[m], sp = sc.span[m], us = sc.units.filter(u => u.mid === m);
-  const pick = el('div', { class: 'modpick', role: 'tablist', 'aria-label': 'Modules' }, MODS.map(x => { const s = sc.span[x] || {}; return el('a', { href: '#/path/' + x, 'aria-current': String(x === m), class: (x === sc.cur ? 'cur ' : '') + (s.n && s.done === s.n ? 'fin ' : '') + modColor(x), text: modLabel(x) }); }));
+  const pick = el('nav', { class: 'modpick', 'aria-label': 'Modules' }, MODS.map(x => { const s = sc.span[x] || {}; return el('a', { href: '#/path/' + x, 'aria-current': String(x === m), class: (x === sc.cur ? 'cur ' : '') + (s.n && s.done === s.n ? 'fin ' : '') + modColor(x), text: modLabel(x) }); }));
   const total = us.reduce((a, u) => a + u.mins, 0);
   const head = el('section', { class: 'card pad stack' }, [
     el('div', { class: 'row wrap', style: { gap: '6px' } }, [el('span', { class: 'chip ' + modColor(m), text: 'Module ' + modLabel(m) }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: weeksText(sp) + ' · ' + Math.round(total / 6) / 10 + ' h in the daily hour' + (M.coding ? ' + coding' : '') })]),

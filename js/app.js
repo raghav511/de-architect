@@ -1,6 +1,6 @@
 /* Keystone · DE architect prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.2.3';
+const VERSION = '1.2.4';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -108,6 +108,15 @@ function parseSprint(text) {
   const s = splitSections(text), o = { raw: s, meta: {} };
   (s.meta || '').split('\n').forEach(l => { const i = l.indexOf(':'); if (i > 0) o.meta[l.slice(0, i).trim()] = l.slice(i + 1).trim(); });
   o.quiz = blocks(s.quiz, ['TYPE', 'TAG', 'Q', 'ANS', 'WHY', 'MODEL'], true);
+  /* the source files put most right answers at B; shuffle options per question (stable per module) so the letter gives nothing away */
+  o.quiz.forEach((q, i) => {
+    if (q.TYPE !== 'mcq' || !q.opts) return;
+    let h = 2166136261; for (const ch of (o.meta.id || '') + ':' + i) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+    const rnd = () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 1000) / 1000; };
+    const texts = q.opts.map(x => x[1]), right = texts[q.opts.findIndex(x => x[0] === q.ANS)];
+    for (let k = texts.length - 1; k > 0; k--) { const j = Math.floor(rnd() * (k + 1)); [texts[k], texts[j]] = [texts[j], texts[k]]; }
+    q.opts = texts.map((t, k) => ['ABCD'[k], t]); q.ANS = 'ABCD'[texts.indexOf(right)];
+  });
   o.coding = blocks(s.coding, ['TITLE', 'KIND', 'MIN', 'TAG', 'SRC', 'PROBLEM', 'SOLUTION'], false).map(c => {
     const m = /<!--test\n?([\s\S]*?)-->/.exec(c.SOLUTION || ''); c.TEST = m ? m[1] : ''; c.SOLUTION = (c.SOLUTION || '').replace(/<!--test[\s\S]*?-->/, '').trim();
     const f = /```(?:\w+)?\n([\s\S]*?)```/.exec(c.SOLUTION); c.CODE = f ? f[1] : ''; return c;
@@ -134,8 +143,8 @@ function confirmBox(title, body, actions) {
   });
 }
 function lightbox(src) { const lb = el('div', { class: 'lightbox', role: 'dialog', 'aria-label': 'Image', onclick: () => lb.remove() }, [el('img', { src, alt: '' })]); document.body.appendChild(lb); }
-function mdEl(s, cls) { const d = el('div', { class: cls || 'prose', html: md(s) }); d.querySelectorAll('table').forEach(t => { const w = el('div', { class: 'scroll' }); t.parentNode.insertBefore(w, t); w.appendChild(t); }); d.querySelectorAll('a[href^="http"]').forEach(a => { a.target = '_blank'; a.rel = 'noopener'; }); d.querySelectorAll('img').forEach(i => { i.loading = 'lazy'; i.addEventListener('click', () => lightbox(i.src)); }); return d; }
-function chipFor(k) { return { dsa: ['DSA', 'c-dsa'], core: ['Core DE', 'c-core'], arch: ['Architecture', 'c-arch'], ai: ['Agentic AI', 'c-ai'], git: ['Git', 'c-git'], sql: ['SQL', 'c-sql'], spark: ['PySpark', 'c-spark'], test: ['Check', 'c-test'], talk: ['Interview', 'c-test'] }[k] || [k, 'c-test']; }
+function mdEl(s, cls) { const d = el('div', { class: cls || 'prose', html: md(s) }); d.querySelectorAll('table').forEach(t => { const w = el('div', { class: 'scroll' }); t.parentNode.insertBefore(w, t); w.appendChild(t); }); d.querySelectorAll('a[href^="http"]').forEach(a => { a.target = '_blank'; a.rel = 'noopener'; }); d.querySelectorAll('pre').forEach(x => x.setAttribute('tabindex', '0')); d.querySelectorAll('img').forEach(i => { i.loading = 'lazy'; i.addEventListener('click', () => lightbox(i.src)); }); return d; }
+function chipFor(k) { return { dsa: ['DSA', 'c-dsa'], core: ['Core DE', 'c-core'], arch: ['Architecture', 'c-arch'], ai: ['Agentic AI', 'c-ai'], git: ['Git', 'c-git'], cloud: ['Cloud', 'c-core'], streaming: ['Streaming', 'c-core'], modeling: ['Data modeling', 'c-core'], design: ['System design', 'c-arch'], behavioral: ['Behavioral', 'c-test'], sql: ['SQL', 'c-sql'], spark: ['PySpark', 'c-spark'], test: ['Check', 'c-test'], talk: ['Interview', 'c-test'] }[k] || [k, 'c-test']; }
 function chip(k) { const c = chipFor(k); return el('span', { class: 'chip ' + c[1], text: c[0] }); }
 
 /* ---------------- shell ---------------- */
@@ -150,25 +159,26 @@ function shell(title, eyebrow, body, opts) {
   const inTabs = TABS.some(x => x[0].split('/')[1] === route);
   const more = el('button', { class: 'tabmore', 'aria-label': 'More sections', 'aria-current': inTabs ? null : 'page', onclick: () => {
     const sc2 = el('div', { class: 'scrim sheetwrap', onclick: e => { if (e.target === sc2) sc2.remove(); } }, [el('div', { class: 'sheet', role: 'dialog', 'aria-label': 'All sections' }, [el('div', { class: 'row' }, [el('b', { class: 'grow', style: { fontSize: '18px' }, text: 'All sections' }), el('button', { class: 'btn icon sm', 'aria-label': 'Close', onclick: () => sc2.remove(), text: '×' })]),
-      el('div', { class: 'sheetgrid' }, NAV.map(([h, t, ic]) => { const href = h.replace('/0', '/' + wk); return el('a', { href, onclick: () => sc2.remove(), 'aria-current': href.split('/')[1] === route ? 'page' : null }, [svg(I[ic], 22), t]); }).concat([el('button', { onclick: () => { sc2.remove(); settings(); } }, [svg(I.gear, 22), 'Settings'])]))])]);
+      el('div', { class: 'sheetgrid' }, NAV.map(([h, t, ic]) => { const href = h.replace('/0', '/' + wk); return el('a', { href, onclick: () => sc2.remove(), 'aria-current': href.split('/')[1] === route ? 'page' : null }, [svg(I[ic], 22), t]); }).concat([el('button', { onclick: () => { sc2.remove(); doSync(); } }, [svg(I.sync, 22), syncLabel()]), el('button', { onclick: () => { sc2.remove(); doUpdate(); } }, [svg(I.update, 22), 'Update app']), el('button', { onclick: () => { sc2.remove(); settings(); } }, [svg(I.gear, 22), 'Settings'])]))])]);
     document.body.appendChild(sc2);
     const k = e => { if (e.key === 'Escape') { sc2.remove(); document.removeEventListener('keydown', k); } }; document.addEventListener('keydown', k);
   } }, [svg('<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>', 22), 'More']);
   const tabbar = el('nav', { class: 'tabbar', 'aria-label': 'Main' }, TABS.map(([h, t, ic]) => el('a', { href: h, 'aria-current': h.split('/')[1] === route ? 'page' : null }, [svg(I[ic], 22), t])).concat([more]));
   const top = el('header', { class: 'top' }, [
-    opts.back ? el('a', { class: 'btn icon', href: opts.back, 'aria-label': 'Back' }, svg(I.back)) : null,
+    opts.back ? el('a', { class: 'btn icon', href: opts.back, 'aria-label': 'Back', onclick: e => { if (navCount > 0) { e.preventDefault(); history.back(); } } }, svg(I.back)) : null,
     el('div', { class: 'title' }, [eyebrow ? el('span', { class: 'lbl', text: eyebrow }) : null, el('b', { text: title })]),
     opts.extra || null,
     el('div', { class: 'row topbtns', style: { gap: '8px' } }, [
       el('button', { class: 'btn icon', onclick: () => openSearch(), title: 'Search (⌘K or /)', 'aria-label': 'Search' }, svg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>', 18)),
-      el('button', { class: 'btn', onclick: doUpdate, title: 'Check for a new version', 'aria-label': 'Update app' }, [svg(I.update, 18), el('span', { class: 't', text: 'Update app' })]),
-      el('button', { class: 'btn', id: 'syncBtn', onclick: doSync, title: 'Sync progress across your devices', 'aria-label': 'Sync progress' }, [svg(I.sync, 18), el('span', { class: 't', text: syncLabel() })]),
+      el('button', { class: 'btn hide-s', onclick: doUpdate, title: 'Check for a new version', 'aria-label': 'Update app' }, [svg(I.update, 18), el('span', { class: 't', text: 'Update app' })]),
+      el('button', { class: 'btn hide-s', id: 'syncBtn', onclick: doSync, title: 'Sync progress across your devices', 'aria-label': 'Sync progress' }, [svg(I.sync, 18), el('span', { class: 't', text: syncLabel() })]),
       el('button', { class: 'btn icon', onclick: settings, 'aria-label': 'Settings' }, svg(I.gear, 18))])]);
   const pageEl = opts.raw ? body : el('main', { class: 'page', id: 'page' }, body);
   const main = el('div', { class: 'main' }, [top, pageEl.querySelector && pageEl.querySelector('h1') ? null : el('h1', { class: 'sr', text: title }), pageEl]);
   const app = el('div', { class: 'app' }, [side, main]);
+  const same = shell.last === location.hash, y = window.scrollY; shell.last = location.hash;
   const root = $('#root'); root.textContent = ''; root.appendChild(app); root.appendChild(tabbar); root.appendChild(coachFab());
-  window.scrollTo(0, 0);
+  window.scrollTo(0, same ? y : 0); /* re-rendering the same screen (ticking a step) keeps your place */
 }
 function logo() { const s = svg('<path d="M4 22h8l4-12 4 12h8" stroke="#5CC8B0" stroke-width="3"/><circle cx="16" cy="10" r="3" fill="#E08A1E" stroke="none"/>', 30); s.setAttribute('viewBox', '0 0 32 32'); return s; }
 
@@ -282,7 +292,7 @@ function vWork(kind, id) {
     Q = (DATA[kind] || []).find(x => x.id === id);
     if (!Q) { location.hash = '#/practice'; return; }
     lang = kind === 'dsa' ? 'python' : kind;
-    title = Q.t; eyebrow = (kind === 'dsa' ? 'DSA · day ' + (DATA.dsa.indexOf(Q) + 1) + ' of 84' : kind === 'sql' ? 'SQL · ' + (Q.k === 'O' ? 'optimize' : 'write') : 'PySpark · ' + (Q.k === 'O' ? 'optimize' : 'write')) + ' · week ' + Q.w + ' · ' + Q.lv;
+    title = Q.t; eyebrow = (kind === 'dsa' ? 'DSA · day ' + (DATA.dsa.indexOf(Q) + 1) + ' of 84' : kind === 'sql' ? 'SQL · ' + (Q.k === 'O' ? 'optimize' : 'write') : 'PySpark · ' + (Q.k === 'O' ? 'optimize' : 'write')) + ' · set ' + Q.w + ' · ' + Q.lv;
   }
   const qid = Q.id;
   const starter = kind === 'dsa' ? (Q.sig + (Q.cls ? '\n' : '\n    # your approach here\n    pass\n')) : kind === 'sql' ? (Q.k === 'O' ? Q.start : '-- ' + Q.p + '\n') : kind === 'spark' ? Q.start : (lang === 'sql' ? '-- write your query\n' : lang === 'spark' ? 'from pyspark.sql import functions as F\n\n' : '# write your solution\n');
@@ -450,7 +460,7 @@ function vWork(kind, id) {
     hintBox.textContent = '';
     H.slice(0, Math.min(nh(), H.length)).forEach((h, i) => hintBox.appendChild(el('div', { class: 'hint' }, [el('b', { text: (i + 1) + '. ' + ['Restate', 'Intuition', 'Pattern', 'Edge cases', 'Skeleton'][i] }), /\n/.test(h) ? el('pre', { text: h }) : el('div', { text: h })])));
     const showSol = nh() > H.length;
-    if (showSol) hintBox.appendChild(el('div', { class: 'hint', style: { background: '#fff', borderColor: 'var(--line2)' } }, [el('b', { text: 'Reference solution' }), kind === 'test' ? mdEl(Q.solMd, 'prose') : el('pre', { text: Q.sol.replace(/^from pyspark[^\n]*\n/gm, '') })]));
+    if (showSol) hintBox.appendChild(el('div', { class: 'hint', style: { background: 'var(--card)', borderColor: 'var(--line2)' } }, [el('b', { text: 'Reference solution' }), kind === 'test' ? mdEl(Q.solMd, 'prose') : el('pre', { text: Q.sol.replace(/^from pyspark[^\n]*\n/gm, '') })]));
     const locked = nh() === H.length && !unlocked();
     hintBtn.disabled = showSol || locked;
     hintBtn.textContent = showSol ? 'All hints shown' : locked ? 'Run twice (or 15 min) to unlock the solution' : nh() === H.length ? 'Show the solution' : 'Show hint ' + (nh() + 1);
@@ -472,10 +482,10 @@ function vWork(kind, id) {
   const gripL = el('div', { class: 'grip', role: 'separator', 'aria-orientation': 'vertical', 'aria-label': 'Drag to resize the problem panel', tabindex: '0' }, el('i'));
   const gripR = el('div', { class: 'grip', role: 'separator', 'aria-orientation': 'vertical', 'aria-label': 'Drag to resize the coach panel', tabindex: '0' }, el('i'));
   const wb = el('div', { class: 'wb' });
-  const mtabs = el('div', { class: 'mtabs', role: 'tablist' });
+  const mtabs = el('div', { class: 'mtabs', role: 'group', 'aria-label': 'Show panel' });
   let mcur = 'code';
-  function mshow(k) { mcur = k; [left, mid, right].forEach(x => x.classList.remove('mshow')); (k === 'problem' ? left : k === 'hints' ? right : mid).classList.add('mshow'); if (k === 'out') out.scrollIntoView({ block: 'nearest' }); mtabs.querySelectorAll('button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.k === (k === 'out' ? 'code' : k)))); }
-  [['problem', 'Problem'], ['code', 'Code'], ['hints', 'Hints']].forEach(([k, n]) => mtabs.appendChild(el('button', { 'data-k': k, role: 'tab', onclick: () => mshow(k), text: n })));
+  function mshow(k) { mcur = k; [left, mid, right].forEach(x => x.classList.remove('mshow')); (k === 'problem' ? left : k === 'hints' ? right : mid).classList.add('mshow'); if (k === 'out') out.scrollIntoView({ block: 'nearest' }); mtabs.querySelectorAll('button[data-k]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === (k === 'out' ? 'code' : k)))); }
+  [['problem', 'Problem'], ['code', 'Code'], ['hints', 'Hints']].forEach(([k, n]) => mtabs.appendChild(el('button', { 'data-k': k, onclick: () => mshow(k), text: n })));
   mtabs.appendChild(el('button', { onclick: () => { running = !running; mtabs.lastChild.textContent = running ? 'Pause' : 'Resume'; }, text: 'Pause' }));
   function lay() {
     wb.textContent = '';
@@ -484,15 +494,17 @@ function vWork(kind, id) {
     wb.append(L.lshut ? railL : left, gripL, mid, gripR, L.rshut ? railR : right);
     mshow(mcur);
   }
-  const drag = (gr, onMove) => { gr.addEventListener('pointerdown', e => { e.preventDefault(); const x0 = e.clientX, y0 = e.clientY, a = lw, b = rw, c = oh; gr.setPointerCapture(e.pointerId); const mv = ev => { onMove(ev.clientX - x0, ev.clientY - y0, a, b, c); }; const up = () => { gr.removeEventListener('pointermove', mv); gr.removeEventListener('pointerup', up); L.lw = lw; L.rw = rw; L.oh = oh; save(false); }; gr.addEventListener('pointermove', mv); gr.addEventListener('pointerup', up); }); };
+  const drag = (gr, onMove) => { gr.addEventListener('pointerdown', e => { e.preventDefault(); const x0 = e.clientX, y0 = e.clientY, a = lw, b = rw, c = oh; gr.setPointerCapture(e.pointerId); const mv = ev => { onMove(ev.clientX - x0, ev.clientY - y0, a, b, c); av(); }; const up = () => { gr.removeEventListener('pointermove', mv); gr.removeEventListener('pointerup', up); L.lw = lw; L.rw = rw; L.oh = oh; save(false); }; gr.addEventListener('pointermove', mv); gr.addEventListener('pointerup', up); }); };
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   drag(gripL, (dx, dy, a) => { if (L.lshut) return; lw = clamp(a + dx, 240, 520); wb.style.setProperty('--lw', lw + 'px'); });
   drag(gripR, (dx, dy, a, b) => { if (L.rshut) return; rw = clamp(b - dx, 260, 520); wb.style.setProperty('--rw', rw + 'px'); });
   drag(hgrip, (dx, dy, a, b, c) => { oh = clamp(c - dy, 120, Math.max(200, window.innerHeight - 320)); out.style.height = oh + 'px'; });
-  const key = (gr, fn) => gr.addEventListener('keydown', e => { const st = e.shiftKey ? 60 : 20; const d = { ArrowLeft: -st, ArrowRight: st, ArrowUp: -st, ArrowDown: st }[e.key]; if (d) { e.preventDefault(); fn(d); L.lw = lw; L.rw = rw; L.oh = oh; save(false); } });
+  const key = (gr, fn) => gr.addEventListener('keydown', e => { const st = e.shiftKey ? 60 : 20; const d = { ArrowLeft: -st, ArrowRight: st, ArrowUp: -st, ArrowDown: st }[e.key]; if (d) { e.preventDefault(); fn(d); av(); L.lw = lw; L.rw = rw; L.oh = oh; save(false); } });
   key(gripL, d => { lw = clamp(lw + d, 240, 520); wb.style.setProperty('--lw', lw + 'px'); });
   key(gripR, d => { rw = clamp(rw - d, 260, 520); wb.style.setProperty('--rw', rw + 'px'); });
   key(hgrip, d => { oh = clamp(oh - d, 120, 560); out.style.height = oh + 'px'; });
+  function av() { [[gripL, lw, 240, 520], [gripR, rw, 260, 520], [hgrip, oh, 120, 560]].forEach(([g, v, a, b]) => { g.setAttribute('aria-valuenow', Math.round(v)); g.setAttribute('aria-valuemin', a); g.setAttribute('aria-valuemax', b); }); }
+  av();
   lay();
   shell(title, eyebrow, el('div', { class: 'stack', style: { gap: '10px' } }, [mtabs, wb]), { back, extra, raw: true });
   const pg = document.querySelector('.main'); pg.lastChild.style.padding = window.innerWidth < 1024 ? '10px 12px 100px' : '0';
@@ -518,7 +530,7 @@ function vProjects() {
   });
   shell('Projects', 'One real build per module · open source and free tier only', [
     el('section', { class: 'card pad stack' }, [el('h2', { text: 'How projects work' }),
-      el('p', { style: { margin: 0 }, text: 'Every week ends with a project you build for real. The brief, steps, lessons and checks live here. The environment (object store, Iceberg, Spark, Trino, Airflow, ClickHouse, Git and VS Code) opens with one button in GitHub Codespaces, which runs in the browser on your iPad, iPhone or MacBook and is free for about 30 hours a month on a 4-core machine. You can also run it on your MacBook with Docker.' }),
+      el('p', { style: { margin: 0 }, text: 'Most modules end with a project you build for real. The brief, steps, lessons and checks live here. The environment (object store, Iceberg, Spark, Trino, Airflow, ClickHouse, Git and VS Code) opens with one button in GitHub Codespaces, which runs in the browser on your iPad, iPhone or MacBook and is free for about 30 hours a month on a 4-core machine. You can also run it on your MacBook with Docker.' }),
       el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'Ready now: the AI agent toolkit (modules AI 1–3, a light 2-core Codespace) and the lakehouse (DE 1–2). The other projects show their brief and plan; their environments come in later updates.' })]),
     el('div', { class: 'list' }, cards)]);
 }
@@ -674,7 +686,7 @@ async function vQuiz(m) {
   const qs = s.quiz; const st = S.quiz[w] = S.quiz[w] || { a: {}, sub: false, i: 0 };
   const page = $('#page'); let i = Math.min(st.i || 0, qs.length - 1);
   const weekSel = el('select', { class: 'btn sm', 'aria-label': 'Module', onchange: e => { location.hash = '#/quiz/' + e.target.value; } }, MODS.map(x => el('option', { value: x, selected: x === m ? 'selected' : null, text: modLabel(x) + ' · ' + modTitle(x) })));
-  const grade = (q, a) => { if (a == null || a === '') return 0; if (q.TYPE === 'mcq') return a === q.ANS ? 1 : 0; if (q.TYPE === 'fill') { const ok = q.ANS.split('|').map(x => x.trim().toLowerCase()); return ok.includes(String(a).trim().toLowerCase()) ? 1 : 0; } return a.self || 0; };
+  const grade = (q, a) => { if (a == null || a === '') return 0; if (q.TYPE === 'mcq') return a === q.ANS ? 1 : 0; if (q.TYPE === 'fill') { const nz = x => String(x).toLowerCase().replace(/^\s*(the|a|an)\s+/, '').replace(/[^a-z0-9]/g, '').replace(/s$/, ''); const ok = q.ANS.split('|').map(nz); return ok.includes(nz(a)) ? 1 : 0; } return a.self || 0; };
   function draw() {
     page.textContent = '';
     st.i = i; save(false);
@@ -683,9 +695,18 @@ async function vQuiz(m) {
       el('button', { class: 'btn sm', onclick: async () => { const v = await confirmBox('Reset this quiz?', 'All answers for module ' + modLabel(m) + ' are cleared. Undo is available for 10 seconds.', [{ t: 'Reset and exit', cls: 'warn', v: 1 }, { t: 'Cancel', v: null }]); if (v) { const snap = JSON.stringify(st); S.quiz[w] = { a: {}, sub: false, i: 0 }; save(); location.hash = '#/today'; setTimeout(() => toast('Quiz reset', () => { S.quiz[w] = JSON.parse(snap); save(); }), 50); } }, text: 'Reset and exit' }),
       el('button', { class: 'btn sm', onclick: async () => { const v = await confirmBox('Leave the quiz?', 'Your answers are kept. You can come back and finish later.', [{ t: 'Leave, keep answers', cls: 'pri', v: 1 }, { t: 'Stay', v: null }]); if (v) location.hash = '#/today'; }, text: 'Leave' })]));
     if (st.sub) {
-      const score = qs.reduce((a, q, k) => a + grade(q, st.a[k]), 0);
-      page.appendChild(el('section', { class: 'card pad stack' }, [el('h2', { text: 'Score: ' + score + ' of ' + qs.length + ' (' + Math.round(100 * score / qs.length) + '%)' }), el('div', { class: 'row wrap' }, [el('button', { class: 'btn pri', onclick: () => { S.quiz[w] = { a: {}, sub: false, i: 0 }; save(); vQuiz(m); }, text: 'Retake' }), el('a', { class: 'btn', href: '#/today', text: 'Back to Today' })])]));
-      qs.forEach((q, k) => page.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('span', { class: 'lbl grow', text: 'Q' + (k + 1) }), el('span', { class: 'badge ' + (grade(q, st.a[k]) ? 'b-ok' : 'b-bad'), text: grade(q, st.a[k]) ? 'Right' : 'Review' })]), el('div', { html: mdi(q.Q) }), el('div', { class: 'muted', html: '<b>Answer:</b> ' + mdi(q.TYPE === 'mcq' ? q.ANS + ') ' + ((q.opts || []).find(o => o[0] === q.ANS) || ['', ''])[1] : q.TYPE === 'fill' ? q.ANS.split('|')[0] : (q.MODEL || q.ANS || '')) }), q.WHY ? el('div', { class: 'why', html: mdi(q.WHY) }) : null])));
+      const score = qs.reduce((a, q, k) => a + grade(q, st.a[k]), 0), pct = Math.round(100 * score / qs.length);
+      if (!st.best || pct > st.best) { st.best = pct; save(); }
+      const toMark = qs.filter((q, k) => q.TYPE === 'short' && st.a[k] && st.a[k].t && st.a[k].self === undefined).length;
+      page.appendChild(el('section', { class: 'card pad stack' }, [el('h2', { text: 'Score: ' + score + ' of ' + qs.length + ' (' + pct + '%)' }), el('span', { class: 'muted', text: (st.best ? 'Best: ' + st.best + '% · ' : '') + (pct >= 80 ? 'Pass mark reached (80%).' : 'The pass mark is 80%. Review the ones marked Review, then retake.') + (toMark ? ' ' + toMark + ' short answer' + (toMark > 1 ? 's' : '') + ' still to mark yourself below.' : '') }), el('div', { class: 'row wrap' }, [el('button', { class: 'btn pri', onclick: () => { S.quiz[w] = { a: {}, sub: false, i: 0, best: st.best }; save(); vQuiz(m); }, text: 'Retake' }), el('a', { class: 'btn', href: '#/today', text: 'Back to Today' })])]));
+      const yours = (q, a) => a == null || a === '' ? 'no answer' : q.TYPE === 'mcq' ? a + ') ' + ((q.opts || []).find(o => o[0] === a) || ['', ''])[1] : q.TYPE === 'fill' ? String(a) : (a.t || 'no answer');
+      qs.forEach((q, k) => {
+        const g = grade(q, st.a[k]), sh = q.TYPE === 'short' && st.a[k] && st.a[k].t;
+        page.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('span', { class: 'lbl grow', text: 'Q' + (k + 1) }), el('span', { class: 'badge ' + (g ? 'b-ok' : sh && st.a[k].self === undefined ? 'b-warn' : 'b-bad'), text: g ? 'Right' : sh && st.a[k].self === undefined ? 'Mark yourself' : 'Review' })]), el('div', { html: mdi(q.Q) }),
+          el('div', { style: { fontSize: '14.5px' } }, [el('b', { text: 'Your answer: ' }), el('span', { html: mdi(yours(q, st.a[k])) })]),
+          el('div', { class: 'muted', html: '<b>' + (q.TYPE === 'short' ? 'Model answer' : 'Answer') + ':</b> ' + mdi(q.TYPE === 'mcq' ? q.ANS + ') ' + ((q.opts || []).find(o => o[0] === q.ANS) || ['', ''])[1] : q.TYPE === 'fill' ? q.ANS.split('|')[0] : (q.MODEL || q.ANS || '')) }), q.WHY ? el('div', { class: 'why', html: mdi(q.WHY) }) : null,
+          sh ? el('div', { class: 'row wrap' }, [el('span', { class: 'muted', text: 'Compare with the model answer:' }), el('button', { class: 'btn sm', 'aria-pressed': String(st.a[k].self === 1), onclick: () => { st.a[k].self = 1; save(); draw(); }, text: 'I got it' }), el('button', { class: 'btn sm', 'aria-pressed': String(st.a[k].self === 0), onclick: () => { st.a[k].self = 0; save(); draw(); }, text: 'Not yet' })]) : null]));
+      });
       return;
     }
     const q = qs[i];
@@ -696,7 +717,7 @@ async function vQuiz(m) {
     else { const ta = el('textarea', { class: 'code', style: { minHeight: '140px', border: '1px solid var(--line2)', borderRadius: '10px', fontFamily: 'var(--body)', fontSize: '16px' }, 'aria-label': 'Your answer' }); ta.value = (st.a[i] && st.a[i].t) || ''; ta.addEventListener('input', () => { st.a[i] = Object.assign({}, st.a[i] || {}, { t: ta.value }); save(); }); card.appendChild(ta);
       card.appendChild(el('div', { class: 'row wrap' }, [el('span', { class: 'muted', text: 'After submitting you compare with the model answer and mark yourself.' })])); }
     page.append(card, el('div', { class: 'row wrap' }, [el('button', { class: 'btn', disabled: i === 0 ? true : null, onclick: () => { i--; draw(); }, text: 'Previous' }), el('span', { class: 'grow' }), i < qs.length - 1 ? el('button', { class: 'btn pri', onclick: () => { i++; draw(); }, text: 'Save and next' }) : null,
-      el('button', { class: 'btn dark', onclick: async () => { const left = qs.length - answered; const v = await confirmBox('Submit the quiz?', left ? left + ' question' + (left > 1 ? 's are' : ' is') + ' unanswered. They count as wrong.' : 'All questions answered.', [{ t: 'Submit', cls: 'pri', v: 1 }, { t: 'Keep answering', v: null }]); if (v) { qs.forEach((qq, k) => { if (qq.TYPE === 'short' && st.a[k] && st.a[k].t) st.a[k].self = 1; }); st.sub = true; save(); draw(); } }, text: 'Submit' })]), el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Questions' }), pal]));
+      el('button', { class: 'btn dark', onclick: async () => { const left = qs.length - answered; const v = await confirmBox('Submit the quiz?', left ? left + ' question' + (left > 1 ? 's are' : ' is') + ' unanswered. They count as wrong.' : 'All questions answered.', [{ t: 'Submit', cls: 'pri', v: 1 }, { t: 'Keep answering', v: null }]); if (v) { st.sub = true; const qu = modUnits(m).find(u => u.kind === 'quiz'); if (qu && !S.done[qu.uid]) { S.done[qu.uid] = iso(new Date()); S.doneAt = S.doneAt || {}; S.doneAt[qu.uid] = Date.now(); } save(); draw(); window.scrollTo(0, 0); } }, text: 'Submit' })]), el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Questions' }), pal]));
   }
   draw();
 }
@@ -708,12 +729,13 @@ async function vInterview(m, focus) {
   let s; try { s = await sprint(m); } catch (e) { return; }
   const page = $('#page'); page.textContent = '';
   const st = S.iv[w] = S.iv[w] || {};
-  page.appendChild(el('select', { class: 'btn sm', 'aria-label': 'Module', style: { alignSelf: 'flex-start' }, onchange: e => { location.hash = '#/interview/' + e.target.value; } }, MODS.map(x => el('option', { value: x, selected: x === m ? 'selected' : null, text: modLabel(x) + ' · ' + modTitle(x) }))));
+  const ivCount = el('span', { class: 'muted', 'aria-live': 'polite' }); const paintCount = () => { ivCount.textContent = Object.values(st).filter(Boolean).length + ' of ' + s.interview.length + ' ticked · tick a question when you can answer it out loud'; };
+  page.appendChild(el('div', { class: 'row wrap' }, [el('select', { class: 'btn sm', 'aria-label': 'Module', onchange: e => { location.hash = '#/interview/' + e.target.value; } }, MODS.map(x => el('option', { value: x, selected: x === m ? 'selected' : null, text: modLabel(x) + ' · ' + modTitle(x) }))), ivCount])); paintCount();
   s.interview.forEach((q, k) => {
     const ans = mdEl(q.A || ''); ans.style.display = 'none';
-    const tick = el('button', { class: 'check', 'aria-pressed': String(!!st[k]), 'aria-label': 'I can answer this', style: st[k] ? { background: 'var(--teal)', borderColor: 'var(--teal)' } : {}, onclick: () => { st[k] = !st[k]; save(); vInterview(m); } }, st[k] ? svg(I.check, 16) : null);
+    const tick = el('button', { class: 'check', 'aria-pressed': String(!!st[k]), 'aria-label': 'I can answer this', style: st[k] ? { background: 'var(--teal)', borderColor: 'var(--teal)' } : {}, onclick: () => { st[k] = !st[k]; save(); tick.setAttribute('aria-pressed', String(!!st[k])); tick.style.background = st[k] ? 'var(--teal)' : ''; tick.style.borderColor = st[k] ? 'var(--teal)' : ''; tick.textContent = ''; if (st[k]) tick.appendChild(svg(I.check, 16)); paintCount(); } }, st[k] ? svg(I.check, 16) : null);
     const show = el('button', { class: 'btn sm', 'aria-expanded': 'false', onclick: () => { const o = ans.style.display === 'none'; ans.style.display = o ? 'block' : 'none'; show.textContent = o ? 'Hide model answer' : 'Show model answer'; show.setAttribute('aria-expanded', String(o)); } }, 'Show model answer');
-    page.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row', style: { alignItems: 'flex-start' } }, [tick, el('div', { class: 'grow stack', style: { gap: '4px' } }, [el('b', { style: { fontSize: '16.5px' }, html: mdi(q.Q) }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: [q.TAG, q.SRC].filter(Boolean).join(' · ') })])]), show, ans]));
+    page.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row', style: { alignItems: 'flex-start' } }, [tick, el('div', { class: 'grow stack', style: { gap: '4px' } }, [el('b', { style: { fontSize: '16.5px' }, html: mdi(q.Q) }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: [q.TAG ? chipFor(q.TAG)[0] : '', q.SRC].filter(Boolean).join(' · ') })])]), show, ans]));
   });
   if (!s.interview.length) page.appendChild(el('section', { class: 'card pad' }, [el('p', { style: { margin: 0 }, text: 'This module has no interview set. ' }), el('a', { href: '#/path/' + m, text: 'Back to the module' })]));
   if (s.raw.mock) { const mk = el('section', { class: 'card pad', id: 'mock' }, [el('h2', { text: 'Mock interview' }), mdEl(s.raw.mock)]); page.appendChild(mk); if (focus === 'mock') setTimeout(() => mk.scrollIntoView({ block: 'start' }), 50); }
@@ -741,7 +763,7 @@ function syncLabel() { return S.syncing ? 'Syncing…' : S.lastSync && Date.now(
 function settings() {
   const f = (id, label, val, type, ph) => el('div', { class: 'field' }, [el('label', { for: id, class: 'lbl', text: label }), el('input', { id, type: type || 'text', value: val || '', placeholder: ph || '', autocomplete: 'off' })]);
   const body = el('div', { class: 'stack' }, [
-    f('st_start', 'Program start (a Monday)', S.start, 'date'),
+    f('st_start', 'Week 1 starts (pick any day in that week)', S.start, 'date'),
     el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: '10px' } }, [f('st_wd', 'Weekday minutes', S.settings.capWd || 60, 'number'), f('st_we', 'Weekend minutes', S.settings.capWe || 120, 'number'), f('st_time', 'Study time', S.settings.studyTime || '07:00', 'time')]),
     el('div', { class: 'field' }, [el('label', { for: 'st_theme', class: 'lbl', text: 'Theme' }), el('select', { id: 'st_theme', class: 'btn' }, [['auto', 'Match my device'], ['light', 'Light'], ['dark', 'Dark']].map(([v, t]) => el('option', { value: v, selected: (S.settings.theme || 'auto') === v ? 'selected' : null, text: t })))]),
     f('st_sync', 'Sync URL (Google Apps Script web app)', S.settings.syncUrl, 'url', 'https://script.google.com/macros/s/…/exec'),
@@ -751,7 +773,7 @@ function settings() {
   confirmBox('Settings', body, [{ t: 'Save', cls: 'pri', v: 1 }, { t: 'Cancel', v: null }]).then(v => {
     if (!v) return;
     const g = id => body.querySelector('#' + id).value.trim();
-    S.start = g('st_start') || S.start; S.settings.syncUrl = g('st_sync'); S.settings.aiKey = g('st_key'); S.settings.aiModel = g('st_model') || 'claude-haiku-5-5';
+    const st0 = g('st_start'); if (/^\d{4}-\d\d-\d\d$/.test(st0)) { const d = new Date(st0 + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); S.start = iso(d); } S.settings.syncUrl = g('st_sync'); S.settings.aiKey = g('st_key'); S.settings.aiModel = g('st_model') || 'claude-haiku-5-5';
     const wd = Math.round(+g('st_wd')), we = Math.round(+g('st_we')); S.settings.capWd = wd >= 15 && wd <= 600 ? wd : 60; S.settings.capWe = we >= 15 && we <= 720 ? we : 120; S.settings.studyTime = g('st_time') || '07:00'; S.settings.theme = g('st_theme') || 'auto'; applyTheme();
     S.updated = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Could not save settings in this browser.'); return; }
     toast('Settings saved'); route();
@@ -847,7 +869,11 @@ async function askCoach(q, ctx, box) {
 /* ---------------- boot ---------------- */
 function applyTheme() { const t = S.settings.theme; if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
 applyTheme();
-window.addEventListener('hashchange', route);
+let navCount = 0;
+window.addEventListener('hashchange', () => { navCount++; route(); });
+/* a tab left open overnight shows the new day's plan when you come back */
+let lastDay = iso(new Date());
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && iso(new Date()) !== lastDay) { lastDay = iso(new Date()); if (!/^#\/(dsa|sql|spark|test)\//.test(location.hash)) route(); } });
 window.addEventListener('keydown', e => { if (e.key === '`' && (e.ctrlKey || e.metaKey)) { const b = Array.from(document.querySelectorAll('.otab')).find(x => x.textContent === 'Terminal'); if (b) { e.preventDefault(); b.click(); } } });
 (async () => {
   try { await loadData(); } catch (e) { $('#root').innerHTML = '<div style="padding:24px">Could not load the question bank. Check your connection and reload.</div>'; return; }

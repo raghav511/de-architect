@@ -29,10 +29,11 @@ async function pageCheck(p, vp, r, errs) {
     });
     const clipped = [];
     document.querySelectorAll('.card, .unit, .item, .btn').forEach(e => { if (e.scrollWidth > e.clientWidth + 2 && getComputedStyle(e).overflowX === 'visible') clipped.push((e.innerText || '').slice(0, 30)); });
-    return { title: (document.querySelector('.top .title b') || {}).textContent || '', txt, links, small, over: document.documentElement.scrollWidth - innerWidth, clipped: clipped.slice(0, 3), h1: !!document.querySelector('h1,h2,h3') };
+    return { iw: innerWidth, title: (document.querySelector('.top .title b') || {}).textContent || '', txt, links, small, over: document.documentElement.scrollWidth - innerWidth, clipped: clipped.slice(0, 3), h1: !!document.querySelector('h1,h2,h3') };
   });
   if (info.title === 'Something went wrong') bad(vp, r, 'error page: ' + info.txt.slice(0, 160));
   if (info.over > 2) bad(vp, r, 'horizontal overflow ' + info.over + 'px');
+  if (VP[vp].viewport && info.iw > VP[vp].viewport.width + 2) bad(vp, r, 'page wider than the screen (layout width ' + info.iw + 'px), content would shrink');
   if (/\bundefined\b|\bNaN\b|\[object Object\]|\bnull\b(?! *(values|rows|check|count|rate|handling|drivers|fares|s\b))/.test(info.txt.replace(/IS (NOT )?NULL|null(able|s)|NULLs?/gi, ''))) {
     const m = info.txt.match(/.{0,40}(\bundefined\b|\bNaN\b|\[object Object\]|\bnull\b).{0,40}/);
     if (m && !/`|null\)|= null|is null|null if|None|NULL/i.test(m[0])) bad(vp, r, 'suspicious text: ' + m[0].replace(/\n/g, ' '));
