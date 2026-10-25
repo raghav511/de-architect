@@ -93,5 +93,20 @@
   "title": "Pick the model for every layer of the platform",
   "prompt": "For the Meridian platform, choose the data model for each stage: raw events from apps and Postgres CDC, the cleaned layer, the business layer for Finance and Ops, a real-time driver feature for surge pricing, and a semantic layer an LLM can query safely.",
   "deliverable": "A one-page table: stage, model (event log, 3NF or Data Vault, star schema or OBT, cumulative, key-value or feature store, semantic layer), why, the anti-pattern you avoid, and how write-audit-publish gates each step."
+ },
+ "j01": {
+  "title": "Run Spark and Flink on Kubernetes for twenty teams",
+  "prompt": "Meridian wants one shared platform where twenty teams run Spark batch jobs and Flink streaming jobs on Kubernetes instead of each team owning a cluster. Some jobs are business-critical, most are ad hoc, and costs must be charged back to teams.",
+  "deliverable": "A one-page design: namespaces and quotas per team, requests and limits, priority classes for critical jobs, the operators you use, how shuffle and checkpoints are stored, autoscaling, how a team submits a job (the paved path), observability, and how cost is attributed."
+ },
+ "r01": {
+  "title": "Migrate the Hive warehouse to Iceberg without downtime",
+  "prompt": "Meridian has 400 Hive tables, 1,200 Airflow tasks and 30 dashboards on the old warehouse. Leadership wants everything on Iceberg within two quarters, with no broken dashboards and no wrong numbers in Finance reports.",
+  "deliverable": "A design doc: goals and non-goals, inventory and ordering (by risk and dependency), dual-run and reconciliation, cutover and rollback per table, how consumers are moved and old tables deprecated, the cost of running both, milestones, and the three biggest risks with mitigations."
+ },
+ "d01": {
+  "title": "A trip store that survives a lost data centre",
+  "prompt": "Meridian needs an operational store for live trips: 50,000 writes a second at peak, riders and drivers read their own trip state constantly, and the service must keep working if one of three data centres goes down.",
+  "deliverable": "The storage engine and why (B-tree or LSM), the partition key and how hot cities are handled, replication factor and R/W quorum settings, the read-your-writes guarantee, what happens during a data-centre outage (CAP choice), and how the analytics copy is fed (CDC) without double counting."
  }
 }

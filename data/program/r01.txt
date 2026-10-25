@@ -1,0 +1,274 @@
+@@meta
+id: r01
+n: 1
+title: Leading as an architect: strategy, design docs, migrations, cost and influence
+goal: Do the parts of a staff or architect job that tier-1 postings ask for most and the earlier modules only touch: write the design doc and the multi-year strategy, run a migration with proof that the numbers match, own reliability and cost across teams, lead without authority, mentor, and tell those stories well in the behavioural and hiring-manager rounds.
+hours: 5
+
+@@tickets
+R101 | learn | 0.75 | Chapter part 1: what changes at staff level, writing that moves decisions, migrations | You can outline a design doc and an ADR from memory and list the six phases of a safe migration. | chapter:0-2
+R102 | learn | 0.75 | Chapter part 2: reliability and cost across teams, influence and mentoring, the behavioural round | You can define SLO, RPO and RTO for a dataset, name three cost levers, and tell one story in STAR form in under three minutes. | chapter:3-5
+R103 | build | 1 | Exercises 1–3: reconcile a migration, attribute cost, find blocking consumers | All three pass, and you can say which rows would block the cutover. | sql:1-3
+R104 | practice | 0.5 | Story bank: draft four stories | Four STAR stories written (one each: influence without authority, a migration, a failure, a mentoring win), each with a number in the result. | practice
+R105 | test | 0.5 | Quiz R1 | 80% or better. | quiz
+R106 | talk | 0.75 | Interview set R1: behavioural and hiring manager | 5 of 6 answered out loud with a real story each, and ticked. | interview
+
+@@readings
+- **The Staff Engineer's Path** (Tanya Reilly), chapters 1–3 (the big picture, strategy, influence). The best book on this role.
+- **Staff Engineer: Leadership Beyond the Management Track** (Will Larson), the parts on writing strategy and being "glue". Also at [staffeng.com](https://staffeng.com/guides/staff-archetypes/).
+- [Google SRE book: service level objectives](https://sre.google/sre-book/service-level-objectives/). SLIs, SLOs and error budgets, applied to datasets in this module.
+- [Martin Fowler: Strangler Fig application](https://martinfowler.com/bliki/StranglerFigApplication.html). The pattern behind incremental migrations.
+- [Michael Nygard: documenting architecture decisions](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions). The original ADR template, one page.
+- [Amazon Leadership Principles](https://www.amazon.jobs/content/en/our-workplace/leadership-principles). Even outside Amazon, most behavioural rounds probe the same traits.
+
+@@chapter
+## R1.1 What changes at staff and architect level
+
+The postings this module was built from (Airbnb, Stripe, Databricks, Pinterest, Figma and others) describe the same shift from senior to staff and architect:
+
+| Senior engineer | Staff engineer / architect |
+|---|---|
+| delivers a well-defined project | finds and defines the problems worth solving |
+| owns a pipeline or service | owns a domain across teams: "a single definition everyone can build on" (Airbnb) |
+| writes code | writes code **and** the documents that decide what gets built |
+| influences their team | sets direction "that other senior engineers execute without formal authority" (Airbnb) |
+| fixes incidents | makes classes of incidents impossible, and owns reliability and cost targets |
+| plans a quarter | writes "the multi-year technical strategy" and leads "multi-year migrations" (Stripe) |
+
+Interviews test this in three places: the design round (scope, trade-offs, migration and cost, not only boxes), the behavioural round (stories with scope and influence), and the hiring-manager round (how you choose what to work on). This module gives you the tools and the stories.
+
+## R1.2 Writing that moves decisions
+
+At staff level, documents are how work gets decided. Three you must be able to write:
+
+**Design doc (RFC)**, 3–8 pages, before building anything significant:
+
+```
+1. Context and problem       why now, who is hurt, with numbers
+2. Goals and non-goals       what success means; what you are deliberately not doing
+3. Proposal                  the design, a diagram, data model, interfaces
+4. Alternatives considered   at least two, with why not
+5. Risks and mitigations     what could go wrong, how you would know, what you would do
+6. Rollout and migration     phases, reconciliation, rollback
+7. Cost                      build, run, and the cost of doing nothing
+8. Open questions            what reviewers should weigh in on
+```
+
+**Architecture decision record (ADR)**, one page per decision, kept in the repo: context, decision, status, consequences (good and bad). Example: "ADR-012: Iceberg over Delta for the lake, because of multi-engine reads (Trino, Spark, Snowflake); consequence: we run our own compaction." ADRs answer "why is it like this?" two years later.
+
+**Technical strategy**, 2–4 pages for a 1–3 year horizon: where we are (with data), where we need to be and why, the few big bets, what we stop doing, and how we will measure progress. A strategy that does not say no to anything is a wish list.
+
+Writing well is a skill: lead with the conclusion, use numbers, keep each section answerable with yes or no, and show the doc to the most sceptical reviewer first.
+
+## R1.3 Migrations without drama
+
+Most staff-level data work is a migration: Hive to Iceberg, on-premises to cloud, warehouse to lakehouse, batch to streaming, one orchestrator to another. The safe shape is the **strangler fig**: build the new beside the old and move consumers over piece by piece.
+
+```
+1 inventory     every table, job and consumer; usage from query logs; rank by risk and dependency
+2 build beside  new pipelines write new tables; old ones keep running (dual run)
+3 reconcile     compare old and new daily: row counts, sums, key-level diffs (Exercise 1)
+4 cut over      move consumers one group at a time; old stays as a fallback
+5 roll back     a tested switch back, per table, for a fixed window
+6 deprecate     find remaining readers (Exercise 3), announce dates, then delete
+```
+
+What makes it work:
+
+- **Reconciliation is the gate.** "The numbers match within tolerance for 14 consecutive days" is a cutover criterion a Finance director can sign.
+- **Explain every difference.** Some are bugs in the new system, some are bugs in the old one (common), and some are intended changes (a new rule rejects unknown cities). Write them down.
+- **Budget the double run.** Running both costs money for months; put it in the design doc.
+- **Communicate on a calendar**: announce, migrate, freeze, delete, with named owners for each consumer group.
+
+## R1.4 Reliability and cost across many teams
+
+**Reliability as targets, not hopes.** For each important dataset, agree:
+
+| Term | For a dataset | Example |
+|---|---|---|
+| SLI | what you measure | minutes between midnight and the daily revenue table landing |
+| SLO | the target | 99% of days by 06:00 IST |
+| Error budget | allowed misses | about 3 days a year; if spent, reliability work comes before features |
+| RPO | how much data you can lose in a disaster | 15 minutes of events |
+| RTO | how long until it works again | 4 hours to a secondary region |
+
+Multi-region and disaster recovery (Stripe's posting asks for "disaster recovery plans"): replicate object storage across regions, keep catalogs and orchestration state recoverable, rehearse the failover, and know which pipelines can be rebuilt from raw data (most) and which cannot (anything without a replayable source).
+
+**Cost as an engineering metric** (Leadership exercise 2). Steps: attribute cost to teams, tables and jobs (tags, query logs); find the top 10 spenders (they are usually most of the bill); then pull the levers:
+
+- scan less: partitioning, clustering, column pruning, materialised aggregates
+- compute cheaper: spot or pre-emptible nodes for batch, autoscaling, right-sized clusters
+- store less: lifecycle rules, compaction, dropping unused tables (Exercise 3)
+- run less often: does that dashboard need hourly freshness?
+
+Report **unit costs** (cost per TB processed, per dashboard, per trained model) so growth and efficiency are not confused.
+
+## R1.5 Influence, mentoring and leading without authority
+
+You will rarely be anyone's manager, yet you must change what many teams do. What works:
+
+- **Make the problem visible with data** before proposing a solution: a dashboard of failed runs, a cost chart, a list of five conflicting revenue definitions.
+- **Write it down** (R1.2) and circulate early to the people who will say no; incorporate their objections.
+- **Make the right thing the easy thing**: a paved path (Platform 1), a template, a library, so adoption does not depend on persuasion.
+- **Give away credit and the work**: pair a senior engineer with the new component and let them present it.
+- **Mentor deliberately**: regular one-to-ones, delegate stretch pieces with a safety net, review designs not just code, and sponsor people for visible work.
+
+Disagreement is part of the job. Use "disagree and commit" honestly: argue with data, accept the decision, and support it fully, while noting what evidence would reopen it.
+
+## R1.6 The behavioural and hiring-manager rounds
+
+Every tier-1 loop has at least one; Amazon scores Leadership Principles in every round. Prepare a **story bank** of about twelve stories, each in **STAR** form (situation, task, action, result) and under three minutes:
+
+| Theme | Example prompt |
+|---|---|
+| Influence without authority | "Tell me about getting another team to change direction." |
+| A migration or big delivery | "Your most complex project, end to end." |
+| A failure | "A time you were wrong, or a project that failed." |
+| Conflict | "A disagreement with a senior colleague." |
+| Ambiguity | "A problem nobody had defined." |
+| Raising the bar | "A time you improved quality or reliability for everyone." |
+| Cost or efficiency | "A time you saved significant money or time." |
+| Mentoring | "Someone you helped grow." |
+| Customer obsession | "Going deep on a user's problem." |
+| Prioritisation | "Saying no to something important." |
+
+Rules: say **I**, not we, for your part; put a **number** in every result (hours saved, cost cut, incidents reduced, people affected); include what you learned; and have a deeper follow-up ready for each, because interviewers dig two or three levels.
+
+Your background is an advantage here: years as an analyst give you strong stories about understanding the business, defining metrics people trust, and translating between engineers and stakeholders. That is exactly what staff postings mean by "cross-functional" (63% of the postings) and "product sense".
+
+Some companies (Pinterest says so in its posting) now let you use AI tools in coding rounds and assess how you collaborate with them. Practise explaining your approach while using an assistant, and verifying its output out loud (AI 2 and DE 10 cover reviewing AI-written code).
+
+@@lab
+## Exercises 1–3 (1 hour)
+
+1. **Reconcile a migration before cutover.** FULL OUTER JOIN on the grain, a tolerance for money, and four statuses. Afterwards, write one sentence per non-matching row saying whether it blocks the cutover.
+2. **Cost attribution by team.** Aggregate first, then share of total with a window.
+3. **Who still blocks the deprecation?** Usage logs turn "is anyone using this?" into names.
+
+## Going further (optional, 60 minutes)
+
+Write the design doc for this module's design problem ("Migrate the Hive warehouse to Iceberg without downtime") using the R1.2 template, in the design studio or a document. Keep it to four pages. It doubles as your answer to "tell me about a migration you led" when combined with your own experience.
+
+@@practice
+## Story bank: draft four stories (30 minutes)
+
+Write each story in four short paragraphs (situation, task, action, result), with at least one number in the result. Use your own experience, including your analyst years. Then read each one aloud and time it: under three minutes.
+
+1. **Influence without authority**: you changed what another team did without being their manager.
+2. **A migration or large delivery**: what you moved, how you proved it was right, what you would do differently.
+3. **A failure**: something that went wrong because of you, what you did about it, what changed afterwards.
+4. **Mentoring**: someone who grew because of your help, and how you know.
+
+<details><summary>What a strong answer sounds like (an example, not yours)</summary>
+
+"Finance and Operations reported different revenue for the same week, a 4% gap that came up in every leadership review (situation). I owned the revenue tables but not either team's dashboards (task). I traced both numbers row by row, found three differences in how refunds and cancelled trips were counted, wrote a one-page definition, reviewed it with both leads separately and then together, and built one certified table with tests (action). Both teams moved to it within six weeks; the weekly reconciliation meeting was cancelled, and the gap went from 4% to under 0.1% (result). What I'd do differently: involve the finance analyst who maintained the old spreadsheet earlier; she knew two of the three rules."
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: arch
+Q: Which section most distinguishes a strong design doc from a weak one?
+A) A long background section
+B) Alternatives considered, with why each was rejected, and explicit non-goals
+C) Many diagrams
+D) A list of every technology used
+ANS: B
+WHY: Reviewers need to see the trade-offs and the boundaries of the decision.
+---
+TYPE: mcq
+TAG: arch
+Q: What is the gate for cutting a consumer over to a migrated table?
+A) The new pipeline has run once
+B) Reconciliation within an agreed tolerance for a sustained period, with every difference explained
+C) The old table is deleted
+D) The team lead approves verbally
+ANS: B
+WHY: Numbers that match, with differences explained, are what stakeholders can sign off on.
+---
+TYPE: fill
+TAG: arch
+Q: The migration pattern of building the new system beside the old and moving traffic over piece by piece is called the strangler ____.
+ANS: fig
+WHY: Named by Martin Fowler after a vine that slowly replaces its host tree.
+---
+TYPE: mcq
+TAG: arch
+Q: Your daily revenue table must land by 06:00 on 99% of days. What is that?
+A) An SLI
+B) An SLO
+C) An RPO
+D) An RTO
+ANS: B
+WHY: The SLI is the measured landing time; the SLO is the target on it.
+---
+TYPE: mcq
+TAG: arch
+Q: In disaster recovery, what does RPO describe?
+A) How long until the system works again
+B) How much data you can afford to lose
+C) The number of regions
+D) The cost of recovery
+ANS: B
+WHY: Recovery point objective is data loss; recovery time objective is downtime.
+---
+TYPE: mcq
+TAG: arch
+Q: The warehouse bill grew 40% in a quarter. What do you do first?
+A) Ask every team to cut usage by 40%
+B) Attribute cost to teams, tables and jobs, and look at the top spenders
+C) Move to another cloud
+D) Delete old tables at random
+ANS: B
+WHY: Cost is usually concentrated; you cannot fix what you have not attributed.
+---
+TYPE: mcq
+TAG: arch
+Q: Which behaviour best shows leading without authority?
+A) Escalating to your manager to force a decision
+B) Making the problem visible with data, writing a proposal, addressing objections early, and making the right path the easy one
+C) Doing all the work yourself
+D) Waiting for a re-org
+ANS: B
+WHY: Influence comes from evidence, writing, and lowering the cost of saying yes.
+---
+TYPE: fill
+TAG: arch
+Q: A one-page record of a single architectural decision, with context and consequences, is an ____.
+ANS: ADR
+WHY: Architecture decision records keep the "why" next to the code.
+---
+TYPE: short
+TAG: arch
+Q: List the phases of a safe data platform migration.
+MODEL: Inventory everything (tables, jobs, consumers, usage from logs) and order by risk and dependency; build the new beside the old and dual-run; reconcile old and new daily at key level with tolerances and explain every difference; cut consumers over in groups; keep a tested rollback for a fixed window; then find remaining readers, announce dates and deprecate. Budget the cost of running both.
+---
+TYPE: short
+TAG: arch
+Q: What makes a behavioural story strong?
+MODEL: A clear situation and your specific task; actions described with "I" and the reasoning behind them, including how you handled disagreement or ambiguity; a result with a number (time, money, incidents, people); and what you learned or would change. It fits in about three minutes and holds up when the interviewer asks two or three levels of follow-up questions.
+
+@@interview
+Q: Tell me about a time you influenced a team you had no authority over.
+TAG: behavioral
+A: Answer with your own STAR story. A strong shape: the problem was costing something measurable; you gathered evidence (a dashboard, a reconciliation, a cost chart); you wrote a short proposal and reviewed it with the sceptics first; you made adoption easy (a library, a template, doing the first migration with them); and the result has a number (teams adopted, incidents cut, hours saved). Name one objection you took on board.
+---
+Q: Describe the most complex migration you have led. How did you know it was correct?
+TAG: behavioral
+A: Use your own story with the six phases: inventory, dual run, reconciliation, staged cutover, rollback, deprecation. The interviewer listens for how you proved correctness (key-level reconciliation with tolerances, a sustained matching period, every difference explained and classified) and how you handled consumers you did not know about (usage logs, announcements, a freeze date). Mention the cost of the double run and one thing you would do differently.
+---
+Q: How would you write a two-year data platform strategy for this company?
+TAG: arch
+A: Start with where we are, in numbers: freshness, incidents, cost per TB, time for a team to ship a new dataset, and what users complain about. Then where we need to be given the company's plans (AI products, new markets, regulation). Then a few big bets, each with why now, cost and the metric it moves: for example, consolidating on an open table format, a semantic layer for metrics, and a paved path for pipelines. Say explicitly what we will stop doing. Review it with the most affected teams before publishing, and revisit it every six months.
+---
+Q: Tell me about a time you were wrong about a technical decision.
+TAG: behavioral
+A: Choose a real mistake with real consequences, owned with "I". Explain what you believed and why it was reasonable then, how you found out you were wrong (ideally from data or a review), what you did to correct it quickly, and what you changed in how you decide: for example, writing an ADR with explicit assumptions so a wrong assumption is visible earlier.
+---
+Q: How do you decide what to work on when everything seems important?
+TAG: arch
+A: I compare impact, urgency and reversibility with whoever owns the outcome: what breaks or costs most if we wait, what unblocks the most people, and what only I can do. I write down what I am not doing and tell the people affected. Reliability work that protects an SLO with no error budget left goes first; then work that compounds, such as a paved path or a shared definition that removes repeated effort across teams.
+---
+Q: How do you mentor engineers on your team?
+TAG: behavioral
+A: Regular one-to-ones focused on their goals; delegating real, visible pieces of hard projects with support rather than tasks I could do faster; reviewing their design docs before their code; asking questions instead of giving answers in reviews; and sponsoring them by naming their work in front of leadership. I measure it by what they can now lead without me. Give one concrete example with the outcome.

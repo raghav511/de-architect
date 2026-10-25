@@ -94,6 +94,7 @@ def seed():
     con.execute('create table employees(emp_id int, name varchar, manager_id int, dept varchar, salary int)')
     con.executemany('insert into employees values (?,?,?,?,?)', emps)
     _seed_modelling(riders, trips)
+    _seed_leadership(trips)
     spark = minispark.install(con)
     reset_ns()
     return 'ready'
@@ -482,6 +483,35 @@ def _mini_run(coro, debug=None):
         return loop.run_until_complete(coro)
     finally:
         loop.close()
+
+
+def _seed_leadership(trips):
+    """Tables for the leadership module: a legacy table to reconcile during a migration, and a warehouse query log."""
+    r = random.Random(23)
+    daily = {}
+    for t in trips:
+        if t[4] == 'completed':
+            k = (t[8], t[3])
+            daily[k] = round(daily.get(k, 0.0) + t[5], 2)
+    legacy = [(d, c, v) for (d, c), v in sorted(daily.items())]
+    legacy = [x for x in legacy if not (x[0] == dt.date(2026, 10, 9) and x[1] == 4)]   # a day-city the old job lost
+    legacy = [(d, c, round(v + 37.5, 2)) if (d == dt.date(2026, 10, 12) and c == 2) else (d, c, v) for d, c, v in legacy]   # a drifted amount
+    legacy.append((dt.date(2026, 10, 3), 9, 412.0))   # a city the new model rejects (unknown city_id)
+    con.execute('create table legacy_daily_city_revenue(trip_date date, city_id int, revenue double)')
+    con.executemany('insert into legacy_daily_city_revenue values (?,?,?)', legacy)
+    teams = ['finance', 'ops', 'growth', 'ml', 'data-platform']
+    tables = ['fact_trip', 'dim_rider', 'legacy_daily_city_revenue', 'agg_city_day', 'trip_events_raw']
+    log = []
+    for qid in range(1, 241):
+        team = r.choice(teams)
+        tbl = r.choice(tables)
+        if tbl == 'legacy_daily_city_revenue' and team not in ('finance', 'ops'):
+            tbl = 'agg_city_day'
+        ts = dt.datetime(2026, 9, 22, 8) + dt.timedelta(hours=r.randint(0, 29 * 24 - 1))
+        gb = round(r.choice([0.2, 0.5, 1, 2, 5, 12, 40, 150]) * r.uniform(0.8, 1.2), 2)
+        log.append((qid, team, team[:3] + '_user' + str(r.randint(1, 4)), tbl, gb, ts))
+    con.execute('create table query_log(query_id int, team varchar, user_name varchar, table_name varchar, gb_scanned double, started_at timestamp)')
+    con.executemany('insert into query_log values (?,?,?,?,?,?)', log)
 
 
 def check_py(spec_json, code):

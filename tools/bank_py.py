@@ -292,3 +292,46 @@ q(m='p06', t='Find the slow part', lv=M, sig='def slow_join(trips, drivers):\n  
   h=['The inner loop searches all drivers for every trip.', 'Build a dict from driver id to name once: O(drivers).', 'Then each trip is one dict lookup: O(1).', 'names = {d["id"]: d["name"] for d in drivers}\nreturn [[t["id"], names[t["driver_id"]]] for t in trips if t["driver_id"] in names]'],
   sol='def slow_join(trips, drivers):\n    names = {d["id"]: d["name"] for d in drivers}\n    return [[t["id"], names[t["driver_id"]]] for t in trips if t["driver_id"] in names]',
   why='This is a nested-loop join versus a hash join: the same choice Spark makes between a sort-merge and a broadcast join.')
+
+# ---------- Systems 1: distributed systems and storage internals (module d01) ----------
+q(m='d01', t='Merge LSM runs with tombstones', lv=M, sig='def merge_runs(runs):\n    pass\n',
+  p='An LSM-tree flushes sorted runs (SSTables). Each run is a list of `[key, value, seq]`; a higher `seq` is newer, and `value` None is a **tombstone** (a delete). Compact all runs into one sorted list of `[key, value]` keeping only the newest version of each key and dropping deleted keys.',
+  tests=[['newest wins', 'merge_runs([[["a", 1, 1], ["b", 2, 2]], [["a", 9, 5]]])', [['a', 9], ['b', 2]]],
+         ['tombstone deletes', 'merge_runs([[["a", 1, 1], ["c", 3, 3]], [["a", None, 7]]])', [['c', 3]]],
+         ['older tombstone does not delete a newer write', 'merge_runs([[["k", None, 2]], [["k", "v", 4]]])', [['k', 'v']]],
+         ['empty', 'merge_runs([])', []]],
+  h=['For each key, only the entry with the highest seq matters.', 'One pass over all entries with a dict from key to (seq, value).', 'Apply the tombstone rule after choosing the newest version, not before.', 'latest = {}\nfor run in runs:\n    for k, v, s in run:\n        if k not in latest or s > latest[k][0]:\n            latest[k] = (s, v)\nreturn [[k, v] for k, (s, v) in sorted(latest.items()) if v is not None]'],
+  sol='def merge_runs(runs):\n    latest = {}\n    for run in runs:\n        for k, v, s in run:\n            if k not in latest or s > latest[k][0]:\n                latest[k] = (s, v)\n    return [[k, v] for k, (s, v) in sorted(latest.items()) if v is not None]',
+  why='This is compaction in Cassandra, RocksDB and HBase, and the same idea as Iceberg delete files being applied at read or compaction time.')
+q(m='d01', t='Consistent hashing ring', lv=M, sig='import bisect\nimport zlib\n\n\ndef h(s):\n    return zlib.crc32(s.encode())\n\n\nclass Ring:\n    def __init__(self, nodes, vnodes=50):\n        pass\n\n    def node_for(self, key):\n        pass\n\n    def add(self, node):\n        pass\n',
+  p='Build a consistent hashing ring. Each node gets `vnodes` points on the ring at `h(f"{node}#{i}")` for i in 0..vnodes-1. `node_for(key)` returns the node owning the first point clockwise from `h(key)` (wrap around past the end). `add(node)` adds a node\'s points. Adding a fourth node to three must move only a minority of keys.',
+  tests=[['every key maps to a node', 'r = Ring(["a", "b", "c"])\nsorted({r.node_for("k" + str(i)) for i in range(300)})', ['a', 'b', 'c']],
+         ['deterministic', 'Ring(["a", "b", "c"]).node_for("trip-42") == Ring(["c", "b", "a"]).node_for("trip-42")', True],
+         ['adding a node moves few keys', 'r = Ring(["a", "b", "c"])\nbefore = {i: r.node_for("k" + str(i)) for i in range(1000)}\nr.add("d")\nmoved = [i for i in before if r.node_for("k" + str(i)) != before[i]]\n[len(moved) < 400, all(r.node_for("k" + str(i)) == "d" for i in moved)]', [True, True]]],
+  need=[['bisect', 'Use bisect to find the next point on the ring in O(log n).']],
+  h=['The ring is a sorted list of (point, node).', 'node_for: find the first point >= h(key) with bisect; if you run off the end, wrap to index 0.', 'Virtual nodes (many points per node) even out the load.', 'i = bisect.bisect_left(self.points, (h(key), ""))\nreturn self.points[i % len(self.points)][1]'],
+  sol='import bisect\nimport zlib\n\n\ndef h(s):\n    return zlib.crc32(s.encode())\n\n\nclass Ring:\n    def __init__(self, nodes, vnodes=50):\n        self.vnodes, self.points = vnodes, []\n        for n in nodes:\n            self.add(n)\n\n    def node_for(self, key):\n        i = bisect.bisect_left(self.points, (h(key), ""))\n        return self.points[i % len(self.points)][1]\n\n    def add(self, node):\n        for i in range(self.vnodes):\n            bisect.insort(self.points, (h(f"{node}#{i}"), node))',
+  why='Cassandra, DynamoDB and many caches place data this way; "design a distributed cache" expects it.')
+q(m='d01', t='Quorum read with read repair', lv=M, sig='def quorum_read(replies, r):\n    pass\n',
+  p='`replies` holds one entry per replica: `[version, value]`, or None if that replica is down. Return `[value, stale]` where value comes from the highest version among the replicas that answered, and `stale` lists the indexes of answering replicas that hold an older version (they need read repair). Raise `RuntimeError` if fewer than `r` replicas answered.',
+  tests=[['latest wins, stale listed', 'quorum_read([[3, "x"], [5, "y"], None], 2)', ['y', [0]]],
+         ['all current', 'quorum_read([[2, "a"], [2, "a"], [2, "a"]], 2)', ['a', []]],
+         ['not enough replicas', 'try:\n    quorum_read([None, [1, "a"], None], 2)\n    r = "no error"\nexcept RuntimeError:\n    r = "RuntimeError"\nr', 'RuntimeError']],
+  h=['Keep only replicas that answered.', 'Fail fast if fewer than r answered: the read cannot be trusted.', 'The newest version wins; every answering replica with a smaller version is stale.', 'up = [(i, v) for i, v in enumerate(replies) if v is not None]\nif len(up) < r: raise RuntimeError(...)\nbest = max(v[0] for _, v in up)'],
+  sol='def quorum_read(replies, r):\n    up = [(i, v) for i, v in enumerate(replies) if v is not None]\n    if len(up) < r:\n        raise RuntimeError("only %d of %d replicas answered" % (len(up), r))\n    best = max(v[0] for _, v in up)\n    value = next(v[1] for _, v in up if v[0] == best)\n    return [value, [i for i, v in up if v[0] < best]]',
+  why='Leaderless stores (Cassandra, Dynamo) read from R replicas and repair stale ones; R + W > N is the interview formula behind it.')
+q(m='d01', t='Compare vector clocks', lv=M, sig='def compare(a, b):\n    pass\n',
+  p='Vector clocks are dicts from node name to counter (a missing node counts as 0). Return `"equal"`, `"before"` (a happened before b: every counter of a <= b and at least one smaller), `"after"`, or `"concurrent"` (neither happened before the other: a conflict to resolve).',
+  tests=[['before', 'compare({"a": 1}, {"a": 2, "b": 1})', 'before'], ['after', 'compare({"a": 3, "b": 1}, {"a": 2})', 'after'],
+         ['concurrent', 'compare({"a": 2, "b": 0}, {"a": 1, "b": 1})', 'concurrent'], ['equal with missing zero', 'compare({"a": 1, "b": 0}, {"a": 1})', 'equal']],
+  h=['Compare node by node over the union of keys, treating missing as 0.', 'Track whether any counter of a is smaller, and whether any is larger.', 'Smaller somewhere and larger somewhere means concurrent.'],
+  sol='def compare(a, b):\n    less = more = False\n    for k in set(a) | set(b):\n        x, y = a.get(k, 0), b.get(k, 0)\n        less |= x < y\n        more |= x > y\n    if less and more:\n        return "concurrent"\n    return "before" if less else "after" if more else "equal"',
+  why='Causality without synchronised clocks: the basis of conflict detection in multi-leader and leaderless replication.')
+q(m='d01', t='Assign Kafka partitions to consumers', lv=M, sig='def range_assign(num_partitions, consumers):\n    pass\n',
+  p='Implement Kafka\'s range assignor for one topic: sort the consumer ids, give each `num_partitions // len(consumers)` consecutive partitions, and give one extra partition to each of the first `num_partitions % len(consumers)` consumers. Return a dict from consumer id to its list of partitions. Consumers beyond the partition count get an empty list.',
+  tests=[['six over four', 'range_assign(6, ["c4", "c2", "c1", "c3"])', {'c1': [0, 1], 'c2': [2, 3], 'c3': [4], 'c4': [5]}],
+         ['more consumers than partitions', 'range_assign(2, ["b", "a", "c"])', {'a': [0], 'b': [1], 'c': []}],
+         ['even', 'range_assign(4, ["x", "y"])', {'x': [0, 1], 'y': [2, 3]}]],
+  h=['Sort consumers first: assignment must be the same on every member.', 'divmod(num_partitions, len(consumers)) gives the base size and how many get one extra.', 'Walk a running start index, like splitting rows between workers in Python 1\'s level check.'],
+  sol='def range_assign(num_partitions, consumers):\n    cs = sorted(consumers)\n    base, extra = divmod(num_partitions, len(cs))\n    out, start = {}, 0\n    for i, c in enumerate(cs):\n        n = base + (1 if i < extra else 0)\n        out[c] = list(range(start, start + n))\n        start += n\n    return out',
+  why='One partition is read by at most one consumer in a group, so extra consumers sit idle: the DE 5 consumer-group question, now as code.')

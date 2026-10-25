@@ -1,0 +1,306 @@
+@@meta
+id: d01
+n: 1
+title: Distributed systems and storage internals: the "why" behind every data tool
+goal: Explain how the systems you use actually work underneath: B-trees and LSM-trees, replication and its lag, partitioning and hot spots, transactions and isolation levels, consistency, consensus and clocks, and how "exactly once" really happens. "Distributed systems" appears in 66% of the tier-1 Bengaluru postings this module was built from, and staff interviews use these topics for their "why" follow-ups.
+hours: 5.5
+
+@@tickets
+D101 | learn | 0.75 | Chapter part 1: storage engines, replication, partitioning | You can compare B-trees with LSM-trees, name two replication-lag anomalies, and explain why hash partitioning creates hot spots for celebrity keys. | chapter:0-3
+D102 | learn | 0.75 | Chapter part 2: transactions, consistency and consensus, time and exactly-once | You can name the anomaly each isolation level prevents, explain linearizability versus eventual consistency, and say how Kafka and Flink achieve exactly-once in effect. | chapter:4-6
+D103 | build | 1 | Exercises 1–3: LSM compaction, consistent hashing, quorum reads | All three pass in the editor. | py:1-3
+D104 | build | 1 | Exercises 4–5: vector clocks, Kafka partition assignment | Both pass, and you can explain why a fifth consumer on a four-partition topic sits idle. | py:4-5
+D105 | practice | 0.5 | Explain it to an interviewer: five "why" questions | Each answered out loud in under two minutes before opening the model answer. | practice
+D106 | test | 0.5 | Quiz D1 | 80% or better. | quiz
+D107 | talk | 0.5 | Interview set D1 | 5 of 6 answered out loud and ticked. | interview
+
+@@readings
+- **Designing Data-Intensive Applications** (Kleppmann): chapter 3 (storage and retrieval), 5 (replication), 6 (partitioning), 7 (transactions), 8 (the trouble with distributed systems) and 9 (consistency and consensus). This module follows its order; read each chapter's first half alongside the matching section.
+- [The Raft consensus algorithm](https://raft.github.io/). The visualisation on this page shows leader election and log replication in two minutes.
+- [Jepsen: consistency models](https://jepsen.io/consistency). A map of isolation and consistency levels with plain definitions.
+- [Kafka: exactly-once semantics](https://www.confluent.io/blog/exactly-once-semantics-are-possible-heres-how-apache-kafka-does-it/). Idempotent producers and transactions explained by the people who built them.
+- [Apache Flink: checkpoints](https://nightlies.apache.org/flink/flink-docs-stable/docs/concepts/stateful-stream-processing/#checkpointing). How a consistent snapshot of a running stream is taken.
+
+@@chapter
+## D1.1 Why a data engineer needs this
+
+Every tool in the program is a distributed system: Kafka replicates logs, Spark partitions and shuffles, Iceberg commits with optimistic concurrency, Snowflake and BigQuery separate storage from compute, Postgres replicates to a CDC reader. When something goes wrong (duplicate events, a stale read, a stuck consumer, a lost update), the explanation is in this module.
+
+It also decides interviews: a design answer with the right boxes but no explanation of *why* the box behaves as it does reads as junior. "Kafka gives me ordering per partition, so I key by trip_id" or "I chose an LSM-based store because this is write-heavy" is the staff-level version.
+
+## D1.2 Storage engines: B-trees, LSM-trees and columns
+
+Two designs underlie almost every database:
+
+```
+B-tree (Postgres, MySQL, most OLTP)          LSM-tree (Cassandra, RocksDB, HBase, ScyllaDB)
+ pages in a tree, updated in place            writes go to memory (memtable) + a write-ahead log
+ read: walk root → leaf, few page reads        flush: memtable → sorted, immutable file (SSTable)
+ write: modify the page (and the WAL)          read: memtable, then newest SSTables first (+ bloom filters)
+                                               compaction: merge SSTables, keep newest, drop deletes
+```
+
+| | B-tree | LSM-tree |
+|---|---|---|
+| Strength | fast point reads and range scans | very high write throughput (sequential writes only) |
+| Cost | random writes, page splits | reads may check several files; compaction uses I/O and CPU |
+| Deletes | remove in place | write a **tombstone**, removed later by compaction (Exercise 1) |
+| Fits | transactional apps, read-heavy | event ingestion, time series, write-heavy key-value |
+
+**Write amplification** (one logical write causing many physical writes) and **read amplification** (one read touching many files) are the trade-off words to use.
+
+**Column stores** (Parquet, ORC, warehouse storage) are a third design: values of one column are stored together, compressed, with min/max statistics per block, so a query reads only the columns and blocks it needs. That is why analytics engines are columnar and why `SELECT *` is expensive on them (DE 2, SQL optimise questions).
+
+**Indexes** trade write cost and space for read speed: a secondary index is another structure to update on every write. Lakehouses mostly use partition pruning, file statistics, clustering (Z-order, liquid clustering) and bloom filters instead of B-tree indexes.
+
+## D1.3 Replication: copies, lag and its anomalies
+
+Replication keeps copies on several machines for availability and read scale. Three families:
+
+| Family | How | Examples | Main risk |
+|---|---|---|---|
+| Single leader | all writes to the leader, which streams its log to followers | Postgres, MySQL, Kafka partitions | failover: electing a new leader without losing or doubling writes |
+| Multi-leader | several nodes accept writes and exchange them | multi-region databases | write conflicts (Exercise 4 detects them) |
+| Leaderless | client writes to and reads from several replicas | Cassandra, DynamoDB | stale reads unless quorums overlap |
+
+**Synchronous** replication waits for followers (safer, slower, blocked by one slow follower); **asynchronous** does not (fast, but a leader crash can lose recent writes). Most systems use one synchronous follower plus asynchronous ones, or Kafka's **in-sync replicas** with `acks=all`.
+
+**Replication lag** causes anomalies interviewers name:
+
+- **Read-your-writes**: you update your profile, refresh, and see the old value because the read hit a lagging follower. Fix: read your own recent writes from the leader.
+- **Monotonic reads**: two refreshes hit different followers and data appears to go backwards in time. Fix: pin a user to one replica.
+- **Consistent prefix**: you see an answer before its question. Fix: keep causally related writes in one partition.
+
+**Leaderless quorums**: with N replicas, write to W and read from R; if **R + W > N** every read overlaps at least one up-to-date replica. Stale replicas are fixed by **read repair** (Exercise 3) and background anti-entropy.
+
+For data engineers, CDC (DE 6) is replication: Debezium is a follower reading Postgres's write-ahead log.
+
+## D1.4 Partitioning: spreading data and its hot spots
+
+Partitioning (sharding) splits data so each node holds a part.
+
+| Strategy | Pros | Cons |
+|---|---|---|
+| **Key range** (A–F, G–M...) | efficient range scans | hot spots when writes cluster (today's timestamps all hit one range) |
+| **Hash of key** | even spread | range scans hit every partition |
+| **Consistent hashing** (Exercise 2) | adding a node moves only about 1/N of keys | needs virtual nodes to balance |
+
+**Hot spots and skew**: even with hashing, one celebrity key (a viral post, one huge merchant) overloads its partition. Fixes: split the key with a random suffix (salting, as in Spark skew joins in DE 3), cache the hot key, or give it a dedicated partition.
+
+**Rebalancing**: when nodes join or leave, data must move. Fixed-number-of-partitions schemes (Kafka, Elasticsearch, Cassandra's vnodes) move whole partitions; never use `hash(key) mod N` with N = number of nodes, because changing N moves almost every key.
+
+**Kafka specifics**: a topic has a fixed number of partitions; **ordering is guaranteed only within a partition**, so key by the entity whose order matters (trip_id, account_id). In a consumer group each partition goes to exactly one consumer (Exercise 5), so the partition count caps consumer parallelism.
+
+## D1.5 Transactions and isolation levels
+
+ACID: **atomicity** (all or nothing), **consistency** (your invariants), **isolation** (concurrent transactions do not interfere), **durability** (committed means saved). Isolation has levels, each preventing more anomalies:
+
+| Level | Prevents | Still allows | Used by |
+|---|---|---|---|
+| Read committed | dirty reads and writes | non-repeatable reads, lost updates | Postgres default |
+| Snapshot isolation (MVCC) | non-repeatable reads: each transaction sees a consistent snapshot | **write skew** | Postgres repeatable read, Oracle serializable, Iceberg reads |
+| Serializable | everything: as if transactions ran one at a time | (costs throughput or causes aborts) | Postgres serializable (SSI), Spanner |
+
+Anomalies to explain with an example:
+
+- **Lost update**: two jobs read a counter (10), both add 1, both write 11. Fix: atomic `UPDATE ... SET n = n + 1`, row locks, or compare-and-set.
+- **Write skew**: two on-call engineers each check "at least one other person is on call" and both go off call. Each read was valid; together they break the rule. Only serializable isolation (or explicit locks) prevents it.
+
+**MVCC** (multi-version concurrency control) keeps old row versions so readers see a snapshot without blocking writers. **Lakehouse table formats work the same way**: an Iceberg or Delta table is a series of snapshots; readers read one snapshot, and writers commit a new one with **optimistic concurrency** (if someone else committed first, retry against the new snapshot). That is why two concurrent MERGE jobs on one table can fail with a commit conflict.
+
+## D1.6 Consistency, consensus and clocks
+
+**Linearizability** (strong consistency): the system behaves as if there were one copy and every operation took effect at one instant; once a write is seen, nobody sees older data. **Eventual consistency**: replicas converge if writes stop, with no promise about when.
+
+**CAP** says that during a network partition you choose consistency or availability. **PACELC** adds the everyday part: *else*, when there is no partition, you trade **latency** against consistency. Most data systems choose availability and low latency, then repair.
+
+**Causality without clocks**: wall clocks on different machines drift and jump, so "latest timestamp wins" can silently drop real updates. **Vector clocks** (Exercise 4) record per-node counters and tell you whether one version happened before another or whether they are concurrent (a conflict).
+
+**Consensus** is getting nodes to agree on one value despite failures: who the leader is, which writes are committed. **Raft** does it with a majority (quorum) of nodes: a leader is elected for a numbered **term**, appends entries to followers, and commits an entry once a majority has it. With 5 nodes it survives 2 failures. You use consensus every day: Kafka's KRaft controllers, etcd under Kubernetes, ZooKeeper under older Kafka and HBase.
+
+**Fencing tokens**: a leader that was paused (GC, network) may wake up still believing it leads. Give every lease a growing number, and have storage reject writes carrying an older number.
+
+## D1.7 Time, failure and exactly-once
+
+Networks drop, delay and duplicate messages; processes pause; clocks lie. A distributed system can only promise one of:
+
+- **At most once**: send and forget; may lose data.
+- **At least once**: retry until acknowledged; may duplicate.
+- **Exactly once in effect**: at least once delivery **plus** idempotent or transactional processing, so duplicates have no effect.
+
+How the tools in the program do it:
+
+| Tool | Mechanism |
+|---|---|
+| Kafka producer | **idempotent producer**: the broker drops duplicate (producer id, sequence number) pairs from retries |
+| Kafka read-process-write | **transactions**: consumed offsets and produced records commit atomically |
+| Flink / Spark Structured Streaming | **checkpoints**: a consistent snapshot of state and source offsets; on failure, restore and replay |
+| Sinks | idempotent writes: MERGE on a key, overwrite a partition, or a transactional table commit (Iceberg) |
+
+**Event time versus processing time**: events carry the time they happened; they arrive late and out of order. Windows use event time with **watermarks** to decide when a window is complete (DE 5).
+
+The rule to say in interviews: *exactly-once delivery does not exist; exactly-once effect is built from at-least-once delivery plus idempotent, deterministic processing and transactional or idempotent sinks.*
+
+@@lab
+## Exercises 1–3 (1 hour)
+
+1. **Merge LSM runs with tombstones.** Newest sequence number wins; tombstones delete; output sorted.
+2. **Consistent hashing ring.** Virtual nodes, `bisect` for the next point, and proof that adding a node moves a minority of keys.
+3. **Quorum read with read repair.** Latest version wins; list the stale replicas; refuse when fewer than R answered.
+
+## Exercises 4–5 (1 hour)
+
+4. **Compare vector clocks.** Before, after, equal or concurrent.
+5. **Assign Kafka partitions to consumers.** The range assignor: sorted consumers, consecutive partitions, extras to the first ones.
+
+## Going further (optional, 30 minutes)
+
+See isolation anomalies for real. In two terminal windows connected to a local Postgres (`docker run -e POSTGRES_PASSWORD=x -p 5432:5432 postgres`), reproduce a lost update under read committed (two sessions read a counter and both write +1), then repeat both transactions with `BEGIN ISOLATION LEVEL SERIALIZABLE` and watch one fail with a serialization error.
+
+@@practice
+## Explain it to an interviewer (30 minutes)
+
+Answer each out loud in under two minutes, then compare.
+
+**1. Why is Cassandra fast at writes but slower at some reads?**
+<details><summary>Model answer</summary>
+
+It is an LSM-tree store: writes go to an in-memory memtable and a sequential commit log, then flush as immutable sorted files, so writes never update in place. A read may have to check the memtable and several SSTables (bloom filters skip most), and deleted or overwritten data lingers until compaction. Write-heavy workloads love it; read-heavy point lookups with many updates pay read amplification.
+
+</details>
+
+**2. A user updates their address and the app shows the old one on refresh. What happened, and how do you fix it?**
+<details><summary>Model answer</summary>
+
+Replication lag: the write went to the leader and the read hit an asynchronous follower that had not caught up. Guarantee read-your-writes: route a user's reads to the leader for a short time after they write, or read from a replica that has applied at least the user's last write position.
+
+</details>
+
+**3. You add a fifth consumer to a group reading a four-partition topic. Throughput does not change. Why?**
+<details><summary>Model answer</summary>
+
+Each partition is consumed by exactly one consumer in a group, so with four partitions at most four consumers do work; the fifth is idle. Increase the partition count (planning for key redistribution), or make each consumer faster.
+
+</details>
+
+**4. Two nightly jobs MERGE into the same Iceberg table and one fails with a commit conflict. Is that a bug?**
+<details><summary>Model answer</summary>
+
+No, it is optimistic concurrency. Each job wrote files against a snapshot; the first to commit wins, and the second finds the table changed. If their changes touch different partitions, a retry usually succeeds; otherwise serialise the jobs in the orchestrator, or partition the work so they do not overlap.
+
+</details>
+
+**5. "Our pipeline is exactly-once." What questions do you ask?**
+<details><summary>Model answer</summary>
+
+What is the delivery guarantee at each hop (producer acks and retries, consumer offset commits)? Is processing deterministic, and is state checkpointed together with source offsets? Is the sink idempotent or transactional (MERGE on a key, partition overwrite, transactional commit)? What happens on replay after a crash? Exactly-once is an end-to-end property; one non-idempotent sink breaks it.
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: core
+Q: Which storage engine suits a write-heavy event store best?
+A) B-tree
+B) LSM-tree
+C) Hash index in memory only
+D) Row store with many secondary indexes
+ANS: B
+WHY: LSM-trees turn writes into sequential appends and merge later in compaction.
+---
+TYPE: fill
+TAG: core
+Q: In an LSM-tree, a delete is written as a ____ and removed later by compaction.
+ANS: tombstone
+WHY: Files are immutable, so a marker shadows the old value until compaction drops both.
+---
+TYPE: mcq
+TAG: core
+Q: With N = 3 replicas, which setting guarantees a read sees the latest acknowledged write?
+A) W = 1, R = 1
+B) W = 2, R = 2
+C) W = 1, R = 2
+D) W = 3, R = 0
+ANS: B
+WHY: R + W > N makes the read and write sets overlap.
+---
+TYPE: mcq
+TAG: core
+Q: Why should you never place keys with hash(key) mod number_of_nodes?
+A) It is slow to compute
+B) Changing the number of nodes moves almost every key
+C) It cannot handle strings
+D) It breaks ordering
+ANS: B
+WHY: Use a fixed number of partitions or consistent hashing so only a fraction moves.
+---
+TYPE: mcq
+TAG: core
+Q: Two on-call engineers each check that someone else is on call, then both go off call. Which isolation level prevents this?
+A) Read committed
+B) Snapshot isolation
+C) Serializable
+D) None
+ANS: C
+WHY: This is write skew; snapshot isolation allows it, serializable does not.
+---
+TYPE: mcq
+TAG: core
+Q: What does Kafka guarantee about message order?
+A) Global order across the topic
+B) Order within a partition only
+C) No ordering
+D) Order per consumer group
+ANS: B
+WHY: Key messages by the entity whose order matters so they land in one partition.
+---
+TYPE: fill
+TAG: core
+Q: The consensus algorithm used by etcd and Kafka's KRaft, which elects a leader per term and commits entries on a majority, is called ____.
+ANS: Raft
+WHY: A majority quorum lets 5 nodes survive 2 failures.
+---
+TYPE: mcq
+TAG: core
+Q: How is "exactly once" achieved in practice?
+A) The network never duplicates messages
+B) At-least-once delivery plus idempotent or transactional processing and sinks
+C) Turning off retries
+D) Using UDP
+ANS: B
+WHY: Exactly-once delivery is impossible; exactly-once effect is engineered end to end.
+---
+TYPE: short
+TAG: core
+Q: Compare B-trees and LSM-trees and say when you would choose each.
+MODEL: B-trees keep data in pages updated in place: few reads per lookup and good range scans, but random writes and page splits; best for read-heavy transactional workloads (Postgres, MySQL). LSM-trees buffer writes in memory and flush immutable sorted files merged by compaction: very high write throughput, but reads may check several files and compaction costs I/O; best for write-heavy ingestion, time series and key-value at scale (Cassandra, RocksDB).
+---
+TYPE: short
+TAG: core
+Q: Explain linearizability versus eventual consistency with one example of each.
+MODEL: Linearizability means the system acts like a single copy: once any read sees a write, all later reads do too; needed for things like a leader lease, a unique username or an account balance check (etcd, Spanner). Eventual consistency only promises replicas converge if writes stop; reads can be stale for a while, which is fine for a like counter or a product view count (Cassandra with low quorum settings, DNS).
+
+@@interview
+Q: How does Kafka avoid losing or duplicating messages?
+TAG: core
+A: Each partition is a replicated log with a leader and in-sync replicas. With acks=all and min.insync.replicas of 2, a write is acknowledged only once it is on several replicas, so a broker crash does not lose it. Producer retries could duplicate, so the idempotent producer attaches a producer id and sequence number and the broker drops duplicates. For read-process-write pipelines, transactions commit output records and consumer offsets atomically, and consumers read only committed data. End to end, the sink must also be idempotent or transactional.
+---
+Q: Explain the isolation levels and an anomaly each one allows.
+TAG: core
+A: Read committed prevents dirty reads but allows non-repeatable reads and lost updates, for example two increments of the same counter where one is lost. Snapshot isolation gives each transaction a consistent snapshot via MVCC, preventing non-repeatable reads, but allows write skew: two transactions read the same condition and make writes that together violate it. Serializable prevents all of these, through two-phase locking or serializable snapshot isolation, at the cost of throughput or aborts. Lakehouse tables give snapshot reads and optimistic, serializable-per-table commits.
+---
+Q: How would you partition a table of trips for a system with heavy writes and frequent per-city queries?
+TAG: core
+A: For the store taking writes, hash by trip_id to spread load evenly, since partitioning by city creates hot spots (one big city takes most traffic). For analytical reads by city and date, the lakehouse table partitions by date and clusters (Z-order or liquid clustering) by city, so per-city queries prune files without hot partitions. If one city is still hot in a key-value store, I salt its keys. Partition count is fixed and generous, so rebalancing moves whole partitions.
+---
+Q: What is the CAP theorem, and what does PACELC add?
+TAG: core
+A: CAP says that when a network partition splits the nodes, a system must choose between consistency (refusing some requests) and availability (answering with possibly stale data). It says nothing about normal operation. PACELC adds that else, when there is no partition, you trade latency against consistency: synchronous replication across regions is consistent but slow. Most data platforms pick availability and low latency, then repair with idempotent reprocessing.
+---
+Q: Your streaming job restarted and some aggregates were counted twice. Walk me through the cause and the fix.
+TAG: core
+A: The source offsets and the job's state were not committed atomically with the output: after a crash it replayed events from the last committed offset, but the sink had already received some results. The fix is end to end: checkpoint state and offsets together (Flink checkpoints, Spark checkpoint location), make the sink idempotent (MERGE or upsert on window key and entity) or transactional (two-phase commit, Iceberg commits tied to checkpoints), and make processing deterministic so a replay produces identical results.
+---
+Q: Why does a distributed system need consensus, and where have you relied on it?
+TAG: core
+A: Whenever nodes must agree on one thing despite failures: who the leader is, which configuration is current, whether a write is committed. Without it you get split brain, two leaders accepting conflicting writes. Raft and Paxos solve it with majority quorums and terms. I rely on it indirectly every day: Kafka's controller quorum (KRaft) for partition leadership, etcd behind Kubernetes, and ZooKeeper in older Hadoop and Kafka clusters. In my own designs I use those services for leader election and locks, with fencing tokens, instead of building my own.

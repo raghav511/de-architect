@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.4.0';
+const VERSION = '1.5.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -550,7 +550,7 @@ function tablesBox() {
   const box = el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'lbl', text: 'Sample tables (tap to load)' })]);
   const btn = el('button', { class: 'btn sm', onclick: async () => { btn.disabled = true; btn.textContent = 'Loading…'; try { const t = await Py.json('tables', []); btn.remove(); t.forEach(x => box.appendChild(el('div', { class: 'schema' }, [el('b', { text: x.name }), ' · ' + x.rows + ' rows', el('br'), x.cols.join(', ')]))); } catch (e) { btn.disabled = false; btn.textContent = 'Retry'; } } }, 'Show tables and columns');
   box.appendChild(btn);
-  box.appendChild(el('div', { class: 'muted', style: { fontSize: '13px' }, text: 'A small ride-hailing dataset: cities, riders, drivers, trips, payments, trip_events, clicks, employees, plus modelling tables (rider_tier_snapshots, dim_rider_tier, rider_tier_today, rider_activity_cumulated, referrals, trip_promos). PySpark reads them with spark.table(\'trips\') or spark.read.parquet(\'s3://lake/trips\').' }));
+  box.appendChild(el('div', { class: 'muted', style: { fontSize: '13px' }, text: 'A small ride-hailing dataset: cities, riders, drivers, trips, payments, trip_events, clicks, employees, plus modelling tables (rider_tier_snapshots, dim_rider_tier, rider_tier_today, rider_activity_cumulated, referrals, trip_promos) and legacy_daily_city_revenue and query_log for the leadership module. PySpark reads them with spark.table(\'trips\') or spark.read.parquet(\'s3://lake/trips\').' }));
   return box;
 }
 
@@ -643,7 +643,7 @@ function icebergDiagram() {
 /* ---------------- Practice list ---------------- */
 async function vPractice(f) {
   const nDue = revDue().length;
-  const tabs = [['all', 'All'], ['review', 'Review' + (nDue ? ' (' + nDue + ' due)' : '')], ['py', 'Python'], ['model', 'Data modelling'], ['dsa', 'DSA'], ['sql', 'SQL'], ['spark', 'PySpark'], ['opt', 'Optimize only'], ['tests', 'Coding tests']];
+  const tabs = [['all', 'All'], ['review', 'Review' + (nDue ? ' (' + nDue + ' due)' : '')], ['py', 'Python'], ['model', 'Module exercises'], ['dsa', 'DSA'], ['sql', 'SQL'], ['spark', 'PySpark'], ['opt', 'Optimize only'], ['tests', 'Coding tests']];
   const tb = el('div', { class: 'tabs', role: 'tablist' }, tabs.map(([k, n]) => el('button', { role: 'tab', 'aria-selected': String(k === f), onclick: () => { location.hash = '#/practice/' + k; }, text: n })));
   const body = el('div', { class: 'stack' });
   shell('Coding practice', 'Python · DSA · SQL · PySpark · coding tests · separate from the daily hour', [tb, body]);
@@ -658,9 +658,9 @@ async function vPractice(f) {
     return;
   }
   if (f === 'py' || f === 'model') {
-    const k = f === 'py' ? 'py' : 'sql';
-    body.appendChild(el('p', { class: 'muted', style: { margin: 0 }, text: f === 'py' ? 'Exercises for the Python track. They are part of each Python module\'s daily plan, and you can redo any of them here.' : 'SQL exercises for the data modelling modules: SCDs, as-of joins, cumulative tables, graphs, fact types, reduced facts and more. They run on the sample tables in your browser.' }));
-    (f === 'py' ? ['s00'] : []).concat(MODS.filter(m => m[0] === (f === 'py' ? 'p' : 'm'))).forEach(m => {
+    body.appendChild(el('p', { class: 'muted', style: { margin: 0 }, text: f === 'py' ? 'Exercises for the Python track. They are part of each Python module\'s daily plan, and you can redo any of them here.' : 'Exercises for the data modelling, platform and leadership modules: SCDs, as-of joins, cumulative tables, fact types, reading Scala, distributed systems mechanisms, migration reconciliation and cost attribution. They run on the sample tables in your browser.' }));
+    (f === 'py' ? ['s00'] : []).concat(MODS.filter(m => f === 'py' ? m[0] === 'p' : 'mjrd'.includes(m[0]))).forEach(m => {
+      const k = f === 'py' ? 'py' : ['sql', 'spark', 'py'].find(b => DATA[b].some(x => x.m === m)) || 'sql';
       const xs = DATA[k].filter(x => x.m === m); if (!xs.length) return;
       body.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('h3', { class: 'grow', text: (m === 's00' ? 'Python level check' : modLabel(m) + ' · ' + modTitle(m)) }), el('span', { class: 'muted', text: xs.filter(x => S.solved[x.id]).length + ' / ' + xs.length })]), el('div', { class: 'list' }, xs.map(x => item(k, x)))]));
     });

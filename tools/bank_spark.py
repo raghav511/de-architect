@@ -303,3 +303,20 @@ q(w=12, k='O', lv='Hard', t='Timed mock: three problems', p='Fix: a Python loop 
   rec=['join 12 B rows, collect, Python loop · fails', '1 scan, 1 aggregate · 40 s'],
   h=['Find all three problems before writing code.', 'Everything the loop does is one groupBy.', 'Status is already on trips.'],
   fups=[['How would you present this fix?', 'Before and after (fails vs 40 s), the three causes in one line each, and proof the numbers match the old output on a sample.'], ['What would you monitor after?', 'Job duration, input rows vs output rows, and a revenue reconciliation against payments.']], why='Mocks combine several smells in one job.')
+
+# ---------- Platform 1: read Scala, write PySpark (module j01) ----------
+q(m='j01', k='W', lv='Easy', t='Translate Scala: revenue per city', p='A teammate\'s Scala job:\n\n```scala\nval result = spark.table("trips")\n  .filter($"status" === "completed")\n  .groupBy($"city_id")\n  .agg(round(sum($"fare"), 2).as("revenue"))\n```\n\nWrite the same job in PySpark. Columns: `city_id, revenue`.',
+  start=H + "result = spark.table('trips')\nresult.show()",
+  sol=H + "result = spark.table('trips').filter(F.col('status') == 'completed').groupBy('city_id').agg(F.round(F.sum('fare'), 2).alias('revenue'))",
+  h=['$"col" in Scala is F.col("col") in Python.', 'Scala compares columns with ===; Python uses ==.', '.as("x") in Scala is .alias("x") in Python.'],
+  why='Most Spark and Flink code in big companies is Scala or Java; you must be able to read it in a code review.')
+q(m='j01', k='W', lv='Medium', t='Translate Scala: when/otherwise bands', p='Scala:\n\n```scala\nval banded = spark.table("trips")\n  .filter($"status" === "completed")\n  .withColumn("band",\n    when($"distance_km" < 5, "short")\n      .when($"distance_km" < 15, "medium")\n      .otherwise("long"))\nval result = banded.groupBy("band").agg(count(lit(1)).as("trips"))\n```\n\nWrite it in PySpark. Columns: `band, trips`.',
+  start=H + "result = spark.table('trips')\nresult.show()",
+  sol=H + "banded = spark.table('trips').filter(F.col('status') == 'completed').withColumn('band', F.when(F.col('distance_km') < 5, 'short').when(F.col('distance_km') < 15, 'medium').otherwise('long'))\nresult = banded.groupBy('band').agg(F.count(F.lit(1)).alias('trips'))",
+  h=['when(...).when(...).otherwise(...) chains the same way in both languages.', 'Scala\'s val is just a name binding, like Python assignment.', 'count(lit(1)) counts rows: F.count(F.lit(1)).'],
+  why='Translating between the two APIs shows you understand Spark, not one language\'s syntax.')
+q(m='j01', k='W', lv='Medium', t='Translate Scala: minutes since the driver\'s previous trip', p='Scala:\n\n```scala\nimport org.apache.spark.sql.expressions.Window\nval w = Window.partitionBy("driver_id").orderBy("pickup_ts")\nval result = spark.table("trips")\n  .filter($"driver_id".isNotNull && $"status" === "completed")\n  .withColumn("prev_ts", lag($"pickup_ts", 1).over(w))\n  .withColumn("gap_min",\n    (unix_timestamp($"pickup_ts") - unix_timestamp($"prev_ts")) / 60)\n  .select("trip_id", "driver_id", "gap_min")\n```\n\nWrite it in PySpark. Columns: `trip_id, driver_id, gap_min` (NULL for a driver\'s first trip).',
+  start=H + "result = spark.table('trips')\nresult.show()",
+  sol=H + "w = Window.partitionBy('driver_id').orderBy('pickup_ts')\nresult = (spark.table('trips')\n  .filter(F.col('driver_id').isNotNull() & (F.col('status') == 'completed'))\n  .withColumn('prev_ts', F.lag('pickup_ts', 1).over(w))\n  .withColumn('gap_min', (F.unix_timestamp('pickup_ts') - F.unix_timestamp('prev_ts')) / 60)\n  .select('trip_id', 'driver_id', 'gap_min'))",
+  h=['Window.partitionBy(...).orderBy(...) is identical in Python.', 'Scala && is Python &, and each side needs brackets in Python.', 'isNotNull in Scala has no brackets; in Python it is isNotNull().'],
+  why='Window functions in Scala jobs are a common code-review and debugging task on JVM-heavy teams.')

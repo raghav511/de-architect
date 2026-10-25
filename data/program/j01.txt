@@ -1,0 +1,361 @@
+@@meta
+id: j01
+n: 1
+title: Read Scala, understand the JVM, and run data platforms on Kubernetes
+goal: Read and review Scala and Java Spark code, explain what the JVM does to your jobs (heap, off-heap, garbage collection, the two kinds of out-of-memory), and know enough Kubernetes to run Spark and Flink for many teams on a shared platform. In the tier-1 postings this module was built from, Scala or Java appear in about 43%, Kubernetes in 14–29%, and Hadoop or Hive in 40% of the Bengaluru postings on LinkedIn (Walmart, Visa and others still run them).
+hours: 4.5
+
+@@tickets
+J101 | learn | 0.75 | Chapter part 1: why the JVM matters, Scala for Python engineers, the Spark Scala API | You can read a Scala Spark job aloud and say what each line does, including case classes, Option and Dataset[T]. | chapter:0-2
+J102 | learn | 0.75 | Chapter part 2: the JVM under your job, Kubernetes, platform engineering, Hadoop | You can explain heap versus overhead memory, why a pod is OOMKilled, what requests, limits and operators are, and what YARN and the Hive metastore do. | chapter:3-6
+J103 | build | 1 | Exercises 1–3: translate three Scala jobs to PySpark | All three pass in the editor. | spark:1-3
+J104 | practice | 0.5 | Code review drill: four Scala snippets | Each snippet's bug or risk named out loud before opening the answer. | practice
+J105 | test | 0.5 | Quiz J1 | 80% or better. | quiz
+J106 | talk | 0.5 | Interview set J1 | 5 of 6 answered out loud and ticked. | interview
+
+@@readings
+- [Scala for Python developers](https://docs.scala-lang.org/scala3/book/scala-for-python-devs.html). The official side-by-side guide. Read the sections on variables, functions, collections and pattern matching.
+- **Spark: The Definitive Guide**, chapters 11 (Datasets) and 15 (how Spark runs on a cluster). Read the Scala examples next to the Python ones.
+- [Spark: tuning, memory management](https://spark.apache.org/docs/latest/tuning.html#memory-management-overview). Unified memory, execution versus storage, and garbage collection tuning.
+- [Spark on Kubernetes](https://spark.apache.org/docs/latest/running-on-kubernetes.html). How the driver and executors become pods.
+- [Kubernetes: resource requests and limits](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/). The one Kubernetes page every data engineer should know.
+- [Kubernetes basics tutorial](https://kubernetes.io/docs/tutorials/kubernetes-basics/). An interactive half hour on pods, deployments and services.
+
+@@chapter
+## J1.1 Why the JVM still matters to a Python data engineer
+
+Spark, Flink, Kafka, Trino, Hive, Iceberg and most of the Hadoop world run on the **Java Virtual Machine**. PySpark is a Python front end that sends instructions to a JVM driver, which runs your job on JVM executors.
+
+```
+your PySpark code ──(Py4J)──> Spark driver (JVM) ──> executors (JVMs on many machines)
+                                                      └─ a Python worker only when you use a Python UDF
+```
+
+Three reasons it shows up in interviews and job posts:
+
+1. **Reading code.** Platform teams write core jobs and libraries in Scala or Java. Postings at Spotify, Databricks and DoorDash ask for "Python, Scala or Java". You need to review and debug that code, not necessarily write it daily.
+2. **Debugging.** Out-of-memory errors, garbage collection pauses and slow serialisation are JVM behaviours. You cannot fix them from the Python side without knowing what is underneath.
+3. **Performance.** A Python UDF moves every row from the JVM to a Python process and back. That is why built-in functions (and pandas UDFs, which move whole Arrow batches) are much faster.
+
+## J1.2 Scala in thirty minutes, for Python people
+
+| Python | Scala | Note |
+|---|---|---|
+| `x = 5` | `val x = 5` | `val` cannot be reassigned; `var` can (rarely used) |
+| `def add(a, b): return a + b` | `def add(a: Int, b: Int): Int = a + b` | types after names; the last expression is returned |
+| `lambda t: t.fare` | `t => t.fare` or `_.fare` | `_` is a placeholder for the argument |
+| `[f(x) for x in xs if p(x)]` | `xs.filter(p).map(f)` | collections are immutable by default |
+| `None` / value | `Option[T]`: `Some(v)` or `None` | forces you to handle missing values |
+| `@dataclass class Trip` | `case class Trip(id: Long, fare: Double)` | free equality, copy, pattern matching |
+| `match`/`if` chains | `x match { case Some(v) => ...; case None => ... }` | pattern matching is everywhere |
+| `functools.reduce` | `xs.foldLeft(0.0)(_ + _.fare)` | fold with a starting value |
+
+```scala
+case class Trip(tripId: Long, cityId: Int, fare: Double, status: String)
+
+val completed: Seq[Trip] = trips.filter(_.status == "completed")
+val revenue: Double = completed.map(_.fare).sum
+val busiest: Option[Int] = completed.groupBy(_.cityId).maxByOption(_._2.size).map(_._1)
+
+busiest match {
+  case Some(city) => println(s"busiest city $city")   // s"..." is an f-string
+  case None       => println("no trips")
+}
+```
+
+Two more things you will see: **implicits** (values passed automatically, e.g. `import spark.implicits._` enables `$"col"` and `.toDS()`), and **sbt** (the build tool; a job is packaged into a jar and run with `spark-submit --class com.meridian.Job job.jar`).
+
+## J1.3 The Spark Scala API
+
+The DataFrame API is nearly identical in both languages. The differences you must recognise:
+
+| Scala | PySpark |
+|---|---|
+| `$"fare"` or `col("fare")` | `F.col("fare")` |
+| `$"status" === "completed"` | `F.col("status") == "completed"` |
+| `=!=` | `!=` |
+| `&&`, `\|\|` | `&`, `\|` (with brackets around each side) |
+| `.as("revenue")` | `.alias("revenue")` |
+| `$"x".isNotNull` | `F.col("x").isNotNull()` |
+
+Scala adds **typed Datasets**: `Dataset[Trip]` holds case-class objects, so `ds.filter(_.fare > 100)` is checked by the compiler. The cost: typed lambdas are opaque to the Catalyst optimiser (it cannot push the filter into the scan), so platform teams use typed Datasets at the edges for safety and untyped DataFrames for heavy transformations.
+
+```scala
+import spark.implicits._
+val trips = spark.table("trips").as[Trip]          // Dataset[Trip]
+val big   = trips.filter(_.fare > 100)               // typed: safe, but not pushed down
+val fast  = trips.filter($"fare" > 100)              // column expression: optimised
+```
+
+## J1.4 The JVM under your job
+
+Each executor is a JVM with memory split like this:
+
+```
+executor container (what YARN or Kubernetes sees)
+├── JVM heap  (spark.executor.memory)
+│   ├── reserved (300 MB)
+│   ├── unified memory (spark.memory.fraction, 60%): execution (shuffles, joins, sorts) + storage (cache), borrowing from each other
+│   └── user memory: your objects, UDF data structures
+└── overhead  (spark.executor.memoryOverhead): off-heap buffers, Python workers, native libraries, network
+```
+
+**Garbage collection (GC)** frees heap objects nobody references. When the heap is full of live objects, the JVM spends more time collecting than working, and tasks stall. Signs in the Spark UI: a high "GC time" share on a task (above about 10%) and long, uneven task times. Fixes: more memory per task (fewer cores per executor), fewer objects (built-in functions instead of UDFs, Kryo serialisation), and less data per task (more partitions).
+
+**The two out-of-memory failures** look similar and have different fixes:
+
+| Error | What happened | Fix |
+|---|---|---|
+| `java.lang.OutOfMemoryError: Java heap space` | the heap is full: a huge partition, a skewed key, a big collect to the driver | more partitions, fix skew (DE 3), avoid `collect()`, more executor memory |
+| container killed: `OOMKilled` (Kubernetes) or "exceeding memory limits" (YARN) | heap plus off-heap exceeded the container size: Python workers, Arrow buffers, native memory | raise `memoryOverhead`, fewer Python UDFs, check pandas UDF batch sizes |
+
+The driver is a JVM too: `collect()` on a large result or broadcasting a table that is not small kills the driver, not the executors.
+
+## J1.5 Kubernetes for data engineers
+
+Kubernetes runs containers across a pool of machines. The words you need:
+
+| Word | Meaning for a data job |
+|---|---|
+| **Pod** | one or more containers scheduled together: a Spark driver, one executor, a Flink TaskManager |
+| **Job / CronJob** | a pod that runs to completion, once or on a schedule |
+| **Deployment** | long-running pods kept at a count: Airflow scheduler, a Kafka Connect worker |
+| **Namespace** | a team's slice of the cluster, with its own **ResourceQuota** |
+| **Requests / limits** | requests: what the scheduler reserves for the pod; limits: the ceiling (going over memory means OOMKilled) |
+| **ConfigMap / Secret** | configuration and credentials mounted into pods |
+| **Operator** | a controller that runs an application for you from a short spec: Spark Operator (`SparkApplication`), Flink Operator, Strimzi (Kafka) |
+| **PriorityClass** | lets critical jobs pre-empt ad hoc ones when the cluster is full |
+
+**Spark on Kubernetes**: `spark-submit --master k8s://...` (or a `SparkApplication` from the operator) creates a driver pod, which asks the API server for executor pods. Points interviewers probe:
+
+- **Memory**: the pod's memory limit must cover heap plus overhead; set `spark.executor.memoryOverhead` explicitly.
+- **Shuffle**: executor pods are disposable, so losing one loses its shuffle files. Dynamic allocation needs shuffle tracking or a remote shuffle service (Pinterest's principal role lists "remote shuffling").
+- **Spot or pre-emptible nodes** save 60–80% for batch jobs, if jobs tolerate losing executors.
+- **Flink** jobs are long-lived: checkpoints go to object storage so a restarted TaskManager resumes where it stopped (DE 5).
+
+Basic commands to read cluster state: `kubectl get pods -n team-finance`, `kubectl describe pod <name>` (look for `OOMKilled`, `Pending` with "Insufficient memory"), `kubectl logs <pod>`, `kubectl top pod`.
+
+## J1.6 Platform engineering for data
+
+Staff and platform roles (Figma, Spotify, Pinterest, Stripe in the postings) are measured by how easily *other* engineers ship data products. The building blocks:
+
+- **A paved path**: a template repo with a job skeleton, tests, CI, a deployment spec and dashboards, so a new pipeline takes an afternoon.
+- **Infrastructure as code** (Terraform, Helm charts) for every bucket, catalog, namespace and permission. No hand-made resources.
+- **CI/CD for data** (DE 9): lint, unit tests, a dry run on sample data, and schema checks on every pull request.
+- **Multi-tenancy**: namespaces and quotas per team, priority for critical pipelines, fair scheduling, and cost attribution by team (Leadership 1 builds the cost query).
+- **Observability as a product**: every job emits the same metrics and logs, so one dashboard and one on-call agent serve every team.
+
+The interview signal is judgment: when to build a platform capability, when to buy a managed service (EMR, Dataproc, Databricks, Confluent), and how you would measure that the platform is working (time to first pipeline, failed runs per week, cost per TB processed).
+
+## J1.7 Hadoop, YARN and Hive: the platform you will run and migrate from
+
+Many large Indian employers (40% of the Bengaluru postings this module used) still run Hadoop next to their cloud platforms, and "migrate Hadoop to a lakehouse" is a common architect project (Leadership 1). The pieces:
+
+| Piece | What it does | Modern equivalent |
+|---|---|---|
+| **HDFS** | distributed file system: files split into 128 MB blocks, each replicated 3 times across data nodes; a **NameNode** holds all metadata in memory | object storage (S3, GCS, ADLS) |
+| **YARN** | cluster resource manager: a ResourceManager hands out **containers** (memory + vcores) on NodeManagers; Spark executors run inside them | Kubernetes, managed Spark |
+| **Hive** | SQL on files, plus the **Hive metastore**: the catalogue of tables, columns and partitions that Spark, Trino and Impala all read | Iceberg/Delta tables with a REST catalog, Unity or Glue |
+| **MapReduce** | the original batch engine, replaced almost everywhere by Spark | Spark, Flink |
+
+Things interviewers still ask:
+
+- **The small-files problem** started here: every file and block is an object in the NameNode's memory, so millions of tiny files exhaust it. Same fix as on a lakehouse: compaction (DE 2).
+- **YARN memory**: a Spark executor container is killed when heap plus `memoryOverhead` exceeds the container size: the YARN version of OOMKilled (J1.4).
+- **Data locality**: HDFS moved computation to the nodes holding the blocks; object storage separates compute and storage, trading locality for elastic scaling.
+- **Hive partitions versus Iceberg**: Hive tracks partitions as directories and lists them at query time, which is slow and unsafe for concurrent writers; Iceberg tracks files in metadata with snapshots (DE 2 builds this).
+
+A migration off Hadoop follows the Leadership 1 playbook: inventory tables and jobs from the metastore and YARN history, register existing Parquet files in Iceberg without copying (zero-copy, DE 2), dual-run, reconcile, and switch consumers.
+
+@@lab
+## Exercises 1–3 (1 hour)
+
+Each exercise shows a Scala Spark job. Write the same job in PySpark; the editor checks your result against the Scala job's output on the sample tables.
+
+1. **Revenue per city**: `$"col"`, `===` and `.as(...)`.
+2. **when/otherwise bands**: chained conditions and `count(lit(1))`.
+3. **Minutes since the driver's previous trip**: a window with `lag`, `&&` and `isNotNull`.
+
+## On your Mac (optional, 45 minutes): Spark on a local Kubernetes
+
+With Docker Desktop running:
+
+```bash
+brew install kind kubectl
+kind create cluster --name data
+kubectl create namespace team-ops
+kubectl create quota team-ops-quota --hard=requests.cpu=4,requests.memory=8Gi -n team-ops
+kubectl get resourcequota -n team-ops
+```
+
+Then follow the "Submitting applications to Kubernetes" section of the Spark on Kubernetes guide to run the SparkPi example in the `team-ops` namespace, watch the executor pods appear with `kubectl get pods -n team-ops -w`, and delete the cluster afterwards with `kind delete cluster --name data`.
+
+@@practice
+## Code review drill: four Scala snippets (30 minutes)
+
+Say what is wrong or risky in each before opening the answer.
+
+**1.**
+```scala
+val all = spark.table("trip_events").collect()
+val counts = all.groupBy(_.getAs[String]("event_type")).mapValues(_.length)
+```
+<details><summary>Answer</summary>
+
+`collect()` pulls the whole table into the driver's heap: a driver OOM on any real table, and no parallelism. Use `groupBy("event_type").count()` on the DataFrame so executors do the work.
+
+</details>
+
+**2.**
+```scala
+val fareBand = udf((f: Double) => if (f > 500) "high" else "low")
+trips.withColumn("band", fareBand($"fare"))
+```
+<details><summary>Answer</summary>
+
+A UDF is opaque to Catalyst and costs per-row conversion; `when($"fare" > 500, "high").otherwise("low")` is optimised and faster. Also, a NULL fare passed to a primitive `Double` parameter can fail or default silently.
+
+</details>
+
+**3.**
+```scala
+trips.filter($"city" == "Pune")
+```
+<details><summary>Answer</summary>
+
+`==` compares the Column object with a String in Scala and returns `false` (a Boolean, not a Column), so this does not compile as intended. Column equality is `===`.
+
+</details>
+
+**4.**
+```scala
+val rates = spark.table("fx_rates")            // 40 GB
+trips.join(broadcast(rates), "currency")
+```
+<details><summary>Answer</summary>
+
+Broadcasting a 40 GB table copies it to the driver and every executor: out of memory. Broadcast only small tables (tens to a few hundred MB). Here, pre-filter `fx_rates` to the needed dates and currencies first, or let the optimiser pick a sort-merge join.
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: core
+Q: In PySpark, where does the work of a DataFrame transformation actually run?
+A) In the Python process on your laptop
+B) In JVM executors; Python only sends the plan, except for Python UDFs
+C) In a Python process on every executor, always
+D) In the Kafka brokers
+ANS: B
+WHY: Built-in functions run inside the JVM. Python UDFs force rows into Python worker processes.
+---
+TYPE: mcq
+TAG: core
+Q: Which Scala expression keeps completed trips?
+A) `trips.filter($"status" == "completed")`
+B) `trips.filter($"status" === "completed")`
+C) `trips.filter($"status".equals("completed"))`
+D) `trips.filter(status = "completed")`
+ANS: B
+WHY: `===` builds a Column comparison; `==` and `equals` compare objects and return a plain Boolean.
+---
+TYPE: mcq
+TAG: core
+Q: An executor pod on Kubernetes is OOMKilled while the Spark UI shows the heap was not full. What is the most likely fix?
+A) Increase spark.executor.memory only
+B) Increase spark.executor.memoryOverhead (off-heap, Python workers, buffers)
+C) Use more partitions only
+D) Disable garbage collection
+ANS: B
+WHY: The container limit covers heap plus overhead; native and Python memory live in the overhead.
+---
+TYPE: mcq
+TAG: core
+Q: What does a Kubernetes memory request do?
+A) Caps the container's memory
+B) Reserves that much on a node when scheduling the pod
+C) Sets the JVM heap size
+D) Nothing
+ANS: B
+WHY: Requests drive scheduling; limits are the ceiling that triggers OOMKilled.
+---
+TYPE: mcq
+TAG: core
+Q: Why are typed Dataset lambdas such as `ds.filter(_.fare > 100)` often slower than `ds.filter($"fare" > 100)`?
+A) Scala is slower than Python
+B) The optimiser cannot see inside the lambda, so it cannot push the filter down or prune columns
+C) Lambdas run on the driver
+D) They use more partitions
+ANS: B
+WHY: Column expressions are visible to Catalyst; arbitrary code is not.
+---
+TYPE: fill
+TAG: core
+Q: A Kubernetes controller that runs Spark or Flink applications from a short spec is called an ____.
+ANS: operator
+WHY: Spark Operator, Flink Operator and Strimzi for Kafka are common examples.
+---
+TYPE: mcq
+TAG: core
+Q: Tasks show 30% of their time in GC. Which change helps most?
+A) More cores per executor with the same memory
+B) Fewer objects and less data per task: built-in functions instead of UDFs, more partitions, more memory per task
+C) Turning off the Spark UI
+D) Caching every DataFrame
+ANS: B
+WHY: GC pressure comes from too many live objects for the heap each task gets.
+---
+TYPE: mcq
+TAG: core
+Q: What is the main risk of running Spark executors on pre-emptible nodes?
+A) Higher cost
+B) Lost executors take their shuffle files with them, forcing recomputation unless shuffle data is preserved
+C) Slower CPUs
+D) Kubernetes forbids it
+ANS: B
+WHY: Use a remote shuffle service or shuffle tracking, and keep the driver on on-demand nodes.
+---
+TYPE: short
+TAG: core
+Q: Explain the difference between `java.lang.OutOfMemoryError: Java heap space` and a pod being OOMKilled.
+MODEL: Heap space means the JVM's own heap ran out (too much data per task, skew, a big collect or broadcast), and the JVM throws the error itself. OOMKilled means the whole container went over its memory limit, usually because off-heap memory (Python workers, Arrow buffers, native libraries, network buffers) grew beyond the overhead allowance; the kernel kills the process without a Java error. Fix the first with partitioning, skew handling or more executor memory; fix the second with more memoryOverhead and less off-heap use.
+---
+TYPE: mcq
+TAG: core
+Q: Why do millions of small files hurt an HDFS cluster in particular?
+A) HDFS cannot store files under 128 MB
+B) Every file and block is metadata held in the NameNode's memory, which runs out
+C) Small files are replicated more times
+D) YARN refuses small files
+ANS: B
+WHY: The fix is compaction into large files, the same as on a lakehouse.
+---
+TYPE: short
+TAG: core
+Q: What would you put on the paved path for teams launching new pipelines on a shared platform?
+MODEL: A template repository with a job skeleton and tests, CI that lints, tests and dry-runs on sample data, a deployment spec (operator manifest or Airflow DAG) with sensible resource defaults, standard logging and metrics wired to shared dashboards and alerts, data quality checks, an owner and on-call field, and cost tags. The goal is that a new team ships a reliable pipeline in a day without asking the platform team.
+
+@@interview
+Q: You mostly write PySpark. How do you work with a codebase that is mainly Scala?
+TAG: core
+A: The DataFrame API is the same in both, so I read Scala jobs directly: `$"col"` and `===` instead of `F.col` and `==`, case classes for records, Option for missing values, `foldLeft` and pattern matching. I review for the same things as in Python: plan shape, joins and shuffles, UDFs, collect calls, skew. For changes I follow the team's build (sbt, tests, scalafmt). Where performance matters, built-in functions behave identically in both languages; the real difference is Python UDFs, which I avoid or replace with pandas UDFs.
+---
+Q: A Spark job on Kubernetes keeps failing with executors OOMKilled. Walk me through your diagnosis.
+TAG: core
+A: First, which memory: the Spark UI and executor logs tell me whether the heap filled (a Java heap space error, high GC time) or the container was killed with no Java error, which points to off-heap memory. For off-heap: Python UDFs, pandas UDF batch sizes, Arrow, or native libraries; I raise memoryOverhead and reduce Python work. For heap: look for skewed partitions in the stage's task metrics, oversized partitions after a join, broadcasts that are too big, or caching. Then I fix the cause (repartition, salt or split skewed keys, smaller broadcast) and size executors so memory per core is sensible, rather than only adding memory.
+---
+Q: How would you run Spark and Flink for many teams on one Kubernetes cluster?
+TAG: core
+A: A namespace per team with ResourceQuotas, the Spark and Flink operators so teams submit a short manifest, priority classes so production pipelines pre-empt ad hoc work, and node pools split between on-demand (drivers, streaming) and spot (batch executors). Shuffle on a remote shuffle service or with shuffle tracking so losing executors is cheap; Flink checkpoints to object storage. Standard metrics, logs and cost labels per namespace feed chargeback. And a paved-path template so teams do not hand-write manifests.
+---
+Q: What are Kubernetes requests and limits, and how do they interact with Spark memory settings?
+TAG: core
+A: The request is what the scheduler reserves on a node; the limit is the ceiling, and exceeding a memory limit gets the container killed. For Spark the pod memory is executor memory plus memoryOverhead, so both must fit within the limit, and I set request equal to limit for memory to avoid noisy-neighbour evictions. CPU limits can throttle executors, so many teams set CPU requests but no strict CPU limit.
+---
+Q: When would you choose a managed service over running your own Spark or Kafka on Kubernetes?
+TAG: core
+A: Managed (EMR, Dataproc, Databricks, Confluent, MSK) when the team is small, the workload is standard, and engineering time costs more than the service premium; it removes upgrades, scaling and on-call. Self-managed on Kubernetes when scale makes the premium very large, when we need control the service does not give (custom shuffle, specific versions, data residency), and when we have a platform team to own it. I decide with a cost model that includes people's time, not just the cloud bill.
+---
+Q: What does garbage collection have to do with slow Spark tasks?
+TAG: core
+A: Each executor is a JVM; when its heap is crowded with live objects, the garbage collector runs often and long, and tasks pause. You see it as high GC time in the task metrics and long tails. Causes are too much data per task, too many objects (UDFs, deserialised rows, large in-memory collections) and too little memory per core. Fixes: more partitions, built-in functions instead of UDFs, Kryo serialisation, fewer cores per executor for more memory each, and avoiding unnecessary caching.

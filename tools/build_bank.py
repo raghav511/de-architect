@@ -33,7 +33,10 @@ for i, s in enumerate(S):
         for rx, msg in s.get('need', []):
             if not re.search(rx, s['sol'], re.I): print('  RULE need misses sol', s['id'], rx); bad += 1
 for i, s in enumerate(P):
-    s['id'] = 'p%02d%d' % (s['w'], sum(1 for x in P[:i] if x['w'] == s['w']) + 1)
+    if 'm' in s:
+        s['id'] = 'p%s%d' % (s['m'], sum(1 for x in P[:i] if x.get('m') == s['m']) + 1)
+    else:
+        s['id'] = 'p%02d%d' % (s['w'], sum(1 for x in P[:i] if x.get('w') == s['w']) + 1)
     r = json.loads(runtime.check_spark(s['sol'], s['sol'], 'result', s.get('ordered', False)))
     if r.get('err') or not r.get('table') or (r['table']['total'] == 0 and not s.get('empty')):
         bad += 1; print('SPARK FAIL', s['id'], s['t'], r.get('err'), (r.get('table') or {}).get('total'))
@@ -48,7 +51,8 @@ for i, s in enumerate(P):
         for rx, msg in s.get('need', []):
             if not re.search(rx, s['sol'], re.I): print('  RULE need misses sol', s['id'], rx); bad += 1
 for i, y in enumerate(Y):
-    y['id'] = 'y%s%d' % (y['m'][1:], sum(1 for x in Y[:i] if x['m'] == y['m']) + 1)
+    key = y['m'][1:] if y['m'][0] in 'ps' else y['m']  # Python track and Setup keep their short ids (y011, y001); other modules use the full name (yd011)
+    y['id'] = 'y%s%d' % (key, sum(1 for x in Y[:i] if x['m'] == y['m']) + 1)
     spec = json.dumps({'tests': y['tests']})
     r = json.loads(runtime.check_py(spec, y['sol']))
     if r['err'] or not all(t['ok'] for t in r['tests']):
@@ -61,7 +65,7 @@ for i, y in enumerate(Y):
     for rx, msg in y.get('need', []):
         if not re.search(rx, y['sol']): print('  RULE need misses sol', y['id'], rx); bad += 1
 from collections import Counter
-print('per week dsa', dict(Counter(d['w'] for d in D)), 'sql', dict(Counter(d.get('w') or d.get('m') for d in S)), 'spark', dict(Counter(d['w'] for d in P)), 'py', dict(Counter(d['m'] for d in Y)))
+print('per week dsa', dict(Counter(d['w'] for d in D)), 'sql', dict(Counter(d.get('w') or d.get('m') for d in S)), 'spark', dict(Counter(d.get('w') or d.get('m') for d in P)), 'py', dict(Counter(d['m'] for d in Y)))
 os.makedirs('data/bank', exist_ok=True)
 for name, arr in (('dsa', D), ('sql', S), ('spark', P), ('py', Y)):
     json.dump(arr, open('data/bank/' + name + '.json', 'w'), ensure_ascii=False, separators=(',', ':'))

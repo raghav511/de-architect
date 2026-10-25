@@ -410,6 +410,26 @@ async function T(name, fn, opt) {
     ok(/Modelling 1/.test(t) && /Modelling 2/.test(t) && /Modelling 3/.test(t), 'practice tab should list all modelling modules');
   });
 
+  await T('platform and leadership: placed in order, Scala exercises tick the step, practice lists them', async p => {
+    await go(p, '#/today');
+    const pos = await p.evaluate(() => [MODS.indexOf('j01') - MODS.indexOf('s07'), MODS.indexOf('r01') - MODS.indexOf('s10'), MODS.indexOf('d01') - MODS.indexOf('s04')]);
+    ok(pos[0] === 1 && pos[1] === 1 && pos[2] === 1, 'Platform 1 should follow DE 7, Leadership 1 DE 10, Systems 1 DE 4: ' + pos);
+    const sols = await p.evaluate(() => DATA.spark.filter(x => x.m === 'j01').map(x => [x.id, x.sol]));
+    ok(sols.length === 3, 'expected 3 Scala exercises');
+    for (const [id, sol] of sols) {
+      await hash(p, '#/spark/' + id, 600);
+      await p.fill('textarea.code', sol);
+      await p.click('button.btn.pri:has-text("Run")');
+      await p.waitForFunction(() => { const v = document.querySelector('.verdict'); return v && v.style.display !== 'none' && /pass|Error/.test(v.textContent); }, null, { timeout: 120000 });
+      ok((await text(p, '.verdict')) === 'All checks pass', id + ' did not pass: ' + await text(p, '.out .body'));
+    }
+    await hash(p, '#/path/j01', 700);
+    ok(await p.$('.unit.done:has-text("Exercises 1–3")'), 'Scala exercise step not ticked automatically');
+    await hash(p, '#/practice/model', 600);
+    const t = await text(p, '#page');
+    ok(/Platform 1/.test(t) && /Leadership 1/.test(t), 'practice tab should list Platform 1 and Leadership 1');
+  });
+
   await T('review: sync merge keeps the newer review entry', async p => {
     await go(p, '#/today');
     const r = await p.evaluate(() => { const a = { rev: { d011: { box: 0, due: '2026-11-01', t: 1 } } }, b = { rev: { d011: { box: 2, due: null, t: 5 }, q011: { box: 1, due: '2026-11-05', t: 2 } } }; const m = mergeState(a, b); return [m.rev.d011.box, !!m.rev.q011]; });
