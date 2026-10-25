@@ -1,4 +1,4 @@
-"""Content checks for Keystone. Run from the repo root:  python3 tools/validate.py
+"""Content checks for Data Architect. Run from the repo root:  python3 tools/validate.py
 Exits non-zero on any error. Checks module files, tickets, quiz/interview/coding blocks,
 data JSON, file paths named in labs, and that every coding test's reference solution passes."""
 import json, os, re, sys, glob
@@ -44,7 +44,8 @@ def blocks(text, keys, letters):
     if b: res.append(b)
     return res
 
-mods = ['a01', 'a02', 'a03'] + ['s%02d' % i for i in range(13)]
+mods = ['a01', 'a02', 'a03'] + ['p%02d' % i for i in range(1, 7)] + ['s%02d' % i for i in range(13)]
+pybank = json.load(open('data/bank/py.json'))
 ext = json.load(open('data/extensions.json')).get('modules', [])
 mods += ext
 design = json.load(open('data/design.json'))
@@ -82,6 +83,9 @@ for m in mods:
         if r:
             a, b = int(r.group(1)), int(r.group(2))
             if not (0 <= a <= b < len(ch)): err(m, tid, 'chapter range', tab, 'but chapter has', len(ch), 'sections')
+        elif re.match(r'py:(\d+)-(\d+)$', tab):
+            a, b = map(int, tab[3:].split('-'))
+            if not (1 <= a <= b <= sum(1 for x in pybank if x['m'] == m)): err(m, tid, 'python exercise range', tab, 'out of bounds')
         elif tab not in ('chapter', 'lab', 'practice', 'quiz', 'interview', 'coding', 'readings', 'mock'): err(m, tid, 'unknown tab', tab)
         if tab == 'coding' and 'coding' not in s: err(m, tid, 'coding ticket but no @@coding')
         if not done: err(m, tid, 'empty done-when')
@@ -114,7 +118,7 @@ for m in mods:
         base = 'projects/ai-foundations/'
         for pth in set(re.findall(r'`(?:python3? (?:-m \w+ )?)?((?:labs|harness|tasks|tests|prompts|data|memory|automations|workflows)/[\w./-]+?\.(?:py|txt|jsonl|md|yml\.example|yml))', t)):
             if not os.path.exists(base + pth) and '_mine' not in pth: err(m, 'lab mentions missing file', pth)
-    if m not in design and not m.startswith('x'): warn(m, 'no design problem')
+    if m not in design and not m.startswith('x') and not m.startswith('p'): warn(m, 'no design problem')
     for l in re.findall(r'\]\((https?://[^)\s]+)\)', t):
         if ' ' in l or l.endswith('.'): err(m, 'suspicious link', l)
 
@@ -138,7 +142,7 @@ for p in projects:
     if p.get('readme') and not os.path.exists(p['readme']): err('project', p['id'], 'readme missing', p['readme'])
     for f in ('title', 'goal', 'stack', 'parts', 'status'):
         if not p.get(f): err('project', p['id'], 'missing', f)
-for n in ('dsa', 'sql', 'spark'):
+for n in ('dsa', 'sql', 'spark', 'py'):
     b = json.load(open('data/bank/%s.json' % n))
     ids = [x['id'] for x in b]
     if len(ids) != len(set(ids)): err(n, 'duplicate ids')

@@ -6,6 +6,7 @@ import runtime
 from bank_dsa import D
 from bank_sql import S
 from bank_spark import P
+from bank_py import Y
 runtime.seed()
 bad = 0
 for i, d in enumerate(D):
@@ -43,9 +44,22 @@ for i, s in enumerate(P):
             if re.search(rx, s['sol'], re.I): print('  RULE avoid hits sol', s['id'], rx); bad += 1
         for rx, msg in s.get('need', []):
             if not re.search(rx, s['sol'], re.I): print('  RULE need misses sol', s['id'], rx); bad += 1
+for i, y in enumerate(Y):
+    y['id'] = 'y%s%d' % (y['m'][1:], sum(1 for x in Y[:i] if x['m'] == y['m']) + 1)
+    spec = json.dumps({'tests': y['tests']})
+    r = json.loads(runtime.check_py(spec, y['sol']))
+    if r['err'] or not all(t['ok'] for t in r['tests']):
+        bad += 1; print('PY FAIL', y['id'], y['t'], r['err'], [t for t in r['tests'] if not t['ok']][:2])
+    r0 = json.loads(runtime.check_py(spec, y['sig']))
+    if not r0['err'] and all(t['ok'] for t in r0['tests']):
+        bad += 1; print('PY STARTER PASSES', y['id'], y['t'])
+    for rx, msg in y.get('avoid', []):
+        if re.search(rx, y['sol'], re.I): print('  RULE avoid hits sol', y['id'], rx); bad += 1
+    for rx, msg in y.get('need', []):
+        if not re.search(rx, y['sol']): print('  RULE need misses sol', y['id'], rx); bad += 1
 from collections import Counter
-print('per week dsa', dict(Counter(d['w'] for d in D)), 'sql', dict(Counter(d['w'] for d in S)), 'spark', dict(Counter(d['w'] for d in P)))
+print('per week dsa', dict(Counter(d['w'] for d in D)), 'sql', dict(Counter(d['w'] for d in S)), 'spark', dict(Counter(d['w'] for d in P)), 'py', dict(Counter(d['m'] for d in Y)))
 os.makedirs('data/bank', exist_ok=True)
-for name, arr in (('dsa', D), ('sql', S), ('spark', P)):
+for name, arr in (('dsa', D), ('sql', S), ('spark', P), ('py', Y)):
     json.dump(arr, open('data/bank/' + name + '.json', 'w'), ensure_ascii=False, separators=(',', ':'))
 print('problems:', bad)

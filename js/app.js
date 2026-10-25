@@ -1,6 +1,6 @@
-/* Keystone · DE architect prep. Plain JS, no build step. */
+/* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.2.5';
+const VERSION = '1.3.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -33,12 +33,12 @@ const md = s => { try { return window.marked ? window.marked.parse(s || '', { gf
 const mdi = s => { try { return window.marked ? window.marked.parseInline(s || '', { gfm: true }) : esc(s); } catch (e) { return esc(s); } };
 
 /* ---------------- state ---------------- */
-const KEY = 'keystone:v1';
+const KEY = 'keystone:v1'; /* the app was called Keystone; the key stays so saved progress is kept */
 let S = load();
 function load() {
   let s = {};
   try { s = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { s = {}; }
-  return Object.assign({ start: null, proj: {}, done: {}, doneAt: {}, undone: {}, code: {}, solved: {}, runs: {}, hints: {}, secs: {}, quiz: {}, iv: {}, tests: {}, settings: {}, layout: {}, updated: 0, week: null }, s);
+  return Object.assign({ start: null, proj: {}, done: {}, doneAt: {}, undone: {}, code: {}, solved: {}, runs: {}, hints: {}, secs: {}, quiz: {}, iv: {}, tests: {}, settings: {}, layout: {}, rev: {}, updated: 0, week: null }, s);
 }
 let saveT = null;
 function save(touch = true) {
@@ -53,7 +53,7 @@ function curWeek() { return S.week || Math.min(12, Math.floor(dayIndex() / 7) + 
 function curDay() { return S.week ? (S.dayPick || 0) : Math.min(6, dayIndex() % 7); }
 
 /* ---------------- data ---------------- */
-const DATA = { dsa: [], sql: [], spark: [], projects: [], sprints: {}, weeks: [] };
+const DATA = { dsa: [], sql: [], spark: [], py: [], projects: [], sprints: {}, weeks: [] };
 const WEEKS = [
   ['The walking skeleton', 'Git, terminal, Kafka, Spark, Parquet, Airflow end to end', 'Back-of-envelope estimates and decision records', 'Your first LLM call and the agent loop', 'Arrays and hash maps', 'Python Crash Course ch. 1–6 · Fundamentals of DE ch. 1–3 · DDIA ch. 1'],
   ['Storage that survives growth', 'File formats, Hive, Iceberg, small files', 'Storage engines and indexes', 'Structured output with validation', 'Two pointers', 'DDIA ch. 3 · Spark: The Definitive Guide ch. 9 · Python Distilled ch. 1–3'],
@@ -77,11 +77,24 @@ const PALETTE = [['#E4ECFA', '#1E3F8F'], ['#FBE7C6', '#7A3E05'], ['#E4ECFA', '#1
 async function loadData() {
   const [d, q, p] = await Promise.all(['dsa', 'sql', 'spark'].map(n => fetch('data/bank/' + n + '.json').then(r => r.json())));
   DATA.dsa = d; DATA.sql = q; DATA.spark = p;
+  try { DATA.py = await fetch('data/bank/py.json').then(r => r.json()); } catch (e) { DATA.py = []; }
   try { DATA.projects = await fetch('data/projects.json').then(r => r.json()); } catch (e) { DATA.projects = []; }
   await loadModules();
 }
 const byWeek = (arr, w) => arr.filter(x => x.w === w);
-const findQ = id => DATA.dsa.find(x => x.id === id) || DATA.sql.find(x => x.id === id) || DATA.spark.find(x => x.id === id);
+const findQ = id => DATA.dsa.find(x => x.id === id) || DATA.sql.find(x => x.id === id) || DATA.spark.find(x => x.id === id) || DATA.py.find(x => x.id === id);
+const kindOf = id => ({ d: 'dsa', q: 'sql', p: 'spark', y: 'py' })[String(id)[0]];
+
+/* ---------------- review queue: problems you struggled with come back after 3, 7 and 21 days ---------------- */
+const REV_GAPS = [3, 7, 21];
+function revPut(id, box) {
+  S.rev = S.rev || {};
+  const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + (REV_GAPS[box] || 0));
+  S.rev[id] = { box, due: box < REV_GAPS.length ? iso(d) : null, t: Date.now() };
+  save();
+}
+function revDue() { const t = iso(new Date()); return Object.entries(S.rev || {}).filter(([id, r]) => r.due && r.due <= t && findQ(id)).sort((a, b) => a[1].due < b[1].due ? -1 : 1).map(([id]) => findQ(id)); }
+function revText(r) { return !r ? '' : !r.due ? 'learned · no more reviews' : 'review ' + (r.box + 1) + ' of ' + REV_GAPS.length + ' · due ' + shortDate(r.due); }
 async function sprint(w) {
   w = midOf(w);
   if (DATA.sprints[w]) return DATA.sprints[w];
@@ -144,7 +157,7 @@ function confirmBox(title, body, actions) {
 }
 function lightbox(src) { const lb = el('div', { class: 'lightbox', role: 'dialog', 'aria-label': 'Image', onclick: () => lb.remove() }, [el('img', { src, alt: '' })]); document.body.appendChild(lb); }
 function mdEl(s, cls) { const d = el('div', { class: cls || 'prose', html: md(s) }); d.querySelectorAll('table').forEach(t => { const w = el('div', { class: 'scroll' }); t.parentNode.insertBefore(w, t); w.appendChild(t); }); d.querySelectorAll('a[href^="http"]').forEach(a => { a.target = '_blank'; a.rel = 'noopener'; }); d.querySelectorAll('pre').forEach(x => x.setAttribute('tabindex', '0')); d.querySelectorAll('img').forEach(i => { i.loading = 'lazy'; i.addEventListener('click', () => lightbox(i.src)); }); return d; }
-function chipFor(k) { return { dsa: ['DSA', 'c-dsa'], core: ['Core DE', 'c-core'], arch: ['Architecture', 'c-arch'], ai: ['Agentic AI', 'c-ai'], git: ['Git', 'c-git'], cloud: ['Cloud', 'c-core'], streaming: ['Streaming', 'c-core'], modeling: ['Data modeling', 'c-core'], design: ['System design', 'c-arch'], behavioral: ['Behavioral', 'c-test'], sql: ['SQL', 'c-sql'], spark: ['PySpark', 'c-spark'], test: ['Check', 'c-test'], talk: ['Interview', 'c-test'] }[k] || [k, 'c-test']; }
+function chipFor(k) { return { py: ['Python', 'c-py'], dsa: ['DSA', 'c-dsa'], core: ['Core DE', 'c-core'], arch: ['Architecture', 'c-arch'], ai: ['Agentic AI', 'c-ai'], git: ['Git', 'c-git'], cloud: ['Cloud', 'c-core'], streaming: ['Streaming', 'c-core'], modeling: ['Data modeling', 'c-core'], design: ['System design', 'c-arch'], behavioral: ['Behavioral', 'c-test'], sql: ['SQL', 'c-sql'], spark: ['PySpark', 'c-spark'], test: ['Check', 'c-test'], talk: ['Interview', 'c-test'] }[k] || [k, 'c-test']; }
 function chip(k) { const c = chipFor(k); return el('span', { class: 'chip ' + c[1], text: c[0] }); }
 
 /* ---------------- shell ---------------- */
@@ -155,7 +168,7 @@ function shell(title, eyebrow, body, opts) {
   const route = location.hash.split('/')[1] || 'today';
   const sc = schedule(), wk = sc.cur, tu = sc.byDay[sc.today] || [], tdone = tu.filter(u => u.isDone).reduce((a, u) => a + u.mins, 0), tall = tu.reduce((a, u) => a + u.mins, 0);
   const nav = NAV.map(([h, t, ic]) => { const href = h.replace('/0', '/' + wk); return el('a', { class: 'nav', href, 'aria-current': href.split('/')[1] === route ? 'page' : null }, [svg(I[ic]), t]); });
-  const side = el('nav', { class: 'side', 'aria-label': 'Main' }, [el('a', { class: 'brand', href: '#/today' }, [logo(), 'Keystone'])].concat(nav, [el('a', { class: 'week', href: '#/path/' + wk, style: { color: 'inherit', textDecoration: 'none' } }, [el('span', { class: 'lbl', style: { color: '#9FB0BF' }, text: 'Module ' + modLabel(wk) + ' · week ' + weekOf(sc.today) }), el('b', { style: { color: '#fff' }, text: modTitle(wk) }), el('div', { class: 'bar' }, el('i', { style: { width: (tall ? Math.round(100 * tdone / tall) : 0) + '%' } })), el('span', { style: { fontSize: '13px' }, text: 'Today: ' + tdone + ' of ' + tall + ' min done' })])]));
+  const side = el('nav', { class: 'side', 'aria-label': 'Main' }, [el('a', { class: 'brand', href: '#/today' }, [logo(), 'Data Architect'])].concat(nav, [el('a', { class: 'week', href: '#/path/' + wk, style: { color: 'inherit', textDecoration: 'none' } }, [el('span', { class: 'lbl', style: { color: '#9FB0BF' }, text: 'Module ' + modLabel(wk) + ' · week ' + weekOf(sc.today) }), el('b', { style: { color: '#fff' }, text: modTitle(wk) }), el('div', { class: 'bar' }, el('i', { style: { width: (tall ? Math.round(100 * tdone / tall) : 0) + '%' } })), el('span', { style: { fontSize: '13px' }, text: 'Today: ' + tdone + ' of ' + tall + ' min done' })])]));
   const inTabs = TABS.some(x => x[0].split('/')[1] === route);
   const more = el('button', { class: 'tabmore', 'aria-label': 'More sections', 'aria-current': inTabs ? null : 'page', onclick: () => {
     const sc2 = el('div', { class: 'scrim sheetwrap', onclick: e => { if (e.target === sc2) sc2.remove(); } }, [el('div', { class: 'sheet', role: 'dialog', 'aria-label': 'All sections' }, [el('div', { class: 'row' }, [el('b', { class: 'grow', style: { fontSize: '18px' }, text: 'All sections' }), el('button', { class: 'btn icon sm', 'aria-label': 'Close', onclick: () => sc2.remove(), text: '×' })]),
@@ -194,9 +207,7 @@ function route() {
     else if (r === 'learn') vLearn(p[1] === '0' ? '' : p[1], p[2] || 'chapter', p[3]);
     else if (r === 'git') vGit(p[1]);
     else if (r === 'news') vNews();
-    else if (r === 'dsa') vWork('dsa', p[1]);
-    else if (r === 'sql') vWork('sql', p[1]);
-    else if (r === 'spark') vWork('spark', p[1]);
+    else if (r === 'dsa' || r === 'sql' || r === 'spark' || r === 'py') vWork(r, p[1], p[2]);
     else if (r === 'test') vWork('test', midOf(p[1]) + '/' + p[2]);
     else if (r === 'practice') vPractice(p[1] || 'all');
     else if (r === 'design') vDesign(p[1]);
@@ -278,7 +289,7 @@ function kafkaLesson() {
 
 /* ---------------- Workbench (DSA / SQL / Spark / coding test) ---------------- */
 let REPL = [];
-function vWork(kind, id) {
+function vWork(kind, id, mode) {
   let Q, lang, title, eyebrow;
   if (kind === 'test') {
     const [w, i] = id.split('/'); const sp = DATA.sprints[w];
@@ -291,12 +302,17 @@ function vWork(kind, id) {
   } else {
     Q = (DATA[kind] || []).find(x => x.id === id);
     if (!Q) { location.hash = '#/practice'; return; }
-    lang = kind === 'dsa' ? 'python' : kind;
-    title = Q.t; eyebrow = (kind === 'dsa' ? 'DSA · day ' + (DATA.dsa.indexOf(Q) + 1) + ' of 84' : kind === 'sql' ? 'SQL · ' + (Q.k === 'O' ? 'optimize' : 'write') : 'PySpark · ' + (Q.k === 'O' ? 'optimize' : 'write')) + ' · set ' + Q.w + ' · ' + Q.lv;
+    lang = kind === 'dsa' || kind === 'py' ? 'python' : kind;
+    title = Q.t; eyebrow = kind === 'py' ? 'Python · ' + modLabel(Q.m) + ' · exercise ' + (DATA.py.filter(x => x.m === Q.m).indexOf(Q) + 1) + ' · ' + Q.lv : (kind === 'dsa' ? 'DSA · day ' + (DATA.dsa.indexOf(Q) + 1) + ' of 84' : kind === 'sql' ? 'SQL · ' + (Q.k === 'O' ? 'optimize' : 'write') : 'PySpark · ' + (Q.k === 'O' ? 'optimize' : 'write')) + ' · set ' + Q.w + ' · ' + Q.lv;
   }
   const qid = Q.id;
-  const starter = kind === 'dsa' ? (Q.sig + (Q.cls ? '\n' : '\n    # your approach here\n    pass\n')) : kind === 'sql' ? (Q.k === 'O' ? Q.start : '-- ' + Q.p + '\n') : kind === 'spark' ? Q.start : (lang === 'sql' ? '-- write your query\n' : lang === 'spark' ? 'from pyspark.sql import functions as F\n\n' : '# write your solution\n');
+  const rv = (S.rev || {})[qid];
+  let review = kind !== 'test' && mode === 'review' && !!rv && !!rv.due && rv.due <= iso(new Date());
+  if (review) eyebrow = 'Review · ' + eyebrow;
+  const starter = kind === 'py' ? Q.sig : kind === 'dsa' ? (Q.sig + (Q.cls ? '\n' : '\n    # your approach here\n    pass\n')) : kind === 'sql' ? (Q.k === 'O' ? Q.start : '-- ' + Q.p + '\n') : kind === 'spark' ? Q.start : (lang === 'sql' ? '-- write your query\n' : lang === 'spark' ? 'from pyspark.sql import functions as F\n\n' : '# write your solution\n');
   if (S.code[qid] === undefined) S.code[qid] = starter;
+  /* a review starts from a blank editor with no hints, once per due date */
+  if (review && rv.started !== rv.due) { S.code[qid] = starter; S.hints[qid] = 0; S.runs[qid] = 0; S.secs[qid] = 0; rv.started = rv.due; save(); }
   const L = S.layout;
   let lw = L.lw || 340, rw = L.rw || 330, oh = L.oh || 260;
   let secs = S.secs[qid] || 0, running = true, outTab = lang === 'python' ? 'tests' : 'result', last = null;
@@ -309,7 +325,7 @@ function vWork(kind, id) {
   paintClock();
   const pauseBtn = el('button', { class: 'btn sm', onclick: () => { running = !running; pauseBtn.textContent = running ? 'Pause' : 'Resume'; } }, 'Pause');
   const resetBtn = el('button', { class: 'btn sm', title: 'Set the timer to 0:00', onclick: () => { const prev = secs; secs = 0; paintClock(); toast('Timer reset to 0:00', () => { secs = prev + secs; paintClock(); }); } }, 'Reset timer');
-  const back = kind === 'test' ? '#/practice/tests' : '#/path/' + Q.w;
+  const back = kind === 'test' ? '#/practice/tests' : review ? '#/practice/review' : '#/path/' + (Q.m || Q.w);
   const exitBtn = el('button', { class: 'btn sm warn', onclick: async () => {
     const was = running; running = false; pauseBtn.textContent = 'Resume';
     const v = await confirmBox('Leave ' + title + '?', 'Time so far ' + clock.textContent + ' · ' + nh() + ' hints · ' + runs() + ' runs', [{ t: 'Save and exit', s: 'code, hints and timer kept', cls: 'pri', v: 'save' }, { t: 'Reset and exit', s: 'clears code, hints and timer; Undo for 10 s', cls: 'warn', v: 'reset' }, { t: 'Keep working', v: null }]);
@@ -327,11 +343,13 @@ function vWork(kind, id) {
     el('div', { class: 'row' }, [el('span', { class: 'lbl grow', text: 'Problem' }), solved, el('button', { class: 'btn icon sm hide-m', 'aria-label': 'Hide the problem panel', title: 'Hide', onclick: () => { L.lshut = 1; save(false); lay(); } }, svg(I.dbl_l, 18))]),
     el('h2', { style: { fontSize: '20px' }, text: title }),
     kind === 'test' ? mdEl(Q.p, 'prose') : el('div', { class: 'stack', style: { gap: '8px' } }, [el('div', { style: { fontSize: '15.5px', lineHeight: 1.55 }, html: mdi(Q.p) }),
-      kind === 'dsa' ? el('div', { class: 'schema', text: Q.tests.slice(0, 2).map(t => Q.fn + '(' + t[0].map(a => JSON.stringify(a)).join(', ') + ') → ' + JSON.stringify(t[1])).join('\n'), style: { whiteSpace: 'pre-wrap' } }) : null]),
+      kind === 'dsa' ? el('div', { class: 'schema', text: Q.tests.slice(0, 2).map(t => Q.fn + '(' + t[0].map(a => JSON.stringify(a)).join(', ') + ') → ' + JSON.stringify(t[1])).join('\n'), style: { whiteSpace: 'pre-wrap' } }) : null,
+      kind === 'py' ? el('div', { class: 'schema', text: 'Example (' + Q.tests[0][0] + '):\n' + Q.tests[0][1] + '\n# → ' + JSON.stringify(Q.tests[0][2]), style: { whiteSpace: 'pre-wrap' } }) : null]),
+    review ? el('div', { class: 'hint' }, [el('b', { text: 'Review ' + (rv.box + 1) + ' of ' + REV_GAPS.length + '. ' }), 'Solve it again from a blank editor. Pass without opening the solution and it comes back in ' + (REV_GAPS[rv.box + 1] ? REV_GAPS[rv.box + 1] + ' days' : 'no more reviews') + '. If you open the solution, it starts again in 3 days.']) : null,
     Q.why ? el('div', { class: 'why' }, [el('b', { text: 'Why a data engineer cares: ' }), Q.why]) : null,
     lang !== 'python' ? tablesBox() : null,
     Q.rec ? el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'lbl', text: 'On full data (typical estimate)' }), el('div', { class: 'hint', style: { background: 'var(--red-l)', borderColor: '#F0C4B8' } }, [el('b', { text: 'Before: ' }), Q.rec[0]]), el('div', { class: 'hint' }, [el('b', { text: 'Target: ' }), Q.rec[1]])]) : null,
-    kind !== 'test' ? el('a', { href: '#/path/' + Q.w, style: { fontWeight: 600 }, text: 'See this topic in its module' }) : null]);
+    kind !== 'test' ? el('a', { href: '#/path/' + (Q.m || Q.w), style: { fontWeight: 600 }, text: 'See this topic in its module' }) : null]);
 
   /* middle: editor + output */
   const ta = el('textarea', { class: 'code', spellcheck: 'false', autocapitalize: 'off', autocomplete: 'off', 'aria-label': 'Your code' });
@@ -408,6 +426,9 @@ function vWork(kind, id) {
         const spec = { fn: Q.fn, tests: Q.tests, big: Q.big, bigLabel: Q.bigLabel, cls: Q.cls, in: Q.in, out: Q.out, inplace: Q.inplace, sortout: Q.sortout, unordered: Q.un, lca: Q.lca };
         r = await Py.json('check_dsa', [JSON.stringify(spec), code], 15000);
         r.pass = !r.err && r.tests.length && r.tests.every(t => t.ok);
+      } else if (kind === 'py') {
+        r = await Py.json('check_py', [JSON.stringify({ tests: Q.tests }), code], 20000);
+        r.pass = !r.err && r.tests.length && r.tests.every(t => t.ok);
       } else if (kind === 'sql') {
         r = await Py.json('check_sql', [code, Q.sol, !!Q.ordered]);
         if (Q.approx && !r.err) { r.tests = [{ name: 'Same days', ok: r.tests[0].ok, note: r.tests[0].note }, { name: 'Counts close to exact', ok: true, note: 'approximate counts may differ by a few percent' }]; r.pass = r.tests.every(t => t.ok); }
@@ -416,7 +437,7 @@ function vWork(kind, id) {
         if (Q.empty && !r.err) { r.tests = [{ name: 'Check runs and returns no violations', ok: r.table && r.table.total === 0, note: (r.table ? r.table.total : 0) + ' rows' }]; r.pass = r.tests[0].ok; }
         if (Q.approx && !r.err && r.tests) { r.tests[1] = { name: 'Counts close to exact', ok: true, note: 'approximate counts may differ by a few percent' }; r.pass = r.tests[0].ok; }
       }
-      if (kind === 'sql' || kind === 'spark') {
+      if (kind === 'sql' || kind === 'spark' || kind === 'py') {
         const rules = [];
         (Q.avoid || []).forEach(([rx, msg]) => { const bad = new RegExp(rx, 'i').test(code); rules.push({ name: 'Rule: ' + msg.split('.')[0], ok: !bad, note: bad ? msg : 'ok' }); });
         (Q.need || []).forEach(([rx, msg]) => { const ok = new RegExp(rx, 'i').test(code); rules.push({ name: 'Rule: ' + msg.split('.')[0], ok, note: ok ? 'ok' : msg }); });
@@ -424,7 +445,17 @@ function vWork(kind, id) {
       }
       last = r;
       S.runs[qid] = runs() + 1;
-      if (r.pass) { if (!S.solved[qid]) toast('Solved. Nice work.'); S.solved[qid] = 1; }
+      if (r.pass) {
+        const first = !S.solved[qid]; S.solved[qid] = 1;
+        if (review) {
+          const lapsed = nh() > H.length; revPut(qid, lapsed ? 0 : rv.box + 1); review = false;
+          const nr = S.rev[qid];
+          toast(lapsed ? 'Solved with the solution open, so it comes back in 3 days.' : nr.due ? 'Review passed. Next review ' + shortDate(nr.due) + '.' : 'Review passed. You have learned this one.', null, 5000);
+        } else if (first && kind !== 'test' && !(S.rev || {})[qid] && (nh() >= 2 || runs() >= 3)) {
+          revPut(qid, 0); toast('Solved. It took ' + (nh() >= 2 ? nh() + ' hints' : runs() + ' runs') + ', so it comes back for review on ' + shortDate(S.rev[qid].due) + '.', null, 5000);
+        } else if (first) toast('Solved. Nice work.');
+        paintRev();
+      }
       save(); paintSolved();
       verdict.style.display = '';
       const passed = (r.tests || []).filter(t => t.ok).length, all = (r.tests || []).length;
@@ -452,7 +483,7 @@ function vWork(kind, id) {
 
   /* right: hints, follow-ups, solution */
   const hintBox = el('div', { class: 'stack', style: { gap: '8px' } });
-  const hintBtn = el('button', { class: 'btn dark', onclick: () => { S.hints[qid] = Math.min(H.length + 1, nh() + 1); save(); paintHints(); } });
+  const hintBtn = el('button', { class: 'btn dark', onclick: () => { S.hints[qid] = Math.min(H.length + 1, nh() + 1); if (nh() > H.length && kind !== 'test' && !review && !S.solved[qid] && !(S.rev || {})[qid]) { revPut(qid, 0); paintRev(); } save(); paintHints(); } });
   const H = Q.h || [];
   const stuck = el('input', { type: 'text', placeholder: 'Why is my loop slow?', 'aria-label': 'Ask the coach', class: 'grow', style: { minHeight: '44px', border: '1px solid var(--line2)', borderRadius: '10px', padding: '0 12px' } });
   const stuckOut = el('div');
@@ -467,13 +498,18 @@ function vWork(kind, id) {
     hintCount.textContent = Math.min(nh(), H.length) + ' of ' + H.length + ' hints';
   }
   const hintCount = el('span', { class: 'muted', style: { fontSize: '13px' } });
+  const revInfo = el('span', { class: 'muted', style: { fontSize: '13px' } });
+  const revBtn = el('button', { class: 'btn sm', style: { alignSelf: 'flex-start' }, onclick: () => { revPut(qid, 0); paintRev(); toast('In your review queue: due ' + shortDate(S.rev[qid].due) + '.'); } });
+  function paintRev() { const r = (S.rev || {})[qid]; revInfo.textContent = r ? 'Review queue: ' + revText(r) + '.' : 'Struggled with this one? Bring it back later.'; revBtn.textContent = r && r.due ? 'Restart: review in 3 days' : 'Review again in 3 days'; }
+  paintRev();
   const fups = (Q.fups || []).map(([q, a]) => { const ans = el('div', { style: { fontSize: '14px', lineHeight: 1.45, padding: '6px 4px 0', display: 'none' }, text: a }); const b = el('button', { 'aria-expanded': 'false', onclick: () => { const o = ans.style.display === 'none'; ans.style.display = o ? 'block' : 'none'; b.setAttribute('aria-expanded', String(o)); }, text: q }); return el('div', { class: 'fup' }, [b, ans]); });
   const right = el('aside', { class: 'card pad pane stack', style: { gap: '10px' } }, [
     el('div', { class: 'row' }, [el('button', { class: 'btn icon sm hide-m', 'aria-label': 'Hide the coach panel', title: 'Hide', onclick: () => { L.rshut = 1; save(false); lay(); } }, svg(I.dbl_r, 18)), el('h3', { class: 'grow', text: 'Coach' }), hintCount]),
     el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Hints come one step at a time. The solution unlocks after two runs or 15 minutes.' }),
     hintBox, hintBtn,
     el('div', { class: 'stack', style: { gap: '6px', borderTop: '1px solid var(--line)', paddingTop: '10px' } }, [el('label', { style: { fontWeight: 700 }, text: 'I\'m stuck. Ask the coach' }), el('div', { class: 'row' }, [stuck, el('button', { class: 'btn', onclick: () => askCoach(stuck.value, { title, problem: Q.p, code: ta.value, hints: H }, stuckOut), text: 'Ask' })]), stuckOut]),
-    fups.length ? el('div', { class: 'stack', style: { gap: '8px', borderTop: '1px solid var(--line)', paddingTop: '10px' } }, [el('span', { class: 'lbl', style: { color: 'var(--plum-d)' }, text: 'Interviewer follow-ups' })].concat(fups)) : null]);
+    fups.length ? el('div', { class: 'stack', style: { gap: '8px', borderTop: '1px solid var(--line)', paddingTop: '10px' } }, [el('span', { class: 'lbl', style: { color: 'var(--plum-d)' }, text: 'Interviewer follow-ups' })].concat(fups)) : null,
+    kind !== 'test' ? el('div', { class: 'stack', style: { gap: '6px', borderTop: '1px solid var(--line)', paddingTop: '10px' } }, [el('span', { class: 'lbl', text: 'Spaced review' }), revInfo, revBtn]) : null]);
   stuck.addEventListener('keydown', e => { if (e.key === 'Enter') askCoach(stuck.value, { title, problem: Q.p, code: ta.value, hints: H }, stuckOut); });
   paintHints(); paintOut();
 
@@ -606,10 +642,29 @@ function icebergDiagram() {
 
 /* ---------------- Practice list ---------------- */
 async function vPractice(f) {
-  const tabs = [['all', 'All'], ['dsa', 'DSA'], ['sql', 'SQL'], ['spark', 'PySpark'], ['opt', 'Optimize only'], ['tests', 'Coding tests']];
+  const nDue = revDue().length;
+  const tabs = [['all', 'All'], ['review', 'Review' + (nDue ? ' (' + nDue + ' due)' : '')], ['py', 'Python'], ['dsa', 'DSA'], ['sql', 'SQL'], ['spark', 'PySpark'], ['opt', 'Optimize only'], ['tests', 'Coding tests']];
   const tb = el('div', { class: 'tabs', role: 'tablist' }, tabs.map(([k, n]) => el('button', { role: 'tab', 'aria-selected': String(k === f), onclick: () => { location.hash = '#/practice/' + k; }, text: n })));
   const body = el('div', { class: 'stack' });
-  shell('Coding practice', 'DSA · SQL · PySpark · coding tests · separate from the daily hour', [tb, body]);
+  shell('Coding practice', 'Python · DSA · SQL · PySpark · coding tests · separate from the daily hour', [tb, body]);
+  const item = (k, x, sub) => el('a', { class: 'item', href: '#/' + k + '/' + x.id + (sub === 'review' ? '/review' : '') }, [chip(k), el('span', { class: 'grow' }, [el('span', { class: 't', text: x.t }), el('br'), el('span', { class: 's', text: sub && sub !== 'review' ? sub : (x.k ? (x.k === 'O' ? 'Optimize · ' : 'Write · ') : '') + x.lv + (sub === 'review' ? ' · ' + revText(S.rev[x.id]) : '') })]), S.solved[x.id] && sub !== 'review' ? el('span', { class: 'ok', text: '✓' }) : sub === 'review' ? el('span', { class: 's', text: 'Review ›' }) : null]);
+  if (f === 'review') {
+    const all = Object.keys(S.rev || {}).filter(id => findQ(id)), due = revDue(), t = iso(new Date());
+    const later = all.filter(id => S.rev[id].due && S.rev[id].due > t).sort((a, b) => S.rev[a].due < S.rev[b].due ? -1 : 1), learned = all.filter(id => !S.rev[id].due);
+    body.appendChild(el('section', { class: 'card pad stack' }, [el('h3', { text: 'How review works' }), el('p', { style: { margin: 0 }, text: 'A problem joins this queue when you open its solution, need two or more hints, or need three or more runs to solve it. You can also add any problem from its Coach panel. It comes back after 3 days, then 7, then 21. Each review starts from a blank editor. Pass without the solution to move it along; open the solution and it starts again at 3 days.' })]));
+    body.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('h3', { class: 'grow', text: 'Due now' }), el('span', { class: 'muted', text: String(due.length) })]), due.length ? el('div', { class: 'list' }, due.map(x => item(kindOf(x.id), x, 'review'))) : el('p', { class: 'muted', style: { margin: 0 }, text: all.length ? 'Nothing due today.' : 'Nothing here yet. Problems you struggle with will appear here.' })]));
+    if (later.length) body.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('h3', { class: 'grow', text: 'Coming up' }), el('span', { class: 'muted', text: String(later.length) })]), el('div', { class: 'list' }, later.map(id => item(kindOf(id), findQ(id), revText(S.rev[id]))))]));
+    if (learned.length) body.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('h3', { class: 'grow', text: 'Learned' }), el('span', { class: 'muted', text: String(learned.length) })]), el('div', { class: 'list' }, learned.map(id => item(kindOf(id), findQ(id), 'passed all three reviews')))]));
+    return;
+  }
+  if (f === 'py') {
+    body.appendChild(el('p', { class: 'muted', style: { margin: 0 }, text: 'Exercises for the Python track. They are part of each Python module\'s daily plan, and you can redo any of them here.' }));
+    ['s00'].concat(MODS.filter(m => m[0] === 'p')).forEach(m => {
+      const xs = DATA.py.filter(x => x.m === m); if (!xs.length) return;
+      body.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('h3', { class: 'grow', text: (m === 's00' ? 'Python level check' : modLabel(m) + ' · ' + modTitle(m)) }), el('span', { class: 'muted', text: xs.filter(x => S.solved[x.id]).length + ' / ' + xs.length })]), el('div', { class: 'list' }, xs.map(x => item('py', x)))]));
+    });
+    return;
+  }
   if (f === 'tests') {
     body.appendChild(el('p', { class: 'muted', style: { margin: 0 }, text: 'Timed coding tests from the course, with hidden tests that run in your browser.' }));
     for (const w of MODS) {
@@ -747,7 +802,7 @@ function vProgress() {
   const sqlW = DATA.sql.filter(x => x.k === 'W'), sqlO = DATA.sql.filter(x => x.k === 'O'), spW = DATA.spark.filter(x => x.k === 'W'), spO = DATA.spark.filter(x => x.k === 'O');
   const quizP = (() => { let got = 0, n = 0; for (const w in S.quiz) if (S.quiz[w].sub) { n++; } return Math.round(100 * n / MODS.length); })();
   const ivP = (() => { let t = 0; for (const w in S.iv) t += Object.values(S.iv[w]).filter(Boolean).length; return Math.min(100, Math.round(t / 2)); })();
-  const rows = [['DSA', pct(DATA.dsa), 'var(--teal)'], ['SQL write', pct(sqlW), '#164C7E'], ['SQL optimize', pct(sqlO), '#164C7E'], ['PySpark write', pct(spW), '#8A3A0C'], ['PySpark optimize', pct(spO), '#8A3A0C'], ['Module quizzes', quizP, 'var(--blue)'], ['Interview sets', ivP, 'var(--plum)']];
+  const rows = [['Python', pct(DATA.py.filter(x => x.m !== 's00')), '#5B7A1E'], ['DSA', pct(DATA.dsa), 'var(--teal)'], ['SQL write', pct(sqlW), '#164C7E'], ['SQL optimize', pct(sqlO), '#164C7E'], ['PySpark write', pct(spW), '#8A3A0C'], ['PySpark optimize', pct(spO), '#8A3A0C'], ['Module quizzes', quizP, 'var(--blue)'], ['Interview sets', ivP, 'var(--plum)']];
   const grid = el('div', { class: 'dsa-grid', 'aria-label': '84 daily DSA problems' }, DATA.dsa.map((x, i) => el('a', { href: '#/dsa/' + x.id, title: (i + 1) + '. ' + x.t, class: S.solved[x.id] ? 'done' : i === dayIndex() % 84 ? 'today' : '' })));
   shell('Progress', 'Program, readiness and sync', [programCard(),
     el('div', { class: 'grid2' }, [
@@ -755,8 +810,8 @@ function vProgress() {
       el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('span', { class: 'lbl grow', text: 'DSA ladder · 84 days' }), el('b', { text: DATA.dsa.filter(x => S.solved[x.id]).length + ' solved' })]), grid, el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Each row is two weeks. Tap a square to open that problem.' })])]),
     el('section', { class: 'card pad stack' }, [el('h3', { text: 'Sync across MacBook, iPad and iPhone' }), el('p', { style: { margin: 0 }, text: S.settings.syncUrl ? 'Sync is set up. Tap Sync progress at the top on each device.' : 'Sync is not set up yet. Open Settings (gear icon) and paste your Google Apps Script URL. The repo has the script in sync/Code.gs and the steps in README.md.' }), el('div', { class: 'row wrap' }, [el('button', { class: 'btn', onclick: settings, text: 'Open settings' }), el('button', { class: 'btn', onclick: exportProgress, text: 'Download a backup' }), el('label', { class: 'btn' }, ['Restore a backup', el('input', { type: 'file', accept: 'application/json', style: { display: 'none' }, onchange: importProgress })])]), el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Last change: ' + (S.updated ? new Date(S.updated).toLocaleString() : 'never') + (S.lastSync ? ' · last sync: ' + new Date(S.lastSync).toLocaleString() : '') })])]);
 }
-function exportProgress() { const b = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' }); const a = el('a', { href: URL.createObjectURL(b), download: 'keystone-progress-' + iso(new Date()) + '.json' }); document.body.appendChild(a); a.click(); a.remove(); }
-function importProgress(e) { const f = e.target.files[0]; if (!f) return; f.text().then(t => { const old = JSON.stringify(S); try { S = Object.assign(load(), JSON.parse(t)); save(); toast('Backup restored', () => { S = JSON.parse(old); save(); route(); }); route(); } catch (x) { toast('That file is not a Keystone backup.'); } }); }
+function exportProgress() { const b = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' }); const a = el('a', { href: URL.createObjectURL(b), download: 'data-architect-progress-' + iso(new Date()) + '.json' }); document.body.appendChild(a); a.click(); a.remove(); }
+function importProgress(e) { const f = e.target.files[0]; if (!f) return; f.text().then(t => { const old = JSON.stringify(S); try { S = Object.assign(load(), JSON.parse(t)); save(); toast('Backup restored', () => { S = JSON.parse(old); save(); route(); }); route(); } catch (x) { toast('That file is not a Data Architect backup.'); } }); }
 
 /* ---------------- Settings, sync, update ---------------- */
 function syncLabel() { return S.syncing ? 'Syncing…' : S.lastSync && Date.now() - S.lastSync < 60000 ? 'Synced' : 'Sync progress'; }
@@ -806,6 +861,9 @@ function mergeState(a, b) {
   for (const id in out.undone) { out.undone[id] = Math.max((a.undone || {})[id] || 0, (b.undone || {})[id] || 0); if (out.undone[id] > (out.doneAt[id] || 0)) delete out.done[id]; }
   out.proj = {};
   new Set(Object.keys(a.proj || {}).concat(Object.keys(b.proj || {}))).forEach(id => { const x = (a.proj || {})[id] || { ms: {} }, y = (b.proj || {})[id] || { ms: {} }; out.proj[id] = Object.assign({}, x, y, { ms: {} }); new Set(Object.keys(x.ms || {}).concat(Object.keys(y.ms || {}))).forEach(k => { out.proj[id].ms[k] = !!((x.ms || {})[k] || (y.ms || {})[k]); }); });
+  /* review queue: the newer entry per problem wins */
+  out.rev = Object.assign({}, a.rev || {}, b.rev || {});
+  for (const id in out.rev) { const x = (a.rev || {})[id], y = (b.rev || {})[id]; out.rev[id] = !x ? y : !y ? x : (x.t || 0) >= (y.t || 0) ? x : y; }
   out.updated = Math.max(a.updated || 0, b.updated || 0);
   return out;
 }

@@ -9,12 +9,21 @@ hours: 2.5
 001 | learn | 0.5 | Read how the program works | You can name the steps a module contains, the daily time budget, and the two rules about using AI. | chapter
 002 | test | 0.5 | Diagnostic quiz, 20 questions | Answered in one sitting without looking anything up. | quiz
 003 | test | 1 | Diagnostic coding test, 4 problems | Attempted under the 60-minute timer and marked honestly. | coding
+005 | test | 0.75 | Python level check: six short tasks | All six attempted in the editor. Note which ones needed hints: those Python modules get your full attention. | py:1-6
 004 | build | 0.5 | Set up your machine | Docker runs a container, Python 3.11+ is installed, and an empty `meridian-platform` repo exists. | lab
 
 @@chapter
 ## How this program works
 
-The program is AI first. Modules **AI 1–3** teach agent loops, harness engineering, prompts that save credits, evals, and agents that review and fix their own work. Then come this setup module and the data engineering modules **DE 1–12**. After DE 12, **Extra** modules arrive every week: one big-tech engineering problem or research paper, plus new questions on earlier topics.
+The program starts here, with a diagnostic, so the plan is built on what you can actually do. Then come three strands in this order:
+
+1. **Python 1–6**, the language foundation: core types and their cost, functions and decorators, generators, classes, production habits (errors, context managers, tests) and concurrency. Every exercise is a small data engineering task with real tests.
+2. **AI 1–3**, woven between the Python modules: agent loops, harness engineering, prompts that save credits, evals, and agents that review and fix their own work. Each AI module comes after the Python it needs: AI 1 after functions, AI 2 after classes, AI 3 after concurrency.
+3. **DE 1–12**, the data engineering modules, built on one platform.
+
+After DE 12, **Extra** modules arrive every week: one big-tech engineering problem or research paper, plus new questions on earlier topics.
+
+Problems you struggle with (you open the solution, need two or more hints, or need three or more runs) join a **review queue**. They come back on the coding card after 3, then 7, then 21 days, starting from a blank editor each time. This is how you keep what you learn until the interview.
 
 Time is boxed, not the modules. The plan gives you **60 minutes on weekdays and 120 on Saturday and Sunday** (change both in Settings). Each module is split into steps that fit one day. Anything you do not finish moves to the next free day, so a module takes as many weeks as it needs and the dates on Today and Path always stay true. Coding practice (DSA, SQL, PySpark and the timed coding tests) runs on its own track, outside that hour.
 
@@ -71,7 +80,13 @@ Today shows the steps for the day in order, each with what to do, how you know i
 
 ## What happens after this diagnostic
 
-Record your diagnostic quiz and coding test here. If DSA is weak, give the coding track extra time; if SQL is strong, skip the easier SQL warm-ups. Then carry on with DE 1 on Today.
+Record your diagnostic quiz, coding test and Python level check here.
+
+- **Python level check.** Each of the six tasks maps to one Python module. If you solved one without hints, you can move faster through that module: read the chapter quickly and go straight to its exercises. If you needed hints or the solution, slow down there.
+- **DSA.** If it is weak, give the coding track extra time.
+- **SQL.** If it is strong, skip the easier SQL warm-ups.
+
+Then carry on with Python 1 on Today.
 
 @@lab
 ## Set up your machine
@@ -101,9 +116,9 @@ Open each account in the sprint that needs it. Free trials are time-limited and 
 | AWS account | Sprint 7 | Set a billing alarm at a few dollars before creating anything else. |
 | Databricks trial | Sprint 8 | Do not start it earlier. |
 
-## Then start DE 1
+## Then start Python 1
 
-When the diagnostic is done, go back to Today: DE 1 is next. Its lab explains how to get the starter kit (paste the lab into a chat with Claude and ask for the DE 1 starter kit).
+When the diagnostic is done, go back to Today: Python 1 is next, and its exercises run in the browser with nothing to install. DE 1 comes after the Python and AI modules; its lab explains how to get the starter kit.
 
 @@quiz
 TYPE: mcq

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Keystone full test loop: content, banks, scheduler, editor (Pyodide), UI crawl, git labs.
+# Data Architect full test loop: content, banks, scheduler, editor (Pyodide), UI crawl, git labs.
 #   bash tools/test_all.sh [baseUrl]      (default http://localhost:8811/, started here if needed)
 # Needs python3 + duckdb, node + playwright (set PW=/path/to/node_modules/playwright, CHROME=/path/to/chromium if not global).
 set -uo pipefail

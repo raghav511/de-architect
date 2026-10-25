@@ -24,6 +24,8 @@ A110 | practice | 0.5 | Prompt drills | Five prompt rewrites done and compared w
 - [Faros: Harness engineering](https://www.faros.ai/blog/harness-engineering). The five layers of a production harness, and why the term appeared in 2026.
 
 @@chapter
+> **Before you start.** This module uses the Python from Python 1 and 2: dicts of functions (a tool registry), `*args`/`**kwargs`, closures and decorators (`@tool`, `@retry`), and JSON. If any lab code looks unfamiliar, the matching chapter section is one search away (⌘K or /). You do not need classes or async yet; AI 2 comes after Python 4 (classes) and AI 3 after Python 6 (concurrency).
+
 ## A1.1 What an agent really is
 
 A language model on its own does one thing: it reads text and writes text. It cannot run code, open a file, query a table or remember yesterday. Everything that makes an "agent" feel capable is built **around** the model by ordinary software. A short formula captures it:

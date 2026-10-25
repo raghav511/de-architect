@@ -10,7 +10,7 @@ const ONLY = (process.argv.find(a => a.startsWith('--only=')) || '').slice(7);
   await p.goto(BASE + '#/today'); await p.waitForTimeout(1500);
   const items = await p.evaluate(() => {
     const out = [];
-    ['dsa', 'sql', 'spark'].forEach(k => DATA[k].forEach(x => out.push({ k, id: x.id, t: x.t, sol: x.sol })));
+    ['dsa', 'sql', 'spark', 'py'].forEach(k => DATA[k].forEach(x => out.push({ k, id: x.id, t: x.t, sol: x.sol })));
     MODS.forEach(m => (DATA.sprints[m].coding || []).forEach((c, i) => out.push({ k: 'test', id: m + '/' + i, t: c.TITLE, sol: c.CODE })));
     return out;
   });

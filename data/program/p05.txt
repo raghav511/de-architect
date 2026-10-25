@@ -1,0 +1,411 @@
+@@meta
+id: p05
+n: 5
+title: Code that survives production: errors, context managers, logging and tests
+goal: Write Python you would be comfortable being paged for: precise exception handling, cleanup that cannot be forgotten, logs that explain failures, tests written with pytest, and a project layout others can install. Interviewers judge seniority by exactly these habits.
+hours: 5
+
+@@tickets
+P501 | learn | 0.75 | Chapter part 1: exceptions and context managers | You can explain `raise ... from e`, why a bare `except:` is dangerous, and what `__exit__` receives. | chapter:0-2
+P502 | learn | 0.75 | Chapter part 2: logging, pytest, packaging and config | You can write a parametrised pytest test and describe a src-layout project with pyproject.toml. | chapter:3-5
+P503 | build | 1 | Exercises 1–3: a custom exception, a timer, commit or roll back | All three pass their tests in the editor. | py:1-3
+P504 | build | 1 | Exercises 4–5: a dead-letter batch, testable retry with backoff | Both pass, and you can say why `sleep` is passed in as an argument. | py:4-5
+P505 | practice | 0.5 | Predict-the-output drill | All six snippets answered before opening the answers, and every miss understood. | practice
+P506 | test | 0.5 | Quiz P5 | 80% or better. | quiz
+P507 | talk | 0.5 | Interview set P5 | 5 of 6 answered out loud and ticked. | interview
+
+@@readings
+- **Python Crash Course** (3rd ed.), chapter 10 (files and exceptions) and chapter 11 (testing your code with pytest).
+- **Python Distilled**, chapter 3 (program structure and control flow: exceptions, context managers) and chapter 8 (modules and packages).
+- **Fluent Python** (2nd ed.), chapter 18 (with, match and else blocks).
+- [Errors and exceptions tutorial](https://docs.python.org/3/tutorial/errors.html). Includes exception chaining and notes.
+- [contextlib](https://docs.python.org/3/library/contextlib.html). `contextmanager`, `suppress` and `ExitStack`.
+- [Logging how-to](https://docs.python.org/3/howto/logging.html). Read the basic tutorial and "Logging from multiple modules".
+- [pytest: get started](https://docs.pytest.org/en/stable/getting-started.html), then [parametrize](https://docs.pytest.org/en/stable/how-to/parametrize.html).
+- [Packaging Python projects](https://packaging.python.org/en/latest/tutorials/packaging-projects/). pyproject.toml and the src layout.
+
+@@chapter
+## P5.1 Exceptions: catch narrowly, fail loudly
+
+```python
+try:
+    amount = int(row["amount"])
+except KeyError:
+    log.warning("row %s has no amount", row.get("id"))
+    amount = None
+except ValueError as e:
+    raise BadRow(f"row {row['id']}: bad amount {row['amount']!r}") from e
+else:
+    pass          # runs only if no exception: keep the try block small
+finally:
+    pass          # always runs: cleanup
+```
+
+Rules that separate senior code from junior code:
+
+1. **Catch the specific exceptions you expect and can handle.** `except Exception:` around a whole job, or a bare `except:`, also swallows typos (`NameError`), bugs and Ctrl+C, and turns a crash into silent wrong data.
+2. **Keep the `try` block small**, around the one line that can fail, so you know what failed.
+3. **Add context when you re-raise.** `raise NewError("...") from e` keeps the original traceback attached as `__cause__`.
+4. **Never swallow silently.** If you decide to skip a row, count it and log it (or send it to a dead-letter store). Exercise 4 does this.
+5. **Custom exceptions** (`class BadRow(ValueError): pass`) let callers handle your failures specifically, while still being caught by `except ValueError`.
+
+```
+Exception hierarchy (part)
+BaseException
+ ├── KeyboardInterrupt, SystemExit      <- a bare except: catches these too
+ └── Exception
+      ├── ValueError ── your BadRow
+      ├── KeyError, IndexError (LookupError)
+      ├── TypeError
+      └── OSError ── ConnectionError, FileNotFoundError, TimeoutError
+```
+
+## P5.2 Retries belong to transient errors only
+
+Some failures fix themselves (network blips, rate limits, a database failover): retry them with **exponential backoff**, waiting 1, 2, 4, 8 seconds, plus random **jitter** so a thousand clients do not retry in the same instant. Other failures are bugs or bad data (a `KeyError`, a schema mismatch): retrying just repeats the failure, so raise immediately.
+
+```python
+def retry_call(fn, attempts, base_delay, sleep, retry_on=(ConnectionError, TimeoutError)):
+    ...
+```
+
+Passing `sleep` in as an argument (**dependency injection**) is what makes this testable: tests pass `slept.append` and finish instantly, production passes `time.sleep`. The same trick applies to clocks, HTTP clients and database connections. Exercise 5 is exactly this function.
+
+## P5.3 Context managers: cleanup you cannot forget
+
+A `with` block guarantees setup and teardown, even when the body raises:
+
+```python
+with open(path) as f:              # file closed afterwards, always
+with lock:                         # lock released
+with conn.transaction():           # commit on success, rollback on error
+```
+
+Under the hood, `with` calls `__enter__` at the start and `__exit__(exc_type, exc, tb)` at the end. `exc_type` is `None` on a clean exit. If `__exit__` returns `True`, the exception is **swallowed**; return `False` (or nothing) to let it continue.
+
+```python
+class Transaction:
+    def __init__(self, conn): self.conn = conn
+    def __enter__(self):
+        self.conn.execute("BEGIN"); return self
+    def __exit__(self, exc_type, exc, tb):
+        self.conn.execute("COMMIT" if exc_type is None else "ROLLBACK")
+        return False                     # do not hide the error
+```
+
+For simple cases, a generator with `@contextmanager` is shorter: code before `yield` is setup, after it is teardown, and `try/finally` makes the teardown run on errors.
+
+```python
+from contextlib import contextmanager
+import time
+
+@contextmanager
+def timer(stats, name):
+    t0 = time.perf_counter()
+    try:
+        yield
+    finally:
+        stats[name] = time.perf_counter() - t0
+```
+
+## P5.4 Logging instead of print
+
+`print` goes to stdout with no time, level or source. `logging` gives you all three, and lets operators turn detail up or down without code changes.
+
+```python
+import logging
+log = logging.getLogger(__name__)          # one logger per module
+
+logging.basicConfig(level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s")
+
+log.info("loaded %d rows into %s", n, table)      # lazy formatting: args, not f-string
+log.warning("skipped %d bad rows", bad)
+log.exception("load failed for %s", table)        # inside except: adds the traceback
+```
+
+| Level | Use for |
+|---|---|
+| DEBUG | detail you only want while investigating |
+| INFO | normal milestones: started, loaded n rows, finished |
+| WARNING | something odd but handled: skipped rows, a retry |
+| ERROR | an operation failed |
+| CRITICAL | the process cannot continue |
+
+In production, log **structured** fields (JSON with `run_id`, `table`, `rows`) so you can search and aggregate. Your on-call agent in DE 9 reads these logs: the better they are, the better its diagnosis. Never log secrets or personal data.
+
+## P5.5 Testing with pytest
+
+pytest finds files named `test_*.py` and functions named `test_*`, and uses plain `assert`:
+
+```python
+# test_cleaning.py
+import pytest
+from cleaning import parse_amount, BadAmount
+
+def test_parses_rupees():
+    assert parse_amount(" ₹12.50 ") == 12.5
+
+@pytest.mark.parametrize("text", ["", "12,5x", "abc"])
+def test_rejects_bad_amounts(text):
+    with pytest.raises(BadAmount):
+        parse_amount(text)
+
+@pytest.fixture
+def sample_rows():
+    return [{"id": 1, "amount": "10"}, {"id": 2, "amount": "x"}]
+
+def test_bad_rows_go_to_dead_letter(sample_rows):
+    result = load_batch(sample_rows)
+    assert result["failed"][0][0] == 2
+```
+
+- **parametrize** runs one test over many inputs.
+- **fixtures** build reusable test data or resources; built-ins include `tmp_path` (a temporary folder) and `monkeypatch` (replace an environment variable or function).
+- Test the edges: empty input, None, duplicates, the boundary values, and the failure path.
+- A data pipeline's tests usually come in three layers: unit tests of pure functions (fast, many), a few integration tests against a real local database or DuckDB, and data quality checks on real tables (DE 9).
+
+## P5.6 Project layout, environments and config
+
+```
+meridian-ingest/
+├── pyproject.toml          # name, version, dependencies, tool settings
+├── src/meridian_ingest/
+│   ├── __init__.py
+│   ├── __main__.py         # python -m meridian_ingest
+│   ├── extract.py
+│   └── transform.py
+└── tests/
+    └── test_transform.py
+```
+
+- One **virtual environment** per project: `python3 -m venv .venv && source .venv/bin/activate`, or a tool such as uv. Never install into the system Python.
+- **Pin** dependencies for deployable jobs (a lock file) so a new library release cannot break Tuesday's run.
+- `if __name__ == "__main__":` guards code that should run only when the file is executed, not when imported.
+- **Config and secrets come from the environment**, not the code: `os.environ["WAREHOUSE_URL"]`. Commit a `.env.example` with placeholder values and keep the real `.env` out of Git (Git lesson 8 shows how to remove a secret that was committed).
+
+@@lab
+## Exercises 1–3 (1 hour)
+
+1. **A custom exception with context.** Subclass `ValueError`; chain with `raise ... from e`.
+2. **A timing context manager.** `@contextmanager` with `try/finally` around `yield`.
+3. **Commit or roll back.** A class with `__enter__` and `__exit__` that does not swallow errors.
+
+## Exercises 4–5 (1 hour)
+
+4. **Load a batch with a dead-letter list.** `try/except` inside the loop; catch named errors only.
+5. **Retry with backoff you can test.** Retry only on `retry_on`, no sleep after the last attempt, `sleep` injected.
+
+## On your Mac (optional, 40 minutes): real pytest
+
+Turn two of your exercise solutions into a tested mini-project:
+
+```bash
+mkdir -p ~/py-track/src/cleaning ~/py-track/tests && cd ~/py-track
+python3 -m venv .venv && source .venv/bin/activate && pip install pytest
+touch src/cleaning/__init__.py
+# paste parse_amount and load_batch into src/cleaning/core.py
+# write tests/test_core.py with a parametrised test and a pytest.raises test
+PYTHONPATH=src pytest -q
+```
+
+Then break a solution on purpose and read pytest's failure output: it shows both sides of the failed assert.
+
+@@practice
+## Predict the output (30 minutes)
+
+**1.**
+```python
+def f():
+    try:
+        return "try"
+    finally:
+        print("cleanup")
+print(f())
+```
+<details><summary>Answer</summary>
+
+`cleanup` then `try`. `finally` runs even when the try block returns.
+
+</details>
+
+**2.**
+```python
+try:
+    int("x")
+except Exception:
+    print("A")
+except ValueError:
+    print("B")
+```
+<details><summary>Answer</summary>
+
+`A`. The first matching `except` wins, and `ValueError` is an `Exception`. Put specific handlers before general ones.
+
+</details>
+
+**3.**
+```python
+class Quiet:
+    def __enter__(self): return self
+    def __exit__(self, *a): return True
+with Quiet():
+    1 / 0
+print("after")
+```
+<details><summary>Answer</summary>
+
+`after`. Returning `True` from `__exit__` swallows the `ZeroDivisionError`. That is almost always a bug outside of something like `contextlib.suppress`.
+
+</details>
+
+**4.**
+```python
+try:
+    d = {}
+    d["k"]
+except KeyError as e:
+    print(repr(e))
+```
+<details><summary>Answer</summary>
+
+`KeyError('k')`. The exception carries the missing key, which is why logging `e` (or using `log.exception`) is useful.
+
+</details>
+
+**5.**
+```python
+import logging
+logging.basicConfig(level=logging.WARNING)
+logging.info("loaded")
+logging.warning("skipped 3")
+```
+<details><summary>Answer</summary>
+
+Only `WARNING:root:skipped 3` appears. INFO is below the configured WARNING level.
+
+</details>
+
+**6.**
+```python
+try:
+    try:
+        int("x")
+    except ValueError as e:
+        raise RuntimeError("load failed") from e
+except RuntimeError as r:
+    print(type(r.__cause__).__name__)
+```
+<details><summary>Answer</summary>
+
+`ValueError`. `raise ... from e` stores the original exception as `__cause__`, and tracebacks show both.
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: py
+Q: Why is `except:` (bare) or `except Exception:` around a whole job dangerous?
+A) It is slower
+B) It hides bugs, typos and interrupts, turning crashes into silent wrong data
+C) Python forbids it
+D) It only catches syntax errors
+ANS: B
+WHY: Catch the specific exceptions you can handle; let everything else fail loudly.
+---
+TYPE: fill
+TAG: py
+Q: To attach the original error when raising a new one, write `raise NewError("...") ____ e`.
+ANS: from
+WHY: Chaining keeps the root cause in the traceback as `__cause__`.
+---
+TYPE: mcq
+TAG: py
+Q: What does returning `True` from `__exit__` do?
+A) Commits the transaction
+B) Suppresses the exception raised inside the with block
+C) Re-raises the exception
+D) Nothing
+ANS: B
+WHY: Return False or None to let errors propagate.
+---
+TYPE: mcq
+TAG: py
+Q: Which errors should an API ingestion job retry?
+A) All exceptions
+B) Transient ones: timeouts, connection errors, HTTP 429 and 5xx
+C) KeyError and TypeError
+D) None; retries are bad practice
+ANS: B
+WHY: Bugs and bad data fail the same way every time; retrying wastes time and can hide the problem.
+---
+TYPE: mcq
+TAG: py
+Q: Why pass `sleep` (or a clock) into a retry function as an argument?
+A) To make it faster in production
+B) So tests can replace it and run instantly while checking the delays
+C) Python requires it
+D) To avoid importing time
+ANS: B
+WHY: Dependency injection makes time-based code testable.
+---
+TYPE: fill
+TAG: py
+Q: In pytest, `@pytest.mark.____` runs one test function over several inputs.
+ANS: parametrize
+WHY: Each input becomes its own test case in the report.
+---
+TYPE: mcq
+TAG: py
+Q: Where should a database password used by a pipeline live?
+A) In the source code, in a constants file
+B) In an environment variable or secret manager, with only a placeholder in `.env.example`
+C) In the README
+D) In a log message for debugging
+ANS: B
+WHY: Secrets in code end up in Git history, which is effectively public forever.
+---
+TYPE: mcq
+TAG: py
+Q: Which logging call inside an `except` block records the traceback automatically?
+A) `log.info`
+B) `log.exception`
+C) `print`
+D) `log.debug`
+ANS: B
+WHY: `log.exception` logs at ERROR level with the current traceback.
+---
+TYPE: short
+TAG: py
+Q: Explain what a context manager guarantees and give two data engineering examples.
+MODEL: It guarantees that setup and teardown happen around a block, and that teardown runs even if the block raises: `__exit__` (or the code after `yield` in a `finally`) always runs. Examples: a database transaction that commits on success and rolls back on error; a file or object-store writer that is closed and flushed; a lock or lease released; a timer that records how long a step took even when it failed.
+---
+TYPE: short
+TAG: py
+Q: A teammate wraps a whole load function in `try: ... except Exception: pass`. What do you say in review?
+MODEL: It turns every failure, including bugs, into a silent success, so bad or missing data reaches users with no alert. Catch only the specific, expected errors at the line that raises them; for bad rows, count them, log them with context and send them to a dead-letter table; let unexpected errors raise so the orchestrator marks the task failed and retries or alerts.
+
+@@interview
+Q: How do you handle bad records in a batch pipeline?
+TAG: py
+A: Decide per error type. Bad rows are expected, so I catch the specific conversion and validation errors per row, write the row with the error message, source file and run id to a dead-letter table, count them, and continue. I set a threshold: if more than, say, 1% of rows fail, the job fails, because that signals an upstream change rather than a few bad rows. Unexpected exceptions are not caught; they fail the task loudly. A dashboard on the dead-letter table and an alert on the threshold close the loop.
+---
+Q: Write a context manager for a database transaction.
+TAG: py
+A: A class whose `__enter__` begins a transaction and returns the connection or a cursor, and whose `__exit__(exc_type, exc, tb)` commits when `exc_type` is None and rolls back otherwise, returning False so errors propagate. The generator version uses `@contextmanager`: begin, `try: yield conn` then commit, `except: rollback; raise`. I would also make sure the connection is returned to the pool in a `finally`.
+---
+Q: What makes code testable, and how do you test code that calls external services?
+TAG: py
+A: Pure logic separated from I/O, and dependencies passed in rather than created inside: a client, a clock, a sleep function. Then unit tests pass fakes or use pytest's `monkeypatch`, and run in milliseconds. For the integration layer I run a real local dependency (DuckDB, a Postgres container, a local object store) in a few slower tests, and use recorded responses for third-party APIs. Data quality checks on real tables cover what unit tests cannot.
+---
+Q: How do you structure logging in a production data job?
+TAG: py
+A: One logger per module with `logging.getLogger(__name__)`, configured once at the entry point. INFO for milestones with counts (rows read, written, rejected), WARNING for handled oddities, `log.exception` on failures. Structured JSON logs with a run id, task, table and partition so they can be searched and joined to metrics. No secrets or personal data. The goal is that someone, or an on-call agent, can diagnose a failure from the logs without rerunning the job.
+---
+Q: When should a pipeline retry, and how?
+TAG: py
+A: Only for transient failures: timeouts, connection resets, throttling (429), server errors (5xx), a database failover. Use exponential backoff with jitter and a cap on attempts and total time, and make the operation idempotent so a retry after a partial write cannot duplicate data (MERGE on a key, overwrite a partition, or an idempotency key). Permanent failures such as validation errors or a 400 should fail fast with a clear message.
+---
+Q: How do you lay out and package a Python data project?
+TAG: py
+A: A src layout with a package under `src/`, tests in `tests/`, and a `pyproject.toml` declaring dependencies and tool settings (pytest, ruff, mypy). A virtual environment per project and a lock file for deployable jobs. Configuration from environment variables, validated at start-up, with a `.env.example` committed and real secrets in a secret manager. A `__main__.py` or console script as the entry point so orchestrators run it the same way everywhere, and CI that runs lint, type checks and tests on every pull request.

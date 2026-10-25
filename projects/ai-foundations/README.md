@@ -1,6 +1,6 @@
 # AI foundations: build agents from scratch
 
-Labs for modules A1–A3 of the Keystone program. Everything runs **offline and free** with `PROVIDER=mock`; switch to a real model (Gemini free tier, a local Ollama model, Groq, or Anthropic) when the tests pass.
+Labs for modules A1–A3 of the Data Architect program. Everything runs **offline and free** with `PROVIDER=mock`; switch to a real model (Gemini free tier, a local Ollama model, Groq, or Anthropic) when the tests pass.
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate

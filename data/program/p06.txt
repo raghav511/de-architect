@@ -1,0 +1,389 @@
+@@meta
+id: p06
+n: 6
+title: Concurrency and performance: threads, processes, asyncio, and measuring first
+goal: Choose the right concurrency model for a job (threads for waiting, processes for computing, asyncio for thousands of API calls), respect rate limits, split and merge work, and find the slow part by measuring rather than guessing.
+hours: 5
+
+@@tickets
+P601 | learn | 0.75 | Chapter part 1: I/O versus CPU, threads, the GIL, processes | You can say which model fits an API crawl, a CPU-heavy parse and a mix, and what the GIL does and does not block. | chapter:0-3
+P602 | learn | 0.75 | Chapter part 2: asyncio, rate limits, measuring | You can write `asyncio.gather` with a Semaphore from memory and describe a token bucket. | chapter:4-6
+P603 | build | 1 | Exercises 1–3: merge results, a token bucket, limited concurrent calls | All three pass their tests in the editor. | py:1-3
+P604 | build | 1 | Exercises 4–5: plan compaction, find the slow part | Both pass, including the speed test. | py:4-5
+P605 | practice | 0.5 | Predict-the-output drill | All six snippets answered before opening the answers, and every miss understood. | practice
+P606 | test | 0.5 | Quiz P6 | 80% or better. | quiz
+P607 | talk | 0.5 | Interview set P6 | 5 of 6 answered out loud and ticked. | interview
+
+@@readings
+- **Fluent Python** (2nd ed.), chapter 19 (concurrency models), chapter 20 (concurrent executors) and chapter 21 (asynchronous programming). The best treatment in print.
+- **Python Distilled**, the sections on threads and `concurrent.futures` in chapter 9.
+- [concurrent.futures](https://docs.python.org/3/library/concurrent.futures.html). One interface for thread and process pools.
+- [asyncio: coroutines and tasks](https://docs.python.org/3/library/asyncio-task.html). `gather`, `create_task`, timeouts and `TaskGroup`.
+- [Free-threaded CPython](https://docs.python.org/3/howto/free-threading-python.html). The optional no-GIL build from Python 3.13: what changes and what does not.
+- [The Python profilers](https://docs.python.org/3/library/profile.html). cProfile in five minutes.
+
+@@chapter
+## P6.1 Waiting versus computing
+
+Before choosing a tool, ask what the program spends its time doing:
+
+```
+I/O-bound   ──── waiting ─────────────────────────────── done
+            (API calls, database queries, S3 reads)
+            The CPU is idle. Do other work while waiting: threads or asyncio.
+
+CPU-bound   ████ computing ███████████████████████████ done
+            (parsing, compression, heavy pure-Python loops)
+            The CPU is busy. Use more cores: processes, or a faster engine.
+```
+
+**Concurrency** is dealing with many things at once (interleaving while one waits). **Parallelism** is doing many things at the same instant on several cores. An API crawler needs concurrency; a CPU-heavy transformation needs parallelism, or better, a tool that is already parallel (DuckDB, Polars, Spark) so you write no concurrency code at all.
+
+Note: the editor in this app runs Python in your browser, where threads and processes are not available. The exercises practise the logic (splitting work, merging results, rate limits, asyncio); the "On your Mac" lab runs the real thread and process versions.
+
+## P6.2 Threads and the GIL
+
+CPython has a **Global Interpreter Lock**: only one thread executes Python bytecode at a time. Two consequences:
+
+- Threads **do not speed up pure-Python CPU work**: two threads computing take as long as one, or longer.
+- Threads **do** speed up I/O: a thread waiting on the network releases the GIL, so other threads run. Many C extensions (NumPy, compression, hashing) also release it.
+
+```python
+from concurrent.futures import ThreadPoolExecutor
+import requests
+
+def fetch(url):
+    return requests.get(url, timeout=10).json()
+
+with ThreadPoolExecutor(max_workers=16) as pool:
+    pages = list(pool.map(fetch, urls))      # results in input order
+```
+
+Threads share memory, so two threads updating the same dict or counter can interleave and lose updates. Prefer designs where each thread works on its own data and returns a result that the main thread merges (Exercise 1), or protect shared state with a `threading.Lock`.
+
+Python 3.13 added an optional **free-threaded** build without the GIL. It is still opt-in and many libraries are catching up; for interviews, know that it exists and that the standard build still has the GIL.
+
+## P6.3 Processes for CPU work
+
+Each process has its own interpreter and its own GIL, so processes use all cores. The cost: arguments and results are **pickled** and copied between processes, and starting them takes time.
+
+```python
+from concurrent.futures import ProcessPoolExecutor
+
+def parse_file(path):                 # must be a top-level function so it can be pickled
+    ...                               # CPU-heavy work
+    return counts
+
+if __name__ == "__main__":            # required on macOS and Windows
+    with ProcessPoolExecutor() as pool:   # defaults to one worker per core
+        parts = list(pool.map(parse_file, paths))
+    total = merge_counts(parts)
+```
+
+Send small inputs (a file path, a range of row numbers) and return small outputs (counts, a summary). Sending a 2 GB DataFrame to each worker copies 2 GB each time and erases the gain. This split-then-merge shape is MapReduce, and it is how Spark executors work: each task processes its partition and sends back a partial result.
+
+## P6.4 concurrent.futures: one interface for both
+
+```python
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+with ThreadPoolExecutor(max_workers=8) as pool:
+    futures = {pool.submit(fetch, u): u for u in urls}
+    for fut in as_completed(futures):        # as each one finishes
+        url = futures[fut]
+        try:
+            data = fut.result()              # re-raises the worker's exception here
+        except Exception as e:
+            log.warning("failed %s: %s", url, e)
+```
+
+- `pool.map(fn, items)` returns results **in input order** and raises the first error when you reach it.
+- `submit` plus `as_completed` handles each result **as soon as it is ready**, with per-item error handling.
+- Swapping `ThreadPoolExecutor` for `ProcessPoolExecutor` is a one-word change when the workload turns out to be CPU-bound.
+
+## P6.5 asyncio for many concurrent calls
+
+asyncio runs many tasks on **one thread**. A coroutine (`async def`) runs until it reaches `await` on something slow, then hands control back to the **event loop**, which runs another task until that one waits.
+
+```
+event loop:  task A runs ─ await ─┐            ┌─ A resumes
+             task B runs ─────────┼─ await ─┐  │
+             task C runs ─────────┼─────────┼──┘ ...
+             one thread, switching only at await
+```
+
+```python
+import asyncio, httpx
+
+async def fetch(client, i):
+    r = await client.get(f"https://api.example.com/trips/{i}")
+    return r.json()
+
+async def fetch_all(ids, limit=20):
+    sem = asyncio.Semaphore(limit)                  # at most 20 in flight
+    async with httpx.AsyncClient(timeout=10) as client:
+        async def one(i):
+            async with sem:
+                return await fetch(client, i)
+        return await asyncio.gather(*(one(i) for i in ids))   # input order
+
+results = asyncio.run(fetch_all(range(10_000)))
+```
+
+asyncio scales to thousands of concurrent requests with little memory, which threads cannot. The catch: everything in the path must be async (`httpx`, `asyncpg`, `aiobotocore`); one blocking call such as `time.sleep` or `requests.get` freezes every task. Use `asyncio.to_thread` to run unavoidable blocking code. LLM SDKs offer async clients for the same reason: an agent evaluating 500 test cases runs them concurrently with a semaphore matched to your rate limit.
+
+## P6.6 Rate limits and backpressure
+
+Concurrency without limits gets you throttled (HTTP 429) or takes down the service you depend on. Two tools:
+
+- A **semaphore** caps how many calls are in flight at once.
+- A **token bucket** caps the rate: tokens refill at `rate` per second up to `capacity`; each call spends one; with no token, wait. `capacity` allows short bursts while the average stays at `rate`.
+
+```
+capacity 3, rate 1/s
+time 0.0  tokens 3  call ✓ ✓ ✓   tokens 0
+time 0.5  tokens 0.5             call ✗ (wait)
+time 1.0  tokens 1               call ✓
+```
+
+**Backpressure** is the general idea: when a downstream stage is slower, the upstream stage must slow down rather than pile up work in memory. A bounded `queue.Queue(maxsize=1000)` between a reader and a writer does it: the reader blocks when the queue is full. Kafka consumers get backpressure for free because they pull. "Design a rate limiter" is also a classic system design question; Exercise 2 is its core.
+
+## P6.7 Measure before you optimise
+
+Guessing where time goes is usually wrong. Measure:
+
+```bash
+python -m cProfile -s cumtime my_job.py | head -20    # which functions take the time
+python -m timeit -s "xs = list(range(10**5))" "set(xs)" # micro-benchmark one line
+```
+
+Then fix in this order, biggest wins first:
+
+1. **The algorithm.** O(n²) to O(n) beats any amount of tuning. Exercise 5 turns a nested-loop join into a dict lookup: that is the same choice Spark makes between a nested-loop or sort-merge join and a hash (broadcast) join.
+2. **Do less work.** Filter early, read only the columns you need, avoid repeated parsing.
+3. **Use a vectorised engine.** DuckDB, Polars, Arrow or NumPy run in C over whole columns; a pandas `apply` with a Python function is still a Python loop.
+4. **Only then, concurrency**: threads or asyncio for I/O, processes for CPU, Spark when one machine is not enough.
+
+@@lab
+## Exercises 1–3 (1 hour)
+
+1. **Merge worker results.** The reduce step of split-then-merge.
+2. **A token bucket rate limiter.** The clock is passed in, so tests control time.
+3. **Limit concurrent API calls.** `asyncio.Semaphore` and `asyncio.gather`; results in input order.
+
+## Exercises 4–5 (1 hour)
+
+4. **Plan file compaction.** First-fit decreasing: the planning half of an Iceberg or Delta compaction job.
+5. **Find the slow part.** The starter is correct but O(n·m). Make it O(n + m).
+
+## On your Mac (optional, 30 minutes): see the GIL
+
+Save as `gil.py` and run `python3 gil.py`:
+
+```python
+import time
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+
+def cpu(n):                      # pure-Python CPU work
+    return sum(i * i for i in range(n))
+
+def io(_):                       # pretend network wait
+    time.sleep(0.5)
+
+def run(pool_cls, fn, arg, k=4):
+    t0 = time.perf_counter()
+    with pool_cls(max_workers=k) as p:
+        list(p.map(fn, [arg] * k))
+    return time.perf_counter() - t0
+
+if __name__ == "__main__":
+    print("serial cpu   ", round(sum(run(ThreadPoolExecutor, cpu, 5_000_000, 1) for _ in range(4)), 2))
+    print("threads cpu  ", round(run(ThreadPoolExecutor, cpu, 5_000_000), 2))
+    print("processes cpu", round(run(ProcessPoolExecutor, cpu, 5_000_000), 2))
+    print("threads io   ", round(run(ThreadPoolExecutor, io, None), 2))
+```
+
+Expect: threads give no gain on CPU work, processes give close to a 4x gain, and threads turn four 0.5 s waits into about 0.5 s total.
+
+@@practice
+## Predict the output (30 minutes)
+
+**1.** Four threads each run a pure-Python loop that takes 2 seconds alone, on a 4-core laptop with standard CPython. Roughly how long does it take?
+<details><summary>Answer</summary>
+
+About 8 seconds (or a little more). The GIL lets only one thread run Python bytecode at a time. Processes would take about 2 seconds.
+
+</details>
+
+**2.**
+```python
+import asyncio
+async def f():
+    return 1
+print(f())
+```
+<details><summary>Answer</summary>
+
+`<coroutine object f at 0x...>` (plus a "never awaited" warning). Calling an async function creates a coroutine; it runs only when awaited or passed to `asyncio.run`.
+
+</details>
+
+**3.**
+```python
+import asyncio, time
+async def slow():
+    time.sleep(1)
+async def main():
+    await asyncio.gather(slow(), slow(), slow())
+asyncio.run(main())
+```
+How long does it take?
+<details><summary>Answer</summary>
+
+About 3 seconds. `time.sleep` blocks the event loop, so the three run one after another. With `await asyncio.sleep(1)` it takes about 1 second.
+
+</details>
+
+**4.**
+```python
+from concurrent.futures import ThreadPoolExecutor
+def sq(x):
+    return x * x
+with ThreadPoolExecutor(4) as p:
+    print(list(p.map(sq, [3, 1, 2])))
+```
+<details><summary>Answer</summary>
+
+`[9, 1, 4]`. `map` returns results in input order, whatever order they finish in.
+
+</details>
+
+**5.** A job sends a 3 GB pandas DataFrame to each of 8 worker processes. What happens?
+<details><summary>Answer</summary>
+
+Each worker receives a pickled copy: about 24 GB of copying and memory, which can be slower than doing the work in one process, or crash it. Send small inputs (paths, row ranges) and return small outputs.
+
+</details>
+
+**6.**
+```python
+counts = {"n": 0}
+def bump():
+    for _ in range(100_000):
+        counts["n"] += 1
+# run bump in 4 threads at once
+```
+Is the final count always 400,000?
+<details><summary>Answer</summary>
+
+Not guaranteed. `+=` is a read, an add and a write; a thread switch in between loses updates. Use a `threading.Lock`, or have each thread count separately and merge the results.
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: py
+Q: A job makes 5,000 HTTP calls, each waiting about 200 ms for the server. What is the best first approach in Python?
+A) A ProcessPoolExecutor with 5,000 processes
+B) Threads or asyncio with a concurrency limit
+C) A faster CPU
+D) A single loop; concurrency cannot help
+ANS: B
+WHY: The work is waiting, not computing; overlap the waits. Cap concurrency to respect the server's limits.
+---
+TYPE: mcq
+TAG: py
+Q: What does the GIL prevent in standard CPython?
+A) Running more than one process
+B) More than one thread executing Python bytecode at the same instant
+C) Network calls from threads
+D) Using more than 4 GB of memory
+ANS: B
+WHY: Threads still help for I/O because waiting releases the GIL.
+---
+TYPE: fill
+TAG: py
+Q: To limit how many coroutines run a section at once, use `asyncio.____(n)`.
+ANS: Semaphore
+WHY: `async with sem:` waits when n tasks are already inside.
+---
+TYPE: mcq
+TAG: py
+Q: Which call blocks an asyncio event loop and stalls every task?
+A) `await asyncio.sleep(1)`
+B) `time.sleep(1)`
+C) `await client.get(url)` with an async client
+D) `asyncio.gather(...)`
+ANS: B
+WHY: Blocking calls freeze the single thread. Use async libraries or `asyncio.to_thread`.
+---
+TYPE: mcq
+TAG: py
+Q: Parsing 200 large JSON files in pure Python is CPU-bound. What speeds it up on an 8-core machine?
+A) ThreadPoolExecutor
+B) ProcessPoolExecutor, sending file paths and returning small summaries
+C) asyncio
+D) More logging
+ANS: B
+WHY: Processes bypass the GIL. Better still, a vectorised engine (DuckDB or Polars reading JSON) may avoid Python loops entirely.
+---
+TYPE: mcq
+TAG: py
+Q: What does a token bucket's capacity control?
+A) The average rate
+B) How large a burst is allowed before calls are limited to the refill rate
+C) The number of threads
+D) The timeout
+ANS: B
+WHY: The refill rate sets the long-run average; capacity sets the burst.
+---
+TYPE: fill
+TAG: py
+Q: The standard-library profiler you run with `python -m ____ -s cumtime job.py` shows where time goes.
+ANS: cProfile
+WHY: Measure first, then fix the biggest cost.
+---
+TYPE: mcq
+TAG: py
+Q: Exercise 5 replaces a loop over drivers inside a loop over trips with a dict lookup. Which Spark join strategy is that closest to?
+A) Sort-merge join
+B) Broadcast hash join
+C) Cartesian join
+D) Skew join
+ANS: B
+WHY: Build a hash table from the small side, probe it with the large side.
+---
+TYPE: short
+TAG: py
+Q: How do you choose between threads, processes and asyncio?
+MODEL: Ask whether the work is waiting (I/O) or computing (CPU). For I/O with tens of concurrent operations and blocking libraries, threads; for hundreds or thousands of concurrent network calls with async libraries available, asyncio; for CPU-heavy pure-Python work, processes (or better, a vectorised engine or Spark). Always cap concurrency, and measure before and after.
+---
+TYPE: short
+TAG: py
+Q: What is backpressure, and how do you implement it between a fast reader and a slow writer?
+MODEL: Backpressure means a slow downstream stage slows the upstream stage instead of letting work pile up in memory. Put a bounded queue between them (`queue.Queue(maxsize=n)` or `asyncio.Queue(maxsize=n)`): the reader blocks on `put` when it is full. Pull-based systems such as Kafka consumers get backpressure naturally, because they fetch only when ready.
+
+@@interview
+Q: Explain the GIL. Does it mean Python cannot do parallel work?
+TAG: py
+A: The GIL is a lock in CPython that lets only one thread execute Python bytecode at a time, which simplifies memory management. It means threads do not speed up pure-Python CPU work. It does not stop parallelism: threads overlap I/O because waiting releases the GIL; C extensions such as NumPy, Arrow and compression release it during heavy work; multiprocessing uses one interpreter per core; and engines like DuckDB, Polars and Spark do the work outside the Python interpreter. Python 3.13 also ships an optional free-threaded build.
+---
+Q: You need to pull 2 million records from a paginated REST API with a limit of 50 requests per second. Design the Python side.
+TAG: py
+A: asyncio with an async HTTP client, a semaphore for in-flight requests, and a token bucket at 50 per second (or slightly under). If pages are cursor-based and sequential, parallelise across independent partitions instead (by date or by id range). Retries with exponential backoff and jitter on 429 and 5xx, honouring Retry-After. Write results in batches to object storage as Parquet, record the last completed cursor or partition as a checkpoint so a restart resumes, and make writes idempotent. Log throughput and error rates.
+---
+Q: How would you speed up a slow Python data job?
+TAG: py
+A: Measure first with cProfile or simple timing per stage. Then fix in order: the algorithm (an O(n²) lookup becomes a dict or set); do less (filter early, read fewer columns, avoid re-parsing); move the work to a vectorised engine (DuckDB, Polars, Arrow) instead of Python loops or pandas `apply`; and only then add concurrency: threads or asyncio if it waits on I/O, processes if it is CPU-bound, Spark if the data no longer fits one machine. Measure again after each change.
+---
+Q: What can go wrong when threads share a dictionary?
+TAG: py
+A: Lost updates and inconsistent reads: an operation such as `d[k] += 1` is several steps, and a thread switch in the middle overwrites another thread's change. Individual dict operations are atomic in CPython, but compound ones are not, and free-threaded builds make it worse. Prefer no shared mutable state: each worker returns its own result and the main thread merges. Otherwise use a `threading.Lock` or a thread-safe structure such as `queue.Queue`.
+---
+Q: Threads or asyncio for calling an LLM API on 1,000 evaluation cases?
+TAG: py
+A: asyncio with the provider's async client and a semaphore sized to the rate limit, because the work is almost entirely waiting and the count is high. Threads would also work for a few dozen concurrent calls with a synchronous client. Either way: cap concurrency, retry 429s with backoff, set a timeout per call, record cost and latency per case, and keep results in input order so they line up with expected answers. For non-urgent evaluation, a batch API is cheaper still.
+---
+Q: How does split-then-merge in Python relate to how Spark works?
+TAG: py
+A: It is the same shape. In Python I split the input into ranges or files, process each in a worker that returns a small partial result, and merge the partials. Spark splits data into partitions, runs a task per partition on executors, does a partial aggregation on each (map-side combine), shuffles the partials by key, and merges them. The lessons carry over: send small inputs and outputs, balance the splits so no worker is the straggler (skew), and make the merge step associative.

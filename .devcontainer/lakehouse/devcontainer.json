@@ -1,5 +1,5 @@
 {
-  "name": "Keystone · Lakehouse project (S3 + Iceberg + Spark + Trino + Airflow + ClickHouse)",
+  "name": "Data Architect · Lakehouse project (S3 + Iceberg + Spark + Trino + Airflow + ClickHouse)",
   "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},

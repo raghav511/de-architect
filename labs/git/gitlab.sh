@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Keystone Git labs: each lab builds a small broken repository and checks your fix.
+# Data Architect Git labs: each lab builds a small broken repository and checks your fix.
 #   bash labs/git/gitlab.sh list
 #   bash labs/git/gitlab.sh setup 3     # creates ~/git-labs/03 and prints the task
 #   bash labs/git/gitlab.sh check 3     # checks your result

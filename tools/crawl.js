@@ -1,4 +1,4 @@
-/* Keystone UI crawler. Opens every reachable screen, checks errors, layout and text, and clicks every button.
+/* Data Architect UI crawler. Opens every reachable screen, checks errors, layout and text, and clicks every button.
    node tools/crawl.js [baseUrl] [--quick]
    Needs playwright (PW env var can point at it) and a local server on the repo root. */
 const PW = process.env.PW || 'playwright';
@@ -97,7 +97,7 @@ async function pageCheck(p, vp, r, errs) {
   }
   await b.close();
   console.log('external links:', ext.size);
-  require('fs').writeFileSync('/tmp/keystone-ext-links.txt', Array.from(ext).join('\n'));
+  require('fs').writeFileSync('/tmp/data-architect-ext-links.txt', Array.from(ext).join('\n'));
   issues.forEach(i => console.log('ISSUE', i));
   console.log(issues.length + ' issues');
   process.exit(issues.length ? 1 : 0);

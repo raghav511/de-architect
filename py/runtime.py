@@ -1,5 +1,5 @@
 """Runtime for the app: sample data, Python REPL, checkers for DSA, SQL and PySpark."""
-import duckdb, random, json, io, sys, time, traceback, datetime as dt
+import duckdb, random, json, io, sys, time, traceback, asyncio, heapq, datetime as dt
 import minispark
 
 con = None
@@ -337,6 +337,125 @@ def check_dsa(spec_json, code):
         args = eval(big, {})
         _, _, e, ms = _capture(lambda: fn(*args))
         res['tests'].append({'call': 'large input (' + spec.get('bigLabel', 'n = 100,000') + ')', 'want': 'under ' + str(spec.get('ms', 1500)) + ' ms', 'got': e or (str(ms) + ' ms'), 'ok': (not e) and ms <= spec.get('ms', 1500), 'ms': ms, 'perf': True})
+    return json.dumps(res)
+
+
+class _MiniLoop(asyncio.AbstractEventLoop):
+    """A small event loop on virtual time. Pyodide's browser loop cannot block in asyncio.run(),
+    so exercises run on this one: sleeps jump the clock forward instead of waiting."""
+
+    def __init__(self):
+        self._ready, self._timers, self._now, self._seq, self._closed = [], [], 0.0, 0, False
+
+    def time(self):
+        return self._now
+
+    def call_soon(self, cb, *args, context=None):
+        h = asyncio.Handle(cb, args, self, context)
+        self._ready.append(h)
+        return h
+
+    def call_at(self, when, cb, *args, context=None):
+        h = asyncio.TimerHandle(when, cb, args, self, context)
+        self._seq += 1
+        heapq.heappush(self._timers, (when, self._seq, h))
+        return h
+
+    def call_later(self, delay, cb, *args, context=None):
+        return self.call_at(self._now + max(0, delay), cb, *args, context=context)
+
+    def _timer_handle_cancelled(self, handle):
+        pass
+
+    def create_future(self):
+        return asyncio.Future(loop=self)
+
+    def create_task(self, coro, *, name=None, context=None):
+        return asyncio.Task(coro, loop=self, name=name)
+
+    def get_debug(self):
+        return False
+
+    def is_closed(self):
+        return self._closed
+
+    def is_running(self):
+        return asyncio.events._get_running_loop() is self
+
+    def close(self):
+        self._closed = True
+
+    def call_exception_handler(self, context):
+        pass
+
+    def run_until_complete(self, coro):
+        fut = asyncio.ensure_future(coro, loop=self)
+        old = asyncio.events._get_running_loop()
+        asyncio.events._set_running_loop(self)
+        try:
+            steps = 0
+            while not fut.done():
+                steps += 1
+                if steps > 1_000_000:
+                    raise RuntimeError('event loop ran too long: is something waiting forever?')
+                if not self._ready:
+                    if not self._timers:
+                        raise RuntimeError('deadlock: every task is waiting and nothing will wake it')
+                    when, _, h = heapq.heappop(self._timers)
+                    self._now = max(self._now, when)
+                    if not h.cancelled():
+                        self._ready.append(h)
+                    continue
+                h = self._ready.pop(0)
+                if not h.cancelled():
+                    h._run()
+            return fut.result()
+        finally:
+            asyncio.events._set_running_loop(old)
+
+
+def _mini_run(coro, debug=None):
+    loop = _MiniLoop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+
+
+def check_py(spec_json, code):
+    """Python-track exercises. Each test is [name, snippet, expected]: the snippet runs against the user's
+    namespace and the value of its last line is compared with expected (as JSON)."""
+    spec = json.loads(spec_json)
+    real_run, asyncio.run = asyncio.run, _mini_run
+    try:
+        return _check_py(spec, code)
+    finally:
+        asyncio.run = real_run
+
+
+def _check_py(spec, code):
+    ns = {'__name__': '__main__'}
+    res = {'tests': [], 'out': '', 'err': None}
+    _, out, err, _ = _capture(lambda: exec(compile(code, '<user>', 'exec'), ns))
+    res['out'] = out
+    if err:
+        res['err'] = err
+        return json.dumps(res)
+    for name, snippet, want in spec['tests']:
+        tns = dict(ns)
+
+        def go(snippet=snippet, tns=tns):
+            lines = snippet.strip().split('\n')
+            if len(lines) > 1:
+                exec(compile('\n'.join(lines[:-1]), '<test>', 'exec'), tns)
+            return eval(compile(lines[-1], '<test>', 'eval'), tns)
+        val, o, e, ms = _capture(go)
+        try:
+            got = json.loads(json.dumps(val, default=str))
+        except Exception:
+            got = repr(val)
+        res['tests'].append({'call': name, 'want': json.dumps(want)[:60], 'got': (e or json.dumps(got))[:80], 'ok': (not e) and got == want, 'ms': ms})
+        res['out'] += o
     return json.dumps(res)
 
 

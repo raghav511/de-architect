@@ -1,5 +1,5 @@
 {
-  "name": "Keystone · AI foundations (agents, evals, MCP)",
+  "name": "Data Architect · AI foundations (agents, evals, MCP)",
   "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
   "features": { "ghcr.io/devcontainers/features/github-cli:1": {} },
   "hostRequirements": { "cpus": 2, "memory": "8gb" },

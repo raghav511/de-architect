@@ -1,0 +1,387 @@
+@@meta
+id: p03
+n: 3
+title: Iterators and generators: process data bigger than memory
+goal: Understand the iteration protocol and write lazy generator pipelines that read, filter, chunk and deduplicate streams in constant memory. This is the Python behind "how would you process a file bigger than RAM", and the mental model for Spark's lazy evaluation and for Kafka consumers.
+hours: 5
+
+@@tickets
+P301 | learn | 0.75 | Chapter part 1: the iteration protocol and generators | You can explain what a `for` loop does with `iter()` and `next()`, and why a generator uses no memory for values it has not produced yet. | chapter:0-2
+P302 | learn | 0.75 | Chapter part 2: pipelines, itertools and batching | You can sketch a read → parse → filter → batch → write pipeline as chained generators and name the itertools function for each step. | chapter:3-5
+P303 | build | 1 | Exercises 1–3: take, chunk, read CSV lazily | All three pass, including the laziness tests on endless inputs. | py:1-3
+P304 | build | 1 | Exercises 4–5: runs, deduplicate a stream | Both pass, and you can say what makes the dedupe set grow without limit in production. | py:4-5
+P305 | practice | 0.5 | Predict-the-output drill | All six snippets answered before opening the answers, and every miss understood. | practice
+P306 | test | 0.5 | Quiz P3 | 80% or better. | quiz
+P307 | talk | 0.5 | Interview set P3 | 5 of 6 answered out loud and ticked. | interview
+
+@@readings
+- **Python Distilled**, chapter 6 (generators). Short and precise: `yield`, `yield from`, generator pipelines.
+- **Fluent Python** (2nd ed.), chapter 17 (iterators, generators and classic coroutines). Read 17.1–17.9.
+- [itertools](https://docs.python.org/3/library/itertools.html). Skim the table at the top; read `islice`, `chain`, `groupby`, `accumulate` and `batched` closely.
+- [csv module](https://docs.python.org/3/library/csv.html). `DictReader` and `DictWriter` accept any iterable of lines.
+- [David Beazley: Generator Tricks for Systems Programmers](https://www.dabeaz.com/generators/). The classic talk on log-processing pipelines built from generators. Read the slides for parts 1–3.
+
+@@chapter
+## P3.1 What a for loop really does
+
+Every `for` loop runs the **iteration protocol**:
+
+```python
+for row in rows:          # what Python actually does:
+    handle(row)           #   it = iter(rows)
+                          #   while True:
+                          #       try: row = next(it)
+                          #       except StopIteration: break
+                          #       handle(row)
+```
+
+- An **iterable** is anything you can loop over: lists, dicts, strings, files, generators. `iter(x)` gives an iterator.
+- An **iterator** produces values one at a time with `next()` and raises `StopIteration` when it runs out. It remembers where it is.
+
+A list is an iterable but not an iterator: you can loop over it many times. A file object and a generator *are* iterators: once consumed, they are empty.
+
+```python
+it = iter([10, 20])
+next(it)   # 10
+next(it)   # 20
+next(it)   # StopIteration
+```
+
+## P3.2 Generators: functions that pause
+
+A function containing `yield` is a **generator function**. Calling it runs nothing; it returns a generator object. Each `next()` runs the body until the next `yield`, hands out that value, and **pauses** with all local variables intact.
+
+```python
+def read_lines(path):
+    print("opening")
+    with open(path) as f:
+        for line in f:
+            yield line.rstrip("\n")
+    print("closed")
+
+g = read_lines("trips.log")   # prints nothing yet
+next(g)                       # prints "opening", returns line 1
+next(g)                       # returns line 2: no reopening, no re-reading
+```
+
+```
+caller          generator
+next(g)  ─────> runs until yield ──┐
+         <───── value 1 ───────────┘   (paused here, locals kept)
+next(g)  ─────> resumes after yield, runs to the next yield
+         <───── value 2
+```
+
+Memory is the point: a generator holds one value at a time, so it can describe a billion rows, or an endless stream, in a few hundred bytes.
+
+**Generator expressions** are the lazy twin of list comprehensions: round brackets instead of square ones.
+
+```python
+squares = [x * x for x in range(10**8)]   # builds a huge list: gigabytes
+squares = (x * x for x in range(10**8))   # builds nothing until consumed
+total = sum(x * x for x in range(10**8))  # constant memory
+```
+
+## P3.3 The "used once" trap
+
+Generators can be consumed only once. This bites in real code:
+
+```python
+rows = (parse(l) for l in open("trips.csv"))
+n = sum(1 for _ in rows)        # consumes everything
+fares = [r["fare"] for r in rows]   # [] : nothing left
+```
+
+Rules of thumb:
+
+- If you need the data twice, either materialise it once (`list(...)`, if it fits) or restart from the source.
+- Never call `len()` on a generator; it has none.
+- Functions that receive "an iterable" should loop over it **once**. If a function needs two passes, it should say so, or take a list.
+
+## P3.4 Generator pipelines
+
+Chain small generators, each doing one job, like Unix pipes. Nothing runs until the last stage pulls a value; then each row flows through every stage before the next row is read.
+
+```
+file ──> read_lines ──> parse ──> only_completed ──> chunked(1000) ──> write_batch
+         (one line)    (dict)    (filter)            (list of 1000)    (database)
+```
+
+```python
+def parse(lines):
+    for line in lines:
+        trip_id, city, status, fare = line.split(",")
+        yield {"id": int(trip_id), "city": city, "status": status, "fare": float(fare)}
+
+def only_completed(trips):
+    return (t for t in trips if t["status"] == "completed")
+
+pipeline = only_completed(parse(read_lines("trips.csv")))
+for batch in chunked(pipeline, 1000):
+    write_batch(batch)
+```
+
+Memory stays flat no matter how big the file is: at most one line plus one batch is in memory. This is the shape of Spark's **lazy evaluation** too: transformations build a plan, and nothing runs until an action (`count`, `write`) pulls data through it. A Kafka consumer loop is the same pattern with an endless source.
+
+`yield from other_generator()` hands out everything another generator produces; useful for reading several files as one stream.
+
+## P3.5 itertools you will actually use
+
+```python
+from itertools import islice, chain, groupby, accumulate, count
+
+list(islice(rows, 5))                 # first 5 items: LIMIT 5
+chain(file_a_rows, file_b_rows)       # one stream from many: UNION ALL
+accumulate([1, 2, 3])                 # 1, 3, 6: running total
+count(1)                              # 1, 2, 3, ... forever
+
+for city, grp in groupby(sorted_rows, key=lambda r: r["city"]):
+    print(city, sum(1 for _ in grp))  # groups CONSECUTIVE equal keys only
+```
+
+The `groupby` warning matters: it groups **consecutive** equal keys, so unsorted input gives repeated groups. That is a feature when you want runs (online/offline streaks, sessions), and a bug when you wanted SQL's `GROUP BY`. For a true group-by, sort first or use a dict.
+
+Python 3.12 added `itertools.batched(iterable, n)`, which yields tuples of n. Exercise 2 has you write it yourself, because interviewers ask.
+
+## P3.6 Batching and chunking
+
+Almost every external system is faster in batches: one database insert of 1,000 rows instead of 1,000 inserts; one API call with 100 ids; one Parquet file of 128 MB instead of 10,000 tiny ones.
+
+```python
+def chunked(iterable, size):
+    buf = []
+    for x in iterable:
+        buf.append(x)
+        if len(buf) == size:
+            yield buf
+            buf = []
+    if buf:
+        yield buf          # the last, smaller batch: easy to forget
+```
+
+Choosing the size is a trade-off: bigger batches mean fewer round trips but more memory and a bigger retry when one fails. Start with 500–5,000 rows or a few MB, and measure.
+
+@@lab
+## Exercises 1–3 (1 hour)
+
+1. **Take the first n.** `itertools.islice`; works on endless input.
+2. **Chunk a stream.** A generator with a buffer; do not forget the last partial chunk.
+3. **Read CSV lines lazily.** `csv.DictReader` on any iterable of lines; quoted commas must work.
+
+## Exercises 4–5 (1 hour)
+
+4. **Runs of the same value.** `itertools.groupby`, which groups consecutive keys.
+5. **Deduplicate an endless stream.** A seen-set and `yield`. Then think: in production the seen-set grows forever. DE 5 fixes this with a time window (watermark).
+
+## On your Mac (optional, 20 minutes)
+
+See the memory difference. Save as `lazy.py` and run it:
+
+```python
+import tracemalloc
+
+def eager(n):
+    return sum([x * x for x in range(n)])
+
+def lazy(n):
+    return sum(x * x for x in range(n))
+
+for f in (eager, lazy):
+    tracemalloc.start()
+    f(2_000_000)
+    _, peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+    print(f"{f.__name__}: peak {peak / 1e6:.1f} MB")
+```
+
+The eager version's peak grows with n; the lazy one stays near zero.
+
+@@practice
+## Predict the output (30 minutes)
+
+**1.**
+```python
+g = (x * 2 for x in range(3))
+print(sum(g), sum(g))
+```
+<details><summary>Answer</summary>
+
+`6 0`. The first `sum` consumes the generator; the second finds it empty.
+
+</details>
+
+**2.**
+```python
+def gen():
+    print("start")
+    yield 1
+    print("end")
+g = gen()
+print("made")
+print(next(g))
+```
+<details><summary>Answer</summary>
+
+`made`, then `start`, then `1`. Calling a generator function runs nothing. "end" is never printed because nobody asked for a second value.
+
+</details>
+
+**3.**
+```python
+from itertools import groupby
+data = ["a", "a", "b", "a"]
+print([(k, len(list(g))) for k, g in groupby(data)])
+```
+<details><summary>Answer</summary>
+
+`[('a', 2), ('b', 1), ('a', 1)]`. groupby groups consecutive equal items only.
+
+</details>
+
+**4.**
+```python
+it = iter([1, 2, 3])
+for x in it:
+    if x == 1:
+        next(it)
+    print(x)
+```
+<details><summary>Answer</summary>
+
+`1` then `3`. The `next(it)` inside the loop consumes 2, so the loop's next value is 3.
+
+</details>
+
+**5.**
+```python
+def chunks(xs, n):
+    for i in range(0, len(xs), n):
+        yield xs[i:i + n]
+print(list(chunks([1, 2, 3, 4, 5], 2)))
+```
+<details><summary>Answer</summary>
+
+`[[1, 2], [3, 4], [5]]`. This version needs `len` and slicing, so it works on lists but not on generators. Exercise 2 asks for one that works on any iterable.
+
+</details>
+
+**6.**
+```python
+nums = [1, 2, 3]
+sq = (n * n for n in nums)
+nums.append(4)
+print(list(sq))
+```
+<details><summary>Answer</summary>
+
+`[1, 4, 9, 16]`. The generator reads `nums` lazily, so it sees the item appended before it was consumed.
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: py
+Q: What does calling a generator function do?
+A) Runs the whole body and returns a list
+B) Returns a generator object without running the body
+C) Runs until the first yield
+D) Raises StopIteration
+ANS: B
+WHY: The body starts on the first `next()`.
+---
+TYPE: mcq
+TAG: py
+Q: You need to process a 50 GB CSV on a laptop with 16 GB of RAM. Which design works?
+A) `rows = list(csv.DictReader(f))`, then process
+B) A generator pipeline: read lines lazily, parse, filter, write in batches
+C) `pandas.read_csv(path)` with default options
+D) Read the file twice to count rows first
+ANS: B
+WHY: Only the lazy pipeline keeps memory independent of the file size. (pandas can work with `chunksize`, which is the same idea.)
+---
+TYPE: fill
+TAG: py
+Q: To get the first 10 items of any iterator, use `itertools.____(it, 10)`.
+ANS: islice
+WHY: Slicing with `[:10]` only works on sequences such as lists.
+---
+TYPE: mcq
+TAG: py
+Q: `groupby` on unsorted rows by city gives repeated groups for the same city. Why?
+A) It is a bug in Python
+B) groupby only groups consecutive items with equal keys
+C) It needs a key function
+D) It sorts in reverse
+ANS: B
+WHY: Sort by the key first for SQL-style grouping, or use a dict.
+---
+TYPE: mcq
+TAG: py
+Q: Which Spark behaviour is closest to a Python generator pipeline?
+A) Caching
+B) Lazy evaluation: transformations build a plan and nothing runs until an action
+C) Broadcast joins
+D) Shuffles
+ANS: B
+WHY: Both describe the work first and pull data through only when a result is requested.
+---
+TYPE: fill
+TAG: py
+Q: A function that contains the keyword ____ is a generator function.
+ANS: yield
+WHY: `yield` makes the function pause and resume.
+---
+TYPE: mcq
+TAG: py
+Q: Why insert rows into a database in batches of about 1,000 rather than one at a time?
+A) Databases reject single rows
+B) Fewer network round trips and transactions; much higher throughput
+C) It uses less disk
+D) It avoids indexes
+ANS: B
+WHY: Per-call overhead dominates single-row inserts. Too large a batch costs memory and bigger retries.
+---
+TYPE: mcq
+TAG: py
+Q: What is wrong with `def stats(rows): return sum(1 for _ in rows), max(r["fare"] for r in rows)` when `rows` is a generator?
+A) Nothing
+B) The first pass consumes the generator, so `max` gets an empty sequence and raises ValueError
+C) `sum` cannot take a generator
+D) It is O(n²)
+ANS: B
+WHY: Generators are single-use. Compute both in one loop, or take a list.
+---
+TYPE: short
+TAG: py
+Q: Explain the difference between an iterable and an iterator, with one example of each.
+MODEL: An iterable can produce an iterator through `iter()`; you can loop over it again and again (a list, a dict, a string). An iterator produces values with `next()`, remembers its position and is used up after one pass (a generator, a file object, `iter([1, 2])`). Every iterator is iterable, but a list is not an iterator.
+---
+TYPE: short
+TAG: py
+Q: Your streaming dedupe keeps a set of every event id it has seen. What goes wrong in production, and how do you fix it?
+MODEL: The set grows forever and the process eventually runs out of memory. Bound it: keep ids only for a time window (for example the last hour, based on event time, evicting older ids), use a TTL cache or an external store such as Redis with expiry, or rely on idempotent writes (MERGE on the key) downstream. Streaming engines do this with watermarks and state TTL.
+
+@@interview
+Q: How would you process a file that is larger than memory in Python?
+TAG: py
+A: Stream it. Iterate the file object line by line (or use `csv.DictReader`, or pandas with `chunksize`, or pyarrow's batch reader for Parquet), process each row or chunk with generator stages, and write results in batches. Only aggregates or a bounded window stay in memory. If the work needs global sorting or joins on data that does not fit, I would push it to a tool built for that: DuckDB, Spark or a database, rather than reinvent external sorting.
+---
+Q: What is a generator, and how is it different from returning a list?
+TAG: py
+A: A generator function uses `yield` to produce values one at a time, pausing between them with its local state kept. Returning a list computes and stores everything up front. A generator uses constant memory, starts producing immediately, and can represent endless streams, but it can be consumed only once and has no length or random access. I use generators for pipelines and streams, lists when I need several passes or indexing.
+---
+Q: Implement a function that yields fixed-size batches from any iterable.
+TAG: py
+A: Keep a buffer list; append each item; when the buffer reaches the batch size, yield it and start a new list; after the loop, yield the remainder if it is not empty. Validate that the size is at least 1. It works on generators because it never uses `len` or slicing. On Python 3.12+ `itertools.batched` does this, returning tuples. The classic mistakes are forgetting the final partial batch and clearing the yielded list in place instead of creating a new one.
+---
+Q: How does Python's laziness relate to Spark's lazy evaluation?
+TAG: py
+A: Both separate describing the work from doing it. A generator pipeline only runs when the consumer calls `next()`, and data flows through each stage one item at a time. Spark transformations build a logical plan; an action triggers the optimiser and execution. The difference is that Spark optimises the whole plan first (predicate pushdown, column pruning, join strategy) and runs it in parallel across partitions, while a Python generator chain runs exactly as written on one core.
+---
+Q: When is `itertools.groupby` the right tool and when is it a trap?
+TAG: py
+A: It groups consecutive items with equal keys. That is exactly right for runs and sessions on time-ordered data: online streaks, consecutive failures, sessionisation after sorting by user and time. It is a trap when people expect SQL `GROUP BY` on unsorted data, because each change of key starts a new group. For a true group-by, sort by the key first (O(n log n)) or accumulate into a dict (O(n)).
+---
+Q: A teammate's job reads a generator twice and the second result is always empty. Explain and fix.
+TAG: py
+A: Generators are single-use iterators; the first pass consumes it, so the second loop gets nothing. Fixes: compute everything in one pass, materialise once with `list()` if it fits, recreate the generator from its source for the second pass, or use `itertools.tee` for small look-aheads. I would also add a type hint (`Iterable` versus `Sequence`) so the function says whether it needs multiple passes.

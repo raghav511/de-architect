@@ -1,0 +1,424 @@
+@@meta
+id: p01
+n: 1
+title: Core types, and what each operation costs
+goal: Read and write everyday Python with confidence: names and mutability, lists, tuples, dicts and sets, and the collections module. You can say what any line costs in Big-O, which is the first follow-up question in every coding round.
+hours: 5
+
+@@tickets
+P101 | learn | 0.75 | Chapter part 1: objects, lists and dicts | You can draw what `b = a` does for a list, and say why `x in a_set` is fast and `x in a_list` is not. | chapter:0-3
+P102 | learn | 0.75 | Chapter part 2: Big-O, collections, strings and files | You can give the Big-O of a loop with a nested lookup, and name the collections type for counting, grouping and a sliding window. | chapter:4-6
+P103 | build | 1 | Exercises 1–3: dedupe, top words, group by | All three pass their tests in the editor, including the 12,000-value speed test. | py:1-3
+P104 | build | 1 | Exercises 4–5: tail of a stream, log level counts | Both pass, and you can explain why your tail keeps only n lines in memory. | py:4-5
+P105 | practice | 0.5 | Predict-the-output drill | All six snippets answered before opening the answers, and every miss understood. | practice
+P106 | test | 0.5 | Quiz P1 | 80% or better. | quiz
+P107 | talk | 0.5 | Interview set P1 | 5 of 6 answered out loud and ticked. | interview
+
+@@readings
+- **Python Crash Course** (3rd ed.), chapters 2–4 and 6: variables, lists, tuples, dictionaries. Read fast; do the "Try it yourself" boxes only where you hesitate.
+- **Python Distilled**, chapter 1 (Python basics) and the parts of chapter 4 on objects, identity and reference counting.
+- **Fluent Python** (2nd ed.), chapter 2 (sequences) and chapter 3 (dicts and sets). Harder; read 3.1–3.5 for how hash tables work.
+- [Python tutorial: data structures](https://docs.python.org/3/tutorial/datastructures.html). The official tour of lists, tuples, sets and dicts.
+- [Python wiki: time complexity](https://wiki.python.org/moin/TimeComplexity). The table interviewers expect you to know. Bookmark it.
+- [collections module](https://docs.python.org/3/library/collections.html). Read the sections on Counter, defaultdict and deque.
+
+@@chapter
+## P1.1 How this track works
+
+You can read Python. This track makes you fast and correct at writing it, because tier-1 loops test that directly: a live Python round (reshape JSON, parse logs, dedupe events), a DSA round in Python, and PySpark, which is Python with a distributed engine behind it.
+
+Each Python module has the same shape:
+
+1. **Chapter**, in two parts. Every idea comes with a small piece of code. Type the examples into the editor's terminal (the **Terminal** tab under the editor) rather than just reading them.
+2. **Exercises**, five per module, in the editor. They run real tests in your browser. Each is a small data engineering task, so the language and the job are learned together.
+3. **Predict-the-output drill**, where you read code and say what it prints. Reading precisely is half of debugging and most of code review.
+4. **Quiz and interview set.**
+
+Two habits for every exercise: say the Big-O of your solution before you run it, and when a test fails, read the "expected / got" line before you change anything.
+
+## P1.2 Names point at objects
+
+A Python variable is a **name tag on an object**, not a box holding a value. Assignment moves the tag; it never copies the object.
+
+```
+a = [1, 2, 3]          a ──┐
+b = a                  b ──┴──> [1, 2, 3]     one list, two names
+
+b.append(4)            a and b both see [1, 2, 3, 4]
+
+c = a.copy()           c ─────> [1, 2, 3, 4]  a new list
+```
+
+This explains most "my data changed by itself" bugs. If a function receives a list and calls `.append` on it, the caller's list changes, because there is only one list.
+
+Objects are either **mutable** (can change in place: `list`, `dict`, `set`, most objects you create) or **immutable** (cannot: `int`, `float`, `str`, `tuple`, `frozenset`). `x += 1` on an int does not change the int; it makes a new int and moves the name `x` to it.
+
+Two comparisons:
+
+- `a == b` asks: do they hold equal values?
+- `a is b` asks: are they the same object? Use `is` only for `None` (`if x is None`).
+
+```python
+a = [1, 2]; b = [1, 2]
+a == b   # True: equal values
+a is b   # False: two different lists
+```
+
+**Copies.** `list(a)`, `a.copy()` and `a[:]` make a *shallow* copy: a new outer list, but the items inside are shared. For a list of dicts that matters: changing `copy[0]["fare"]` changes the original dict too. `copy.deepcopy` copies everything, slowly.
+
+## P1.3 Lists and tuples, and what they cost
+
+A **list** is a resizable array of references. Fast at the end, slow at the front.
+
+| Operation | Cost | Why |
+|---|---|---|
+| `xs[i]`, `xs[i] = v` | O(1) | jump straight to slot i |
+| `xs.append(v)`, `xs.pop()` | O(1) amortised | the end has spare room; occasionally it grows |
+| `xs.insert(0, v)`, `xs.pop(0)` | O(n) | every other item shifts one place |
+| `v in xs`, `xs.index(v)` | O(n) | scans from the start |
+| `xs[a:b]` | O(b − a) | slicing **copies** |
+| `xs.sort()`, `sorted(xs)` | O(n log n) | Timsort, stable |
+| `len(xs)` | O(1) | stored, not counted |
+
+"Amortised O(1)" means: most appends are instant, and the occasional resize (copying everything to a bigger array) is rare enough that the average stays constant.
+
+A **tuple** is an immutable list: `point = (12.97, 77.59)`. Use it for fixed-size records and as a dict key (a list cannot be a key, because it can change). Unpacking is everywhere in good Python:
+
+```python
+lat, lon = point
+for i, trip in enumerate(trips):      # index and item
+for city, n in counts.items():        # key and value
+first, *rest = [1, 2, 3]              # first = 1, rest = [2, 3]
+```
+
+## P1.4 Dicts and sets: the hash table you use every day
+
+A **dict** maps keys to values using a hash table. Python computes `hash(key)`, which points to a slot, so a lookup does not scan anything.
+
+```
+hash("Pune")  ──> slot 5 ──> ("Pune", 120)
+hash("Goa")   ──> slot 2 ──> ("Goa", 40)
+
+d["Pune"]  : hash, jump to slot 5, compare key, done.  O(1) on average
+```
+
+| Operation | Cost |
+|---|---|
+| `d[k]`, `d[k] = v`, `k in d`, `del d[k]` | O(1) average |
+| iterate `d`, `d.items()` | O(n) |
+| `s.add(x)`, `x in s` (set) | O(1) average |
+| `a & b`, `a \| b` (set intersection, union) | O(len(a) + len(b)) |
+
+Keys must be **hashable**: immutable things like `str`, `int`, `tuple`. Since Python 3.7, dicts keep **insertion order**.
+
+Useful methods:
+
+```python
+d.get("Delhi", 0)                  # default instead of KeyError
+d.setdefault("Delhi", []).append(t)  # create the list the first time
+{**defaults, **overrides}          # merge; right side wins
+```
+
+A **set** is a dict with only keys: membership and deduplication. The single most important performance habit in Python interviews is this: **if you are checking `x in something` inside a loop, `something` should be a set or dict.** A list there turns O(n) into O(n²). Exercise 1 makes you feel the difference.
+
+## P1.5 Big-O in ten minutes
+
+Big-O describes how the work grows with the input size n, ignoring constants. You need five classes:
+
+```
+O(1)        dict lookup, list append          flat
+O(log n)    binary search, heap push          barely grows
+O(n)        one pass over the data            grows with the data
+O(n log n)  sorting                           a bit faster than linear
+O(n²)       a loop inside a loop over n       explodes: 100k rows = 10 billion steps
+```
+
+How to count: walk the code from the inside out and multiply nested loops.
+
+```python
+for t in trips:                 # n times
+    if t["driver_id"] in ids:   #   ids is a list: O(m) each  -> O(n·m)
+        ...                     #   ids is a set:  O(1) each  -> O(n)
+```
+
+Also say the **space** cost: how much extra memory you use. A set of seen ids is O(n) space; reading a file line by line is O(1).
+
+In an interview, state the time and space of your first idea, then improve it. "This is O(n²) because of the nested scan; a set makes it O(n) time and O(n) space" is exactly the sentence interviewers listen for.
+
+## P1.6 The collections module
+
+Four types that replace ten lines of code each:
+
+```python
+from collections import Counter, defaultdict, deque, namedtuple
+
+Counter(["a", "b", "a"])            # Counter({'a': 2, 'b': 1})
+Counter(words).most_common(3)       # top 3 [(word, n), ...]
+
+groups = defaultdict(list)          # missing key -> new empty list
+for t in trips:
+    groups[t["city"]].append(t)
+
+window = deque(maxlen=3)            # keeps only the newest 3
+for x in stream:
+    window.append(x)                # O(1) at both ends
+
+q = deque(); q.append(x); q.popleft()   # a queue: O(1), unlike list.pop(0)
+
+Trip = namedtuple("Trip", "id city fare")   # a tuple with field names
+```
+
+Map them to SQL in your head: `Counter` is `GROUP BY ... COUNT(*)`, `defaultdict(list)` is grouping rows, `deque(maxlen=n)` is a sliding window.
+
+## P1.7 Strings and files
+
+Strings are immutable, so building one in a loop with `+=` creates a new string each time. Collect parts in a list and `"".join(parts)` once.
+
+```python
+line.strip().split(",")        # remove whitespace at the ends, split on commas
+line.split(maxsplit=2)         # at most 3 parts: keeps the message intact
+f"{city}: {fare:.2f}"          # f-strings for formatting
+",".join(["a", "b"])           # 'a,b'
+```
+
+Reading a file **line by line** keeps memory flat, whatever the file size:
+
+```python
+with open("trips.log", encoding="utf-8") as f:
+    for line in f:             # one line at a time, never the whole file
+        ...
+```
+
+`f.read()` or `f.readlines()` loads everything into memory: fine for a config file, wrong for a 20 GB log. The `with` block closes the file even if an error happens (module P5 shows how that works).
+
+@@lab
+## Exercises 1–3 (1 hour)
+
+Open each exercise from Today or from **Coding → Python**. Before you run, say the Big-O out loud.
+
+1. **Remove duplicates, keep order.** The speed test fails if you check membership in a list. Fix it with a set.
+2. **Top words.** `Counter` plus a sort with a two-part key.
+3. **Group rows by a field.** `defaultdict(list)`.
+
+## Exercises 4–5 (1 hour)
+
+4. **Tail of a stream.** The input can be a generator, so you cannot slice it. `deque(maxlen=n)`.
+5. **Count log levels.** Real logs contain blank and broken lines. Count them instead of crashing.
+
+## On your Mac (optional, 20 minutes)
+
+Feel the O(n²) difference at real scale. Save this as `dedupe_speed.py` and run `python3 dedupe_speed.py`:
+
+```python
+import time
+
+def with_list(xs):
+    out = []
+    for x in xs:
+        if x not in out:
+            out.append(x)
+    return out
+
+def with_set(xs):
+    seen, out = set(), []
+    for x in xs:
+        if x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
+
+for n in (1_000, 10_000, 40_000):
+    xs = list(range(n)) * 2
+    for f in (with_list, with_set):
+        t0 = time.perf_counter(); f(xs)
+        print(f"{f.__name__:10} n={n:>6}: {time.perf_counter() - t0:.3f}s")
+```
+
+Each time n grows 4x, the list version gets about 16x slower. That is O(n²).
+
+@@practice
+## Predict the output (30 minutes)
+
+Write down your answer for each snippet first, then open the answer. Run any you got wrong in the editor's terminal.
+
+**1.**
+```python
+a = [1, 2]
+b = a
+b.append(3)
+print(a)
+```
+<details><summary>Answer</summary>
+
+`[1, 2, 3]`. `b = a` copies the name tag, not the list. There is one list with two names.
+
+</details>
+
+**2.**
+```python
+rows = [{"fare": 10}] * 3
+rows[0]["fare"] = 99
+print([r["fare"] for r in rows])
+```
+<details><summary>Answer</summary>
+
+`[99, 99, 99]`. `* 3` repeats the reference to the same dict three times. Use `[{"fare": 10} for _ in range(3)]` for three separate dicts.
+
+</details>
+
+**3.**
+```python
+x = 5
+y = x
+x += 1
+print(y)
+```
+<details><summary>Answer</summary>
+
+`5`. Ints are immutable; `x += 1` makes a new int and moves `x`. `y` still points at 5.
+
+</details>
+
+**4.**
+```python
+d = {}
+d[(1, 2)] = "ok"
+d[[1, 2]] = "no"
+```
+<details><summary>Answer</summary>
+
+`TypeError: unhashable type: 'list'` on the third line. A tuple can be a key; a list cannot, because it can change after it is stored.
+
+</details>
+
+**5.**
+```python
+s = set([3, 1, 3, 2])
+print(len(s), 3 in s)
+```
+<details><summary>Answer</summary>
+
+`3 True`. Sets drop duplicates. Do not rely on the order a set prints in.
+
+</details>
+
+**6.**
+```python
+xs = [1, 2, 3, 4]
+ys = xs[1:3]
+ys[0] = 99
+print(xs)
+```
+<details><summary>Answer</summary>
+
+`[1, 2, 3, 4]`. Slicing makes a new list, so changing `ys` leaves `xs` alone. (NumPy and pandas slices behave differently: they can be views.)
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: py
+Q: `ids` is a list of 100,000 driver ids, and you loop over 1 million trips checking `t["driver_id"] in ids`. What is the problem and the fix?
+A) Nothing; `in` is always O(1)
+B) Each check scans the list, O(n·m) overall; convert ids to a set first
+C) Python lists are sorted, so `in` uses binary search
+D) Use `ids.index()` instead of `in`
+ANS: B
+WHY: Membership in a list is a linear scan. A set or dict makes each check O(1) on average.
+---
+TYPE: mcq
+TAG: py
+Q: Which operation on a Python list is O(n)?
+A) `xs.append(v)`
+B) `xs[-1]`
+C) `xs.pop(0)`
+D) `len(xs)`
+ANS: C
+WHY: Removing from the front shifts every remaining item. Use `collections.deque` for a queue.
+---
+TYPE: mcq
+TAG: py
+Q: Why can a tuple be a dict key but a list cannot?
+A) Tuples are faster
+B) Keys must be hashable, which requires the value not to change; lists are mutable
+C) Lists are too long
+D) Only strings can be keys
+ANS: B
+WHY: If a key could change after insertion, its hash would change and the dict could no longer find it.
+---
+TYPE: fill
+TAG: py
+Q: To keep only the newest n items of a stream in O(1) per item, use `collections.____(maxlen=n)`.
+ANS: deque
+WHY: A deque with maxlen drops the oldest item automatically when a new one arrives.
+---
+TYPE: mcq
+TAG: py
+Q: What does `rows = [{}] * 3; rows[0]["a"] = 1` leave in `rows`?
+A) `[{"a": 1}, {}, {}]`
+B) `[{"a": 1}, {"a": 1}, {"a": 1}]`
+C) An error
+D) `[{}, {}, {}]`
+ANS: B
+WHY: Multiplying a list repeats references. All three slots point to the same dict.
+---
+TYPE: mcq
+TAG: py
+Q: A function sorts 1 million rows and then does a dict lookup for each. What is its time complexity?
+A) O(n)
+B) O(n log n)
+C) O(n²)
+D) O(log n)
+ANS: B
+WHY: The sort dominates: O(n log n). n lookups at O(1) each add O(n), which is smaller.
+---
+TYPE: fill
+TAG: py
+Q: `a == b` compares values; `a ____ b` checks whether both names point to the same object.
+ANS: is
+WHY: Use `is` for `None` checks. Using it for strings or numbers gives surprising results.
+---
+TYPE: mcq
+TAG: py
+Q: You need to read a 30 GB log and count ERROR lines. Which is right?
+A) `lines = open(p).readlines()` then loop
+B) `for line in open(p): ...` inside a `with` block
+C) `text = open(p).read()` then `text.count("ERROR")`
+D) Load it into a list of dicts first
+ANS: B
+WHY: Iterating a file object reads one line at a time, so memory stays flat. The others load all 30 GB.
+---
+TYPE: short
+TAG: py
+Q: Explain the difference between a shallow copy and a deep copy of a list of dicts, and when the difference causes a bug.
+MODEL: A shallow copy (`list(a)`, `a.copy()`, `a[:]`) creates a new outer list but the dicts inside are the same objects, so changing `copy[0]["fare"]` also changes the original. A deep copy (`copy.deepcopy`) copies the dicts too. The bug appears when a cleaning step "copies" a batch, edits records, and the raw batch kept for audit or retry is silently changed as well.
+---
+TYPE: short
+TAG: py
+Q: Give the Big-O of this code and improve it: `for a in xs: for b in ys: if a == b: out.append(a)`.
+MODEL: O(len(xs) · len(ys)) time. Build `s = set(ys)` once (O(m)), then `out = [a for a in xs if a in s]` is O(n + m) time with O(m) extra space. It is the same change as a nested-loop join becoming a hash join.
+
+@@interview
+Q: What is the time complexity of looking up a key in a Python dict, and how does it work?
+TAG: py
+A: O(1) on average. A dict is a hash table: Python computes `hash(key)`, uses it to pick a slot, and compares the key stored there. Collisions are resolved by probing other slots, so the worst case is O(n), but with a good hash and the automatic resizing that keeps the table partly empty, lookups stay constant on average. That is why keys must be hashable (immutable): if a key changed after insertion, its slot would be wrong.
+---
+Q: You have two lists of 10 million ids each. How do you find ids in both, and what does it cost?
+TAG: py
+A: Convert one list to a set (O(n) time, O(n) memory), then keep the items of the other that are in the set: O(n + m) overall. `set(a) & set(b)` does the same if order and duplicates do not matter. The nested-loop version is O(n·m), 10^14 comparisons, which never finishes. If the data does not fit in memory, sort both and merge, or push the work into a database or Spark join.
+---
+Q: Your pipeline's memory keeps growing while reading a large file. What do you look for?
+TAG: py
+A: Anything that holds the whole file: `read()`, `readlines()`, `list(...)` around an iterator, or appending every row to a list "for later". I iterate the file object line by line, process and write in batches, and keep only what is needed (counts, a set of keys with a time limit). Then I measure with `tracemalloc` or by watching resident memory while it runs.
+---
+Q: When would you use a tuple instead of a list?
+TAG: py
+A: For fixed-size records whose fields mean different things, like `(lat, lon)` or `(city, day)`, and whenever I need it as a dict key or set member, which requires immutability. Lists are for variable-length collections of the same kind of thing. Tuples also signal intent: this should not change.
+---
+Q: What is the difference between `Counter`, `defaultdict` and a plain dict, and when do you reach for each?
+TAG: py
+A: A plain dict raises `KeyError` on a missing key, so you use `get` or `setdefault`. `defaultdict(factory)` creates the value on first access, which is ideal for grouping (`defaultdict(list)`) or summing (`defaultdict(int)`). `Counter` is a dict of counts with extras: `most_common(k)`, adding and subtracting counters. I use Counter for frequency questions, defaultdict for grouping, and a plain dict when a missing key should be an error.
+---
+Q: Explain amortised O(1) for `list.append`.
+TAG: py
+A: A list is an array with spare capacity. Most appends write into the spare slot in constant time. When it fills, Python allocates a larger array (roughly 1.125x plus a little) and copies everything: an O(n) step. Because each resize grows the capacity in proportion to the size, those expensive copies are rare, and averaged over all appends the cost per append is constant.

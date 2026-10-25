@@ -1,0 +1,426 @@
+@@meta
+id: p02
+n: 2
+title: Functions you can reuse: arguments, closures, comprehensions and decorators
+goal: Write small functions that compose: the right argument style, closures that remember state, comprehensions that stay readable, multi-key sorts, and decorators such as retry and timing. These are the building blocks of every agent harness in AI 1 and every pipeline step after it.
+hours: 5
+
+@@tickets
+P201 | learn | 0.75 | Chapter part 1: functions as values, arguments, scope | You can explain the mutable default argument trap and what `nonlocal` is for. | chapter:0-2
+P202 | learn | 0.75 | Chapter part 2: comprehensions, sort keys, decorators | You can write a decorator with `functools.wraps` from memory and sort by three keys with one key function. | chapter:3-6
+P203 | build | 1 | Exercises 1–3: sort keys, a closure counter, a pipeline | All three pass their tests in the editor. | py:1-3
+P204 | build | 1 | Exercises 4–5: a retry decorator, rule-based cleaning | Both pass, and your decorator keeps the wrapped function's name. | py:4-5
+P205 | practice | 0.5 | Predict-the-output drill | All six snippets answered before opening the answers, and every miss understood. | practice
+P206 | test | 0.5 | Quiz P2 | 80% or better. | quiz
+P207 | talk | 0.5 | Interview set P2 | 5 of 6 answered out loud and ticked. | interview
+
+@@readings
+- **Python Crash Course** (3rd ed.), chapter 8 (functions). Quick review of arguments and return values.
+- **Python Distilled**, chapter 5 (functions): default arguments, `*args` and `**kwargs`, scoping, closures, decorators. The best concise treatment.
+- **Fluent Python** (2nd ed.), chapter 7 (functions as first-class objects) and chapter 9 (decorators and closures).
+- [Sorting how-to](https://docs.python.org/3/howto/sorting.html). Key functions, stability, and sorting by several fields.
+- [functools](https://docs.python.org/3/library/functools.html). Read `wraps`, `partial` and `lru_cache`.
+- [Functional programming how-to](https://docs.python.org/3/howto/functional.html). Comprehensions, generators and higher-order functions in one place.
+
+@@chapter
+## P2.1 Functions are values
+
+In Python a function is an object like any other. You can store it in a variable, put it in a dict, pass it to another function and return it from one.
+
+```python
+def to_upper(s):
+    return s.upper()
+
+f = to_upper           # no brackets: the function itself, not a call
+f("pune")              # 'PUNE'
+
+rules = {"city": str.title, "fare": float}   # a dict of functions
+rules["fare"]("12.5")  # 12.5
+```
+
+A function that takes or returns a function is called **higher-order**. You already use them: `sorted(xs, key=...)`, `map`, `filter`, and in PySpark `df.withColumn("x", F.upper("city"))`. Agent harnesses work the same way: a dict from tool name to Python function, and the loop calls `tools[name](**args)`.
+
+## P2.2 Arguments, and the mutable default trap
+
+```python
+def load(path, fmt="parquet", *, overwrite=False, **options):
+    ...
+load("s3://lake/trips", "csv", overwrite=True, sep="|")
+```
+
+| Kind | Example | Notes |
+|---|---|---|
+| positional | `path` | must be given |
+| default | `fmt="parquet"` | optional |
+| `*args` | `def f(*args)` | extra positional arguments as a tuple |
+| keyword-only | after `*` | must be named: `overwrite=True` |
+| `**kwargs` | `**options` | extra named arguments as a dict |
+
+Keyword-only arguments (after a bare `*`) are a good habit for flags: `load(p, True)` is unreadable; `load(p, overwrite=True)` is not.
+
+**The trap.** Default values are evaluated **once**, when the function is defined, not on every call:
+
+```python
+def add_row(row, batch=[]):     # one list, shared by every call
+    batch.append(row)
+    return batch
+
+add_row(1)   # [1]
+add_row(2)   # [1, 2]   surprise
+```
+
+The fix is the `None` idiom:
+
+```python
+def add_row(row, batch=None):
+    if batch is None:
+        batch = []
+    batch.append(row)
+    return batch
+```
+
+## P2.3 Scope and closures
+
+Python looks names up in four places, in order: **L**ocal, **E**nclosing function, **G**lobal (the module), **B**uilt-ins. That is the LEGB rule.
+
+A function defined inside another can read the outer function's variables, and it keeps them alive after the outer function has returned. That is a **closure**:
+
+```python
+def make_multiplier(k):
+    def mul(x):
+        return x * k        # k comes from the enclosing scope
+    return mul
+
+double = make_multiplier(2)
+double(21)                   # 42: mul still remembers k = 2
+```
+
+To **assign** to an enclosing variable (not just read it), declare it `nonlocal`; otherwise Python treats it as a new local and raises `UnboundLocalError`:
+
+```python
+def make_counter():
+    n = 0
+    def nxt():
+        nonlocal n
+        n += 1
+        return n
+    return nxt
+```
+
+Closures are how you configure behaviour without a class: a retry policy, a rate limiter, a connection factory. Decorators (P2.6) are built from them.
+
+## P2.4 Comprehensions, and when not to use them
+
+A comprehension builds a collection from an iterable in one expression:
+
+```python
+fares  = [t["fare"] for t in trips if t["status"] == "completed"]   # list
+by_id  = {t["id"]: t for t in trips}                                 # dict
+cities = {t["city"] for t in trips}                                  # set
+total  = sum(t["fare"] for t in trips)                               # generator, no list built
+```
+
+Read it left to right as SQL: `SELECT expr FROM iterable WHERE condition`.
+
+They are faster than the equivalent `for` + `append` loop and usually clearer. Stop when they stop being clear: two `for` clauses are fine, three are not, and anything with side effects (`[print(x) for x in xs]`) should be a plain loop. If a comprehension needs a comment to explain it, write the loop.
+
+## P2.5 Sorting with key functions
+
+`sorted(iterable, key=f, reverse=False)` returns a new list; `list.sort()` sorts in place and returns `None` (a common bug: `xs = xs.sort()` sets `xs` to `None`).
+
+The key function maps each item to the value to compare. Return a **tuple** to sort by several fields; tuples compare item by item:
+
+```python
+sorted(trips, key=lambda t: (t["city"], -t["fare"], t["id"]))
+#                            city A→Z,   fare high→low, id low→high
+```
+
+Negating a number flips its direction inside one ascending sort. For strings you cannot negate, sort twice using **stability** (equal items keep their order): sort by the secondary key first, then by the primary.
+
+```python
+trips.sort(key=lambda t: t["name"], reverse=True)   # secondary: name Z→A
+trips.sort(key=lambda t: t["city"])                 # primary: city A→Z
+```
+
+`operator.itemgetter("city", "fare")` is a faster alternative to a lambda for plain field access.
+
+## P2.6 Decorators
+
+A decorator is a function that takes a function and returns a new function that wraps it. `@timed` above a `def` is shorthand for `f = timed(f)`.
+
+```
+@timed                         call f(x)
+def f(x): ...          ──>     wrapper(x):  start clock
+                                            result = original f(x)
+                                            print time
+                                            return result
+```
+
+```python
+import functools, time
+
+def timed(fn):
+    @functools.wraps(fn)                 # keep fn's name and docstring
+    def wrapper(*args, **kwargs):        # accept any arguments
+        t0 = time.perf_counter()
+        try:
+            return fn(*args, **kwargs)
+        finally:
+            print(f"{fn.__name__} took {time.perf_counter() - t0:.3f}s")
+    return wrapper
+```
+
+A decorator **with arguments**, like `@retry(3)`, needs one more layer: `retry(3)` runs first and returns the decorator.
+
+```python
+def retry(times):              # layer 1: takes the settings
+    def deco(fn):              # layer 2: takes the function
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):   # layer 3: runs on every call
+            ...
+        return wrapper
+    return deco
+```
+
+Without `functools.wraps`, every decorated function is called `wrapper` in logs, tracebacks and Airflow task names, which makes debugging miserable. Interviewers check for it.
+
+Decorators you will meet: `@functools.lru_cache` (memoise), `@property` (P4), `@dataclass` (P4), `@contextmanager` (P5), `@pytest.fixture` (P5), `@task` and `@dag` in Airflow, and `@tool` in agent frameworks.
+
+## P2.7 Pure functions make pipelines safe
+
+A **pure** function returns a result that depends only on its inputs and changes nothing outside itself: no global updates, no mutating its arguments, no I/O.
+
+```python
+def clean(row):                    # pure: new dict, input untouched
+    return {**row, "city": row["city"].strip().title()}
+
+def clean_bad(row):                # impure: changes the caller's dict
+    row["city"] = row["city"].strip().title()
+    return row
+```
+
+Pure transformation steps give you what data engineering needs most: you can **rerun** them safely (idempotency), **test** them with a two-line assert, and run them in **parallel** (Spark ships your function to many machines). Keep I/O (reading, writing, calling APIs) at the edges of the pipeline and the logic in pure functions in the middle.
+
+@@lab
+## Exercises 1–3 (1 hour)
+
+1. **Sort by three keys.** One key function returning a tuple.
+2. **A counter made from a closure.** `nonlocal`, no globals.
+3. **Compose a pipeline.** `*funcs`, and an empty pipeline returns its input.
+
+## Exercises 4–5 (1 hour)
+
+4. **A retry decorator.** Three layers, `functools.wraps`, pass `*args` and `**kwargs` through, re-raise the last error.
+5. **Clean records with rules.** A dict comprehension; the input must not change (pure).
+
+## On your Mac (optional, 20 minutes)
+
+Use your `retry` decorator against a real flaky call. Save as `flaky.py`:
+
+```python
+import functools, random
+
+def retry(times):
+    ...   # paste your solution
+
+@retry(5)
+def fetch_page(n):
+    if random.random() < 0.6:
+        raise ConnectionError(f"page {n}: connection reset")
+    return f"page {n} ok"
+
+for n in range(5):
+    print(fetch_page(n))
+print(fetch_page.__name__)   # should print fetch_page, not wrapper
+```
+
+Run it a few times. Then add a `print` inside your wrapper to see each attempt, and think about what is missing for production: a delay between attempts (P5 exercise 5 adds backoff).
+
+@@practice
+## Predict the output (30 minutes)
+
+**1.**
+```python
+def add(x, acc=[]):
+    acc.append(x)
+    return acc
+add(1)
+print(add(2))
+```
+<details><summary>Answer</summary>
+
+`[1, 2]`. The default list is created once and shared by every call. Use `acc=None` and create the list inside.
+
+</details>
+
+**2.**
+```python
+fs = [lambda: i for i in range(3)]
+print([f() for f in fs])
+```
+<details><summary>Answer</summary>
+
+`[2, 2, 2]`. Each lambda looks up `i` when it is called, and by then the loop has finished with `i = 2`. Fix: `lambda i=i: i` captures the current value as a default.
+
+</details>
+
+**3.**
+```python
+n = 0
+def bump():
+    n += 1
+bump()
+```
+<details><summary>Answer</summary>
+
+`UnboundLocalError`. Assigning to `n` makes it local to `bump`, and it is read before it has a value. Use `global n` (rarely a good idea) or pass and return the value.
+
+</details>
+
+**4.**
+```python
+xs = [3, 1, 2]
+ys = xs.sort()
+print(ys)
+```
+<details><summary>Answer</summary>
+
+`None`. `list.sort()` sorts in place and returns nothing. Use `ys = sorted(xs)` for a new list.
+
+</details>
+
+**5.**
+```python
+def deco(fn):
+    def wrapper(*a):
+        return fn(*a) * 2
+    return wrapper
+
+@deco
+def three():
+    return 3
+print(three(), three.__name__)
+```
+<details><summary>Answer</summary>
+
+`6 wrapper`. The decorator doubles the result, and without `functools.wraps` the function's name is lost.
+
+</details>
+
+**6.**
+```python
+print(sorted(["b", "A", "c"]), sorted(["b", "A", "c"], key=str.lower))
+```
+<details><summary>Answer</summary>
+
+`['A', 'b', 'c'] ['A', 'b', 'c']`. Upper-case letters sort before lower-case ones by default, so `A` comes first in both. Try `["b", "a", "C"]`: the default gives `['C', 'a', 'b']`, the key gives `['a', 'b', 'C']`.
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: py
+Q: What does `def f(x, items=[])` risk?
+A) Nothing; a new list is made on every call
+B) The same list is shared by every call that uses the default, so data leaks between calls
+C) A syntax error
+D) The list is copied on every call, which is slow
+ANS: B
+WHY: Defaults are evaluated once at definition time. Use `items=None` and create the list inside.
+---
+TYPE: fill
+TAG: py
+Q: To assign to a variable of the enclosing function from an inner function, declare it `____`.
+ANS: nonlocal
+WHY: Without it, assignment creates a new local variable.
+---
+TYPE: mcq
+TAG: py
+Q: Why use `functools.wraps` in a decorator?
+A) It makes the function faster
+B) It keeps the wrapped function's name, docstring and other metadata
+C) It is required for decorators to work at all
+D) It retries the function
+ANS: B
+WHY: Otherwise logs, tracebacks and framework task names all show "wrapper".
+---
+TYPE: mcq
+TAG: py
+Q: Which key sorts trips by city A to Z, then fare highest first?
+A) `key=lambda t: (t["city"], t["fare"]), reverse=True`
+B) `key=lambda t: (t["city"], -t["fare"])`
+C) `key=lambda t: -t["fare"]`
+D) `key=(t["city"], -t["fare"])`
+ANS: B
+WHY: A tuple compares field by field; negating fare reverses only that field. Option A reverses both.
+---
+TYPE: mcq
+TAG: py
+Q: `@retry(3)` above a function definition. What runs first when the module is imported?
+A) The decorated function
+B) `retry(3)`, which returns a decorator, which is then called with the function
+C) The wrapper
+D) Nothing until the function is called
+ANS: B
+WHY: Decorator lines run at definition time. `@retry(3)` means `f = retry(3)(f)`.
+---
+TYPE: fill
+TAG: py
+Q: The rule Python uses to look up names, in order local, enclosing, global, built-in, is called ____.
+ANS: LEGB
+WHY: Local, Enclosing, Global, Built-in.
+---
+TYPE: mcq
+TAG: py
+Q: Which is the clearest way to total completed fares without building a list?
+A) `sum([t["fare"] for t in trips if t["ok"]])`
+B) `sum(t["fare"] for t in trips if t["ok"])`
+C) A for loop with `+=` and a print
+D) `reduce` with a lambda
+ANS: B
+WHY: A generator expression feeds `sum` one value at a time, with no intermediate list.
+---
+TYPE: mcq
+TAG: py
+Q: Why are pure functions valuable in data pipelines?
+A) They run faster
+B) They can be rerun, tested and parallelised safely because they change nothing outside themselves
+C) Python requires them
+D) They use less memory
+ANS: B
+WHY: Idempotent reruns, simple tests and Spark's distribution of your function all depend on it.
+---
+TYPE: short
+TAG: py
+Q: Write the skeleton of a decorator that takes an argument, such as `@timeout(5)`, and say what each layer receives.
+MODEL: `def timeout(seconds): def deco(fn): @functools.wraps(fn) def wrapper(*args, **kwargs): ... return fn(*args, **kwargs) return wrapper return deco`. The outer layer receives the setting (5), the middle layer receives the function being decorated, and the wrapper receives the call's arguments every time the function is called.
+---
+TYPE: short
+TAG: py
+Q: What does `[lambda: i for i in range(3)]` return when you call each lambda, and why?
+MODEL: Each returns 2. Closures capture variables, not values: all three lambdas refer to the same `i`, which is 2 when the loop ends. Capture the value with a default argument, `lambda i=i: i`.
+
+@@interview
+Q: Write a retry decorator with a configurable number of attempts, and tell me what you would add for production.
+TAG: py
+A: Three layers: `retry(times)` returns `deco(fn)`, which returns a `wrapper(*args, **kwargs)` decorated with `functools.wraps(fn)`. The wrapper loops `times` times, returns on success, remembers the last exception and re-raises it at the end. For production I add exponential backoff with jitter so clients do not retry in lockstep, retry only on transient errors (timeouts, 429s, 5xx) rather than every exception, a cap on total time, logging of each attempt, and idempotency on the server side so a retried write does not duplicate data.
+---
+Q: What is a closure, and where have you used one?
+TAG: py
+A: A function that remembers variables from the scope where it was defined, even after that scope has returned. Python keeps those variables alive in the function's cells. I use closures for configuration without a class: a decorator that remembers its settings, a callback that knows which table it writes to, or a factory that returns a pre-configured client function. If the state grows beyond one or two values, I switch to a class.
+---
+Q: Explain the mutable default argument problem. Have you seen it cause a real bug?
+TAG: py
+A: Default values are evaluated once, when the `def` runs, so a default list or dict is shared by every call. Any call that mutates it changes it for the next call. A typical bug: a helper `def add_error(msg, errors=[])` collects errors across unrelated pipeline runs in a long-lived worker, so reports show errors from earlier jobs. The fix is `errors=None` and creating the list inside. Linters such as Ruff flag it.
+---
+Q: When would you not use a list comprehension?
+TAG: py
+A: When it stops being readable (more than two `for` clauses or complex conditions), when the body has side effects such as writing or printing, when I need error handling per item, and when the result is huge and only consumed once, where a generator expression avoids building the list. Readability wins: the reviewer should understand it in one pass.
+---
+Q: How would you sort a list of records by date descending and then name ascending?
+TAG: py
+A: If the date is a `date` or a sortable ISO string, a single key cannot simply negate it, so I use stable sorting twice: first `sort(key=name)`, then `sort(key=date, reverse=True)`. Equal dates keep the name order from the first pass. If the date is a number such as a timestamp, one pass works: `key=lambda r: (-r.ts, r.name)`. Python's sort is stable Timsort, O(n log n).
+---
+Q: Why do data engineers care about functions being pure?
+TAG: py
+A: Pipelines are rerun constantly: backfills, retries, recovery after failure. If a transformation depends only on its input and has no side effects, rerunning it gives the same output, so the pipeline is idempotent. Pure functions are also trivial to unit test and safe to run in parallel, which is what Spark does with the functions in your transformations. I keep reads and writes at the edges and the business logic pure in the middle.

@@ -1,4 +1,4 @@
-/* Keystone user-journey tests (QA scenarios). node tools/flows.js [baseUrl] [filter]
+/* Data Architect user-journey tests (QA scenarios). node tools/flows.js [baseUrl] [filter]
    Each scenario runs in a fresh browser context and checks what a user would see. */
 const { chromium } = require(process.env.PW || 'playwright');
 const BASE = (process.argv[2] && /^http/.test(process.argv[2])) ? process.argv[2] : 'http://localhost:8811/';
@@ -261,7 +261,7 @@ async function T(name, fn, opt) {
     ok((await state(p)).done['a01:A101'], 'restore did not bring progress back');
     require('fs').writeFileSync('/tmp/bad.json', 'not json');
     await p.setInputFiles('input[type=file][accept="application/json"]', '/tmp/bad.json'); await p.waitForTimeout(300);
-    ok(/not a Keystone backup/.test(await text(p, '.toast')), 'bad file not rejected');
+    ok(/not a Data Architect backup/.test(await text(p, '.toast')), 'bad file not rejected');
   });
 
   await T('calendar: ics is valid and starts at study time', async p => {
@@ -344,6 +344,57 @@ async function T(name, fn, opt) {
     await go(p, '#/today');
     await p.click('[aria-label="Settings"]'); await p.fill('#st_start', '2026-10-22'); await p.click('.dialog button:has-text("Save")'); await p.waitForTimeout(300);
     ok((await state(p)).start === '2026-10-19', 'start not snapped: ' + (await state(p)).start);
+  });
+
+  await T('order: diagnostic first, Python woven between the AI modules', async p => {
+    await go(p, '#/today');
+    const mods = await p.evaluate(() => MODS.slice(0, 11).join(' '));
+    ok(mods === 's00 p01 p02 a01 p03 p04 a02 p05 p06 a03 s01', 'module order: ' + mods);
+    ok(/setup/i.test(await text(p, '.hero')), 'first step should be in Setup: ' + await text(p, '.hero'));
+  });
+
+  await T('python: solving the level-check tasks ticks the Setup step', async p => {
+    await go(p, '#/path/s00', 900);
+    ok(/Python level check/.test(await text(p, '#page')), 'level check missing on the Setup path');
+    const sols = await p.evaluate(() => DATA.py.filter(x => x.m === 's00').map(x => [x.id, x.sol]));
+    ok(sols.length === 6, 'expected 6 level-check tasks, got ' + sols.length);
+    for (const [id, sol] of sols) {
+      await hash(p, '#/py/' + id, 600);
+      await p.fill('textarea.code', sol);
+      await p.click('button.btn.pri:has-text("Run")');
+      await p.waitForFunction(() => { const v = document.querySelector('.verdict'); return v && v.style.display !== 'none' && /pass|Error/.test(v.textContent); }, null, { timeout: 120000 });
+      ok((await text(p, '.verdict')) === 'All checks pass', id + ' did not pass: ' + await text(p, '.out .body'));
+    }
+    await hash(p, '#/path/s00', 700);
+    ok(await p.$('.unit.done:has-text("Python level check")'), 'level-check step not ticked automatically');
+  });
+
+  await T('review: opening the solution queues the problem; a review starts blank and moves it on', async p => {
+    await go(p, '#/today');
+    await p.evaluate(() => { S.secs.y011 = 1000; save(); }); /* past 15 minutes, so the solution can unlock */
+    await hash(p, '#/py/y011', 600);
+    for (let i = 0; i < 6; i++) { const b = await p.$('button.btn.dark:not([disabled])'); if (!b) break; await b.click(); await p.waitForTimeout(150); }
+    let s = await state(p); ok(s.rev && s.rev.y011 && s.rev.y011.box === 0, 'not queued after opening the solution: ' + JSON.stringify(s.rev));
+    await p.evaluate(() => { S.rev.y011.due = iso(new Date()); save(); });
+    await hash(p, '#/today', 600);
+    ok(/Review ›/.test(await text(p, '#page')), 'due review not on the coding card');
+    ok(/Review \(1 due\)/.test(await (async () => { await hash(p, '#/practice/review', 500); return text(p, '.tabs'); })()), 'practice tab has no due count');
+    await hash(p, '#/py/y011/review', 700);
+    const code = await p.inputValue('textarea.code');
+    ok(/pass\s*$/.test(code.trim()), 'review did not start from the starter code');
+    ok(/0 of \d+ hints/.test(await text(p, 'aside')), 'hints not reset for the review');
+    const sol = await p.evaluate(() => findQ('y011').sol);
+    await p.fill('textarea.code', sol); await p.click('button.btn.pri:has-text("Run")');
+    await p.waitForFunction(() => { const v = document.querySelector('.verdict'); return v && v.style.display !== 'none' && /pass|Error/.test(v.textContent); }, null, { timeout: 120000 });
+    await p.waitForTimeout(300);
+    s = await state(p); ok(s.rev.y011.box === 1, 'review pass did not move to box 1: ' + JSON.stringify(s.rev.y011));
+    ok(/Next review/.test(await text(p, '.toast')), 'no next-review toast');
+  });
+
+  await T('review: sync merge keeps the newer review entry', async p => {
+    await go(p, '#/today');
+    const r = await p.evaluate(() => { const a = { rev: { d011: { box: 0, due: '2026-11-01', t: 1 } } }, b = { rev: { d011: { box: 2, due: null, t: 5 }, q011: { box: 1, due: '2026-11-05', t: 2 } } }; const m = mergeState(a, b); return [m.rev.d011.box, !!m.rev.q011]; });
+    ok(r[0] === 2 && r[1], 'merge wrong: ' + JSON.stringify(r));
   });
 
   await T('update app: reports latest when versions match', async p => {

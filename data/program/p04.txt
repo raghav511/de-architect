@@ -1,0 +1,396 @@
+@@meta
+id: p04
+n: 4
+title: Classes and types: model your data, and a first look at low-level design
+goal: Know when a class beats a dict or a function, and write clean ones: dataclasses, properties with validation, special methods, composition over inheritance, Protocols and type hints. This is the bridge to the object-oriented (low-level) design rounds that Uber, Flipkart and Amazon run for senior engineers.
+hours: 5
+
+@@tickets
+P401 | learn | 0.75 | Chapter part 1: classes, dataclasses and properties | You can write a frozen dataclass with a validated field and explain what `@dataclass` generates for you. | chapter:0-3
+P402 | learn | 0.75 | Chapter part 2: special methods, composition, Protocols, type hints, design | You can explain duck typing with a Protocol and give one reason to prefer composition over inheritance. | chapter:4-7
+P403 | build | 1 | Exercises 1–3: a validated Trip, Money, a self-flushing buffer | All three pass their tests in the editor. | py:1-3
+P404 | build | 1 | Exercises 4–5: validation rules as classes, an event log | Both pass, and you can add a third rule class without changing `validate`. | py:4-5
+P405 | practice | 0.5 | Predict-the-output drill | All six snippets answered before opening the answers, and every miss understood. | practice
+P406 | test | 0.5 | Quiz P4 | 80% or better. | quiz
+P407 | talk | 0.5 | Interview set P4 | 5 of 6 answered out loud and ticked. | interview
+
+@@readings
+- **Python Crash Course** (3rd ed.), chapter 9 (classes). The basics, quickly.
+- **Python Distilled**, chapter 7 (classes and object-oriented programming): attributes, properties, inheritance, `__slots__`, and why Python prefers duck typing.
+- **Fluent Python** (2nd ed.), chapter 5 (data class builders), chapter 11 (a Pythonic object) and chapter 13 (interfaces, protocols and ABCs).
+- [dataclasses](https://docs.python.org/3/library/dataclasses.html). `field`, `frozen`, `order` and `default_factory`.
+- [typing.Protocol](https://docs.python.org/3/library/typing.html#typing.Protocol). Structural typing: "anything with a check() method".
+- [Refactoring Guru: design patterns](https://refactoring.guru/design-patterns/catalog). Read Strategy, Factory Method, Observer and Adapter: the four you will use most in LLD rounds.
+
+@@chapter
+## P4.1 When a class, when a dict, when a function
+
+Use the simplest thing that works:
+
+| You have | Use |
+|---|---|
+| A transformation with no state | a function |
+| A record passed around and read | a dict, or better a `dataclass` |
+| Data plus rules that must always hold (fare is never negative) | a class that validates |
+| State that changes over time with operations on it (a buffer, a rate limiter, a connection pool) | a class |
+| Several interchangeable behaviours (validation rules, sinks, LLM providers) | small classes sharing one method name |
+
+A class bundles **state** (attributes) with **behaviour** (methods) and protects the rules that keep the state valid. If you find yourself passing the same five values to six functions, those values want to be an object.
+
+## P4.2 A class from scratch
+
+```python
+class Trip:
+    def __init__(self, trip_id, fare, km):        # runs when you call Trip(...)
+        if fare < 0:
+            raise ValueError("fare must not be negative")
+        self.trip_id = trip_id                    # instance attributes
+        self.fare = fare
+        self.km = km
+
+    def fare_per_km(self):                        # a method: self is the instance
+        return self.fare / self.km if self.km else 0.0
+
+    def __repr__(self):                           # what you see when debugging
+        return f"Trip({self.trip_id}, fare={self.fare}, km={self.km})"
+
+t = Trip(7, 120.0, 8.0)
+t.fare_per_km()            # Python calls Trip.fare_per_km(t)
+```
+
+`self` is just the first argument: the instance the method was called on. Always write a `__repr__`; it pays for itself the first time you print a list of objects in a failing test.
+
+## P4.3 Dataclasses
+
+For classes that are mostly data, `@dataclass` writes `__init__`, `__repr__` and `__eq__` for you from type-annotated fields:
+
+```python
+from dataclasses import dataclass, field
+
+@dataclass(frozen=True)              # frozen: fields cannot be reassigned, and it becomes hashable
+class Money:
+    amount: int                      # paise: never store money as float
+    currency: str = "INR"
+
+@dataclass
+class Batch:
+    table: str
+    rows: list = field(default_factory=list)   # NOT rows: list = []  (the P2 trap again)
+
+    def __post_init__(self):          # validation after the generated __init__
+        if not self.table:
+            raise ValueError("table is required")
+```
+
+`frozen=True` gives you **value objects**: safe to share, usable as dict keys and in sets. `order=True` adds `<` and friends so instances sort by their fields. Pydantic models are the same idea with type coercion and validation; you will meet them in AI 1 for tool inputs and structured LLM output.
+
+## P4.4 Properties: computed and protected attributes
+
+A `@property` looks like an attribute to the caller but runs a method. Without a setter it is read-only.
+
+```python
+class Trip:
+    def __init__(self, fare, km):
+        self.fare, self.km = fare, km
+
+    @property
+    def fare_per_km(self):
+        return round(self.fare / self.km, 2) if self.km else 0.0
+
+t = Trip(100.0, 8.0)
+t.fare_per_km          # 12.5, no brackets
+t.fare_per_km = 5      # AttributeError: no setter
+```
+
+Use properties to compute derived values and to validate on assignment (with `@fare.setter`) without changing how callers use the class. Do not hide slow work (a database call) behind a property; callers assume attribute access is cheap.
+
+## P4.5 Special methods make objects feel built-in
+
+Python's built-ins call special ("dunder") methods. Implement them and your class works with the language:
+
+| You write | Python calls |
+|---|---|
+| `len(x)` | `x.__len__()` |
+| `for item in x` | `x.__iter__()` |
+| `item in x` | `x.__contains__(item)` |
+| `x[i]` | `x.__getitem__(i)` |
+| `a + b` | `a.__add__(b)` |
+| `a == b`, `a < b` | `__eq__`, `__lt__` |
+| `with x:` | `__enter__`, `__exit__` (P5) |
+
+A buffer that supports `len()`, a log you can loop over, money you can add: callers need to learn nothing new.
+
+## P4.6 Composition over inheritance
+
+**Inheritance** says "is a": `class CsvSource(Source)`. **Composition** says "has a": a `Pipeline` has a source, a list of steps and a sink.
+
+```python
+class Pipeline:
+    def __init__(self, source, steps, sink):     # composed from parts
+        self.source, self.steps, self.sink = source, steps, sink
+
+    def run(self):
+        for row in self.source.read():
+            for step in self.steps:
+                row = step(row)
+            self.sink.write(row)
+```
+
+Deep inheritance trees are brittle: a change in a base class ripples into every subclass, and real things rarely fit one hierarchy. Prefer composition, and keep inheritance shallow (one level, usually from an abstract base).
+
+**Duck typing**: Python does not ask what class an object is, only whether it has the method you call. `Pipeline` works with any source that has `read()`. A `typing.Protocol` writes that expectation down for type checkers without forcing inheritance:
+
+```python
+from typing import Protocol, Iterable
+
+class Source(Protocol):
+    def read(self) -> Iterable[dict]: ...
+
+class Rule(Protocol):
+    def check(self, row: dict) -> str | None: ...
+```
+
+Exercise 4 builds validation rules this way: `NotNull` and `InRange` share no base class, only a `check` method, and `validate` works with both and with any rule you add later.
+
+## P4.7 Type hints that help
+
+Type hints document intent and let tools (mypy, pyright, your editor) catch bugs before running. Python ignores them at runtime.
+
+```python
+def top_cities(trips: list[dict], k: int = 3) -> list[tuple[str, int]]: ...
+def find(trip_id: int) -> Trip | None: ...          # may return None
+from collections.abc import Iterable, Callable
+def run(rows: Iterable[dict], step: Callable[[dict], dict]) -> None: ...
+```
+
+Accept the most general type you can (`Iterable`, not `list`) and return the most specific one. Hints matter more as code grows, and in the AI modules they double as tool schemas: frameworks read your function signature to tell the model what arguments a tool takes.
+
+## P4.8 From classes to low-level design rounds
+
+In a low-level design (LLD) or machine-coding round you get 45–90 minutes to design and code a small system: a parking lot, a rate limiter, an in-memory key-value store with TTL, a job scheduler, a logger with levels and sinks. Interviewers look for:
+
+1. **Clarified requirements** before code: what operations, what scale, what can change.
+2. **Entities and responsibilities**: one class, one job (the *S* in SOLID).
+3. **Extension without editing**: adding a new rule, sink or pricing strategy means adding a class, not changing an `if/elif` chain (the *O* in SOLID: open for extension, closed for modification).
+4. **Depend on interfaces** (Protocols), so parts can be swapped and tested (the *D*: dependency inversion).
+5. **Working code with a demo**, and handling one change request at the end.
+
+The patterns you will reach for most: **Strategy** (interchangeable behaviours, like your rules), **Factory** (build the right object from config), **Observer** (notify subscribers), **Adapter** (wrap a third-party API). The architect track later in the program gives you full LLD drills; this module gives you the Python to write them.
+
+@@lab
+## Exercises 1–3 (1 hour)
+
+1. **A validated Trip class.** `__init__` validation, a read-only `@property`, a `__repr__`.
+2. **Money that refuses to mix currencies.** `@dataclass(frozen=True)` and `__add__`.
+3. **A buffer that flushes itself.** State that changes; hand over a new list on each flush.
+
+## Exercises 4–5 (1 hour)
+
+4. **Validation rules as classes.** Two classes with a shared `check` method and a validator that does not care which is which. After it passes, add a third rule class in the editor (for example `OneOf(field, allowed)`) and confirm `validate` needs no change.
+5. **An event log you can loop over.** `__len__`, `__iter__` and `__contains__`, with a set for fast membership.
+
+## On your Mac (optional, 30 minutes): a mini LLD
+
+Design and code an in-memory key-value store with expiry in 30 minutes, as if in an interview:
+
+- `put(key, value, ttl_seconds=None)`, `get(key)` returns None after expiry, `delete(key)`, `size()`.
+- The clock is passed in (a function returning seconds) so tests do not sleep.
+- Write three `assert` tests, then handle the change request: "add a maximum size; evict the least recently used key when full".
+
+Compare your design with the LRU cache problem in the DSA bank afterwards.
+
+@@practice
+## Predict the output (30 minutes)
+
+**1.**
+```python
+class Batch:
+    rows = []
+    def add(self, r):
+        self.rows.append(r)
+a, b = Batch(), Batch()
+a.add(1)
+print(b.rows)
+```
+<details><summary>Answer</summary>
+
+`[1]`. `rows` is a class attribute, shared by every instance. Create per-instance state in `__init__` (`self.rows = []`).
+
+</details>
+
+**2.**
+```python
+from dataclasses import dataclass
+@dataclass
+class P:
+    x: int
+print(P(1) == P(1), P(1) is P(1))
+```
+<details><summary>Answer</summary>
+
+`True False`. The dataclass generates `__eq__` comparing fields, but they are still two objects.
+
+</details>
+
+**3.**
+```python
+class A:
+    def hi(self): return "A"
+class B(A):
+    def hi(self): return "B+" + super().hi()
+print(B().hi())
+```
+<details><summary>Answer</summary>
+
+`B+A`. `super()` calls the parent's version of the method.
+
+</details>
+
+**4.**
+```python
+class T:
+    @property
+    def v(self): return 5
+t = T()
+print(t.v)
+t.v = 6
+```
+<details><summary>Answer</summary>
+
+Prints `5`, then raises `AttributeError` because the property has no setter.
+
+</details>
+
+**5.**
+```python
+from dataclasses import dataclass
+@dataclass
+class Q:
+    tags: list = []
+```
+<details><summary>Answer</summary>
+
+`ValueError: mutable default <class 'list'> for field tags is not allowed: use default_factory`. Dataclasses refuse the shared-list trap; use `field(default_factory=list)`.
+
+</details>
+
+**6.**
+```python
+class Bag:
+    def __init__(self): self.items = [1, 2, 3]
+    def __len__(self): return len(self.items)
+print(len(Bag()), bool(Bag()))
+```
+<details><summary>Answer</summary>
+
+`3 True`. With no `__bool__`, Python uses `__len__` for truth: non-zero length is True. An empty Bag would be False.
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: py
+Q: What does `@dataclass` generate by default?
+A) Only `__init__`
+B) `__init__`, `__repr__` and `__eq__` from the annotated fields
+C) A database table
+D) `__hash__` and `__lt__` always
+ANS: B
+WHY: Hashing comes with `frozen=True` (with eq), ordering with `order=True`.
+---
+TYPE: mcq
+TAG: py
+Q: Why store money as integer paise rather than a float of rupees?
+A) Integers are faster to print
+B) Floats cannot represent most decimal fractions exactly, so sums drift (0.1 + 0.2 != 0.3)
+C) Databases do not support floats
+D) Python floats are 16-bit
+ANS: B
+WHY: Use integers in the smallest unit, or `decimal.Decimal`, for money.
+---
+TYPE: fill
+TAG: py
+Q: `len(obj)` calls the special method `____`.
+ANS: __len__
+WHY: Built-ins delegate to dunder methods, which is how your classes join in.
+---
+TYPE: mcq
+TAG: py
+Q: A validator must accept any rule object with a `check(row)` method, including ones written later. What expresses that best in Python?
+A) A long if/elif on the rule's class name
+B) A Protocol (or plain duck typing) that requires a `check` method
+C) Inheriting every rule from one concrete class with all checks inside
+D) Storing rules as strings and using eval
+ANS: B
+WHY: Structural typing: the validator depends on the method, not the class. New rules need no changes to it.
+---
+TYPE: mcq
+TAG: py
+Q: Which problem does composition avoid compared with deep inheritance?
+A) Too many objects
+B) A change in a base class rippling unexpectedly into many subclasses
+C) Slower method calls
+D) Missing `__repr__`
+ANS: B
+WHY: Composed parts can be swapped and tested independently.
+---
+TYPE: mcq
+TAG: py
+Q: In `class Batch: rows = []`, what is `rows`?
+A) An instance attribute, separate per object
+B) A class attribute, shared by all instances
+C) A local variable
+D) A syntax error
+ANS: B
+WHY: Assign mutable state in `__init__` with `self.rows = []`.
+---
+TYPE: fill
+TAG: py
+Q: The SOLID principle "open for extension, closed for modification" is the ____ in SOLID.
+ANS: O
+WHY: Open/closed: add a new class rather than editing a growing if/elif.
+---
+TYPE: mcq
+TAG: py
+Q: What do type hints do at runtime in plain Python?
+A) They raise errors for wrong types
+B) Nothing: they are documentation for people and tools such as mypy (frameworks like Pydantic can choose to read them)
+C) They convert values to the hinted type
+D) They make code faster
+ANS: B
+WHY: Python itself ignores them; tools and some libraries use them.
+---
+TYPE: short
+TAG: py
+Q: When would you choose a class over a dict for a record in a pipeline?
+MODEL: When the record has rules that must always hold (validate once in `__init__` or `__post_init__`), when it has behaviour (derived values, methods), when many functions pass the same fields around, or when you want type checking and a readable repr. A frozen dataclass or Pydantic model gives that with little code. For one-off reshaping where the fields vary, a dict is fine.
+---
+TYPE: short
+TAG: py
+Q: Name the three things you would do in the first ten minutes of a low-level design round.
+MODEL: Clarify requirements and the likely change requests (operations, scale, concurrency, what must be extensible). Name the entities and give each one responsibility, sketching the classes and their key methods. Identify the variation points and put them behind interfaces (Strategy, Factory) so new behaviour means a new class. Then start coding the core path with a small demo.
+
+@@interview
+Q: What does `@dataclass` give you, and when would you use `frozen=True`?
+TAG: py
+A: It generates `__init__`, `__repr__` and `__eq__` from the annotated fields, with options for ordering, slots and immutability. I use `frozen=True` for value objects such as Money, a partition key or a config: they cannot be changed by accident, they are safe to share between threads, and they become hashable, so they work as dict keys and set members. For mutable defaults I use `field(default_factory=list)`, and validation goes in `__post_init__`.
+---
+Q: Explain duck typing and how Protocols relate to it.
+TAG: py
+A: Python checks behaviour, not type: if an object has the method you call, it works. Protocols (PEP 544) make that explicit for type checkers. I declare `class Sink(Protocol): def write(self, rows) -> None: ...`, and any class with a matching `write` satisfies it without inheriting from anything. That keeps code decoupled: the pipeline depends on the protocol, and tests can pass a simple fake sink.
+---
+Q: Composition or inheritance: how do you decide?
+TAG: py
+A: Inheritance only for a genuine "is a" relationship with a stable base, usually one level from an abstract base class. Everything else is composition: an object holds the parts it uses and delegates to them. Composition lets me swap a part (a different source, an in-memory sink in tests), avoids fragile base classes, and keeps classes small. A rule of thumb: if I want to reuse code, compose; if I want to substitute types, use a Protocol.
+---
+Q: Design the classes for a data quality framework that teams can extend with their own checks.
+TAG: py
+A: A `Check` protocol with `name` and `run(dataset) -> list[Failure]`; concrete checks such as `NotNull`, `Unique`, `InRange` and `RowCountWithin`, each a small class configured in `__init__`. A `Suite` composes checks for a table, runs them and returns a `Report` (a dataclass with counts and failures). Checks are built from YAML by a factory keyed on the check type, so a new check is a new class plus one registry entry. Severity on each check decides warn versus fail, and the runner writes results to a table for trends. That is the Strategy plus Factory pattern, open for extension.
+---
+Q: What are special methods, and which have you implemented?
+TAG: py
+A: Methods with double underscores that Python's syntax and built-ins call: `__len__` for `len`, `__iter__` for loops, `__contains__` for `in`, `__getitem__` for indexing, `__eq__` and `__lt__` for comparisons, `__add__` for `+`, `__enter__` and `__exit__` for `with`, `__repr__` for debugging. I have implemented `__iter__` and `__len__` on batch and log objects, `__enter__`/`__exit__` on connection wrappers, and `__add__` on a Money value object that refuses to mix currencies.
+---
+Q: Why are type hints worth it in a data codebase?
+TAG: py
+A: They catch whole classes of bugs before runtime: passing a list where a dict is expected, a function that may return None being used without a check. They make interfaces readable: `def load(rows: Iterable[Trip]) -> LoadResult` explains itself. Editors autocomplete better, refactors are safer, and libraries like Pydantic and agent frameworks use the same hints to validate data and generate tool schemas. I run mypy or pyright in CI on new code and allow gradual adoption.
