@@ -79,11 +79,12 @@ Evaluation: inject 10 known failures (schema change, OOM, late upstream, bad cre
 
 The field moves weekly, so this section is refreshed by the program's weekly research update. Concepts worth knowing now, with reports to read:
 
-- **Very long-horizon harnesses.** Product teams report agents running a single task for over a day, built on the progress-file and checkpoint patterns above, plus **model routers** that pick a model per step. ([news roundup](https://aiagentstore.ai/ai-agent-news/2026-october))
-- **Small models with very long context for subagents.** Cheap models with around a million tokens of context make "read everything, then summarise for the big model" practical. Anthropic's Claude Haiku 5.5 is one such model. Use them for search, triage and extraction steps.
-- **Always-on agents** that keep working toward a goal between conversations. The engineering questions are the ones in A3.2: budgets, escalation and evidence.
-- **Agent swarms**: some open models are reported to coordinate very large numbers of parallel agents. Treat claims like this with the A3.3 test: are the parts really independent, and what does it cost per useful result?
-- **Harness engineering as a discipline** (see A1.3): teams now measure agents by cost per merged pull request or per resolved incident, not by demo quality.
+- **Skills as an open standard.** Anthropic donated Agent Skills (instructions plus scripts an agent loads only when a task needs them) to the Agentic AI Foundation, MCP's home under the Linux Foundation. Treat skills as versioned team runbooks that keep the base prompt small and cacheable. ([Anthropic](https://www.anthropic.com/news/donating-agent-skills-to-the-agentic-ai-foundation))
+- **Guardrails moving into the platform.** Databricks Unity Gateway now screens MCP tool calls and results for prompt injection (beta). Tool results are the main injection path into data agents, so this is the A3.4 guardrail layer as a managed service. ([Databricks release notes](https://docs.databricks.com/aws/en/release-notes/product/2026/october))
+- **Agents as ordinary pipeline steps.** Genie Code tasks in Lakeflow Jobs (GA) run an agent prompt as a job step. Apply the usual job rules: idempotency, retries, budgets and a queryable audit trail. ([Databricks release notes](https://docs.databricks.com/aws/en/release-notes/product/2026/october))
+- **Portable request shapes in the warehouse.** Snowflake added a Responses API to the Cortex REST API (preview), which makes a harness easier to move between providers while data stays governed in place. ([Snowflake](https://docs.snowflake.com/release-notes/2026/other/2026-10-23-cortex-rest-api-responses-api))
+- **Incremental agents.** Claude Security now runs a deep baseline scan, then rescans only changed code weighted by risk, and closes or reopens findings as fixes ship: the incremental-processing pattern applied to agent cost. ([Claude blog](https://claude.com/blog/claude-security-now-scans-continuously-and-tracks-fixes))
+- **Always-on agents with approval gates.** Claude Duet (research preview) works on its own cloud computer, checks in on a schedule and asks before sensitive actions. The same design an always-on data agent needs before it touches production (A3.2). ([Claude](https://claude.com/product/claude-duet))
 
 How to judge any new development: what problem does it remove, what does it cost per successful task, can you evaluate it on your own eval set within a day, and what new risk does it add?
 
