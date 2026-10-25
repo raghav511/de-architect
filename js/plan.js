@@ -1,17 +1,17 @@
-/* Data Architect 1.3 · modules, units and the time-boxed scheduler.
+/* Data Architect 1.4 · modules, units and the time-boxed scheduler.
    Loaded before app.js; uses its globals (S, DATA, el, svg, I, shell, chip, save, iso, ...) at call time. */
 'use strict';
-/* Diagnostic first, then the Python track interleaved with the AI modules, then data engineering. */
-const BASE_MODS = ['s00', 'p01', 'p02', 'a01', 'p03', 'p04', 'a02', 'p05', 'p06', 'a03', 's01', 's02', 's03', 's04', 's05', 's06', 's07', 's08', 's09', 's10', 's11', 's12'];
+/* Diagnostic first, then the Python track interleaved with the AI modules, then data modelling, then data engineering. */
+const BASE_MODS = ['s00', 'p01', 'p02', 'a01', 'p03', 'p04', 'a02', 'p05', 'p06', 'a03', 'm01', 'm02', 'm03', 's01', 's02', 's03', 's04', 's05', 's06', 's07', 's08', 's09', 's10', 's11', 's12'];
 let MODS = BASE_MODS.slice();
 const MOD = {};
 const DN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const midOf = x => { x = String(x == null ? '' : x); return /^\d+$/.test(x) ? 's' + x.padStart(2, '0') : x; };
 const isS = m => /^s\d\d$/.test(m);
 const qk = m => isS(m) ? +m.slice(1) : m; /* state keys stay compatible with v1.1 (numbers for DE modules) */
-function modLabel(m) { const k = m[0], n = +m.slice(1); return k === 'a' ? 'AI ' + n : k === 'p' ? 'Python ' + n : k === 's' ? (n === 0 ? 'Setup' : 'DE ' + n) : 'Extra ' + n; }
+function modLabel(m) { const k = m[0], n = +m.slice(1); return k === 'a' ? 'AI ' + n : k === 'p' ? 'Python ' + n : k === 'm' ? 'Modelling ' + n : k === 's' ? (n === 0 ? 'Setup' : 'DE ' + n) : 'Extra ' + n; }
 function modTitle(m) { return (MOD[m] && MOD[m].title) || modLabel(m); }
-function modColor(m) { return m[0] === 'a' ? 'c-ai' : m[0] === 'p' ? 'c-py' : m[0] === 's' ? 'c-core' : 'c-arch'; }
+function modColor(m) { return m[0] === 'a' ? 'c-ai' : m[0] === 'p' ? 'c-py' : m[0] === 'm' ? 'c-arch' : m[0] === 's' ? 'c-core' : 'c-arch'; }
 function dayName(k) { const d = new Date(k + 'T00:00:00'); return DN[(d.getDay() + 6) % 7]; }
 function shortDate(k) { const d = new Date(k + 'T00:00:00'); return DN[(d.getDay() + 6) % 7].slice(0, 3) + ' ' + d.getDate() + ' ' + d.toLocaleString('en', { month: 'short' }); }
 function weekOf(k) { const s = new Date(S.start + 'T00:00:00'), d = new Date(k + 'T00:00:00'); return Math.max(1, Math.floor(Math.round((d - s) / 864e5) / 7) + 1); }
@@ -50,10 +50,11 @@ function modUnits(m) {
   M.tickets.forEach(t => {
     const mins = Math.round(t.h * 60);
     if (t.tab === 'coding') return; /* coding tests live in the coding track */
-    if (t.tab.startsWith('py:')) {
-      /* Python exercises run in the browser editor; the step ticks itself when all of them pass */
-      const [a, b] = t.tab.slice(3).split('-').map(Number), xs = DATA.py.filter(x => x.m === m).slice(a - 1, b), nx = xs.find(x => !S.solved[x.id]) || xs[0];
-      add({ uid: m + ':' + t.id, kind: 'build', mins: Math.min(60, mins), title: t.title, goal: 'Exercises: ' + xs.map(x => x.t).join(' · ') + '. Each one runs real tests in your browser.', done: t.done, href: nx ? '#/py/' + nx.id : '#/practice/py', cta: 'Code', auto: () => xs.length > 0 && xs.every(x => S.solved[x.id]) });
+    const ex = /^(py|sql):(\d+)-(\d+)$/.exec(t.tab);
+    if (ex) {
+      /* Python and SQL exercises run in the browser editor; the step ticks itself when all of them pass */
+      const k = ex[1], xs = DATA[k].filter(x => x.m === m).slice(+ex[2] - 1, +ex[3]), nx = xs.find(x => !S.solved[x.id]) || xs[0];
+      add({ uid: m + ':' + t.id, kind: 'build', mins: Math.min(60, mins), title: t.title, goal: 'Exercises: ' + xs.map(x => x.t).join(' · ') + '. Each one runs real tests in your browser.', done: t.done, href: nx ? '#/' + k + '/' + nx.id : '#/practice/' + (k === 'py' ? 'py' : 'model'), cta: 'Code', auto: () => xs.length > 0 && xs.every(x => S.solved[x.id]) });
       return;
     }
     if (t.tab.startsWith('chapter')) {
@@ -206,6 +207,7 @@ function modLinks(m) {
   if (pj) L.push(['Project', '#/project/' + pj.id]);
   if (M.coding) L.push(['Coding test', '#/practice/tests']);
   if (DATA.py.some(x => x.m === m)) L.push(['Python exercises', '#/practice/py']);
+  if (DATA.sql.some(x => x.m === m)) L.push(['Modelling exercises', '#/practice/model']);
   return el('div', { class: 'row wrap', style: { gap: '6px' } }, L.map(([t, h]) => el('a', { class: 'btn sm', href: h, text: t })));
 }
 
@@ -225,15 +227,15 @@ function vPath(m) {
     .concat(us.map(u => unitCard(u, { day: u.isDone ? 'done' : (u.day === sc.today ? 'today' : shortDate(u.day) + ' · week ' + weekOf(u.day)), compact: false }))));
   const extra = [];
   if (M.coding) extra.push(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [chip('test'), el('h3', { class: 'grow', text: 'Coding test · on the coding track' })]), el('div', { class: 'list' }, DATA.sprints[m].coding.map((c, i) => el('a', { class: 'item', href: '#/test/' + m + '/' + i }, [chip(c.KIND === 'sql' ? 'sql' : c.KIND === 'pyspark' ? 'spark' : 'dsa'), el('span', { class: 'grow' }, [el('span', { class: 't', text: c.TITLE }), el('br'), el('span', { class: 's', text: (c.MIN || '?') + ' min' })]), S.solved['t' + qk(m) + '_' + i] ? el('span', { class: 'ok', text: '✓' }) : null])))]));
-  const pyx = DATA.py.filter(x => x.m === m);
-  if (pyx.length) extra.push(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [chip('py'), el('h3', { class: 'grow', text: m === 's00' ? 'Python level check' : 'Python exercises' }), el('span', { class: 'muted', text: pyx.filter(x => S.solved[x.id]).length + ' / ' + pyx.length })]), el('div', { class: 'list' }, pyx.map(x => el('a', { class: 'item', href: '#/py/' + x.id }, [el('span', { class: 'grow' }, [el('span', { class: 't', text: x.t }), el('br'), el('span', { class: 's', text: x.lv })]), S.solved[x.id] ? el('span', { class: 'ok', text: '✓' }) : null])))]));
+  const exk = DATA.py.some(x => x.m === m) ? 'py' : 'sql', pyx = DATA[exk].filter(x => x.m === m);
+  if (pyx.length) extra.push(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [chip(exk), el('h3', { class: 'grow', text: m === 's00' ? 'Python level check' : exk === 'py' ? 'Python exercises' : 'Modelling exercises (SQL)' }), el('span', { class: 'muted', text: pyx.filter(x => S.solved[x.id]).length + ' / ' + pyx.length })]), el('div', { class: 'list' }, pyx.map(x => el('a', { class: 'item', href: '#/' + exk + '/' + x.id }, [el('span', { class: 'grow' }, [el('span', { class: 't', text: x.t }), el('br'), el('span', { class: 's', text: x.lv })]), S.solved[x.id] ? el('span', { class: 'ok', text: '✓' }) : null])))]));
   if (isS(m) && +m.slice(1) > 0) {
     const w = +m.slice(1);
     const sec = (title, kind, items, href) => el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [chip(kind), el('h3', { class: 'grow', text: title })]), el('div', { class: 'list' }, items.map(x => el('a', { class: 'item', href: href(x) }, [el('span', { class: 'grow' }, [el('span', { class: 't', text: x.t }), el('br'), el('span', { class: 's', text: (x.k ? (x.k === 'O' ? 'Optimize · ' : 'Write · ') : '') + x.lv })]), S.solved[x.id] ? el('span', { class: 'ok', text: '✓' }) : null])))]);
     extra.push(el('div', { class: 'cols3' }, [sec('DSA on this topic', 'dsa', byWeek(DATA.dsa, w), x => '#/dsa/' + x.id), sec('SQL on this topic', 'sql', byWeek(DATA.sql, w), x => '#/sql/' + x.id), sec('PySpark on this topic', 'spark', byWeek(DATA.spark, w), x => '#/spark/' + x.id)]));
   }
   const road = el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Roadmap' }), el('button', { class: 'btn sm', onclick: async () => { const v = await confirmBox('Restart the calendar?', 'Week 1 becomes this week. Your progress is kept; only the week numbers change.', [{ t: 'Make this week 1', cls: 'pri', v: 1 }, { t: 'Cancel', v: null }]); if (v) { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); S.start = iso(d); save(); route(); } }, text: 'Make this week 1' })]),
-    el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Setup and the diagnostic first, then the Python track (Python 1–6) woven between the AI modules (AI 1–3), then the data engineering modules. A module ends when its steps are done, not on a fixed week. After the last module, new Extra modules arrive every week: big-tech papers and problems, plus fresh questions on earlier topics.' }),
+    el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Setup and the diagnostic first, then the Python track (Python 1–6) woven between the AI modules (AI 1–3), then data modelling (Modelling 1–3), then the data engineering modules. A module ends when its steps are done, not on a fixed week. After the last module, new Extra modules arrive every week: big-tech papers and problems, plus fresh questions on earlier topics.' }),
     el('div', { class: 'list' }, MODS.map(x => { const s = sc.span[x]; return el('a', { class: 'item', href: '#/path/' + x }, [el('span', { class: 'chip ' + modColor(x), style: { flex: 'none', minWidth: '62px', justifyContent: 'center' }, text: modLabel(x) }), el('span', { class: 'grow' }, [el('span', { class: 't', text: modTitle(x) }), el('br'), el('span', { class: 's', text: weeksText(s) })]), el('span', { class: 's', style: { fontWeight: 700, flex: 'none' }, text: s.done === s.n ? '✓ done' : x === sc.cur ? 'now · ' + s.done + '/' + s.n : s.done + '/' + s.n })]); }))]);
   setTimeout(() => { const c = pick.querySelector('[aria-current=true]'); if (c && pick.scrollWidth > pick.clientWidth) pick.scrollLeft = c.offsetLeft - 16; }, 0);
   shell('Path', 'Module ' + modLabel(m) + ' · ' + MODS.length + ' modules so far', [pick, el('div', { class: 'grid2 wide' }, [el('div', { class: 'stack', style: { gap: '18px' } }, [head, steps]), el('div', { class: 'stack', style: { gap: '18px' } }, [road])])].concat(extra));
@@ -266,7 +268,7 @@ async function vLearn(m, tab, range) {
   const nextTab = { chapter: 'readings', readings: 'lab', lab: 'practice' }[tab];
   body.appendChild(el('div', { class: 'row wrap' }, [el('a', { class: 'btn', href: '#/today', text: 'Back to today\'s plan' }), nextTab ? el('a', { class: 'btn', href: '#/learn/' + m + '/' + nextTab, text: 'Next: ' + TABS2.find(t => t[0] === nextTab)[1] }) : el('a', { class: 'btn', href: '#/quiz/' + m, text: 'Next: Quiz' })]));
 }
-const AMAPS = { p01: ['Objects', 'Lists', 'Dicts and sets', 'Big-O', 'collections'], p02: ['Arguments', 'Closures', 'Comprehensions', 'Sort keys', 'Decorators'], p03: ['Iterable', 'Generator', 'Pipeline', 'itertools', 'Batches'], p04: ['Class', 'dataclass', 'Property', 'Protocol', 'Design'], p05: ['Exceptions', 'with', 'Logging', 'pytest', 'Package'], p06: ['I/O or CPU', 'Threads', 'Processes', 'asyncio', 'Measure'], a01: ['Task', 'Model', 'Tools', 'Trace', 'Answer'], a02: ['Task', 'Agent', 'Grader', 'Fix', 'Lesson'], a03: ['Alert', 'MCP tools', 'Agent', 'Approval', 'Report'], s00: ['Laptop', 'Docker', 'Python', 'Repo', 'Diagnostic'] };
+const AMAPS = { m01: ['Process', 'Grain', 'Dimensions', 'History (SCD)', 'Cumulative'], m02: ['Event', 'Grain', 'Fact type', 'Dedupe', 'Reduced'], m03: ['Raw', 'Cleaned', 'Business', 'Serving', 'Semantic'], p01: ['Objects', 'Lists', 'Dicts and sets', 'Big-O', 'collections'], p02: ['Arguments', 'Closures', 'Comprehensions', 'Sort keys', 'Decorators'], p03: ['Iterable', 'Generator', 'Pipeline', 'itertools', 'Batches'], p04: ['Class', 'dataclass', 'Property', 'Protocol', 'Design'], p05: ['Exceptions', 'with', 'Logging', 'pytest', 'Package'], p06: ['I/O or CPU', 'Threads', 'Processes', 'asyncio', 'Measure'], a01: ['Task', 'Model', 'Tools', 'Trace', 'Answer'], a02: ['Task', 'Agent', 'Grader', 'Fix', 'Lesson'], a03: ['Alert', 'MCP tools', 'Agent', 'Approval', 'Report'], s00: ['Laptop', 'Docker', 'Python', 'Repo', 'Diagnostic'] };
 function weekMap(m) {
   const map = AMAPS[m] || (isS(m) ? MAPS[+m.slice(1) - 1] : null) || ['Read', 'Build', 'Break', 'Fix', 'Explain'];
   return el('section', { class: 'fig', 'aria-label': 'Mental map for module ' + modLabel(m) }, [el('div', { class: 'row' }, [el('b', { text: 'Mental map: where this module fits' }), el('span', { class: 'step', text: modLabel(m) })]),

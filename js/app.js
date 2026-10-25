@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.3.0';
+const VERSION = '1.4.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -303,7 +303,7 @@ function vWork(kind, id, mode) {
     Q = (DATA[kind] || []).find(x => x.id === id);
     if (!Q) { location.hash = '#/practice'; return; }
     lang = kind === 'dsa' || kind === 'py' ? 'python' : kind;
-    title = Q.t; eyebrow = kind === 'py' ? 'Python · ' + modLabel(Q.m) + ' · exercise ' + (DATA.py.filter(x => x.m === Q.m).indexOf(Q) + 1) + ' · ' + Q.lv : (kind === 'dsa' ? 'DSA · day ' + (DATA.dsa.indexOf(Q) + 1) + ' of 84' : kind === 'sql' ? 'SQL · ' + (Q.k === 'O' ? 'optimize' : 'write') : 'PySpark · ' + (Q.k === 'O' ? 'optimize' : 'write')) + ' · set ' + Q.w + ' · ' + Q.lv;
+    title = Q.t; eyebrow = kind === 'py' ? 'Python · ' + modLabel(Q.m) + ' · exercise ' + (DATA.py.filter(x => x.m === Q.m).indexOf(Q) + 1) + ' · ' + Q.lv : (kind === 'dsa' ? 'DSA · day ' + (DATA.dsa.indexOf(Q) + 1) + ' of 84' : kind === 'sql' ? 'SQL · ' + (Q.k === 'O' ? 'optimize' : 'write') : 'PySpark · ' + (Q.k === 'O' ? 'optimize' : 'write')) + (Q.m ? ' · ' + modLabel(Q.m) : ' · set ' + Q.w) + ' · ' + Q.lv;
   }
   const qid = Q.id;
   const rv = (S.rev || {})[qid];
@@ -550,7 +550,7 @@ function tablesBox() {
   const box = el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'lbl', text: 'Sample tables (tap to load)' })]);
   const btn = el('button', { class: 'btn sm', onclick: async () => { btn.disabled = true; btn.textContent = 'Loading…'; try { const t = await Py.json('tables', []); btn.remove(); t.forEach(x => box.appendChild(el('div', { class: 'schema' }, [el('b', { text: x.name }), ' · ' + x.rows + ' rows', el('br'), x.cols.join(', ')]))); } catch (e) { btn.disabled = false; btn.textContent = 'Retry'; } } }, 'Show tables and columns');
   box.appendChild(btn);
-  box.appendChild(el('div', { class: 'muted', style: { fontSize: '13px' }, text: 'A small ride-hailing dataset: cities, riders, drivers, trips, payments, trip_events, clicks, employees. PySpark reads them with spark.table(\'trips\') or spark.read.parquet(\'s3://lake/trips\').' }));
+  box.appendChild(el('div', { class: 'muted', style: { fontSize: '13px' }, text: 'A small ride-hailing dataset: cities, riders, drivers, trips, payments, trip_events, clicks, employees, plus modelling tables (rider_tier_snapshots, dim_rider_tier, rider_tier_today, rider_activity_cumulated, referrals, trip_promos). PySpark reads them with spark.table(\'trips\') or spark.read.parquet(\'s3://lake/trips\').' }));
   return box;
 }
 
@@ -643,7 +643,7 @@ function icebergDiagram() {
 /* ---------------- Practice list ---------------- */
 async function vPractice(f) {
   const nDue = revDue().length;
-  const tabs = [['all', 'All'], ['review', 'Review' + (nDue ? ' (' + nDue + ' due)' : '')], ['py', 'Python'], ['dsa', 'DSA'], ['sql', 'SQL'], ['spark', 'PySpark'], ['opt', 'Optimize only'], ['tests', 'Coding tests']];
+  const tabs = [['all', 'All'], ['review', 'Review' + (nDue ? ' (' + nDue + ' due)' : '')], ['py', 'Python'], ['model', 'Data modelling'], ['dsa', 'DSA'], ['sql', 'SQL'], ['spark', 'PySpark'], ['opt', 'Optimize only'], ['tests', 'Coding tests']];
   const tb = el('div', { class: 'tabs', role: 'tablist' }, tabs.map(([k, n]) => el('button', { role: 'tab', 'aria-selected': String(k === f), onclick: () => { location.hash = '#/practice/' + k; }, text: n })));
   const body = el('div', { class: 'stack' });
   shell('Coding practice', 'Python · DSA · SQL · PySpark · coding tests · separate from the daily hour', [tb, body]);
@@ -657,11 +657,12 @@ async function vPractice(f) {
     if (learned.length) body.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('h3', { class: 'grow', text: 'Learned' }), el('span', { class: 'muted', text: String(learned.length) })]), el('div', { class: 'list' }, learned.map(id => item(kindOf(id), findQ(id), 'passed all three reviews')))]));
     return;
   }
-  if (f === 'py') {
-    body.appendChild(el('p', { class: 'muted', style: { margin: 0 }, text: 'Exercises for the Python track. They are part of each Python module\'s daily plan, and you can redo any of them here.' }));
-    ['s00'].concat(MODS.filter(m => m[0] === 'p')).forEach(m => {
-      const xs = DATA.py.filter(x => x.m === m); if (!xs.length) return;
-      body.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('h3', { class: 'grow', text: (m === 's00' ? 'Python level check' : modLabel(m) + ' · ' + modTitle(m)) }), el('span', { class: 'muted', text: xs.filter(x => S.solved[x.id]).length + ' / ' + xs.length })]), el('div', { class: 'list' }, xs.map(x => item('py', x)))]));
+  if (f === 'py' || f === 'model') {
+    const k = f === 'py' ? 'py' : 'sql';
+    body.appendChild(el('p', { class: 'muted', style: { margin: 0 }, text: f === 'py' ? 'Exercises for the Python track. They are part of each Python module\'s daily plan, and you can redo any of them here.' : 'SQL exercises for the data modelling modules: SCDs, as-of joins, cumulative tables, graphs, fact types, reduced facts and more. They run on the sample tables in your browser.' }));
+    (f === 'py' ? ['s00'] : []).concat(MODS.filter(m => m[0] === (f === 'py' ? 'p' : 'm'))).forEach(m => {
+      const xs = DATA[k].filter(x => x.m === m); if (!xs.length) return;
+      body.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('h3', { class: 'grow', text: (m === 's00' ? 'Python level check' : modLabel(m) + ' · ' + modTitle(m)) }), el('span', { class: 'muted', text: xs.filter(x => S.solved[x.id]).length + ' / ' + xs.length })]), el('div', { class: 'list' }, xs.map(x => item(k, x)))]));
     });
     return;
   }
@@ -799,10 +800,10 @@ async function vInterview(m, focus) {
 /* ---------------- Progress ---------------- */
 function vProgress() {
   const pct = arr => arr.length ? Math.round(100 * arr.filter(x => S.solved[x.id]).length / arr.length) : 0;
-  const sqlW = DATA.sql.filter(x => x.k === 'W'), sqlO = DATA.sql.filter(x => x.k === 'O'), spW = DATA.spark.filter(x => x.k === 'W'), spO = DATA.spark.filter(x => x.k === 'O');
+  const sqlW = DATA.sql.filter(x => x.k === 'W' && !x.m), sqlO = DATA.sql.filter(x => x.k === 'O'), spW = DATA.spark.filter(x => x.k === 'W'), spO = DATA.spark.filter(x => x.k === 'O');
   const quizP = (() => { let got = 0, n = 0; for (const w in S.quiz) if (S.quiz[w].sub) { n++; } return Math.round(100 * n / MODS.length); })();
   const ivP = (() => { let t = 0; for (const w in S.iv) t += Object.values(S.iv[w]).filter(Boolean).length; return Math.min(100, Math.round(t / 2)); })();
-  const rows = [['Python', pct(DATA.py.filter(x => x.m !== 's00')), '#5B7A1E'], ['DSA', pct(DATA.dsa), 'var(--teal)'], ['SQL write', pct(sqlW), '#164C7E'], ['SQL optimize', pct(sqlO), '#164C7E'], ['PySpark write', pct(spW), '#8A3A0C'], ['PySpark optimize', pct(spO), '#8A3A0C'], ['Module quizzes', quizP, 'var(--blue)'], ['Interview sets', ivP, 'var(--plum)']];
+  const rows = [['Python', pct(DATA.py.filter(x => x.m !== 's00')), '#5B7A1E'], ['Data modelling', pct(DATA.sql.filter(x => x.m)), 'var(--plum)'], ['DSA', pct(DATA.dsa), 'var(--teal)'], ['SQL write', pct(sqlW), '#164C7E'], ['SQL optimize', pct(sqlO), '#164C7E'], ['PySpark write', pct(spW), '#8A3A0C'], ['PySpark optimize', pct(spO), '#8A3A0C'], ['Module quizzes', quizP, 'var(--blue)'], ['Interview sets', ivP, 'var(--plum)']];
   const grid = el('div', { class: 'dsa-grid', 'aria-label': '84 daily DSA problems' }, DATA.dsa.map((x, i) => el('a', { href: '#/dsa/' + x.id, title: (i + 1) + '. ' + x.t, class: S.solved[x.id] ? 'done' : i === dayIndex() % 84 ? 'today' : '' })));
   shell('Progress', 'Program, readiness and sync', [programCard(),
     el('div', { class: 'grid2' }, [

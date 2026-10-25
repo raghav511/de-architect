@@ -1,0 +1,270 @@
+@@meta
+id: m03
+n: 3
+title: The right model for every stage: raw to serving, Data Vault, OBT, semantic layers and AI-ready data
+goal: Choose and defend a data model for each layer of a platform: event logs for raw data, normalised or Data Vault for the cleaned layer, stars, wide tables and cumulative tables for the business layer, and key-value stores, feature stores, semantic layers and vector tables for serving. Then run a 45-minute data modelling interview with a repeatable method.
+hours: 5
+
+@@tickets
+M301 | learn | 0.75 | Chapter part 1: the stages, raw and cleaned layers, Data Vault, the business layer | You can fill in the stage-by-model table from memory and explain hubs, links and satellites. | chapter:0-3
+M302 | learn | 0.75 | Chapter part 2: serving models, quality gates, the interview method | You can explain point-in-time correctness, what a semantic layer gives an LLM, and the seven steps of a modelling round. | chapter:4-6
+M303 | build | 1 | Exercises 1–2: point-in-time feature, one big table without fan-out | Both pass, and your OBT has exactly one row per completed trip. | sql:1-2
+M304 | build | 1 | Exercises 3–4: bridge table allocation, write-audit-publish audit | Both pass, and you can say what the audit would block from publishing. | sql:3-4
+M305 | practice | 0.5 | Model it out loud: a full case in 30 minutes | The case answered out loud with the seven-step method, then compared with the model answer. | practice
+M306 | test | 0.5 | Quiz M3 | 80% or better. | quiz
+M307 | talk | 0.5 | Interview set M3 | 5 of 6 answered out loud and ticked. | interview
+
+@@readings
+- **Fundamentals of Data Engineering**, chapter 8 (modelling: Inmon, Kimball, Data Vault, wide denormalised tables) and chapter 9 (serving data for analytics, ML and reverse ETL).
+- **Building a Scalable Data Warehouse with Data Vault 2.0** (Linstedt and Olschimke), chapter 4: hubs, links and satellites. Skim; know when to use it.
+- [Databricks: medallion architecture](https://www.databricks.com/glossary/medallion-architecture). Bronze, silver and gold in one page.
+- [dbt: semantic layer and MetricFlow](https://docs.getdbt.com/docs/use-dbt-semantic-layer/dbt-sl). Metrics defined once, used by BI tools and LLMs.
+- [Feast: point-in-time joins](https://docs.feast.dev/getting-started/concepts/point-in-time-joins). Why training data must not see the future.
+- [Apache Iceberg: branching and tagging](https://iceberg.apache.org/docs/latest/branching/), the mechanism behind write-audit-publish, plus the Airbnb Midas process from the DataExpert.io bootcamp's data quality week.
+
+@@chapter
+## M3.1 One platform, several models
+
+There is no single right data model; there is a right model **per stage**, chosen for who reads it and how.
+
+```
+ sources              raw (bronze)          cleaned (silver)          business (gold)            serving
+ ─────────            ────────────          ────────────────          ───────────────            ───────
+ app events  ──┐      append-only           deduplicated,             star schemas,              key-value / online store
+ Postgres CDC ─┼──>   as received,    ──>   typed, conformed   ──>    wide tables (OBT),   ──>   feature store
+ 3rd-party API ┘      event envelopes       entities (3NF or          aggregates,                semantic layer (metrics)
+                                            Data Vault), SCD2         cumulative tables          vector / graph / search
+ readers:             engineers only        engineers, power users    analysts, BI, ML           apps, models, LLM agents
+```
+
+The questions to ask at each stage: who reads it, how fresh must it be, what must be traceable back to the source, and what changes most often (sources, business rules, or questions).
+
+## M3.2 The stage-by-model table
+
+| Stage | Model | Why | Anti-pattern to avoid |
+|---|---|---|---|
+| Raw (bronze) | **append-only event log** or source copy, with an envelope (source, ingested_ts, schema version, payload) | replay and audit everything; never lose data | cleaning or deduplicating on the way in, so mistakes cannot be replayed |
+| Cleaned (silver) | **normalised entities** (3NF), or **Data Vault** when many sources feed the same entities; SCD2 history | one clean, typed, deduplicated version of each entity and event | business logic and metric definitions here, so every team inherits them |
+| Business (gold) | **star schemas** for analysis, **OBT** for the hottest questions, **aggregates** and **cumulative tables** for repeated metrics | fast, simple, consistent queries | one-off tables per dashboard, each with its own definition of revenue |
+| Serving: apps | **key-value** or document store keyed by entity (Redis, DynamoDB) | millisecond lookups | apps querying the warehouse directly |
+| Serving: ML | **feature store** (offline and online), point-in-time correct | training equals serving, no leakage | features computed differently in training and production |
+| Serving: BI and LLMs | **semantic layer**: metrics, dimensions and joins defined once | the same number everywhere; safe text-to-SQL | LLMs writing SQL against raw tables |
+| Serving: AI retrieval | **vector table**: chunk text, embedding, metadata, source id and version | filtered semantic search, re-embedding on change | embeddings with no metadata or lineage |
+
+## M3.3 Raw and cleaned layers, and Data Vault
+
+**Raw.** Keep data as received, append-only, partitioned by ingestion date, wrapped in an envelope. Schema-on-read is fine here. With Iceberg or Delta you get **schema evolution** (add, rename and widen columns safely) and time travel, so the raw layer can follow source changes without breaking.
+
+**Cleaned.** Deduplicate, cast types, standardise units and time zones, conform keys across sources, and keep history (SCD2 or snapshots). For most teams, normalised entity tables plus event tables are enough.
+
+**Data Vault 2.0** is the alternative when many systems describe the same business entities and auditability matters (banks, insurers, large enterprises):
+
+```
+   hub_rider            link_trip                    hub_driver
+   rider_hk ◄────────── rider_hk, driver_hk ────────► driver_hk
+   rider_id (business key)   trip_id                  driver_id
+   load_ts, source           load_ts, source          load_ts, source
+      │                                                   │
+   sat_rider_profile (from the app DB)             sat_driver_rating (from the ratings service)
+   rider_hk, load_ts, name, city, hash_diff         driver_hk, load_ts, rating, hash_diff
+```
+
+- **Hubs** hold business keys only. **Links** hold relationships between hubs. **Satellites** hold descriptive attributes with history, one per source and change rate.
+- New sources add satellites without changing existing tables, and everything is insert-only and traceable.
+- The price is many joins: nobody queries a vault directly. You build star schemas or wide tables on top for consumers.
+
+Job posts in 2026 most often ask for **Kimball dimensional modelling**, often with **Data Vault** for enterprise and financial roles, and **one big table** or medallion experience for lakehouse roles. A strong answer is knowing all three and when each fits.
+
+## M3.4 The business layer: star, OBT, aggregates
+
+| Model | Best for | Watch out for |
+|---|---|---|
+| **Star schema** | flexible analysis, many questions, conformed dimensions across teams | analysts must join; SCD history needs as-of joins |
+| **One big table (OBT)** | the hottest dashboards, BI tools, text-to-SQL; columnar engines make wide tables cheap | fan-out joins while building it (Exercise 2); rebuilding when a dimension is corrected; it freezes one view of the data |
+| **Aggregates** | repeated summaries at a coarser grain (city × day) | definitions drifting from the base fact; keep them generated from it |
+| **Cumulative tables** | entity history and states (Modelling 1) | sequential backfills |
+
+Physical design matters as much as logical design on a lakehouse: partition big facts by event date; cluster or sort by the most common filter (city, rider); target files of roughly 128 MB to 1 GB (small files kill performance, DE 2); and use nested types (structs, arrays) to keep related detail in one row instead of another join.
+
+## M3.5 Serving models: features, semantics and vectors
+
+**Feature stores and point-in-time correctness.** A training example for "will this trip be cancelled" may only use what was known **at request time**. Joining today's rider statistics onto old trips leaks the future: the model scores well offline and fails in production. Feature stores keep timestamped feature values and do **as-of joins** for training (Exercise 1), plus an **online store** (key-value) that serves the latest value in milliseconds. The same definition feeds both, so training equals serving.
+
+**Semantic layer.** Metrics (revenue, completed trips, cancellation rate), their dimensions and the joins between tables are defined **once** in code (dbt Semantic Layer and MetricFlow, Cube, LookML). Every BI tool, notebook and LLM agent asks for "revenue by city last week" and gets the same SQL. For text-to-SQL this is the difference between a demo and a product: the model picks from named metrics and dimensions instead of guessing joins over raw tables.
+
+**Vector tables for retrieval (RAG).** Model documents as `document → chunks → embeddings`, each chunk with its text, embedding, **metadata** (source, owner, date, access level, version) and a content hash. Metadata enables filtered search ("only runbooks for the payments team"); the hash lets you re-embed only what changed; the version lets you delete stale chunks. AI 3 and the projects build on this.
+
+**Graph** serving (fraud rings, recommendations) uses the vertex and edge model from Modelling 1.
+
+## M3.6 Quality gates between stages
+
+**Write-audit-publish (WAP)**: write the new data to a staging location or branch, **audit** it with checks (Exercise 4), and **publish** (swap, merge or fast-forward the branch) only if the checks pass. Consumers never see a half-written or broken table. Iceberg branches and Delta make this cheap.
+
+Checks to run at each boundary:
+
+- **Uniqueness** of the grain key, and **not null** on keys.
+- **Referential integrity**: every foreign key exists in its dimension (or maps to the unknown member).
+- **Validity**: ranges, allowed values, non-negative money.
+- **Volume and freshness**: row counts within the expected band, latest event recent enough.
+- **Reconciliation** with the source for money.
+
+**Data contracts** move part of this upstream: the producing team commits to a schema, semantics and freshness for their events, and schema changes go through review instead of breaking pipelines at 2 a.m.
+
+## M3.7 Running a data modelling interview round
+
+A repeatable method for the 45-minute round:
+
+1. **Clarify** the business and the questions the model must answer. Write down five of them.
+2. **Name the business processes** (trips, payments, ratings) and the **entities** (rider, driver, city).
+3. **Declare the grain** of each fact in one sentence.
+4. **Design dimensions**, with an SCD type per changing attribute, and the roles (one person as both rider and driver).
+5. **Design facts**: type, measures (and their additivity), degenerate ids.
+6. **Prove it**: write two of the five queries against your model, including one that needs history (an as-of join).
+7. **Scale and evolve**: partitioning, late data, deduplication, how a new source or attribute is added, and which layer each table lives in.
+
+Talk through trade-offs as you go ("I'm keeping city as SCD2 because Finance reports by city at trip time"). Interviewers score the reasoning, not the diagram.
+
+@@lab
+## Exercises 1–2 (1 hour)
+
+1. **Point-in-time feature: no peeking.** Count each rider's completed trips strictly before each trip. Then try the leaky version (lifetime count) and see it fail.
+2. **One big table without fan-out.** Aggregate payments to the trip grain before joining; LEFT JOIN dimensions that may be missing; check the row count.
+
+## Exercises 3–4 (1 hour)
+
+3. **Bridge table with allocation weights.** Multiply by the weight so two-promo trips are split, not double counted.
+4. **Write-audit-publish: the audit step.** Four checks, one row each, including checks that find nothing.
+
+## Going further (optional, 45 minutes)
+
+Do the design problem for this module in the design studio: one table, every stage of the Meridian platform, with the model, the reason, the anti-pattern avoided and the quality gate. Keep it; it is the backbone of your answer to "walk me through your data platform's architecture" in architect interviews.
+
+@@practice
+## Model it out loud: a full case (30 minutes)
+
+Use the seven-step method from M3.7 on this case, out loud, timing yourself at 25 minutes.
+
+**Case.** A food-delivery company: customers place orders with one restaurant; each order has several items; a courier picks it up; customers can rate the restaurant and the courier; restaurants change their menu prices often; couriers can switch between cities. Leadership wants: revenue by restaurant and city by day, average delivery time by hour, how menu price changes affect order volume, courier earnings per week, and the share of customers who reorder within 30 days.
+
+<details><summary>Model answer (outline)</summary>
+
+- **Processes**: ordering, delivery, rating, menu pricing.
+- **Facts**: `fact_order_item` (grain: one row per item in an order; measures quantity, item price at order time, discount); `fact_order` (grain: one per order; delivery fee, tip, total, as order-level measures); `fact_delivery` accumulating snapshot (placed, accepted, picked up, delivered timestamps; delivery minutes); `fact_rating` (one per rating, with a role: restaurant or courier); `fact_courier_earnings_weekly` periodic snapshot.
+- **Dimensions**: customer, restaurant (with city), courier (city as SCD2), menu item (price as SCD2, so price-change analysis can join price at order time), date and time (role-playing: placed, delivered), city.
+- **Reorder within 30 days**: a cumulative customer table with order dates, or a window over `fact_order` by customer.
+- **Prove it**: revenue by restaurant and city by day from `fact_order_item` plus `fact_order` (do not sum the delivery fee from the item fact); price effect via an as-of join to the menu item's SCD2 rows.
+- **Scale**: partition facts by order date; deduplicate order events; late ratings land on the rating date; gold aggregates for the daily dashboard; semantic-layer metrics for revenue and delivery time.
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: modeling
+Q: Which model fits the raw (bronze) layer best?
+A) A star schema
+B) An append-only copy of data as received, with an envelope (source, ingested_ts, schema version)
+C) A one big table
+D) A semantic layer
+ANS: B
+WHY: Raw data must be replayable; cleaning on the way in makes mistakes permanent.
+---
+TYPE: mcq
+TAG: modeling
+Q: In Data Vault 2.0, where do descriptive attributes with history live?
+A) Hubs
+B) Links
+C) Satellites
+D) Bridges
+ANS: C
+WHY: Hubs hold business keys, links hold relationships, satellites hold attributes over time.
+---
+TYPE: mcq
+TAG: modeling
+Q: When is Data Vault a better choice than modelling Kimball stars directly in the cleaned layer?
+A) For a small startup with one source
+B) When many sources feed the same entities and auditability and adding sources without rework matter
+C) When analysts query it directly
+D) When you need the fastest dashboards
+ANS: B
+WHY: It is insert-only and source-traceable, at the cost of many joins; you still build stars on top.
+---
+TYPE: mcq
+TAG: modeling
+Q: A churn model uses each rider's lifetime trip count, computed today, as a feature for trips from last year. What is wrong?
+A) Nothing
+B) Data leakage: the feature includes trips after the prediction time
+C) The feature should be a string
+D) It should use a median
+ANS: B
+WHY: Features must be point-in-time correct: only data known before each example.
+---
+TYPE: fill
+TAG: modeling
+Q: The pattern of writing to staging, checking it, and only then exposing it to consumers is called write-audit-____.
+ANS: publish
+WHY: Consumers never see unchecked data; Iceberg branches make it cheap.
+---
+TYPE: mcq
+TAG: modeling
+Q: What does a semantic layer give a text-to-SQL agent?
+A) Faster storage
+B) Named metrics, dimensions and joins defined once, so the agent picks from them instead of guessing SQL on raw tables
+C) Embeddings
+D) A larger context window
+ANS: B
+WHY: Consistent numbers and far fewer wrong joins.
+---
+TYPE: mcq
+TAG: modeling
+Q: Building an OBT, you join trips to payments and revenue doubles for some trips. Why?
+A) Payments has more than one row per trip, so the join fans out; aggregate payments to the trip grain first
+B) The fare column is wrong
+C) LEFT JOIN always duplicates
+D) Columnar storage
+ANS: A
+WHY: Join only tables already at (or above) the target grain.
+---
+TYPE: mcq
+TAG: modeling
+Q: Which metadata matters most on a vector (embedding) table for RAG?
+A) None; only the embedding matters
+B) Source, owner, date, access level, version and a content hash
+C) The model's temperature
+D) The number of dimensions only
+ANS: B
+WHY: Metadata enables filtered retrieval, access control and re-embedding only what changed.
+---
+TYPE: short
+TAG: modeling
+Q: Give the right model for each stage of a platform and one reason for each.
+MODEL: Raw: append-only copy of source data with an envelope, for replay and audit. Cleaned: deduplicated, typed, conformed entity and event tables (3NF, or Data Vault with many sources) with SCD2 history, as the single clean version. Business: star schemas for flexible analysis, plus OBT and aggregates for the hottest questions, and cumulative tables for entity states. Serving: key-value stores for apps, a feature store for ML with point-in-time correctness, a semantic layer for BI and LLMs, and vector tables with metadata for retrieval.
+---
+TYPE: short
+TAG: modeling
+Q: List the seven steps you follow in a data modelling interview.
+MODEL: Clarify the business and write down the questions; name the processes and entities; declare the grain of each fact; design dimensions with an SCD type per attribute and roles; design facts with their type and measure additivity; prove the model by writing two of the queries, including one as-of join; then cover scale and evolution (partitioning, late data, dedupe, new sources, which layer each table belongs to).
+
+@@interview
+Q: Walk me through the data models in your platform from source to dashboard.
+TAG: modeling
+A: Raw is an append-only copy of each source with an envelope (source, ingestion time, schema version), partitioned by ingestion date, in Iceberg so schemas can evolve and we can replay. Silver deduplicates, types and conforms it into entity and event tables, with SCD2 on attributes we report historically. Gold has star schemas per business process with conformed dimensions, plus a few wide tables and aggregates for the hottest dashboards and cumulative tables for user states. On top, a semantic layer defines metrics once for BI and our text-to-SQL assistant, a feature store serves ML with point-in-time-correct features, and write-audit-publish gates each hop.
+---
+Q: Kimball, Inmon, Data Vault or one big table: how do you choose?
+TAG: modeling
+A: It depends on sources, consumers and change. Kimball stars are my default for analytics: simple, fast and conformed. Inmon's normalised enterprise warehouse suits organisations that need one integrated, normalised core before marts. Data Vault fits many sources feeding the same entities with strict audit needs (banking, insurance): insert-only and easy to extend, with stars built on top. OBT is a serving pattern on columnar engines for the most-used questions and for BI or LLM consumers. In practice I stack them: vault or normalised silver, stars in gold, OBTs for serving.
+---
+Q: How do you prevent training-serving skew and leakage in feature data?
+TAG: modeling
+A: Store features with the timestamp at which each value became known, and build training sets with as-of joins so each example only sees values from before its event time. Define each feature once and materialise it to both an offline store (for training and backfills) and an online store (for low-latency serving), so the same logic produces both. Monitor online feature distributions against training data, and log the exact features served with each prediction so new training data is built from what the model actually saw.
+---
+Q: Why put a semantic layer in front of an LLM that answers business questions?
+TAG: modeling
+A: Because free-form SQL over raw tables is where LLMs fail: wrong joins, fan-out, ambiguous columns and private definitions of revenue. A semantic layer exposes a small set of named metrics and dimensions with descriptions, defined once and tested, and generates the SQL. The model's job becomes choosing a metric, dimensions and filters, which it does reliably, and every answer matches the dashboards. It also gives one place to enforce row-level access and to audit what was asked.
+---
+Q: What checks do you run before publishing a table, and how do you publish safely?
+TAG: modeling
+A: Uniqueness and not-null on the grain key, referential integrity to dimensions, value validity (ranges, allowed values, non-negative money), row count and freshness within expected bands, and reconciliation of totals with the source for financial data. I write to a staging table or an Iceberg branch, run the checks there, and publish by an atomic swap or branch fast-forward only if they pass; otherwise the job fails, alerts, and consumers keep yesterday's good data.
+---
+Q: Model a marketplace where the same person can be both a rider and a driver.
+TAG: modeling
+A: One person entity with a stable person key, and separate rider and driver profile dimensions (or roles) because their attributes and histories differ: a driver has vehicle, licence and city (SCD2); a rider has tier. The trip fact carries rider_person_key and driver_person_key, a role-playing use of the person dimension, so "how many drivers also ride" is a join on person key, and self-rides (rider equals driver) can be flagged as fraud. Earnings and spend stay in separate facts at their own grains.

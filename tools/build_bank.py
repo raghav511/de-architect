@@ -17,7 +17,10 @@ for i, d in enumerate(D):
         bad += 1; print('DSA FAIL', d['w'], d['t'], r['err'], [t for t in r['tests'] if not t['ok']][:2])
     d['id'] = 'd%02d%d' % (d['w'], sum(1 for x in D[:i] if x['w'] == d['w']) + 1)
 for i, s in enumerate(S):
-    s['id'] = 'q%02d%d' % (s['w'], sum(1 for x in S[:i] if x['w'] == s['w']) + 1)
+    if 'm' in s:  # data modelling exercises are keyed by module, not week
+        s['id'] = 'q%s%d' % (s['m'], sum(1 for x in S[:i] if x.get('m') == s['m']) + 1)
+    else:
+        s['id'] = 'q%02d%d' % (s['w'], sum(1 for x in S[:i] if x.get('w') == s['w']) + 1)
     r = json.loads(runtime.check_sql(s['sol'], s['sol'], s.get('ordered', False)))
     if r.get('err') or r['table']['total'] == 0:
         bad += 1; print('SQL FAIL', s['id'], s['t'], r.get('err'), 'rows', r.get('table', {}).get('total'))
@@ -58,7 +61,7 @@ for i, y in enumerate(Y):
     for rx, msg in y.get('need', []):
         if not re.search(rx, y['sol']): print('  RULE need misses sol', y['id'], rx); bad += 1
 from collections import Counter
-print('per week dsa', dict(Counter(d['w'] for d in D)), 'sql', dict(Counter(d['w'] for d in S)), 'spark', dict(Counter(d['w'] for d in P)), 'py', dict(Counter(d['m'] for d in Y)))
+print('per week dsa', dict(Counter(d['w'] for d in D)), 'sql', dict(Counter(d.get('w') or d.get('m') for d in S)), 'spark', dict(Counter(d['w'] for d in P)), 'py', dict(Counter(d['m'] for d in Y)))
 os.makedirs('data/bank', exist_ok=True)
 for name, arr in (('dsa', D), ('sql', S), ('spark', P), ('py', Y)):
     json.dump(arr, open('data/bank/' + name + '.json', 'w'), ensure_ascii=False, separators=(',', ':'))

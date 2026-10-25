@@ -19,7 +19,8 @@ The program starts here, with a diagnostic, so the plan is built on what you can
 
 1. **Python 1–6**, the language foundation: core types and their cost, functions and decorators, generators, classes, production habits (errors, context managers, tests) and concurrency. Every exercise is a small data engineering task with real tests.
 2. **AI 1–3**, woven between the Python modules: agent loops, harness engineering, prompts that save credits, evals, and agents that review and fix their own work. Each AI module comes after the Python it needs: AI 1 after functions, AI 2 after classes, AI 3 after concurrency.
-3. **DE 1–12**, the data engineering modules, built on one platform.
+3. **Modelling 1–3**, data modelling: dimensional modelling (grain, keys, SCD types, cumulative tables, graphs), fact modelling (the four fact types, ledgers, reduced facts, date lists), and the right model for every stage from raw data to semantic layers and feature stores. The exercises are SQL, which you already know well.
+4. **DE 1–12**, the data engineering modules, built on one platform.
 
 After DE 12, **Extra** modules arrive every week: one big-tech engineering problem or research paper, plus new questions on earlier topics.
 

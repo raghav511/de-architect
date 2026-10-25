@@ -1,0 +1,289 @@
+@@meta
+id: m02
+n: 2
+title: Fact modelling: grain, the four fact types, correctness at scale and reduced facts
+goal: Design fact tables that stay correct and cheap at billions of rows: the right fact type for each question, additive and non-additive measures, deduplication and idempotent loads, ledgers for money, and reduced facts and date lists that cut data volume and shuffles by an order of magnitude.
+hours: 5
+
+@@tickets
+M201 | learn | 0.75 | Chapter part 1: what a fact is, the four fact types, getting facts right | You can name the four fact types with an example each, and classify a measure as additive, semi-additive or non-additive. | chapter:0-2
+M202 | learn | 0.75 | Chapter part 2: ledgers, fact width, reduced facts, date lists | You can explain reversing entries, when to denormalise into a fact, and why a monthly array fact shuffles less. | chapter:3-6
+M203 | build | 1 | Exercises 1–3: dedupe, accumulating snapshot, periodic snapshot | All three pass, and your periodic snapshot has a row for every driver on every day. | sql:1-3
+M204 | build | 1 | Exercises 4–5: reduced monthly fact, L1/L7/L28 from a date list | Both pass, and you can say how many rows the reduced fact saves. | sql:4-5
+M205 | practice | 0.5 | Model it out loud: four drills | All four answered out loud before opening the model answers. | practice
+M206 | test | 0.5 | Quiz M2 | 80% or better. | quiz
+M207 | talk | 0.5 | Interview set M2 | 5 of 6 answered out loud and ticked. | interview
+
+@@readings
+- **The Data Warehouse Toolkit**, chapters 2 (fact table techniques), 4 (inventory: the three fact types side by side) and 6 (order management: accumulating snapshots).
+- **Designing Data-Intensive Applications**, chapter 11 (stream processing): event sourcing and why an immutable log of events is the source of truth.
+- [Kimball Group: fact table techniques](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/) (the "Fact Table Core Concepts" section).
+- [Martin Fowler: Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html). Current state as a fold over immutable events.
+- [DataExpert.io free bootcamp](https://learn.dataexpert.io/program/free-community-boot-camp/details): the fact data modelling week (deduplication, date lists, reduced facts and minimising shuffle).
+
+@@chapter
+## M2.1 What a fact is
+
+A fact row records **something that happened**, at a declared grain, with numbers you will aggregate. Describe it with the five W's: **who** (rider, driver), **what** (a trip completed), **where** (city, geohash), **when** (timestamp, date), **how** (app, payment method), plus the **measures**.
+
+Measures come in three kinds, and interviewers check you know the difference:
+
+| Kind | Can you SUM it across... | Example |
+|---|---|---|
+| **Additive** | every dimension | fare, distance, trip count |
+| **Semi-additive** | some dimensions, not time | account balance, open trips at 6 pm (sum across drivers, but not across days: average or take the last) |
+| **Non-additive** | nothing | ratios and percentages: cancellation rate, average fare |
+
+Never store a ratio as the only measure. Store its **numerator and denominator** (cancelled trips, total trips) and compute the ratio after aggregation; the average of daily averages is not the monthly average.
+
+Facts are usually the biggest tables in the company, so every decision in this module is about two things: **correctness** (no duplicates, no missing rows, right grain) and **volume** (rows scanned and shuffled).
+
+## M2.2 The four fact types
+
+| Type | Grain | Rows grow | Example |
+|---|---|---|---|
+| **Transaction** | one row per event | with every event, never updated | each completed trip, each payment |
+| **Periodic snapshot** | one row per entity per period, **activity or not** | with entities × periods | each driver's wallet balance each day |
+| **Accumulating snapshot** | one row per process instance, updated as milestones happen | with instances; rows are revisited | each trip with requested, assigned, picked up, completed timestamps |
+| **Factless** | one row per event or coverage, no measures | with events | a driver was online in a zone in an hour; a promo was eligible for a rider |
+
+```
+transaction:     ● trip 1   ● trip 2   ● trip 3          (events as they happen)
+periodic:        |day 1|day 2|day 3|day 4|               (a row every period, even empty ones)
+accumulating:    requested ──> assigned ──> picked up ──> completed   (one row, filled in over time)
+```
+
+Questions map to types: "how many trips yesterday" → transaction; "what was each driver's balance on the 15th" → periodic snapshot (a transaction fact would need a running sum over all history); "where do trips stall between request and pickup" → accumulating snapshot; "which zones had drivers online but no requests" → factless.
+
+The classic periodic-snapshot bug is **missing zero rows**: driving from activity forgets days with none. Build from a **date spine** crossed with entities, then left join activity (Exercise 3).
+
+## M2.3 Getting facts right
+
+**Deduplicate at the grain.** Producers retry, so duplicates arrive (Exercise 1 has 25). Declare the grain, then keep one row per grain key with `ROW_NUMBER()` ordered deterministically (time, then id so ties are stable).
+
+**Make loads idempotent.** Rerunning a day must give the same result:
+- overwrite the partition (`INSERT OVERWRITE ... PARTITION (trip_date = '2026-10-21')`), or
+- `MERGE` on the grain key, or
+- delete-then-insert the day inside one transaction.
+
+A plain `INSERT` of the day's rows is not idempotent: a retry doubles them.
+
+**Late-arriving facts.** Events show up days late (phones offline). Partition by **event date**, not load date, so late rows land where they belong, and reprocess a trailing window (say, the last 3 days) on every run. Record both `event_ts` and `ingested_ts`.
+
+**Restatements.** When a source corrects history, decide the policy up front: restate (overwrite the affected partitions and tell consumers) or append adjustments (for finance, below). Publish which days changed.
+
+## M2.4 Ledgers and event sourcing
+
+For money, never update a fact in place. A **ledger** is append-only: every change is a new entry, and corrections are **reversing entries**.
+
+```
+entry  txn   type        amount   ts
+1      t42   hold        -500     10-01 10:00
+2      t42   hold_release +500    10-02 09:00
+3      t42   settle      -480     10-02 09:00     the settled amount differs from the hold
+4      t42   dispute     +480     10-20 14:00     reversal weeks later, history untouched
+balance = SUM(amount) as of any timestamp
+```
+
+This is **event sourcing**: the immutable log is the truth, and current state (a balance, an order status) is **derived** by folding over events. Benefits: full audit trail, any as-of balance, easy reprocessing. Cost: reading current state needs a fold, so teams keep a **current-state table** (one writer, updated from the log) next to the history, and periodic snapshots for fast as-of queries.
+
+## M2.5 How wide should a fact be?
+
+A **normalised** fact holds keys and measures only; attributes live in dimensions. A **denormalised** fact copies some attributes in (city name, rider tier at trip time).
+
+Copy an attribute into the fact when:
+- it is needed in most queries and the join is expensive at that volume (billions of rows joined to a large dimension means a big shuffle),
+- you need its value **at event time** and do not keep SCD2 history (copying it freezes the then-value),
+- consumers are BI tools or LLMs that struggle with joins.
+
+Keep it in the dimension when it changes and should be corrected everywhere, or when the fact would become enormous.
+
+**Volume arithmetic** you should do out loud: 50 million trips a day × 365 days = 18 billion rows a year. Adding a 20-byte string is roughly 360 GB a year before compression. Each choice has a cost; say it.
+
+## M2.6 Reduced facts: fewer rows, fewer shuffles
+
+Long-period questions ("each rider's trips per day over the last 90 days") over a daily fact read and **shuffle** 90 rows per rider. A **reduced fact** stores one row per entity per **month** (or year), with the daily values in an **array**, where the position is the day:
+
+```
+daily fact (21 rows for rider 7 in Oct)        reduced fact (1 row)
+rider  date   trips                             rider  month_start  daily_trips
+7      10-01  2                                 7      2026-10-01   [2,0,1,0,0,3,...]   item k = day k
+7      10-02  0
+...    ...    ...                               21x fewer rows; no date column per value
+```
+
+Why it is faster: far fewer rows to scan, and aggregations by rider need almost no shuffle because each rider is already one row. The query layer reads arrays with `unnest` (with ordinality to recover the day) or array functions, and a monthly job appends the new day's value to each row.
+
+Costs: harder to query for casual users (keep a daily view on top), fixed calendar alignment, and late data means rewriting the month's array. Use it for the expensive long-window metrics, not as the only fact.
+
+## M2.7 Date lists and bit-packing
+
+The cumulative table from Modelling 1 keeps `dates_active` per user. From one row you get **L1/L7/L28** activity (Exercise 5): active today, in the last 7 days, number of active days in the last 28.
+
+At very large scale the list is compressed into an **integer bitmask**: bit k is 1 if the user was active k days ago.
+
+```
+days ago:  27 26 ... 3 2 1 0
+bits:       0  1 ... 1 0 0 1     = one 32-bit integer per user
+
+active today      : bits & 1 != 0
+active in last 7  : bits & 0b1111111 != 0
+active days in 28 : bit_count(bits & (2^28 - 1))
+```
+
+32 bits replace a list of dates, so a billion users fit in a few gigabytes, and DAU, WAU and MAU come from one scan of one integer column. Interviewers at large consumer companies ask this as a follow-up to "how do you compute monthly active users cheaply".
+
+@@lab
+## Exercises 1–3 (1 hour)
+
+1. **Deduplicated event fact.** Declare the grain, ROW_NUMBER, keep the first.
+2. **Accumulating snapshot of a trip.** Conditional aggregation pivots events into milestone columns.
+3. **Periodic snapshot with a date spine.** `generate_series` for the days, CROSS JOIN drivers, LEFT JOIN daily activity, running SUM.
+
+## Exercises 4–5 (1 hour)
+
+4. **Reduced fact: a month in one row.** Rider × day spine, then `list(value ORDER BY day)`.
+5. **Daily, weekly and monthly active from a date list.** `unnest` the list, then `bool_or` and `COUNT ... FILTER`.
+
+## Going further (optional, 30 minutes)
+
+In DuckDB on your Mac, rewrite Exercise 5 with a bitmask: build an integer per rider where bit k is set if the rider was active k days before 2026-10-20 (`SUM(1 << (as_of - d))` over the unnested dates), then compute the three flags with `&` and `bit_count`. Compare the storage of the list column and the integer column.
+
+@@practice
+## Model it out loud (30 minutes)
+
+**1. Which fact type?** (a) Daily open support tickets per team. (b) Every price change on the surge map. (c) Loan applications moving from applied to approved to funded. (d) Which drivers were eligible for an incentive this week.
+<details><summary>Model answer</summary>
+
+(a) Periodic snapshot (team × day; open tickets is semi-additive across days). (b) Transaction fact. (c) Accumulating snapshot with one timestamp column per milestone. (d) Factless fact (driver × incentive × week, no measure; you count rows).
+
+</details>
+
+**2. Additive or not?** Fare, wallet balance, cancellation rate, distance, active drivers at 6 pm, average rating.
+<details><summary>Model answer</summary>
+
+Fare and distance: additive. Wallet balance and active drivers at 6 pm: semi-additive (sum across drivers or zones, not across time). Cancellation rate and average rating: non-additive; store the counts and sums and divide after aggregating.
+
+</details>
+
+**3. A teammate's daily load does `INSERT INTO fact_trip SELECT ... WHERE trip_date = :day`. What can go wrong and how do you fix it?**
+<details><summary>Model answer</summary>
+
+A retry or rerun inserts the day twice, doubling revenue. Late events for that day are missed if the job only reads one day. Fix: overwrite the day's partition (or MERGE on trip_id), partition by event date, and reprocess a trailing window of a few days on every run.
+
+</details>
+
+**4. Finance asks to "fix" a refunded trip by updating its fare to 0. What do you propose?**
+<details><summary>Model answer</summary>
+
+Keep the original transaction and add a reversing entry (a refund row with a negative amount and a reference to the original), so revenue on the original day stays as reported and the refund lands on the day it happened. Current net revenue is the sum. This keeps an audit trail and makes past reports reproducible.
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: modeling
+Q: Which fact type answers "what was each driver's wallet balance on the 15th" most cheaply?
+A) Transaction fact
+B) Periodic snapshot
+C) Accumulating snapshot
+D) Factless fact
+ANS: B
+WHY: The snapshot stores the balance per driver per day; a transaction fact would need a running sum over all history.
+---
+TYPE: mcq
+TAG: modeling
+Q: Which measure is semi-additive?
+A) Fare
+B) Account balance
+C) Cancellation rate
+D) Distance
+ANS: B
+WHY: Balances add across accounts but not across time.
+---
+TYPE: mcq
+TAG: modeling
+Q: Why store numerator and denominator instead of a rate?
+A) Rates use more storage
+B) Rates cannot be re-aggregated correctly; the average of averages is not the overall rate
+C) SQL cannot divide
+D) Dashboards require it
+ANS: B
+WHY: Aggregate the parts first, then divide.
+---
+TYPE: fill
+TAG: modeling
+Q: A daily driver snapshot must include days with no trips. You build it from a date ____ crossed with drivers.
+ANS: spine
+WHY: Starting from activity would silently drop the zero days.
+---
+TYPE: mcq
+TAG: modeling
+Q: Which daily load is idempotent?
+A) INSERT INTO fact SELECT the day's rows
+B) INSERT OVERWRITE the day's partition, or MERGE on the grain key
+C) Appending to a CSV
+D) Running the job only once
+ANS: B
+WHY: Reruns replace or match existing rows instead of adding copies.
+---
+TYPE: mcq
+TAG: modeling
+Q: In a ledger, how is a disputed charge recorded?
+A) Update the original amount to 0
+B) Delete the original row
+C) Append a reversing entry referencing the original
+D) Ignore it
+ANS: C
+WHY: Append-only keeps an audit trail and reproducible history.
+---
+TYPE: mcq
+TAG: modeling
+Q: What does a reduced (monthly array) fact mainly save?
+A) Dimension joins
+B) Rows scanned and data shuffled for long-window queries
+C) The need for dates
+D) Compression
+ANS: B
+WHY: One row per entity per month instead of one per day: far fewer rows to read and shuffle.
+---
+TYPE: fill
+TAG: modeling
+Q: Partition a fact by the ____ date, not the load date, so late-arriving rows land in the right place.
+ANS: event
+WHY: And reprocess a trailing window to pick them up.
+---
+TYPE: short
+TAG: modeling
+Q: Explain how to compute DAU, WAU and MAU for a billion users cheaply.
+MODEL: Keep a cumulative table with one row per user carrying their activity history, updated daily from yesterday's row plus today's activity. Compress the history into a 32-bit integer where bit k means active k days ago. Then active today is bits & 1, active in the last 7 days is bits & 127 != 0, and active in the last 28 days uses a 28-bit mask; summing these flags over one scan of one integer column gives DAU, WAU and MAU without touching raw events.
+---
+TYPE: short
+TAG: modeling
+Q: When should you copy a dimension attribute into a fact table?
+MODEL: When most queries need it and the join is expensive at the fact's volume; when you need the value at event time and do not keep SCD2 history (copying freezes the then-value); or when consumers such as BI tools and LLMs handle joins poorly. Keep it in the dimension when it should be corrected everywhere at once or when the extra width is too costly at billions of rows.
+
+@@interview
+Q: What are the types of fact tables, and when do you use each?
+TAG: modeling
+A: Transaction facts store one row per event and are never updated: trips, payments. Periodic snapshots store one row per entity per period whether or not anything happened: daily balances, inventory, open tickets; they make as-of questions cheap. Accumulating snapshots store one row per process instance with a column per milestone, updated as it progresses: order fulfilment, loan applications, trip lifecycle; they answer "where do things stall". Factless facts record that something happened or was possible with no measure: attendance, coverage, eligibility, and you count rows. Many models use several over the same process.
+---
+Q: How do you make a fact table correct when events can be duplicated or arrive late?
+TAG: modeling
+A: Declare the grain and dedupe on it with a deterministic ROW_NUMBER. Partition by event date and reprocess a trailing window each run so late events land in their correct partition. Load idempotently: overwrite affected partitions or MERGE on the grain key, never blind inserts. Record event time and ingestion time. Add tests on uniqueness of the grain key, row counts against the source, and freshness, and publish only after they pass.
+---
+Q: Design the fact tables for a payments system with authorisations, settlements and refunds.
+TAG: modeling
+A: An append-only ledger fact at the grain of one entry, with entry type (authorisation hold, release, settlement, refund, chargeback), signed amount in minor units, currency, and a reference to the original transaction; corrections are reversing entries, never updates. An accumulating snapshot per payment with timestamps and amounts for authorised, settled and refunded, for funnel and latency questions. A daily periodic snapshot of balances per account for finance, since balances are semi-additive. Everything in integer minor units with currency, and exchange rates as a separate dated dimension.
+---
+Q: What is a reduced fact and why would you build one?
+TAG: modeling
+A: A fact that stores one row per entity per longer period (a month or year) with the fine-grained values in an array, where position encodes the day. For long-window analysis such as 90-day trends per user, it cuts rows scanned by roughly 30x and nearly removes the shuffle, because data is already grouped by entity. It is more awkward to query, so I keep a daily view for casual users and use the reduced fact for heavy, repeated long-window metrics.
+---
+Q: When would you denormalise attributes into a fact table?
+TAG: modeling
+A: When the fact is huge and the join would shuffle billions of rows for nearly every query; when the attribute must reflect its value at event time and I do not maintain SCD2; and for serving layers used by BI tools or text-to-SQL, where fewer joins means fewer mistakes. I avoid it for attributes that get corrected (they would need rewriting in billions of rows) and I always estimate the storage cost before adding columns.
+---
+Q: How do you choose the grain when stakeholders want both order-level and item-level metrics?
+TAG: modeling
+A: Pick the finest grain the source supports, the order line item, for the main fact, because you can always roll up but never drill down. Order-level amounts such as delivery fees either go in a separate order-grain fact or are allocated to lines with an explicit rule. Never mix grains in one table: a delivery fee repeated on every line is summed multiple times. I document the grain in one sentence on the table.

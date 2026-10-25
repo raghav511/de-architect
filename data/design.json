@@ -78,5 +78,20 @@
   "title": "Architecture review board",
   "prompt": "Present your platform to a review board. Defend three decisions and answer \"what breaks at 10x?\".",
   "deliverable": "C4 context and container diagrams, three ADRs, and a 10x risk list."
+ },
+ "m01": {
+  "title": "Model a ride-hailing marketplace where drivers can also be riders",
+  "prompt": "Lyft-style case: one person can be a rider, a driver, or both. Model people, vehicles, trips, ratings and city changes so that analysts can answer \"revenue by the driver's city at trip time\" and \"how many drivers also ride\".",
+  "deliverable": "A star schema sketch: the trip fact with its grain stated, each dimension with its SCD type and why, how one person is both rider and driver (role-playing dimension), and one as-of join written out."
+ },
+ "m02": {
+  "title": "Facts for a card ledger with holds and disputes",
+  "prompt": "Capital One-style case: card authorisations place holds, settlements post later (sometimes for a different amount), and disputes can reverse a charge weeks later. Finance needs daily balances; risk needs the life of every transaction.",
+  "deliverable": "Name each fact table, its type (transaction, periodic snapshot, accumulating snapshot) and grain; which measures are additive, semi-additive or not; how reversals are recorded without updating history; and how late settlements are handled."
+ },
+ "m03": {
+  "title": "Pick the model for every layer of the platform",
+  "prompt": "For the Meridian platform, choose the data model for each stage: raw events from apps and Postgres CDC, the cleaned layer, the business layer for Finance and Ops, a real-time driver feature for surge pricing, and a semantic layer an LLM can query safely.",
+  "deliverable": "A one-page table: stage, model (event log, 3NF or Data Vault, star schema or OBT, cumulative, key-value or feature store, semantic layer), why, the anti-pattern you avoid, and how write-audit-publish gates each step."
  }
 }

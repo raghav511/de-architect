@@ -348,8 +348,8 @@ async function T(name, fn, opt) {
 
   await T('order: diagnostic first, Python woven between the AI modules', async p => {
     await go(p, '#/today');
-    const mods = await p.evaluate(() => MODS.slice(0, 11).join(' '));
-    ok(mods === 's00 p01 p02 a01 p03 p04 a02 p05 p06 a03 s01', 'module order: ' + mods);
+    const mods = await p.evaluate(() => MODS.slice(0, 14).join(' '));
+    ok(mods === 's00 p01 p02 a01 p03 p04 a02 p05 p06 a03 m01 m02 m03 s01', 'module order: ' + mods);
     ok(/setup/i.test(await text(p, '.hero')), 'first step should be in Setup: ' + await text(p, '.hero'));
   });
 
@@ -389,6 +389,25 @@ async function T(name, fn, opt) {
     await p.waitForTimeout(300);
     s = await state(p); ok(s.rev.y011.box === 1, 'review pass did not move to box 1: ' + JSON.stringify(s.rev.y011));
     ok(/Next review/.test(await text(p, '.toast')), 'no next-review toast');
+  });
+
+  await T('modelling: solving the SCD exercises ticks the step; practice tab lists all three modules', async p => {
+    await go(p, '#/path/m01', 900);
+    ok(/Modelling exercises \(SQL\)/.test(await text(p, '#page')), 'modelling exercises missing on the path');
+    const sols = await p.evaluate(() => DATA.sql.filter(x => x.m === 'm01').slice(0, 3).map(x => [x.id, x.sol]));
+    for (const [id, sol] of sols) {
+      await hash(p, '#/sql/' + id, 600);
+      ok(/modelling 1/i.test(await text(p, '.top')), 'eyebrow should name the module');
+      await p.fill('textarea.code', sol);
+      await p.click('button.btn.pri:has-text("Run")');
+      await p.waitForFunction(() => { const v = document.querySelector('.verdict'); return v && v.style.display !== 'none' && /pass|Error/.test(v.textContent); }, null, { timeout: 120000 });
+      ok((await text(p, '.verdict')) === 'All checks pass', id + ' did not pass: ' + await text(p, '.out .body'));
+    }
+    await hash(p, '#/path/m01', 700);
+    ok(await p.$('.unit.done:has-text("Exercises 1–3")'), 'exercise step not ticked automatically');
+    await hash(p, '#/practice/model', 600);
+    const t = await text(p, '#page');
+    ok(/Modelling 1/.test(t) && /Modelling 2/.test(t) && /Modelling 3/.test(t), 'practice tab should list all modelling modules');
   });
 
   await T('review: sync merge keeps the newer review entry', async p => {

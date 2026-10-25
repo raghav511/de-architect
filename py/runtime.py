@@ -93,9 +93,67 @@ def seed():
             (8, 'Tarun', 3, 'Data', 175), (9, 'Vani', 1, 'Ops', 140), (10, 'Zubin', 9, 'Ops', 150), (11, 'Isha', 9, 'Ops', 120), (12, 'Gopal', 2, 'Eng', 190)]
     con.execute('create table employees(emp_id int, name varchar, manager_id int, dept varchar, salary int)')
     con.executemany('insert into employees values (?,?,?,?,?)', emps)
+    _seed_modelling(riders, trips)
     spark = minispark.install(con)
     reset_ns()
     return 'ready'
+
+
+def _seed_modelling(riders, trips):
+    """Tables for the data modelling modules. Uses its own random generator so the tables above never change."""
+    r = random.Random(11)
+    base = dt.date(2026, 10, 1)
+    # daily tier snapshots for riders 1-20, Oct 1-21: tiers change now and then (and sometimes change back)
+    snaps, tier_now = [], {i: riders[i - 1][4] for i in range(1, 21)}
+    for d in range(21):
+        day = base + dt.timedelta(days=d)
+        for i in range(1, 21):
+            if (d and r.random() < 0.06) or (d == 20 and i in (3, 7)):  # riders 3 and 7 always change on the last day
+                tier_now[i] = 'plus' if tier_now[i] == 'free' else 'free'
+            snaps.append((day, i, tier_now[i]))
+    con.execute('create table rider_tier_snapshots(snapshot_date date, rider_id int, tier varchar)')
+    con.executemany('insert into rider_tier_snapshots values (?,?,?)', snaps)
+    # a Type 2 dimension built from the snapshots up to Oct 20; other riders get one open row
+    dim, key = [], 0
+    for i in range(1, 21):
+        rows = [s for s in snaps if s[1] == i and s[0] <= base + dt.timedelta(days=19)]
+        start = rows[0]
+        for k in range(1, len(rows) + 1):
+            if k == len(rows) or rows[k][2] != start[2]:
+                key += 1
+                end = rows[k][0] if k < len(rows) else None
+                dim.append((key, i, start[2], start[0], end, end is None))
+                if k < len(rows):
+                    start = rows[k]
+    for rd in riders[20:]:
+        key += 1
+        dim.append((key, rd[0], rd[4], dt.date(2025, 1, 1), None, True))
+    con.execute('create table dim_rider_tier(rider_key int, rider_id int, tier varchar, valid_from date, valid_to date, is_current boolean)')
+    con.executemany('insert into dim_rider_tier values (?,?,?,?,?,?)', dim)
+    today = [(s[1], s[2]) for s in snaps if s[0] == base + dt.timedelta(days=20)] + [(66, 'free'), (67, 'plus')]
+    con.execute('create table rider_tier_today(rider_id int, tier varchar)')
+    con.executemany('insert into rider_tier_today values (?,?)', today)
+    # cumulative activity table as of Oct 20: every completed-trip date per rider, newest first
+    act = {}
+    for t in trips:
+        if t[4] == 'completed' and t[8] <= base + dt.timedelta(days=19):
+            act.setdefault(t[1], set()).add(t[8])
+    con.execute('create table rider_activity_cumulated(rider_id int, dates_active date[], as_of date)')
+    for rid in sorted(act):
+        con.execute('insert into rider_activity_cumulated values (?, ?, ?)', [rid, sorted(act[rid], reverse=True), base + dt.timedelta(days=19)])
+    # a referral graph between riders (edges with a type and a date)
+    edges = [(1, 2), (1, 3), (2, 4), (2, 5), (4, 9), (3, 6), (6, 7), (7, 8), (10, 11), (10, 12), (12, 13), (5, 14), (14, 15), (20, 21)]
+    con.execute('create table referrals(referrer_id int, referred_id int, referred_on date)')
+    con.executemany('insert into referrals values (?,?,?)', [(a, b, base - dt.timedelta(days=200 - 10 * k)) for k, (a, b) in enumerate(edges)])
+    # promotions on trips: a many-to-many bridge with allocation weights that sum to 1 per trip
+    done = [t for t in trips if t[4] == 'completed']
+    promos = []
+    for t in r.sample(done, 40):
+        codes = r.sample(['WELCOME', 'MONSOON', 'AIRPORT', 'PLUS10'], r.choice([1, 1, 2]))
+        w = [1.0] if len(codes) == 1 else [0.5, 0.5]
+        promos += [(t[0], c, x) for c, x in zip(codes, w)]
+    con.execute('create table trip_promos(trip_id int, promo_code varchar, weight double)')
+    con.executemany('insert into trip_promos values (?,?,?)', promos)
 
 
 def reset_ns():
@@ -155,6 +213,10 @@ def _norm(rows):
             return round(x, 2)
         if isinstance(x, (dt.date, dt.datetime)):
             return str(x)
+        if isinstance(x, (list, tuple)):
+            return tuple(v(i) for i in x)
+        if isinstance(x, dict):
+            return tuple(sorted((k, v(i)) for k, i in x.items()))
         return x
     return [tuple(v(x) for x in r) for r in rows]
 

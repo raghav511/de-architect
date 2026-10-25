@@ -1,0 +1,326 @@
+@@meta
+id: m01
+n: 1
+title: Dimensional modelling: grain, dimensions, history, cumulative tables and graphs
+goal: Design dimensions the way senior interviewers expect: state the grain, choose keys, pick the right slowly changing dimension type for each attribute, build and query SCD2 correctly, keep history cheaply with cumulative tables and complex types, and know when a graph model beats a relational one.
+hours: 5
+
+@@tickets
+M101 | learn | 0.75 | Chapter part 1: why model, the Kimball steps, keys and dimension types | You can state the four Kimball steps, the grain of a trips fact, and explain conformed, role-playing and junk dimensions. | chapter:0-2
+M102 | learn | 0.75 | Chapter part 2: SCDs, cumulative tables and graph modelling | You can choose an SCD type for any attribute, describe the cumulative table pattern, and sketch a vertex and edge schema. | chapter:3-6
+M103 | build | 1 | Exercises 1–3: SCD2 from snapshots, as-of join, incremental SCD2 | All three pass in the editor, and you can explain why joining on is_current gives a wrong answer. | sql:1-3
+M104 | build | 1 | Exercises 4–5: cumulative table, referral graph | Both pass, and you can say why the cumulative table never rescans history. | sql:4-5
+M105 | practice | 0.5 | Model it out loud: four drills | All four answered out loud before opening the model answers. | practice
+M106 | test | 0.5 | Quiz M1 | 80% or better. | quiz
+M107 | talk | 0.5 | Interview set M1 | 5 of 6 answered out loud and ticked. | interview
+
+@@readings
+- **The Data Warehouse Toolkit** (Kimball and Ross, 3rd ed.), chapters 1–3 and 5: the four-step design process, star schemas, and slowly changing dimension types. The reference every interviewer has read.
+- **Fundamentals of Data Engineering** (Reis and Housley), chapter 8 (queries, modelling and transformation): Inmon, Kimball, Data Vault and wide tables side by side.
+- **Designing Data-Intensive Applications**, chapter 2 (data models): relational, document and graph models, and when each fits.
+- [Kimball Group: dimensional modelling techniques](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/). One page per technique: role-playing, junk, bridge, every SCD type.
+- [DataExpert.io free bootcamp](https://learn.dataexpert.io/program/free-community-boot-camp/details): the dimensional data modelling week (cumulative tables, complex types, SCDs, graph modelling). Watch the lectures alongside this module.
+- [DuckDB: list functions](https://duckdb.org/docs/sql/functions/list.html) and [recursive CTEs](https://duckdb.org/docs/sql/query_syntax/with.html#recursive-ctes), for the exercises.
+
+@@chapter
+## M1.1 Why model at all
+
+A data model decides what one row means, how tables connect, and how history is kept. Get it right and most queries are short and fast; get it wrong and every analyst writes a 200-line query that disagrees with Finance.
+
+Two families, built for opposite jobs:
+
+| | OLTP (the app's database) | OLAP (the warehouse or lakehouse) |
+|---|---|---|
+| Job | record one thing at a time, fast | scan millions of rows to answer questions |
+| Shape | **normalised** (3NF): every fact stored once | **dimensional** or wide: facts plus context, repeated on purpose |
+| Writes | many small updates | big batch or stream appends |
+| Example | `orders`, `order_items`, `customers`, `addresses` | `fact_trip` joined to `dim_rider`, `dim_city`, `dim_date` |
+
+**Normalisation** in one breath: 1NF means no repeating groups or lists in a column; 2NF means every column depends on the whole key; 3NF means no column depends on another non-key column (city name lives in `cities`, not on every trip). It prevents update anomalies in an app. Analytics deliberately **denormalises** because reads dominate and joins cost money.
+
+Always ask **who consumes the data**: analysts (want simple stars and clear names), data engineers (want reliable, reusable building blocks), ML engineers (want point-in-time-correct features), executives (want a few trusted metrics), and now LLMs (want a small, well-described semantic layer). Different consumers justify different models, which is what Modelling 3 is about.
+
+## M1.2 The Kimball four steps, and stars versus snowflakes
+
+Kimball's design process is the backbone of every modelling round:
+
+1. **Choose the business process**: taking a trip, paying, rating a driver. Not a department, not a report.
+2. **Declare the grain**: exactly what one row means, in words. "One row per completed trip." Decide this before anything else; the interviewer will ask first.
+3. **Identify the dimensions**: the who, what, where, when and how that describe each row: rider, driver, city, date, payment method.
+4. **Identify the facts**: the numbers measured at that grain: fare, distance, minutes.
+
+```
+                    dim_date
+                       │
+      dim_rider ── fact_trip ── dim_driver        STAR: one join from fact to each dimension
+                       │
+                    dim_city ── (country, region inside dim_city)
+
+      dim_city ── dim_country ── dim_region       SNOWFLAKE: dimensions normalised into chains
+```
+
+A **star** keeps each dimension flat (country is a column of `dim_city`). A **snowflake** normalises dimensions into sub-tables. Stars are simpler and faster to query; snowflakes save a little storage and suit very large, shared hierarchies. On columnar engines with cheap storage, prefer stars.
+
+## M1.3 Keys and the dimension toolkit
+
+**Natural key**: the id from the source (`rider_id`). **Surrogate key**: a warehouse-generated key (`rider_key`), one per *version* of a row. You need surrogate keys when you keep history (SCD2): one rider, several versions, each with its own key, and the fact points at the version that was true at the time. Many modern lakehouse teams skip surrogate keys and do as-of joins on the natural key plus dates instead; know both.
+
+The toolkit interviewers probe:
+
+| Technique | What it solves | Example |
+|---|---|---|
+| **Conformed dimension** | one shared definition used by many facts, so metrics line up | the same `dim_city` for trips, payments and support tickets |
+| **Role-playing dimension** | one dimension used in several roles in the same fact | `dim_date` as request date, pickup date and payment date |
+| **Junk dimension** | many low-cardinality flags in one small table instead of ten columns | `is_airport`, `is_shared`, `is_scheduled` combinations |
+| **Degenerate dimension** | an id that lives in the fact with no table of its own | `trip_id`, an order number |
+| **Mini-dimension** | fast-changing attributes split out of a big dimension | rider's current rating band, loyalty tier |
+| **Bridge table** | many-to-many, with weights so totals do not double | trips to promo codes (Modelling 3 exercise) |
+| **Unknown member** | a row with key -1 so facts with a missing dimension still join | trips whose driver is not in `dim_driver` yet |
+
+## M1.4 Slowly changing dimensions
+
+Dimension attributes change: a driver moves city, a rider upgrades to Plus. The SCD type decides what history you keep, **per attribute**:
+
+| Type | Behaviour | Use when |
+|---|---|---|
+| 0 | never change (keep the original) | signup date, original acquisition channel |
+| 1 | overwrite, no history | fixing a typo, attributes nobody analyses historically |
+| 2 | add a new row per change with `valid_from`, `valid_to`, `is_current` | anything reports must show "as it was then": city, tier, plan |
+| 3 | keep current plus previous in two columns | a one-off reorganisation where "old vs new" is the question |
+| 4 | current row in the dimension, full history in a separate history table | very wide or fast-changing dimensions |
+| 6 | Type 2 rows plus a Type 1 "current value" column on every row (1+2+3) | report by the then-value and the now-value in the same query |
+
+```
+dim_rider_tier (Type 2)                       valid_to is EXCLUSIVE: [valid_from, valid_to)
+rider_key  rider_id  tier  valid_from  valid_to    is_current
+   7          4      plus  2026-10-03  2026-10-14  false
+   8          4      free  2026-10-14  NULL        true
+```
+
+Rules that prevent the classic bugs:
+
+- Use **half-open intervals**: `valid_from <= d < valid_to`. Then each date matches exactly one version, with no gaps or overlaps at the boundary.
+- NULL (or `9999-12-31`) for the open row's `valid_to`, plus `is_current` for fast "today" queries.
+- Only one current row per natural key; enforce it with a test.
+
+## M1.5 Building and querying SCD2
+
+**Backfill from daily snapshots** (Exercise 1): a new version starts whenever today's value differs from yesterday's. The **streak** trick turns that into groups:
+
+```
+date   tier  changed?  running sum = streak
+10-01  free     1         1
+10-02  free     0         1
+10-03  plus     1         2      group by (rider, streak) → one row per run
+10-08  free     1         3      free→plus→free stays three rows, not two
+```
+
+**Incremental daily load** (Exercise 3): compare today's snapshot with the *current* rows only and produce five sets: old history (unchanged), current rows with no change, changed rows **closed** on today's date, their **new** open rows, and brand-new keys. In a warehouse this is a `MERGE` (to close rows) plus an `INSERT` (new versions), run in one transaction so a rerun cannot create duplicates. Make it **idempotent**: running the same day twice must not add rows.
+
+**Late-arriving dimensions**: a trip arrives for a driver who is not in `dim_driver` yet. Insert an **inferred member** (driver id, everything else unknown) so the fact loads, then update it when the real record arrives.
+
+**Querying history** (Exercise 2) needs an **as-of join**: join on the key *and* the event date falling inside the validity window. Joining on `is_current` silently re-labels every past trip with today's tier, so "revenue by tier" is wrong, and the error grows with time.
+
+## M1.6 Complex types and cumulative tables
+
+Modern engines (Spark, Trino, Snowflake, BigQuery, DuckDB) support **complex types**:
+
+| Type | Example | Good for |
+|---|---|---|
+| `ARRAY` / `LIST` | `[2026-10-17, 2026-10-11]` | history, ordered values |
+| `STRUCT` | `{fare: 120.5, km: 8.2}` | grouping related fields, nested events |
+| `MAP` | `{'surge': 1.4, 'promo': 0.1}` | sparse or changing attributes |
+
+They let one row carry its own history or detail, which is the basis of the **cumulative table design**: every day, today's table is built from **yesterday's cumulative table plus today's new data**, never from a full scan of history.
+
+```
+ rider_activity_cumulated (as of 10-20)    today's activity (10-21)
+ rider  dates_active                        rider
+   1    [10-17, 10-11, ...]                   2
+   2    [10-20, 10-17, ...]                   99 (first time)
+            │                                  │
+            └──────── FULL OUTER JOIN ─────────┘
+                           │
+ rider_activity_cumulated (as of 10-21)
+   1    [10-17, 10-11, ...]          inactive today: list unchanged
+   2    [10-21, 10-20, 10-17, ...]   active: today prepended
+   99   [10-21]                      new: one-item list
+```
+
+From that single row you can derive state without touching raw data: daily, weekly and monthly active (Modelling 2, Exercise 5), and **growth accounting** states: *new* (first active today), *retained* (active yesterday and today), *churned* (active yesterday, not today), *resurrected* (inactive, now active again).
+
+Trade-offs to say out loud: the table grows (prune entities inactive for a long time, or cap the list); backfills must run **day by day in order**, because each day depends on the previous; and a bug spreads forward until you rebuild from a known-good day.
+
+## M1.7 Graph data modelling
+
+When the questions are about **relationships** (who referred whom, friends of friends, which drivers share devices, fraud rings) rather than measures, model vertices and edges:
+
+```
+vertices                                   edges
+identifier  type    properties (MAP)       subject  subject_type  object  object_type  edge_type   properties
+rider:1     rider   {city: Pune}           1        rider         2       rider        referred    {on: 2026-04-14}
+driver:7    driver  {rating: 4.8}          1        rider         7       driver       rated       {stars: 5}
+```
+
+The schema is deliberately generic: a vertex has an identifier, a type and a property map; an edge has a subject, an object, a type and properties. New relationship types need no new tables.
+
+Relational SQL can answer graph questions with **recursive CTEs** (Exercise 5) for a few hops. Use a graph database or engine (Neo4j, Neptune, GraphFrames) when queries traverse many hops, need shortest paths or community detection, or run interactively. Two things always matter: **cycles** (A refers B refers A) need a depth limit or a visited set, and **supernodes** (one vertex with millions of edges) need special handling.
+
+@@lab
+## Exercises 1–3 (1 hour)
+
+All exercises run in the SQL editor on the sample tables. Open **Show tables and columns** in the problem panel to see `rider_tier_snapshots`, `dim_rider_tier` and `rider_tier_today`.
+
+1. **SCD Type 2 from daily snapshots.** The streak trick: LAG to flag changes, a running SUM to number the runs.
+2. **As-of join: revenue by tier at trip time.** Half-open interval join. Afterwards, run the wrong version (join on `is_current`) and compare the numbers.
+3. **Incremental SCD2.** Five sets, UNION ALL. Two riders change tier today and two riders are new.
+
+## Exercises 4–5 (1 hour)
+
+4. **Cumulative table: add one day.** FULL OUTER JOIN of yesterday's table and today's activity; `list_prepend`.
+5. **Graph: everyone a rider brought in.** A recursive CTE over the `referrals` edge table, carrying depth.
+
+## Going further (optional, 30 minutes)
+
+Rebuild Exercise 3 as real DDL and DML in DuckDB on your Mac (`pip install duckdb`, then `duckdb`): create `dim_rider_tier` with a `rider_key`, write the load as `UPDATE` (close changed rows) plus `INSERT` (new versions) inside `BEGIN; ... COMMIT;`, and run it twice to prove it is idempotent.
+
+@@practice
+## Model it out loud (30 minutes)
+
+Say each answer out loud as you would in an interview, then compare.
+
+**1. State the grain.** (a) A table of ride requests including ones that never found a driver. (b) Daily account balances for every driver wallet. (c) Each item in a food-delivery order.
+<details><summary>Model answer</summary>
+
+(a) One row per ride request (trip_id), whatever its outcome; status is a column. (b) One row per wallet per day: a periodic snapshot. (c) One row per order line item, not per order; order-level values such as the delivery fee either go in a separate order-grain fact or are allocated to lines.
+
+</details>
+
+**2. Pick an SCD type for each rider attribute:** email, home city, signup date, loyalty tier, date of birth corrected by support.
+<details><summary>Model answer</summary>
+
+Email: Type 1 (no one analyses old emails; also personal data). Home city: Type 2 (revenue by city at the time). Signup date: Type 0 (never changes). Loyalty tier: Type 2, or a mini-dimension if it changes very often. Corrected date of birth: Type 1, because it is a correction, not a real change.
+
+</details>
+
+**3. A trips fact needs the request date, the pickup date and the payment date. How many date dimensions do you build?**
+<details><summary>Model answer</summary>
+
+One `dim_date`, used three times as a role-playing dimension: three foreign keys (`request_date_key`, `pickup_date_key`, `payment_date_key`), usually exposed as three views with clear names so analysts do not mix them up.
+
+</details>
+
+**4. Trips have eight yes/no flags (airport, shared, scheduled, accessible, pet, women-only, corporate, promo). Where do they go?**
+<details><summary>Model answer</summary>
+
+Either as boolean columns in the fact (simple, fine on columnar engines) or as a junk dimension holding the existing combinations with one key in the fact. Say which you pick and why: on a columnar lakehouse, booleans in the fact are usually simplest; in a classic row-store warehouse, the junk dimension keeps the fact narrow.
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: modeling
+Q: What should you decide first when designing a fact table?
+A) The partition column
+B) The grain: what exactly one row represents
+C) The list of dimensions
+D) The surrogate key format
+ANS: B
+WHY: Everything else follows from the grain; mixing grains in one table is the root of most double-counting.
+---
+TYPE: mcq
+TAG: modeling
+Q: A driver moves from Pune to Mumbai, and reports must show past revenue under Pune. Which SCD type fits the driver's city?
+A) Type 0
+B) Type 1
+C) Type 2
+D) Type 3
+ANS: C
+WHY: Type 2 adds a new version with validity dates, so past trips keep the old city.
+---
+TYPE: fill
+TAG: modeling
+Q: With half-open intervals, a date d matches a version when `valid_from <= d < ____`.
+ANS: valid_to
+WHY: Exclusive end dates mean each date falls in exactly one version, with no overlap at the boundary.
+---
+TYPE: mcq
+TAG: modeling
+Q: Why does joining facts to an SCD2 dimension on `is_current = true` give wrong historical reports?
+A) It is slower
+B) It labels every past fact with today's attribute values
+C) It drops current rows
+D) It creates duplicates
+ANS: B
+WHY: Use an as-of join on the key and the date inside the validity window.
+---
+TYPE: mcq
+TAG: modeling
+Q: One `dim_date` table is joined three times to a fact as request, pickup and payment date. What is this called?
+A) Junk dimension
+B) Role-playing dimension
+C) Degenerate dimension
+D) Bridge table
+ANS: B
+WHY: One physical dimension plays several roles.
+---
+TYPE: mcq
+TAG: modeling
+Q: What is the main benefit of the cumulative table design?
+A) It stores less data than the raw events
+B) Each day's table is built from yesterday's plus today's data, so history is never rescanned
+C) It removes the need for a date column
+D) It can be backfilled in parallel for every day at once
+ANS: B
+WHY: The cost is sequential backfills: day N needs day N-1.
+---
+TYPE: fill
+TAG: modeling
+Q: An id such as `trip_id` that lives in the fact table with no dimension table of its own is a ____ dimension.
+ANS: degenerate
+WHY: It identifies the transaction but has no descriptive attributes to store separately.
+---
+TYPE: mcq
+TAG: modeling
+Q: In a referral graph, what must a recursive query guard against?
+A) NULL dates
+B) Cycles, with a depth limit or a visited set
+C) Too few edges
+D) Sorting
+ANS: B
+WHY: A cycle makes naive recursion run forever.
+---
+TYPE: short
+TAG: modeling
+Q: Explain how you build an SCD2 table from daily snapshots.
+MODEL: For each key, compare each day's value with the previous day's (LAG) and flag a change; a running SUM of the flags numbers each unbroken run (a streak). Group by key and streak to get one row per version with MIN(date) as valid_from. LEAD(valid_from) gives valid_to (exclusive), and the last version is current with valid_to NULL. Grouping by the value alone is wrong because a value that changes and changes back would be merged.
+---
+TYPE: short
+TAG: modeling
+Q: When would you choose a graph model over a relational star schema?
+MODEL: When the questions are about relationships and paths rather than aggregated measures: referrals, social connections, fraud rings, shared devices, recommendations, dependency lineage. A vertex and edge model (identifier, type, properties; subject, object, edge type, properties) handles new relationship types without schema changes. For a few hops, recursive SQL is enough; for deep traversals, shortest paths or community detection, use a graph engine.
+
+@@interview
+Q: Walk me through how you would model trips for a ride-hailing company.
+TAG: modeling
+A: I start with the business process (completed trips) and the grain: one row per trip, including cancelled and unfulfilled requests with a status, because funnel questions need them. Dimensions: rider and driver (one person dimension in two roles, since drivers can ride), city with country and region, date and time (role-playing for request, pickup and drop-off), vehicle, and payment method. Facts: fare, distance, duration, surge multiplier, and wait time. Driver city and rider tier are SCD2 so history is correct; email is Type 1. Flags go in a junk dimension or booleans. Then I check the model against five real questions, such as revenue by the driver's city at trip time, and partition the fact by trip date.
+---
+Q: Explain SCD types 1, 2, 3 and 6, and when you would use each.
+TAG: modeling
+A: Type 1 overwrites: for corrections and attributes nobody analyses historically. Type 2 adds a versioned row with valid_from, valid_to and is_current: for attributes where reports must reflect the value at the time, like a customer's city or plan. Type 3 keeps current and previous values in two columns: for a one-off change where old-versus-new is the question. Type 6 combines them: Type 2 rows plus a column holding the current value on every row, so you can report by then-value or now-value without a second join. The type is chosen per attribute, not per table.
+---
+Q: How do you load an SCD2 dimension incrementally, and make it safe to rerun?
+TAG: modeling
+A: Compare the new snapshot or change feed with the current rows on the natural key, using a hash of the tracked attributes to detect changes. Changed keys: close the current row (valid_to = load date, is_current = false) and insert a new current row. New keys: insert. Unchanged: nothing. Deletes depend on policy: close the row or flag it. I run it as one MERGE plus INSERT in a transaction, keyed on natural key and load date so a rerun finds nothing to change, and I test that there is exactly one current row per key and no overlapping windows.
+---
+Q: What is a cumulative table and when is it the right design?
+TAG: modeling
+A: A table where each day's version is computed from the previous day's version plus that day's new data, usually with a FULL OUTER JOIN, carrying history in complex types such as an array of active dates or a struct of running totals. It is right for entity-level history and states: daily, weekly and monthly active users, growth accounting (new, retained, churned, resurrected), lifetime metrics. It avoids scanning months of raw events every day. Costs: backfills must run sequentially, the table grows unless you prune inactive entities, and a bug propagates forward.
+---
+Q: How do you handle a fact that arrives before its dimension row exists?
+TAG: modeling
+A: Load it anyway. Either insert an inferred member into the dimension with the natural key and placeholder attributes, then update that row (Type 1 in place) when the real record arrives, or point the fact at an "unknown" member and re-key it later in a repair job. Dropping the fact loses revenue; blocking the load delays everything. I also monitor how many facts hit inferred or unknown members, because a spike means an upstream feed is broken.
+---
+Q: Star schema or snowflake on a modern lakehouse?
+TAG: modeling
+A: Star, in almost all cases. Columnar storage compresses repeated values well, so denormalising a dimension costs little, and every join you remove makes queries simpler and faster for analysts and BI tools. I would snowflake only for very large shared hierarchies maintained by another team, or when a sub-dimension changes on a different schedule. Many teams go further and serve wide one-big-tables for the most common questions, built from the star.

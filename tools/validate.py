@@ -44,7 +44,8 @@ def blocks(text, keys, letters):
     if b: res.append(b)
     return res
 
-mods = ['a01', 'a02', 'a03'] + ['p%02d' % i for i in range(1, 7)] + ['s%02d' % i for i in range(13)]
+mods = ['a01', 'a02', 'a03'] + ['p%02d' % i for i in range(1, 7)] + ['m%02d' % i for i in range(1, 4)] + ['s%02d' % i for i in range(13)]
+sqlbank = json.load(open('data/bank/sql.json'))
 pybank = json.load(open('data/bank/py.json'))
 ext = json.load(open('data/extensions.json')).get('modules', [])
 mods += ext
@@ -83,9 +84,10 @@ for m in mods:
         if r:
             a, b = int(r.group(1)), int(r.group(2))
             if not (0 <= a <= b < len(ch)): err(m, tid, 'chapter range', tab, 'but chapter has', len(ch), 'sections')
-        elif re.match(r'py:(\d+)-(\d+)$', tab):
-            a, b = map(int, tab[3:].split('-'))
-            if not (1 <= a <= b <= sum(1 for x in pybank if x['m'] == m)): err(m, tid, 'python exercise range', tab, 'out of bounds')
+        elif re.match(r'(py|sql):(\d+)-(\d+)$', tab):
+            bank = pybank if tab.startswith('py') else sqlbank
+            a, b = map(int, tab.split(':')[1].split('-'))
+            if not (1 <= a <= b <= sum(1 for x in bank if x.get('m') == m)): err(m, tid, 'exercise range', tab, 'out of bounds')
         elif tab not in ('chapter', 'lab', 'practice', 'quiz', 'interview', 'coding', 'readings', 'mock'): err(m, tid, 'unknown tab', tab)
         if tab == 'coding' and 'coding' not in s: err(m, tid, 'coding ticket but no @@coding')
         if not done: err(m, tid, 'empty done-when')
