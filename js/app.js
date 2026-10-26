@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.7.1';
+const VERSION = '1.7.2';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -171,9 +171,9 @@ function shell(title, eyebrow, body, opts) {
   const nav = NAV.map(([h, t, ic]) => { const href = h.replace('/0', '/' + wk); return el('a', { class: 'nav', href, 'aria-current': href.split('/')[1] === route ? 'page' : null }, [svg(I[ic]), t]); });
   const side = el('nav', { class: 'side', 'aria-label': 'Main' }, [el('a', { class: 'brand', href: '#/today' }, [logo(), 'Data Architect'])].concat(nav, [el('a', { class: 'week', href: '#/path/' + wk, style: { color: 'inherit', textDecoration: 'none' } }, [el('span', { class: 'lbl', style: { color: '#9FB0BF' }, text: 'Module ' + modLabel(wk) + ' · week ' + weekOf(sc.today) }), el('b', { style: { color: '#fff' }, text: modTitle(wk) }), el('div', { class: 'bar' }, el('i', { style: { width: (tall ? Math.round(100 * tdone / tall) : 0) + '%' } })), el('span', { style: { fontSize: '13px' }, text: 'Today: ' + tdone + ' of ' + tall + ' min done' })])]));
   const inTabs = TABS.some(x => x[0].split('/')[1] === route);
-  const more = el('button', { class: 'tabmore', 'aria-label': 'More sections', 'aria-current': inTabs ? null : 'page', onclick: () => {
+  const more = el('button', { class: 'tabmore' + (hasUpdate() ? ' hasdot' : ''), 'aria-label': 'More sections' + (hasUpdate() ? ' (update available)' : ''), 'aria-current': inTabs ? null : 'page', onclick: () => {
     const sc2 = el('div', { class: 'scrim sheetwrap', onclick: e => { if (e.target === sc2) sc2.remove(); } }, [el('div', { class: 'sheet', role: 'dialog', 'aria-label': 'All sections' }, [el('div', { class: 'row' }, [el('b', { class: 'grow', style: { fontSize: '18px' }, text: 'All sections' }), el('button', { class: 'btn icon sm', 'aria-label': 'Close', onclick: () => sc2.remove(), text: '×' })]),
-      el('div', { class: 'sheetgrid' }, NAV.map(([h, t, ic]) => { const href = h.replace('/0', '/' + wk); return el('a', { href, onclick: () => sc2.remove(), 'aria-current': href.split('/')[1] === route ? 'page' : null }, [svg(I[ic], 22), t]); }).concat([el('button', { onclick: () => { sc2.remove(); doSync(); } }, [svg(I.sync, 22), syncLabel()]), el('button', { onclick: () => { sc2.remove(); doUpdate(); } }, [svg(I.update, 22), 'Update app']), el('button', { onclick: () => { sc2.remove(); settings(); } }, [svg(I.gear, 22), 'Settings'])]))])]);
+      el('div', { class: 'sheetgrid' }, NAV.map(([h, t, ic]) => { const href = h.replace('/0', '/' + wk); return el('a', { href, onclick: () => sc2.remove(), 'aria-current': href.split('/')[1] === route ? 'page' : null }, [svg(I[ic], 22), t]); }).concat([el('button', { onclick: () => { sc2.remove(); doSync(); } }, [svg(I.sync, 22), syncLabel()]), el('button', { class: hasUpdate() ? 'hasdot' : '', onclick: () => { sc2.remove(); doUpdate(); } }, [svg(I.update, 22), hasUpdate() ? 'Update to ' + S.newVersion : 'Update app · v' + VERSION]), el('button', { onclick: () => { sc2.remove(); settings(); } }, [svg(I.gear, 22), 'Settings'])]))])]);
     document.body.appendChild(sc2);
     const k = e => { if (e.key === 'Escape') { sc2.remove(); document.removeEventListener('keydown', k); } }; document.addEventListener('keydown', k);
   } }, [svg('<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>', 22), 'More']);
@@ -184,12 +184,12 @@ function shell(title, eyebrow, body, opts) {
     opts.extra || null,
     el('div', { class: 'row topbtns', style: { gap: '8px' } }, [
       el('button', { class: 'btn icon', onclick: () => openSearch(), title: 'Search (⌘K or /)', 'aria-label': 'Search' }, svg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>', 18)),
-      el('button', { class: 'btn hide-s', onclick: doUpdate, title: 'Check for a new version', 'aria-label': 'Update app' }, [svg(I.update, 18), el('span', { class: 't', text: 'Update app' })]),
+      el('button', { class: 'btn hide-s' + (hasUpdate() ? ' pri hasdot' : ''), onclick: doUpdate, title: 'Installed version ' + VERSION + (hasUpdate() ? '; ' + S.newVersion + ' is available' : '') + '. Check for updates', 'aria-label': 'Update app' }, [svg(I.update, 18), el('span', { class: 't', text: updateLabel() }), hasUpdate() ? null : el('span', { class: 'ver mono', text: 'v' + VERSION })]),
       el('button', { class: 'btn hide-s', id: 'syncBtn', onclick: doSync, title: 'Sync progress across your devices', 'aria-label': 'Sync progress' }, [svg(I.sync, 18), el('span', { class: 't', text: syncLabel() })]),
       el('button', { class: 'btn icon', onclick: settings, 'aria-label': 'Settings' }, svg(I.gear, 18))])]);
   const pageEl = opts.raw ? body : el('main', { class: 'page', id: 'page' }, body);
   /* trust fix 21: tell the learner when a newer version is published instead of silently running an old one */
-  if (S.newVersion && S.newVersion !== VERSION && pageEl.prepend) pageEl.prepend(el('div', { class: 'hint row wrap', role: 'status', style: { margin: '0 0 12px' } }, [el('span', { class: 'grow' }, [el('b', { text: 'Version ' + S.newVersion + ' is available. ' }), 'You are on ' + VERSION + '; content and fixes may be out of date.']), el('button', { class: 'btn sm pri', onclick: doUpdate, text: 'Update now' })]));
+  if (hasUpdate() && pageEl.prepend) pageEl.prepend(el('div', { class: 'hint row wrap', role: 'status', style: { margin: '0 0 12px' } }, [el('span', { class: 'grow' }, [el('b', { text: 'Version ' + S.newVersion + ' is available. ' }), 'You are on ' + VERSION + '; content and fixes may be out of date.']), el('button', { class: 'btn sm pri', onclick: doUpdate, text: 'See what is new' })]));
   const main = el('div', { class: 'main' }, [top, pageEl.querySelector && pageEl.querySelector('h1') ? null : el('h1', { class: 'sr', text: title }), pageEl]);
   const app = el('div', { class: 'app' }, [side, main]);
   const same = shell.last === location.hash, y = window.scrollY; shell.last = location.hash;
@@ -864,7 +864,9 @@ function settings() {
     f('st_key', 'Coach AI key (optional, Anthropic API key, kept only on this device)', S.settings.aiKey, 'password', 'sk-ant-…'),
     f('st_model', 'Coach model', S.settings.aiModel || 'claude-haiku-5-5', 'text'),
     el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'The key never leaves this device except to call the AI provider. Without a key the coach still gives the step-by-step hints.' }),
-    graderStatus()]);
+    graderStatus(),
+    el('label', { class: 'row', style: { gap: '10px', fontSize: '14.5px' } }, [el('input', { type: 'checkbox', id: 'st_notify', checked: S.settings.notifyUpdates ? 'checked' : null, style: { width: '20px', height: '20px' } }), 'Notify me when an app update is available']),
+    el('div', { class: 'row wrap', style: { gap: '8px', fontSize: '13.5px' } }, [el('span', { class: 'muted grow', text: 'App version ' + VERSION + (S.latest ? ' · latest ' + S.latest.version + ' (checked ' + verAge(S.latest.at) + ')' : '') }), el('button', { class: 'btn sm', onclick: () => { document.querySelectorAll('.scrim').forEach(x => x.remove()); updateDialog(); }, text: 'Check for updates' })])]);
   confirmBox('Settings', body, [{ t: 'Save', cls: 'pri', v: 1 }, { t: 'Cancel', v: null }]).then(v => {
     if (!v) return;
     const g = id => body.querySelector('#' + id).value.trim();
@@ -873,6 +875,9 @@ function settings() {
     if (su && /script\.google\.com/.test(su) && !/[?&]k=/.test(su)) setTimeout(() => toast('Saved. This sync URL has no ?k= key: anyone with the URL could read your progress.', null, 7000), 400);
     const st0 = g('st_start'); if (/^\d{4}-\d\d-\d\d$/.test(st0)) { const d = new Date(st0 + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); S.start = iso(d); } S.settings.syncUrl = su; S.settings.aiKey = g('st_key'); S.settings.aiModel = g('st_model') || 'claude-haiku-5-5';
     const wd = Math.round(+g('st_wd')), we = Math.round(+g('st_we')); S.settings.capWd = wd >= 15 && wd <= 600 ? wd : 60; S.settings.capWe = we >= 15 && we <= 720 ? we : 120; S.settings.studyTime = g('st_time') || '07:00'; S.settings.theme = g('st_theme') || 'auto'; applyTheme(); S.settings.ai = g('st_ai') !== 'off'; applyAi();
+    const nt = body.querySelector('#st_notify').checked; S.settings.notifyUpdates = nt;
+    if (nt && window.Notification && Notification.permission === 'default') Notification.requestPermission().then(r => { if (r !== 'granted') { S.settings.notifyUpdates = false; save(false); toast('Notifications were not allowed, so update alerts stay in the app.', null, 6000); } });
+    if (nt && !window.Notification) setTimeout(() => toast('This browser cannot show notifications here (on iPhone, add the app to the Home Screen first). You will still see update alerts in the app.', null, 8000), 400);
     S.updated = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Could not save settings in this browser.'); return; }
     toast('Settings saved'); route();
   });
@@ -929,20 +934,58 @@ function mergeState(a, b) {
   out.updated = Math.max(a.updated || 0, b.updated || 0);
   return out;
 }
-async function checkVersion() { /* at most once every 6 hours */
-  if (Date.now() - (S.versionCheckedAt || 0) < 6 * 36e5 && !S.newVersion) return;
-  try { const v = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.json()); S.versionCheckedAt = Date.now(); const was = S.newVersion; S.newVersion = v.version !== VERSION ? v.version : null; save(false); if (S.newVersion !== was) route(); } catch (e) { }
-}
-async function doUpdate() {
-  toast('Checking for updates…');
+/* ---------------- versions and updates ----------------
+   version.json holds the published version, its date and what is new. The app checks it at start, every 30 minutes
+   while open and when you come back to it; a newer version shows a banner, a toast, a dot on Update app, and (if you
+   turned it on in Settings) a system notification. */
+const cmpVer = (a, b) => { const x = String(a || '0').split('.').map(Number), y = String(b || '0').split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
+const hasUpdate = () => !!S.newVersion && cmpVer(S.newVersion, VERSION) > 0;
+async function fetchVersion() { const v = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.json()); S.latest = { version: v.version, date: v.date || '', notes: v.notes || [], at: Date.now() }; return v; }
+async function checkVersion(force) {
+  if (!force && Date.now() - (S.versionCheckedAt || 0) < 30 * 6e4) return;
   try {
-    const v = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.json());
+    const v = await fetchVersion(); S.versionCheckedAt = Date.now();
+    const was = S.newVersion; S.newVersion = cmpVer(v.version, VERSION) > 0 ? v.version : null; save(false);
+    if (S.newVersion && S.notifiedVersion !== S.newVersion) { S.notifiedVersion = S.newVersion; save(false); notifyUpdate(v); }
+    if (S.newVersion !== was) route();
+  } catch (e) { }
+}
+function notifyUpdate(v) {
+  const t = el('div', { class: 'toast', role: 'status' }, [el('span', { text: 'Version ' + v.version + ' is available' + (v.notes && v.notes[0] ? ': ' + v.notes[0] : '.') }), el('button', { text: 'Update', onclick: () => { t.remove(); updateDialog(); } })]);
+  document.querySelectorAll('.toast').forEach(x => x.remove()); document.body.appendChild(t); setTimeout(() => t.remove(), 12000);
+  /* a system notification too, when allowed (works while the app is open or in the background; not after it is closed) */
+  if (S.settings.notifyUpdates && window.Notification && Notification.permission === 'granted' && navigator.serviceWorker) navigator.serviceWorker.getRegistration().then(reg => reg && reg.showNotification('Data Architect ' + v.version + ' is available', { body: (v.notes || []).slice(0, 2).join(' · ') || 'Open the app and tap Update.', tag: 'da-update', icon: 'icons/icon-192.png', data: { url: './#/today' } })).catch(() => { });
+}
+function verAge(ms) { const m = Math.round((Date.now() - ms) / 6e4); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' days ago'; }
+async function updateDialog() {
+  const body = el('div', { class: 'stack', style: { gap: '10px' } }, [el('p', { class: 'muted', style: { margin: 0 }, text: 'Checking for updates…' })]);
+  const p = confirmBox('App version', body, [{ t: 'Close', v: null }]);
+  let v = null; try { v = await fetchVersion(); S.versionCheckedAt = Date.now(); S.newVersion = cmpVer(v.version, VERSION) > 0 ? v.version : null; save(false); } catch (e) { }
+  const newer = v && cmpVer(v.version, VERSION) > 0, reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration().catch(() => null);
+  const row = (k, val, b) => el('div', { class: 'row', style: { justifyContent: 'space-between' } }, [el('span', { text: k }), el('b', { class: 'mono', text: val }), b || null]);
+  body.textContent = '';
+  body.append(row('Installed on this device', VERSION),
+    row('Latest published', v ? v.version + (v.date ? ' · ' + v.date : '') : (S.latest ? S.latest.version + ' (offline; last seen ' + verAge(S.latest.at) + ')' : 'unknown (offline)')),
+    el('span', { class: 'badge ' + (newer ? 'b-warn' : v ? 'b-ok' : 'b-bad'), style: { alignSelf: 'flex-start' }, text: newer ? 'Update available' : v ? 'You have the latest version' : 'Could not check: you seem to be offline' }));
+  if (v && (v.notes || []).length) body.append(el('div', {}, [el('span', { class: 'lbl', text: newer ? 'What is new in ' + v.version : 'In this version' }), el('ul', { style: { margin: '4px 0 0', paddingLeft: '20px' } }, v.notes.map(n => el('li', { text: n })))]));
+  const acts = el('div', { class: 'row wrap' }, [
+    newer || (reg && reg.waiting) ? el('button', { class: 'btn pri', onclick: () => applyUpdate(v ? v.version : ''), text: 'Update now' + (newer ? ' to ' + v.version : '') }) : null,
+    el('button', { class: 'btn', onclick: () => { document.querySelectorAll('.scrim').forEach(x => x.remove()); updateDialog(); }, text: 'Check again' })]);
+  body.append(acts);
+  if (window.Notification && !S.settings.notifyUpdates) body.append(el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Want a notification when an update comes out? Turn it on in Settings.' }));
+  return p;
+}
+async function applyUpdate(to) {
+  toast('Updating' + (to ? ' to ' + to : '') + '…');
+  try {
     const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
     if (reg) { await reg.update(); if (reg.waiting) reg.waiting.postMessage('skip'); }
-    if (v.version !== VERSION || (reg && reg.waiting)) { toast('Updating to ' + v.version + '…'); if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } setTimeout(() => location.reload(), 600); }
-    else toast('You have the latest version (' + VERSION + ').');
-  } catch (e) { toast('Could not check for updates. Are you online?'); }
+    if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.filter(k => !/runtime/.test(k)).map(k => caches.delete(k))); } /* keep the Python runtime */
+  } catch (e) { }
+  setTimeout(() => location.reload(), 600);
 }
+function doUpdate() { return updateDialog(); }
+function updateLabel() { return hasUpdate() ? 'Update to ' + S.newVersion : 'Update app'; }
 
 /* ---------------- Coach ---------------- */
 let coachOpen = false;
@@ -1002,7 +1045,9 @@ window.addEventListener('keydown', e => { if (e.key === '`' && (e.ctrlKey || e.m
 (async () => {
   try { await loadData(); } catch (e) { $('#root').innerHTML = '<div style="padding:24px">Could not load the question bank. Check your connection and reload.</div>'; return; }
   route();
-  checkVersion();
+  checkVersion(true);
+  setInterval(() => checkVersion(), 30 * 6e4);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });
   if ('serviceWorker' in navigator) {
     const hadController = !!navigator.serviceWorker.controller; /* first install: no reload; later updates: reload once */
     navigator.serviceWorker.register('sw.js').catch(() => { });

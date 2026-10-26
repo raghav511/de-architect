@@ -1,1 +1,1 @@
-{"version":"1.7.1"}
+{"version": "1.7.2", "date": "2026-10-26", "notes": ["See which version you have and which is available: tap Update app (the version is shown next to it)", "Update alerts: a banner, a toast and a dot on Update app; optional notifications in Settings", "Fixes from six simulated users: offline use, AI features off, touch, keyboard and screen reader"]}

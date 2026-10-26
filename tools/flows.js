@@ -498,10 +498,47 @@ async function T(name, fn, opt) {
     ok(r[0] === 2 && r[1], 'merge wrong: ' + JSON.stringify(r));
   });
 
-  await T('update app: reports latest when versions match', async p => {
+  await T('update app: shows installed and latest version, up to date', async p => {
     await go(p, '#/today');
+    ok(/v\d+\.\d+\.\d+/.test(await text(p, '[aria-label="Update app"]')), 'version not shown on the Update app button');
     await p.click('[aria-label="Update app"]'); await p.waitForTimeout(1500);
-    ok(/latest version|Updating/.test(await text(p, '.toast')), 'no update toast');
+    const t = await text(p, '.scrim [role=dialog]'), v = await p.evaluate(() => VERSION);
+    ok(t.includes('Installed on this device') && t.includes(v) && /Latest published/.test(t), 'dialog lacks versions: ' + t.slice(0, 200));
+    ok(/You have the latest version/.test(t) && !/Update now/.test(t), 'should say up to date');
+    ok(/In this version/i.test(t), 'release notes missing');
+  });
+  await T('update app: a newer version shows banner, dot, toast once, and Update now', async (p, c) => {
+    await c.route(/version\.json/, r => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: '9.9.9', date: '2027-01-01', notes: ['Big new thing'] }) }));
+    await go(p, '#/today', 1500);
+    ok(/Version 9\.9\.9 is available/.test(await text(p, '.toast')), 'no toast for the new version');
+    ok(/9\.9\.9 is available/.test(await text(p, '#page')), 'no banner');
+    ok(await p.locator('[aria-label="Update app"].hasdot').count() === 1 && /Update to 9\.9\.9/.test(await text(p, '[aria-label="Update app"]')), 'button does not show the update');
+    await p.reload(); await p.waitForTimeout(1500);
+    ok(!/is available/.test(await text(p, '.toast')), 'toast repeated for the same version');
+    await p.click('[aria-label="Update app"]'); await p.waitForTimeout(1200);
+    const t = await text(p, '.scrim [role=dialog]');
+    ok(/Update available/.test(t) && /Update now to 9\.9\.9/.test(t) && /Big new thing/.test(t), 'dialog: ' + t.slice(0, 200));
+  });
+  await T('update app: an older published version never shows as an update', async (p, c) => {
+    await c.route(/version\.json/, r => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: '1.0.0' }) }));
+    await go(p, '#/today', 1500);
+    ok(!/is available/.test(await text(p, 'body')) && await p.locator('.hasdot').count() === 0, 'older version offered as an update');
+  });
+  await T('update app: phone More tab shows a dot and the version', async (p, c) => {
+    await c.route(/version\.json/, r => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: '9.9.9' }) }));
+    await go(p, '#/today', 1500);
+    ok(await p.locator('button.tabmore.hasdot').count() === 1, 'no dot on More');
+    await p.click('button.tabmore'); await p.waitForTimeout(300);
+    ok(/Update to 9\.9\.9/.test(await text(p, '.sheet')), 'More sheet does not offer the update');
+  }, { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  await T('update app: system notification when allowed, and settings show the version', async (p, c) => {
+    await c.grantPermissions(['notifications']);
+    await go(p, '#/today', 1500);
+    const shown = await p.evaluate(async () => { S.settings.notifyUpdates = true; window.Notification = { permission: 'granted' }; /* headless Chrome always reports denied */ const reg = await navigator.serviceWorker.ready; let got = null; reg.showNotification = (t, o) => { got = [t, o.tag]; return Promise.resolve(); }; navigator.serviceWorker.getRegistration = () => Promise.resolve(reg); notifyUpdate({ version: '9.9.9', notes: ['x'] }); await new Promise(r => setTimeout(r, 300)); return got; });
+    ok(shown && /9\.9\.9/.test(shown[0]) && shown[1] === 'da-update', 'no notification: ' + JSON.stringify(shown));
+    await p.click('[aria-label=Settings]'); await p.waitForTimeout(400);
+    const t = await text(p, '.scrim [role=dialog]');
+    ok(/App version \d/.test(t) && /Notify me when an app update/.test(t), 'settings lack the version or the toggle');
   });
 
   /* ---- persona round 1 fixes ---- */
