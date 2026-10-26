@@ -57,6 +57,10 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ok((said.match(/Stub coach/g) || []).length >= 2, 'coach bubble: answered through the sync relay too');
   direct = true;
 
+  ok(await p.evaluate(async () => { S.settings.aiKey = 'sk-ant-revoked'; let hitApi = false; const f = window.fetch; window.fetch = (u, o) => { if (/api\.anthropic\.com/.test(u)) { hitApi = true; return Promise.resolve(new Response(JSON.stringify({ type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } }), { status: 401 })); } return f(u, o); };
+    const box = document.createElement('div'); await askCoach('what is today?', { title: 'Today' }, box); const okMac = /Stub coach/.test(box.innerText) && !hitApi;
+    const keep = window.macCall; window.macCall = async () => { throw new Error('nograder'); }; const box2 = document.createElement('div'); await askCoach('q', { title: 't' }, box2); window.macCall = keep; window.fetch = f; S.settings.aiKey = '';
+    return okMac && /rejected/.test(box2.innerText); }), 'coach bubble: Mac answers first even with a saved key; a rejected key is explained');
   ok(await p.evaluate(async () => { const keep = window.macCall; window.macCall = async () => ({ score: 1, verdict: 'x' }); const box = document.createElement('div'); await askCoach('q', { title: 't' }, box); window.macCall = keep; return /out of date/.test(box.innerText); }), 'coach bubble: an out-of-date grader on the Mac is explained');
 
   // 4. practice run in Claude Code shows the answer and its cost

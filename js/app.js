@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.7.4';
+const VERSION = '1.7.5';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -1017,34 +1017,39 @@ async function askCoach(q, ctx, box) {
   const reply = el('div', { class: 'm' }, [el('span', { class: 'spin' })]);
   box.appendChild(reply);
   const key = S.settings.aiKey;
-  /* no API key: ask Claude Code on the Mac (the grader service), the same way answers are graded */
-  if (!key && aiOn()) {
+  /* what "it sees this page" means: the visible text of the page, trimmed */
+  const seen = (($('#page') || {}).innerText || '').replace(/\n{2,}/g, '\n').slice(0, 2500);
+  let macWhy = '';
+  /* Claude Code on the Mac first (the grader service, direct or through Sync); an API key only as a fallback or for photos */
+  if (aiOn() && !ctx.img) {
     const hist = [...box.querySelectorAll('.m')].filter(m => m !== reply).slice(-7, -1).map(m => ({ me: m.classList.contains('me'), t: m.textContent }));
     try {
-      const r = await macCall('chat', { page: ctx.title || ctx.page || '', problem: ctx.problem || '', code: (ctx.code || '').slice(0, 4000), question: q || 'Give me a hint.', history: hist },
+      const r = await macCall('chat', { page: (ctx.title || ctx.page || '') + ' (' + new Date().toDateString() + ')\n' + seen, problem: ctx.problem || '', code: (ctx.code || '').slice(0, 4000), question: q || 'Give me a hint.', history: hist },
         () => { reply.textContent = ''; reply.append(el('span', { class: 'spin' }), ' Waiting for Claude Code on your Mac (it must be awake)…'); });
       /* an older grader on the Mac does not know the coach yet: it grades the question instead of answering */
-      reply.innerHTML = r.text ? md2(r.text) : r.score ? esc('The grader on your Mac is out of date. On the Mac run: cd ~/de-architect && git pull && bash tools/grader/install.sh') : 'No answer came back. Try again.';
-      return;
+      if (r.text) { reply.innerHTML = md2(r.text); return; }
+      macWhy = r.score ? 'The grader on your Mac is out of date. On the Mac run: cd ~/de-architect && git pull && bash tools/grader/install.sh' : 'No answer came back from your Mac.';
     } catch (e) {
       const m = String(e.message || e);
-      if (m !== 'nograder') { reply.textContent = m === 'timeout' ? 'Your Mac did not answer in time. Is it awake, with the grader running? Try again.' : 'Claude Code on your Mac could not answer: ' + m.slice(0, 160); return; }
+      macWhy = m === 'nograder' ? '' : m === 'timeout' ? 'Your Mac did not answer in time. Is it awake, with the grader running?' : 'Claude Code on your Mac could not answer: ' + m.slice(0, 160);
     }
+    if (!key) { reply.textContent = macWhy || hintText(ctx); return; }
   }
-  if (!key) {
-    const hs = ctx.hints || [];
-    reply.textContent = hs.length ? 'Try this question first: ' + (hs[Math.min(hs.length - 1, (S.hints[location.hash.split('/')[2]] || 0))] || hs[0]) + (aiOn() ? ' (For full answers, run the grader on your Mac: bash tools/grader/install.sh.)' : '') : 'Break the problem into the smallest step you can test, then run it. Add an AI key in Settings for free-form answers.';
-    return;
-  }
+  if (!key) { reply.textContent = (ctx.img && aiOn() ? 'Photos need an API key in Settings. ' : '') + hintText(ctx); return; }
   try {
     const content = [];
     if (ctx.img) content.push({ type: 'image', source: { type: 'base64', media_type: ctx.img.split(';')[0].slice(5), data: ctx.img.split(',')[1] } });
-    content.push({ type: 'text', text: 'Page: ' + (ctx.title || ctx.page || '') + (ctx.problem ? '\nProblem: ' + ctx.problem : '') + (ctx.code ? '\nMy code:\n' + ctx.code.slice(0, 4000) : '') + '\n\nMy question: ' + (q || 'Give me a hint.') });
+    content.push({ type: 'text', text: 'Page: ' + (ctx.title || ctx.page || '') + '\n' + seen + (ctx.problem ? '\nProblem: ' + ctx.problem : '') + (ctx.code ? '\nMy code:\n' + ctx.code.slice(0, 4000) : '') + '\n\nMy question: ' + (q || 'Give me a hint.') });
     const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
       body: JSON.stringify({ model: S.settings.aiModel || 'claude-haiku-5-5', max_tokens: 600, system: 'You are a data engineering interview coach for a senior data engineer preparing for tier-1 and architect roles. Give intuition and a guiding question before answers. Never give a full solution unless the user explicitly asks for it. Keep replies under 150 words, plain language.', messages: [{ role: 'user', content }] }) });
     const j = await r.json();
-    reply.innerHTML = md((j.content || []).map(c => c.text || '').join('') || (j.error && j.error.message) || 'No answer.');
-  } catch (e) { reply.textContent = 'The coach could not reach the AI service. Check the key in Settings and your connection.'; }
+    if (r.status === 401 || (j.error && /api.key|authentication/i.test(j.error.message || j.error.type || ''))) { reply.textContent = (macWhy ? macWhy + ' ' : '') + 'The API key saved in Settings was rejected (revoked or mistyped). Remove it in Settings; the coach then uses only Claude Code on your Mac.'; return; }
+    reply.innerHTML = md2((j.content || []).map(c => c.text || '').join('') || (j.error && j.error.message) || 'No answer.');
+  } catch (e) { reply.textContent = (macWhy ? macWhy + ' ' : '') + 'The coach could not reach the AI service with your API key. Check your connection.'; }
+}
+function hintText(ctx) {
+  const hs = ctx.hints || [];
+  return hs.length ? 'Try this question first: ' + (hs[Math.min(hs.length - 1, (S.hints[location.hash.split('/')[2]] || 0))] || hs[0]) + (aiOn() ? ' (For full answers, run the grader on your Mac: bash tools/grader/install.sh.)' : '') : 'Break the problem into the smallest step you can test, then run it.' + (aiOn() ? ' For full answers, run the grader on your Mac (bash tools/grader/install.sh).' : '');
 }
 
 /* ---------------- boot ---------------- */
