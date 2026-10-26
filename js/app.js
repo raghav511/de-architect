@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.7.2';
+const VERSION = '1.7.3';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -1006,7 +1006,7 @@ function coachFab() {
   const file = el('input', { type: 'file', accept: 'image/*', capture: 'environment', style: { display: 'none' }, onchange: e => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => send(inp.value || 'Explain this image', rd.result); rd.readAsDataURL(f); } });
   const cam = el('label', { class: 'btn icon', 'aria-label': 'Photo', title: 'Photo' }, [svg('<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>', 18), file]);
   const panel = el('div', { class: 'coach', role: 'dialog', 'aria-label': 'Ask the coach', style: { display: coachOpen ? 'flex' : 'none' } }, [el('div', { class: 'row' }, [el('b', { class: 'grow', text: 'Ask the coach' }), el('button', { class: 'btn icon sm', 'aria-label': 'Close', onclick: () => toggle(false) }, '×')]),
-    el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'It sees this page and gives hints and questions before answers. Type, speak or send a photo.' }), msgs, el('div', { class: 'row' }, [inp, mic, cam, el('button', { class: 'btn pri', onclick: () => send(inp.value), text: 'Send' })])]);
+    el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'It sees this page and answers through Claude Code on your Mac (or your API key, if set in Settings): hints and questions before answers. Type or speak; photos need an API key.' }), msgs, el('div', { class: 'row' }, [inp, mic, cam, el('button', { class: 'btn pri', onclick: () => send(inp.value), text: 'Send' })])]);
   const fab = el('button', { class: 'fab', 'aria-label': 'Ask the coach', 'aria-expanded': String(coachOpen), onclick: () => toggle(!coachOpen) }, svg(I.spark, 24));
   function toggle(v) { coachOpen = v; panel.style.display = v ? 'flex' : 'none'; fab.setAttribute('aria-expanded', String(v)); if (v) setTimeout(() => inp.focus(), 30); }
   wrap.append(panel, fab);
@@ -1017,9 +1017,22 @@ async function askCoach(q, ctx, box) {
   const reply = el('div', { class: 'm' }, [el('span', { class: 'spin' })]);
   box.appendChild(reply);
   const key = S.settings.aiKey;
+  /* no API key: ask Claude Code on the Mac (the grader service), the same way answers are graded */
+  if (!key && aiOn()) {
+    const hist = [...box.querySelectorAll('.m')].filter(m => m !== reply).slice(-7, -1).map(m => ({ me: m.classList.contains('me'), t: m.textContent }));
+    try {
+      const r = await macCall('chat', { page: ctx.title || ctx.page || '', problem: ctx.problem || '', code: (ctx.code || '').slice(0, 4000), question: q || 'Give me a hint.', history: hist },
+        () => { reply.textContent = ''; reply.append(el('span', { class: 'spin' }), ' Waiting for Claude Code on your Mac (it must be awake)…'); });
+      reply.innerHTML = md2(r.text || 'No answer.');
+      return;
+    } catch (e) {
+      const m = String(e.message || e);
+      if (m !== 'nograder') { reply.textContent = m === 'timeout' ? 'Your Mac did not answer in time. Is it awake, with the grader running? Try again.' : 'Claude Code on your Mac could not answer: ' + m.slice(0, 160); return; }
+    }
+  }
   if (!key) {
     const hs = ctx.hints || [];
-    reply.textContent = hs.length ? 'Try this question first: ' + (hs[Math.min(hs.length - 1, (S.hints[location.hash.split('/')[2]] || 0))] || hs[0]) + ' (Add an AI key in Settings for free-form answers.)' : 'Break the problem into the smallest step you can test, then run it. Add an AI key in Settings for free-form answers.';
+    reply.textContent = hs.length ? 'Try this question first: ' + (hs[Math.min(hs.length - 1, (S.hints[location.hash.split('/')[2]] || 0))] || hs[0]) + (aiOn() ? ' (For full answers, run the grader on your Mac: bash tools/grader/install.sh.)' : '') : 'Break the problem into the smallest step you can test, then run it. Add an AI key in Settings for free-form answers.';
     return;
   }
   try {

@@ -7,6 +7,9 @@ if 'Read,Grep,Glob' in sys.argv:  # a practice run
     print(json.dumps({'type': 'result', 'subtype': 'success', 'result': 'Stub run: parse_amount strips the comma.\n\n```python\nfloat(s)\n```',
                       'num_turns': 3, 'total_cost_usd': 0.0021, 'usage': {'input_tokens': 6, 'output_tokens': 300, 'cache_read_input_tokens': 9000, 'cache_creation_input_tokens': 2000}}))
     sys.exit(0)
+if '--json-schema' not in sys.argv:  # the coach bubble
+    print(json.dumps({'type': 'result', 'result': 'Stub coach: what is the grain of the output?', 'total_cost_usd': 0.002}))
+    sys.exit(0)
 score = 2 if 'IGNORE' in p else 4
 verdict = 'Stub grade <img src=x onerror="window.__xss=1"><a href="javascript:window.__xss=2">x</a>' if 'XSS' in p else 'Stub grade.'
 print(json.dumps({'type': 'result', 'total_cost_usd': 0.0007, 'structured_output': {

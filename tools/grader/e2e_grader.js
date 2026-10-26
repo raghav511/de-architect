@@ -45,6 +45,18 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   await p.goto(BASE + '#/cc/c01/1'); await p.goto(BASE + '#/cc/c01/2'); await p.waitForTimeout(1200);
   ok(await p.locator('.badge', { hasText: 'You edited your answer after this grade' }).count() === 1, 'grade marked as stale after an edit');
 
+  // 3b. the coach bubble talks to Claude Code on the Mac when there is no API key
+  await p.goto(BASE + '#/today'); await p.waitForTimeout(1200);
+  await p.locator('button.fab').click(); await p.locator('.coach input[type=text]').fill('How do I start the diagnostic?');
+  await p.locator('.coach button', { hasText: 'Send' }).click();
+  let said = ''; for (let i = 0; i < 30 && !/Stub coach/.test(said); i++) { await p.waitForTimeout(500); said = await p.evaluate(() => document.querySelector('.coach .msgs').innerText); }
+  ok(/Stub coach/.test(said), 'coach bubble: answered by Claude Code on the Mac (' + said.slice(-80) + ')');
+  direct = false;
+  await p.locator('.coach input[type=text]').fill('And through the relay?'); await p.locator('.coach button', { hasText: 'Send' }).click();
+  said = ''; for (let i = 0; i < 40 && (said.match(/Stub coach/g) || []).length < 2; i++) { await p.waitForTimeout(500); said = await p.evaluate(() => document.querySelector('.coach .msgs').innerText); }
+  ok((said.match(/Stub coach/g) || []).length >= 2, 'coach bubble: answered through the sync relay too');
+  direct = true;
+
   // 4. practice run in Claude Code shows the answer and its cost
   await p.goto(BASE + '#/learn/c03/lab'); await p.waitForTimeout(1500);
   await p.locator('textarea[aria-label="Your prompt for Claude Code"]').fill('Why are EU amounts wrong? 3 lines.');

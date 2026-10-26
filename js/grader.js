@@ -127,6 +127,22 @@ function gradeBox(opts) {
   return box;
 }
 
+/* One call to Claude Code on the Mac without storing a grade: direct on the Mac, else through the sync script.
+   Resolves with the result, or rejects with 'nograder' / 'timeout' / an error message. */
+async function macCall(kind, payload, onWait) {
+  if (await graderHealthy()) return gradeDirect(kind, payload);
+  if (!S.settings.syncUrl) throw new Error('nograder');
+  const id = gradeId(); await relayAsk(id, kind, payload);
+  const until = Date.now() + GRADE_WAIT_MS; let warned = false;
+  while (Date.now() < until) {
+    await new Promise(r => setTimeout(r, GRADE_POLL_MS));
+    let res = null; try { res = await relayResult(id); } catch (e) { }
+    if (res && res.status === 'done') { if (res.result && res.result.error) throw new Error(res.result.error); return res.result; }
+    if (!warned && Date.now() > until - GRADE_WAIT_MS + 20000 && onWait) { warned = true; onWait(); }
+  }
+  throw new Error('timeout');
+}
+
 /* Recent grades for the progress page and the nightly coach. */
 function recentGrades(days) {
   const since = Date.now() - (days || 7) * 864e5;
