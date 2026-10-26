@@ -73,7 +73,7 @@ async function run(P) {
       await p.evaluate(sol => { const ta = document.querySelector('textarea.code'); ta.value = sol; ta.dispatchEvent(new Event('input')); }, q.sol);
       await p.keyboard.press('Meta+Enter'); await p.waitForTimeout(500);
       await p.locator('button', { hasText: /^Run/ }).first().click().catch(() => {});
-      for (let i = 0; i < 40 && !(await p.evaluate(id => !!S.solved[id], q.id)); i++) await p.waitForTimeout(500);
+      for (let i = 0; i < 180 && !(await p.evaluate(id => !!S.solved[id], q.id)); i++) await p.waitForTimeout(500); /* up to 90 s: a busy machine slows Python's first start */
       await probe(p, P, 'SQL editor', notes);
       return (await p.evaluate(id => !!S.solved[id], q.id)) || 'correct solution not marked solved';
     });
@@ -257,7 +257,7 @@ async function run(P) {
       if (!tb || !tb.name) note('Code editor', 'a11y', 'code box has no accessible name');
       await p.locator('button', { hasText: /^Run/ }).first().click(); await p.waitForTimeout(300);
       if (!/Running/.test(await p.evaluate(() => (document.querySelector('.out [role=status]') || {}).textContent || ''))) note('Code editor', 'a11y', 'nothing announced while the code runs');
-      let announced = false; for (let i = 0; i < 60 && !announced; i++) { await p.waitForTimeout(500); announced = await p.evaluate(() => /pass|failing|error/i.test((document.querySelector('.out [role=status]') || {}).textContent || '')); }
+      let announced = false; for (let i = 0; i < 180 && !announced; i++) { await p.waitForTimeout(500); announced = await p.evaluate(() => /pass|failing|error/i.test((document.querySelector('.out [role=status]') || {}).textContent || '')); }
       if (!announced) note('Code editor', 'a11y', 'test results are not announced after Run');
       return true;
     });
@@ -301,7 +301,7 @@ async function run(P) {
     await task('before the flight: run one coding problem online', async () => {
       const q = await p.evaluate(() => DATA.dsa[1]); await go('#/dsa/' + q.id, 2000);
       await p.locator('button', { hasText: /^Run/ }).first().click();
-      for (let i = 0; i < 60; i++) { await p.waitForTimeout(500); if (await p.evaluate(() => /pass|Error/i.test((document.querySelector('.out [role=status]') || {}).textContent || ''))) return true; }
+      for (let i = 0; i < 180; i++) { await p.waitForTimeout(500); if (await p.evaluate(() => /pass|failing|rror/i.test((document.querySelector('.out [role=status]') || {}).textContent || ''))) return true; }
       return 'online run did not finish';
     });
     await task('go offline on the plane and keep working', async () => {

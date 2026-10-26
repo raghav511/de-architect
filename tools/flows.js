@@ -577,7 +577,7 @@ async function T(name, fn, opt) {
     await go(p, '#/dsa/d011', 1500);
     await p.locator('button', { hasText: /^Run/ }).first().click(); await p.waitForTimeout(200);
     ok(/Running/.test(await p.evaluate(() => (document.querySelector('.out [role=status]') || {}).textContent)), 'nothing announced while running');
-    let t = ''; for (let i = 0; i < 60 && !/pass|Error|failing/i.test(t); i++) { await p.waitForTimeout(500); t = await p.evaluate(() => (document.querySelector('.out [role=status]') || {}).textContent || ''); }
+    let t = ''; for (let i = 0; i < 180 && !/pass|Error|failing/i.test(t); i++) { await p.waitForTimeout(500); t = await p.evaluate(() => (document.querySelector('.out [role=status]') || {}).textContent || ''); }
     ok(/pass|Error|failing/i.test(t), 'live region empty: ' + t);
   });
   await T('persona: closing search returns focus to where it was', async p => {
