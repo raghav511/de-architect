@@ -7,7 +7,8 @@ const BASE_MODS = ['s00', 'p01', 'p02', 'a01', 'p03', 'p04', 'a02', 'p05', 'p06'
 const CC_MODS = ['c01', 'c02', 'c03', 'c04', 'c05', 'c06', 'c07', 'c08', 'c09', 'c10', 'c11', 'c12'];
 const CC_PACE = { 1: { 6: 1 }, 2: { 3: 1, 6: 1 }, 3: { 3: 1, 6: 2 } }; /* steps per week -> steps per getDay(): Saturday first, then Wednesday */
 const isCC = m => /^c\d\d$/.test(m);
-let MODS = BASE_MODS.concat(CC_MODS);
+let MODS = BASE_MODS.concat(CC_MODS), MODS_ALL = MODS.slice();
+function applyAi() { MODS = MODS_ALL.filter(m => !isCC(m) || aiOn()); } /* AI features off: the Claude Code track leaves the plan */
 const MOD = {};
 const DN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const midOf = x => { x = String(x == null ? '' : x); return /^\d+$/.test(x) ? 's' + x.padStart(2, '0') : x; };
@@ -35,7 +36,7 @@ async function loadModules() {
   DATA.design = design || {}; DATA.git = git || []; DATA.news = news || { items: [] };
   MODS = BASE_MODS.concat(CC_MODS, ((ext && ext.modules) || []).filter(m => /^x\d\d$/.test(m)));
   await Promise.all(MODS.map(m => sprint(m).catch(() => null)));
-  MODS = MODS.filter(m => DATA.sprints[m]);
+  MODS = MODS.filter(m => DATA.sprints[m]); MODS_ALL = MODS.slice(); applyAi();
   MODS.forEach(m => { const s = DATA.sprints[m]; MOD[m] = { id: m, title: s.meta.title || modLabel(m), goal: s.meta.goal || '', tickets: parseTickets(s.raw.tickets), ch: headings(s.raw.chapter), lab: headings(s.raw.lab), pr: headings(s.raw.practice), coding: s.coding.length }; });
 }
 function bestH2(list, title) {
@@ -132,13 +133,17 @@ function curMid() { return schedule().cur; }
 function weeksText(sp) { if (!sp || !sp.first) return 'done'; const a = weekOf(sp.first), b = weekOf(sp.last); return (a === b ? 'Week ' + a : 'Weeks ' + a + '–' + b) + ' · ' + shortDate(sp.first) + (sp.first !== sp.last ? ' – ' + shortDate(sp.last) : ''); }
 const KIND = { cc: ['Claude Code test', 'c-ai'], learn: ['Lesson', 'c-core'], build: ['Lab', 'c-dsa'], ai: ['AI lab', 'c-ai'], incident: ['Incident', 'c-spark'], practice: ['Drill', 'c-sql'], quiz: ['Quiz', 'c-test'], talk: ['Interview', 'c-test'], git: ['Git', 'c-git'], design: ['Design', 'c-arch'], news: ['What is new', 'c-ai'], project: ['Project', 'c-dsa'] };
 function kchip(k) { const c = KIND[k] || [k, 'c-test']; return el('span', { class: 'chip ' + c[1], text: c[0] }); }
-function toggleUnit(u) { S.undone = S.undone || {}; S.doneAt = S.doneAt || {}; if (S.done[u.uid] || u.isDone) { delete S.done[u.uid]; S.undone[u.uid] = Date.now(); if (u.auto && u.auto()) toast('This one is marked done automatically (quiz submitted or milestones verified).'); } else { S.done[u.uid] = iso(new Date()); S.doneAt[u.uid] = Date.now(); delete S.undone[u.uid]; } save(); route(); }
+function toggleUnit(u) { S.undone = S.undone || {}; S.doneAt = S.doneAt || {}; if (S.done[u.uid] || u.isDone) { delete S.done[u.uid]; S.undone[u.uid] = Date.now(); if (u.auto && u.auto()) toast('This one is marked done automatically (quiz submitted or milestones verified).'); } else { S.done[u.uid] = iso(new Date()); S.doneAt[u.uid] = Date.now(); delete S.undone[u.uid]; } save();
+  const kb = document.activeElement && document.activeElement.matches && document.activeElement.matches('.check');
+  route();
+  /* the screen re-renders: keep keyboard and screen-reader users on the step they just ticked */
+  if (kb) { const b = document.querySelector('.check[data-uid="' + CSS.escape(u.uid) + '"]'); if (b) b.focus({ preventScroll: true }); } }
 
 /* one unit as a card: what, why, done when, where */
 function unitCard(u, opts) {
   opts = opts || {};
   return el('div', { class: 'unit' + (u.isDone ? ' done' : '') }, [
-    el('button', { class: 'check', 'aria-pressed': String(!!u.isDone), 'aria-label': (u.isDone ? 'Mark not done: ' : 'Mark done: ') + u.title, onclick: () => toggleUnit(u) }, u.isDone ? svg(I.check, 16) : null),
+    el('button', { class: 'check', 'data-uid': u.uid, 'aria-pressed': String(!!u.isDone), 'aria-label': (u.isDone ? 'Mark not done: ' : 'Mark done: ') + u.title, onclick: () => toggleUnit(u) }, u.isDone ? svg(I.check, 16) : null),
     el('div', { class: 'grow stack', style: { gap: '5px', minWidth: 0 } }, [
       el('div', { class: 'row wrap', style: { gap: '6px' } }, [kchip(u.kind), el('span', { class: 'chip ' + modColor(u.mid), style: { background: 'transparent', border: '1px solid currentColor' }, text: modLabel(u.mid) }), el('span', { class: 'mins', text: u.mins + ' min' }), opts.day ? el('span', { class: 'muted', style: { fontSize: '13px' }, text: opts.day }) : null]),
       el('span', { class: 't', text: u.title }),
@@ -256,7 +261,7 @@ function vPath(m) {
   }
   const road = el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Roadmap' }), el('button', { class: 'btn sm', onclick: async () => { const v = await confirmBox('Restart the calendar?', 'Week 1 becomes this week. Your progress is kept; only the week numbers change.', [{ t: 'Make this week 1', cls: 'pri', v: 1 }, { t: 'Cancel', v: null }]); if (v) { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); S.start = iso(d); save(); route(); } }, text: 'Make this week 1' })]),
     el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Setup and the diagnostic first, then the Python track (Python 1–6) woven between the AI modules (AI 1–3), then data modelling (Modelling 1–3), then the data engineering modules, with Systems 1 (distributed systems and storage internals) after DE 4, Platform 1 (Scala, the JVM, Kubernetes and Hadoop) after DE 7 and Leadership 1 (strategy, migrations, cost, influence) after DE 10. A module ends when its steps are done, not on a fixed week. After the last module, new Extra modules arrive every week: big-tech papers and problems, plus fresh questions on earlier topics.' }),
-    el('div', { class: 'list' }, MODS.map(x => { const s = sc.span[x]; return el('a', { class: 'item', href: '#/path/' + x }, [el('span', { class: 'chip ' + modColor(x), style: { flex: 'none', minWidth: '62px', justifyContent: 'center' }, text: modLabel(x) }), el('span', { class: 'grow' }, [el('span', { class: 't', text: modTitle(x) }), el('br'), el('span', { class: 's', text: weeksText(s) })]), el('span', { class: 's', style: { fontWeight: 700, flex: 'none' }, text: s.done === s.n ? '✓ done' : x === sc.cur ? 'now · ' + s.done + '/' + s.n : s.done + '/' + s.n })]); }))]);
+    el('div', { class: 'list' }, MODS.map(x => { const s = sc.span[x] || { n: 0, done: 0 }; return el('a', { class: 'item', href: '#/path/' + x }, [el('span', { class: 'chip ' + modColor(x), style: { flex: 'none', minWidth: '62px', justifyContent: 'center' }, text: modLabel(x) }), el('span', { class: 'grow' }, [el('span', { class: 't', text: modTitle(x) }), el('br'), el('span', { class: 's', text: weeksText(s) })]), el('span', { class: 's', style: { fontWeight: 700, flex: 'none' }, text: s.done === s.n ? '✓ done' : x === sc.cur ? 'now · ' + s.done + '/' + s.n : s.done + '/' + s.n })]); }))]);
   setTimeout(() => { const c = pick.querySelector('[aria-current=true]'); if (c && pick.scrollWidth > pick.clientWidth) pick.scrollLeft = c.offsetLeft - 16; }, 0);
   shell('Path', 'Module ' + modLabel(m) + ' · ' + MODS.length + ' modules so far', [pick, el('div', { class: 'grid2 wide' }, [el('div', { class: 'stack', style: { gap: '18px' } }, [head, steps]), el('div', { class: 'stack', style: { gap: '18px' } }, [road])])].concat(extra));
 }
@@ -353,7 +358,8 @@ function openSearch() {
   const ix = searchIndex();
   const inp = el('input', { type: 'search', placeholder: 'Search lessons, labs, questions, Git, designs…', 'aria-label': 'Search', autocomplete: 'off', class: 'grow' });
   const list = el('div', { class: 'list', style: { maxHeight: '60vh', overflow: 'auto' } });
-  const close = () => { wrap.remove(); document.removeEventListener('keydown', key); };
+  const back = document.activeElement; /* focus goes back where it was when search closes */
+  const close = () => { wrap.remove(); document.removeEventListener('keydown', key); if (back && back.isConnected && back.focus) back.focus(); };
   let hits = [], sel = 0;
   const paint = () => {
     const q = inp.value.trim().toLowerCase().split(/\s+/).filter(Boolean);

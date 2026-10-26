@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.7.0';
+const VERSION = '1.7.1';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -376,12 +376,13 @@ function vWork(kind, id, mode) {
   const OT = lang === 'python' ? [['tests', 'Tests'], ['term', 'Terminal']] : lang === 'sql' ? [['result', 'Result'], ['tests', 'Tests'], ['plan', 'Plan'], ['term', 'Terminal']] : [['result', 'Output'], ['tests', 'Tests'], ['plan', 'explain()'], ['term', 'Terminal']];
   const outTabs = el('div', { class: 'row wrap', role: 'tablist', style: { gap: '4px' } });
   const verdict = el('span', { class: 'verdict', style: { display: 'none' } });
+  const said = el('span', { class: 'sr', role: 'status', 'aria-live': 'polite' }); /* screen readers hear the result of each run */
   const obody = el('div', { class: 'body' });
   const termLines = el('div', { class: 'term-lines', 'aria-live': 'polite' });
   const termIn = el('input', { type: 'text', placeholder: lang === 'sql' ? 'SELECT * FROM trips LIMIT 5  then Enter' : 'two_sum([1, 5, 3], 8)  then Enter', autocapitalize: 'off', autocomplete: 'off', spellcheck: 'false', enterkeyhint: 'go', 'aria-label': 'Terminal input' });
   termIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendLine(); } });
   const termBox = el('div', { class: 'term-in' }, [el('label', { class: 'mono', style: { color: '#5CC8B0', fontSize: '13.5px' }, text: lang === 'sql' ? 'sql>' : '>>>' }), termIn, el('button', { class: 'btn sm pri', onclick: () => sendLine() }, ['Run line', el('span', { class: 'kbd', text: '↵' })])]);
-  const out = el('div', { class: 'card out' }, [el('div', { class: 'head' }, [outTabs, el('span', { class: 'grow' }), verdict, el('button', { class: 'otab', onclick: () => { termLines.textContent = ''; REPL = []; }, text: 'Clear' })]), obody]);
+  const out = el('div', { class: 'card out' }, [el('div', { class: 'head' }, [outTabs, el('span', { class: 'grow' }), verdict, said, el('button', { class: 'otab', onclick: () => { termLines.textContent = ''; REPL = []; }, text: 'Clear' })]), obody]);
   const hgrip = el('div', { class: 'hgrip hide-m', role: 'separator', 'aria-orientation': 'horizontal', 'aria-label': 'Drag to resize the output panel', tabindex: '0' }, el('i'));
   const mid = el('section', { class: 'mid' }, [editor, hgrip, out]);
   function setTab(k) { outTab = k; paintOut(); if (k === 'term') setTimeout(() => termIn.focus(), 30); if (window.innerWidth < 1024) mshow('out'); }
@@ -422,6 +423,7 @@ function vWork(kind, id, mode) {
   async function run() {
     const code = ta.value; S.code[qid] = code;
     runBtn.disabled = true; const old = runBtn.firstChild.textContent; runBtn.firstChild.textContent = 'Running…';
+    said.textContent = Py.state === 'ready' ? 'Running your code…' : 'Running your code. The first run starts Python, about 10 seconds.';
     try {
       let r;
       if (kind === 'test') {
@@ -472,9 +474,10 @@ function vWork(kind, id, mode) {
       if (r.out) addTerm('', r.out.trimEnd());
       if (r.err) addTerm('err', r.err);
       addTerm(r.pass ? 'ok' : 'info', verdict.textContent);
+      const bad = (r.tests || []).find(t => !t.ok); said.textContent = r.err ? 'Error: ' + String(r.err).split('\n').pop() : verdict.textContent + (bad ? '. First failing: ' + (bad.call || bad.name) + (bad.call ? ', expected ' + bad.want + ', got ' + bad.got : '') : '') + '.';
       if (outTab === 'term') paintOut(); else { outTab = r.err && lang !== 'python' ? 'result' : (lang === 'python' ? 'tests' : (outTab === 'result' || outTab === 'tests' || outTab === 'plan') ? outTab : 'result'); paintOut(); }
       paintHints();
-    } catch (e) { last = { err: String(e.message || e) }; addTerm('err', last.err); paintOut(); }
+    } catch (e) { last = { err: String(e.message || e) }; addTerm('err', last.err); said.textContent = last.err; paintOut(); }
     finally { runBtn.disabled = false; runBtn.firstChild.textContent = 'Run again'; if (window.innerWidth < 1024) mshow('out'); }
   }
   async function sendLine() {
@@ -790,7 +793,7 @@ async function vQuiz(m) {
     else { const ta = el('textarea', { class: 'code', style: { minHeight: '140px', border: '1px solid var(--line2)', borderRadius: '10px', fontFamily: 'var(--body)', fontSize: '16px' }, 'aria-label': 'Your answer' }); ta.value = (st.a[i] && st.a[i].t) || ''; ta.addEventListener('input', () => { st.a[i] = Object.assign({}, st.a[i] || {}, { t: ta.value }); save(); }); card.appendChild(ta);
       card.appendChild(el('div', { class: 'row wrap' }, [el('span', { class: 'muted', text: 'After you submit, Claude grades this answer (score, what to fix and a stronger answer) and you compare with the model answer.' })])); }
     page.append(card, el('div', { class: 'row wrap' }, [el('button', { class: 'btn', disabled: i === 0 ? true : null, onclick: () => { i--; draw(); }, text: 'Previous' }), el('span', { class: 'grow' }), i < qs.length - 1 ? el('button', { class: 'btn pri', onclick: () => { i++; draw(); }, text: 'Save and next' }) : null,
-      el('button', { class: 'btn dark', onclick: async () => { const left = qs.length - answered; const v = await confirmBox('Submit the quiz?', left ? left + ' question' + (left > 1 ? 's are' : ' is') + ' unanswered. They count as wrong.' : 'All questions answered.', [{ t: 'Submit', cls: 'pri', v: 1 }, { t: 'Keep answering', v: null }]); if (v) { st.sub = true; qs.forEach((q, k) => { if (q.TYPE === 'short' && st.a[k] && (st.a[k].t || '').trim()) gradeNow('quiz:' + w + ':' + k, 'answer', { question: q.Q, model_answer: q.MODEL || q.ANS || '', answer: st.a[k].t }, st.a[k].t, q.Q); }); const qu = modUnits(m).find(u => u.kind === 'quiz'); if (qu && !S.done[qu.uid]) { S.done[qu.uid] = iso(new Date()); S.doneAt = S.doneAt || {}; S.doneAt[qu.uid] = Date.now(); } save(); draw(); window.scrollTo(0, 0); } }, text: 'Submit' })]), el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Questions' }), pal]));
+      el('button', { class: 'btn dark', onclick: async () => { const left = qs.length - answered; const v = await confirmBox('Submit the quiz?', left ? left + ' question' + (left > 1 ? 's are' : ' is') + ' unanswered. They count as wrong.' : 'All questions answered.', [{ t: 'Submit', cls: 'pri', v: 1 }, { t: 'Keep answering', v: null }]); if (v) { st.sub = true; if (aiOn()) qs.forEach((q, k) => { if (q.TYPE === 'short' && st.a[k] && (st.a[k].t || '').trim()) gradeNow('quiz:' + w + ':' + k, 'answer', { question: q.Q, model_answer: q.MODEL || q.ANS || '', answer: st.a[k].t }, st.a[k].t, q.Q); }); const qu = modUnits(m).find(u => u.kind === 'quiz'); if (qu && !S.done[qu.uid]) { S.done[qu.uid] = iso(new Date()); S.doneAt = S.doneAt || {}; S.doneAt[qu.uid] = Date.now(); } save(); draw(); window.scrollTo(0, 0); } }, text: 'Submit' })]), el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Questions' }), pal]));
   }
   draw();
 }
@@ -857,6 +860,7 @@ function settings() {
     el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: '10px' } }, [f('st_wd', 'Weekday minutes', S.settings.capWd || 60, 'number'), f('st_we', 'Weekend minutes', S.settings.capWe || 120, 'number'), f('st_time', 'Study time', S.settings.studyTime || '07:00', 'time')]),
     el('div', { class: 'field' }, [el('label', { for: 'st_theme', class: 'lbl', text: 'Theme' }), el('select', { id: 'st_theme', class: 'btn' }, [['auto', 'Match my device'], ['light', 'Light'], ['dark', 'Dark']].map(([v, t]) => el('option', { value: v, selected: (S.settings.theme || 'auto') === v ? 'selected' : null, text: t })))]),
     f('st_sync', 'Sync URL (Google Apps Script web app, ending in ?k=your key)', S.settings.syncUrl, 'url', 'https://script.google.com/macros/s/…/exec?k=…'),
+    el('div', { class: 'field' }, [el('label', { for: 'st_ai', class: 'lbl', text: 'AI features' }), el('select', { id: 'st_ai', class: 'btn' }, [['on', 'On: instant grading, practice runs and the Claude Code track'], ['off', 'Off: study without AI (self-check with model answers)']].map(([v, t]) => el('option', { value: v, selected: (S.settings.ai === false ? 'off' : 'on') === v ? 'selected' : null, text: t })))]),
     f('st_key', 'Coach AI key (optional, Anthropic API key, kept only on this device)', S.settings.aiKey, 'password', 'sk-ant-…'),
     f('st_model', 'Coach model', S.settings.aiModel || 'claude-haiku-5-5', 'text'),
     el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'The key never leaves this device except to call the AI provider. Without a key the coach still gives the step-by-step hints.' }),
@@ -868,7 +872,7 @@ function settings() {
     if (su && !/^https:\/\/|^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(su)) { toast('That sync URL is not valid: it must start with https://. Settings were not saved.', null, 6000); return; }
     if (su && /script\.google\.com/.test(su) && !/[?&]k=/.test(su)) setTimeout(() => toast('Saved. This sync URL has no ?k= key: anyone with the URL could read your progress.', null, 7000), 400);
     const st0 = g('st_start'); if (/^\d{4}-\d\d-\d\d$/.test(st0)) { const d = new Date(st0 + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); S.start = iso(d); } S.settings.syncUrl = su; S.settings.aiKey = g('st_key'); S.settings.aiModel = g('st_model') || 'claude-haiku-5-5';
-    const wd = Math.round(+g('st_wd')), we = Math.round(+g('st_we')); S.settings.capWd = wd >= 15 && wd <= 600 ? wd : 60; S.settings.capWe = we >= 15 && we <= 720 ? we : 120; S.settings.studyTime = g('st_time') || '07:00'; S.settings.theme = g('st_theme') || 'auto'; applyTheme();
+    const wd = Math.round(+g('st_wd')), we = Math.round(+g('st_we')); S.settings.capWd = wd >= 15 && wd <= 600 ? wd : 60; S.settings.capWe = we >= 15 && we <= 720 ? we : 120; S.settings.studyTime = g('st_time') || '07:00'; S.settings.theme = g('st_theme') || 'auto'; applyTheme(); S.settings.ai = g('st_ai') !== 'off'; applyAi();
     S.updated = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Could not save settings in this browser.'); return; }
     toast('Settings saved'); route();
   });

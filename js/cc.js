@@ -14,6 +14,7 @@ function whereToPractise() {
 
 async function vCC(m, n) {
   m = isCC(m) ? m : 'c01'; n = Math.max(1, +n || 1);
+  if (!aiOn()) { shell('Claude Code test', modLabel(m), [el('section', { class: 'card pad stack' }, [el('p', { style: { margin: 0 }, text: 'AI features are off, so the Claude Code track is hidden from your plan.' }), el('button', { class: 'btn', style: { alignSelf: 'flex-start' }, onclick: settings, text: 'Open settings' })])], { back: '#/today' }); return; }
   shell('Claude Code test', modLabel(m), [el('p', { class: 'muted', text: 'Loading…' })], { back: '#/today' });
   let s; try { s = await sprint(m); } catch (e) { $('#page').textContent = 'Could not load this test.'; return; }
   const tasks = s.tasks || [], T = tasks[n - 1];

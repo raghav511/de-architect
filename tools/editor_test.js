@@ -5,7 +5,8 @@ const BASE = (process.argv[2] && !process.argv[2].startsWith('--')) ? process.ar
 const ONLY = (process.argv.find(a => a.startsWith('--only=')) || '').slice(7);
 (async () => {
   const b = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
-  const p = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+  const cx = await b.newContext({ viewport: { width: 1440, height: 900 } }); await cx.route('http://127.0.0.1:8765/**', r => r.abort()); /* never reach a real grader installed on this Mac */
+  const p = await cx.newPage();
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto(BASE + '#/today'); await p.waitForTimeout(1500);
   const items = await p.evaluate(() => {

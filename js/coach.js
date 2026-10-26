@@ -65,6 +65,10 @@ function mockStatus(k) {
 
 /* ---------------- Today: the coach card ---------------- */
 function coachCard() {
+  const c0 = iso(new Date()), [m0, n0] = MOCK_LEN[mockKind(c0)];
+  /* AI features off: no nightly coach and no Sync nag, just the daily mock as self-practice */
+  if (!aiOn()) return el('section', { class: 'card pad stack' }, [el('h2', { text: 'Daily mock interview' }),
+    el('div', { class: 'row wrap' }, [el('span', { class: 'grow', style: { fontSize: '14.5px' }, text: m0 + ' min · ' + n0 + ' questions. Answer out loud or in writing, then compare with the interview sets\' model answers. Separate from the hour.' }), el('a', { class: 'btn sm pri', href: '#/mock/' + c0, text: S.mock && S.mock[c0] ? 'Open' : 'Start' })])]);
   const c = coachData(), today = iso(new Date()), kind = mockKind(today), [mins, nq] = MOCK_LEN[kind], [st, cls] = mockStatus(today);
   const focus = (c.focus || []).slice(0, 4), stale = coachStale(c), age = coachAgeDays(c);
   return el('section', { class: 'card pad stack', style: { borderColor: '#D9C6E6' } }, [
@@ -80,6 +84,7 @@ function coachCard() {
 
 /* ---------------- Coach report ---------------- */
 function vCoach() {
+  if (!aiOn()) { shell('Coach', 'AI features are off', [el('section', { class: 'card pad stack' }, [el('p', { style: { margin: 0 }, text: 'The nightly coach is an AI feature, and AI features are off. Your plan, quizzes, interview sets with model answers and the daily mock all work without it.' }), el('div', { class: 'row wrap' }, [el('a', { class: 'btn pri', href: '#/mock', text: 'Daily mock' }), el('button', { class: 'btn', onclick: settings, text: 'Settings' })])])]); return; }
   const c = coachData();
   const list = (t, xs) => xs && xs.length ? el('section', { class: 'card pad stack' }, [el('h3', { text: t }), el('ul', { style: { margin: 0, paddingLeft: '20px' } }, xs.map(x => el('li', { html: mdi(x) })))]) : null;
   const mocks = Object.keys(S.mock || {}).sort().reverse();
@@ -115,7 +120,7 @@ async function vMock(k) {
   paint();
   page.appendChild(el('section', { class: 'card pad stack' }, [
     el('div', { class: 'row wrap' }, [el('span', { class: 'chip c-arch', text: m.kind === 'sunday' ? 'Sunday round · 30 min' : 'Daily round · 15 min' }), el('span', { class: 'grow' }), m.sub ? null : el('span', { class: 'muted', text: 'time left' }), m.sub ? null : clock]),
-    el('span', { style: { fontSize: '14.5px' }, text: m.sub ? (fb ? 'Graded by your coach. Read the feedback and the stronger answer for each question, then say the stronger version out loud once.' : 'Submitted. Each answer is graded below as soon as your Mac picks it up. Tap Sync progress too: tonight\'s coach reviews the whole round and plans tomorrow around it.') : 'Answer each question as you would out loud: lead with the structure, then the detail, with numbers where you can. Type, or use your keyboard\'s dictation (the microphone on iPhone and iPad). Go past the time if you need to; the overrun is part of the feedback.' }),
+    el('span', { style: { fontSize: '14.5px' }, text: m.sub ? (fb ? 'Graded by your coach. Read the feedback and the stronger answer for each question, then say the stronger version out loud once.' : (aiOn() ? 'Submitted. Each answer is graded below as soon as your Mac picks it up. Tap Sync progress too: tonight\'s coach reviews the whole round and plans tomorrow around it.' : 'Submitted. Say each answer out loud once more, then compare it with your notes on the topic.')) : 'Answer each question as you would out loud: lead with the structure, then the detail, with numbers where you can. Type, or use your keyboard\'s dictation (the microphone on iPhone and iPad). Go past the time if you need to; the overrun is part of the feedback.' }),
     fb ? el('div', { class: 'hint' }, [el('b', { text: (fb.score ? 'Overall ' + fb.score + ' / 5. ' : '') }), el('span', { html: mdi(fb.overall || '') })]) : m.sub ? el('span', { class: 'badge ' + mockStatus(k)[1], text: mockStatus(k)[0] }) : null]));
   m.qs.forEach((q, i) => {
     const f = fb && (fb.items || [])[i];
@@ -131,5 +136,5 @@ async function vMock(k) {
       f ? el('div', { class: 'stack', style: { gap: '8px' } }, [el('div', { class: 'why' }, [el('b', { text: 'Feedback: ' }), el('span', { html: mdi(f.feedback || '') })]), f.better ? el('details', {}, [el('summary', { style: { cursor: 'pointer', fontWeight: 600 }, text: 'A stronger answer' }), el('div', { html: md(f.better) })]) : null]) : null]));
   });
   if (!m.sub && k === today) page.appendChild(el('div', { class: 'row wrap' }, [el('a', { class: 'btn', href: '#/today', text: 'Save and leave' }), el('span', { class: 'grow' }),
-    el('button', { class: 'btn pri', onclick: async () => { const left = m.qs.filter((q, i) => !((m.a || {})[i] || '').trim()).length; const v = await confirmBox('Submit this mock?', left ? left + ' question' + (left > 1 ? 's have' : ' has') + ' no answer. The coach grades them as missed.' : 'All questions answered. Your coach grades it tonight.', [{ t: 'Submit', cls: 'pri', v: 1 }, { t: 'Keep answering', v: null }]); if (!v) return; m.sub = true; m.qs.forEach((q, i) => { const t = ((m.a || {})[i] || '').trim(); if (t) gradeNow('mock:' + k + ':' + i, 'answer', { question: q.q, answer: t }, t, q.q); }); m.subAt = Date.now(); m.t = Date.now(); running = false; save(); toast(S.settings.syncUrl ? 'Submitted. Tap Sync progress so tonight\'s coach can grade it.' : 'Submitted. Set up Sync in Settings so the coach can grade it.', null, 6000); vMock(k); }, text: 'Submit for grading' })]));
+    el('button', { class: 'btn pri', onclick: async () => { const left = m.qs.filter((q, i) => !((m.a || {})[i] || '').trim()).length; const v = await confirmBox('Submit this mock?', left ? left + ' question' + (left > 1 ? 's have' : ' has') + ' no answer. The coach grades them as missed.' : 'All questions answered. Your coach grades it tonight.', [{ t: 'Submit', cls: 'pri', v: 1 }, { t: 'Keep answering', v: null }]); if (!v) return; m.sub = true; if (aiOn()) m.qs.forEach((q, i) => { const t = ((m.a || {})[i] || '').trim(); if (t) gradeNow('mock:' + k + ':' + i, 'answer', { question: q.q, answer: t }, t, q.q); }); m.subAt = Date.now(); m.t = Date.now(); running = false; save(); toast(S.settings.syncUrl ? 'Submitted. Tap Sync progress so tonight\'s coach can grade it.' : 'Submitted. Set up Sync in Settings so the coach can grade it.', null, 6000); vMock(k); }, text: 'Submit for grading' })]));
 }

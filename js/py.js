@@ -7,11 +7,12 @@ const Py = (() => {
     emit('loading', 'Starting Python in your browser (first time: about 15 s)…');
     w = new Worker('js/worker.js');
     readyP = new Promise((res, rej) => {
+      w.onerror = e => { e.preventDefault(); const why = 'Could not start Python. If you are offline, open any coding problem once while online so it is saved for offline use.'; emit('error', why); const p = pending; pending = {}; Object.values(p).forEach(x => { clearTimeout(x.t); x.rej(new Error(why)); }); w = null; readyP = null; rej(why); };
       w.onmessage = (ev) => {
         const m = ev.data;
         if (m.type === 'progress') emit('loading', m.text);
         else if (m.type === 'ready') { emit('ready', 'Python ready'); res(); }
-        else if (m.type === 'fatal') { emit('error', 'Could not start Python: ' + m.text + '. Check your connection and try again.'); rej(m.text); }
+        else if (m.type === 'fatal') { const why = 'Could not start Python: ' + m.text + '. Connect once and open a coding problem; after that it also works offline.'; emit('error', why); w.terminate(); w = null; readyP = null; rej(new Error(why)); }
         else if (m.id && pending[m.id]) { const p = pending[m.id]; delete pending[m.id]; clearTimeout(p.t); m.ok ? p.res(m.value) : p.rej(new Error(m.value)); }
       };
     });

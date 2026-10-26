@@ -5,6 +5,8 @@
 const GRADER = 'http://127.0.0.1:8765';
 const GRADE_POLL_MS = 4000, GRADE_WAIT_MS = 150000, GRADE_EXPIRE_MS = 3 * 864e5;
 const gradeWatch = {}, gradeInflight = {};
+/* Settings → AI features: off hides grading, practice runs and the Claude Code track (for studying without AI) */
+function aiOn() { return S.settings.ai !== false; }
 
 function gsig(s) { let h = 0; s = String(s || ''); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return h.toString(36); }
 function gradeId() { return 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
@@ -85,7 +87,7 @@ function gradeView(g) {
     el('span', { class: 'muted', style: { fontSize: '12.5px' }, text: 'Graded ' + new Date(g.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) + (r.model ? ' by Claude ' + r.model : '') + (r.ms ? ' in ' + Math.round(r.ms / 1000) + ' s' : '') + '. Graded by AI: check anything that looks wrong.' })]);
 }
 function gradeErrText(err) {
-  if (err === 'nograder') return 'Instant grading needs the grader running on your Mac, and Sync set up for iPhone and iPad. Setup: run bash tools/grader/install.sh on your Mac once.';
+  if (err === 'nograder') return 'Instant grading is not set up on this device yet, so compare your answer with the model answer instead. To turn it on: run bash tools/grader/install.sh on your Mac once, and set up Sync for iPhone and iPad. Do not want AI? Settings → AI features → Off hides this.';
   if (err === 'expired') return 'Your Mac did not pick this up within 3 days. Grade it again with your Mac awake.';
   if (/^relay/.test(err || '')) return 'Could not send this to your Mac through the sync script (' + err.slice(7) + '). If you just updated the script, deploy it as a new version.';
   return 'The grader could not grade this: ' + err;
@@ -93,6 +95,7 @@ function gradeErrText(err) {
 
 /* A "Grade me" box. opts: { kind, key, title, text: () => answer text, payload: () => payload, onResult: g => {} , label } */
 function gradeBox(opts) {
+  if (!aiOn()) return el('span');
   const box = el('div', { class: 'stack gradebox', style: { gap: '8px' }, 'aria-live': 'polite' });
   const paint = () => {
     box.textContent = '';
@@ -139,6 +142,7 @@ function runMetrics(r) {
 }
 /* opts: { key, title, placeholder, starter, claudeMd (bool: offer a CLAUDE.md box) } */
 function runBox(opts) {
+  if (!aiOn()) return el('span');
   const pk = 'run_' + opts.key, mk = 'runmd_' + opts.key;
   if (S.code[pk] === undefined && opts.starter) S.code[pk] = opts.starter;
   const ta = el('textarea', { class: 'code', 'aria-label': 'Your prompt for Claude Code', placeholder: opts.placeholder || 'Type a prompt as you would in Claude Code…', style: { minHeight: '110px', border: '1px solid var(--line2)', borderRadius: '10px', fontSize: '14.5px' } });

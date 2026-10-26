@@ -3,7 +3,8 @@ const { chromium } = require(process.env.PW || 'playwright');
 const BASE = process.argv[2] || 'http://localhost:8811/';
 (async () => {
   const b = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
-  const p = await (await b.newContext()).newPage();
+  const cx = await b.newContext(); await cx.route('http://127.0.0.1:8765/**', r => r.abort()); /* never reach a real grader installed on this Mac */
+  const p = await cx.newPage();
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto(BASE + '#/today'); await p.waitForTimeout(1500);
   const r = await p.evaluate(() => {

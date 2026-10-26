@@ -1,8 +1,10 @@
 /* Python runtime in a Web Worker: Pyodide + DuckDB + minispark. */
 const PYODIDE = 'https://cdn.jsdelivr.net/pyodide/v0.27.7/full/';
-importScripts(PYODIDE + 'pyodide.js');
+let fetched = true;
+try { importScripts(PYODIDE + 'pyodide.js'); } catch (e) { fetched = false; } /* offline before the runtime was ever cached */
 let py = null;
 const ready = (async () => {
+  if (!fetched) throw new Error('the Python runtime could not be downloaded (you seem to be offline)');
   py = await loadPyodide({ indexURL: PYODIDE });
   postMessage({ type: 'progress', text: 'Loading DuckDB…' });
   await py.loadPackage(['duckdb']);

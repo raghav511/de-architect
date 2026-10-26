@@ -169,6 +169,10 @@ if '--no-run' not in sys.argv:
     except ImportError as e:
         warn('runtime not importable, skipped coding runs:', e)
 
+swsrc = open('sw.js').read()
+listed = set(re.findall(r"'([a-z]\d\d)'", swsrc[swsrc.index('const PROGRAM'):swsrc.index(';', swsrc.index('const PROGRAM'))]))
+for f in glob.glob('data/program/*.txt'):
+    if os.path.basename(f)[:-4] not in listed: err('sw.js PROGRAM list misses', f, '(it would not work offline)')
 for w in W: print('WARN ', w)
 for e in E: print('ERROR', e)
 print('%d modules, %d coding tests, %d errors, %d warnings' % (len(mods), len(coding_all), len(E), len(W)))

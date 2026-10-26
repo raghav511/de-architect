@@ -50,7 +50,7 @@ async function pageCheck(p, vp, r, errs) {
   const ext = new Set();
   for (const [vp, opt] of Object.entries(VP)) {
     if (QUICK && vp === 'ipad') continue;
-    const ctx = await b.newContext(opt);
+    const ctx = await b.newContext(opt); await ctx.route('http://127.0.0.1:8765/**', r => r.abort()); /* never reach a real grader installed on this Mac */
     const p = await ctx.newPage();
     const errs = [];
     p.on('pageerror', e => errs.push('pageerror ' + e.message));

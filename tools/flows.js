@@ -6,7 +6,7 @@ const FILTER = process.argv.find(a => !/^http/.test(a) && a !== process.argv[0] 
 const results = [];
 let browser;
 async function ctx(opt) {
-  const c = await browser.newContext(Object.assign({ viewport: { width: 1440, height: 900 }, acceptDownloads: true }, opt || {}));
+  const c = await browser.newContext(Object.assign({ viewport: { width: 1440, height: 900 }, acceptDownloads: true }, opt || {})); await c.route('http://127.0.0.1:8765/**', r => r.abort()); /* never reach a real grader installed on this Mac */
   const p = await c.newPage(); p.errs = [];
   p.on('pageerror', e => p.errs.push(e.message));
   p.on('dialog', d => { p.errs.push('native dialog: ' + d.message()); d.dismiss(); });
@@ -502,6 +502,97 @@ async function T(name, fn, opt) {
     await go(p, '#/today');
     await p.click('[aria-label="Update app"]'); await p.waitForTimeout(1500);
     ok(/latest version|Updating/.test(await text(p, '.toast')), 'no update toast');
+  });
+
+  /* ---- persona round 1 fixes ---- */
+  await T('persona: Python runtime unreachable shows a clear error, not an endless Running', async (p, c) => {
+    await c.route(/cdn\.jsdelivr\.net\/pyodide/, r => r.abort());
+    await go(p, '#/dsa/' + 'd011', 1500);
+    await p.locator('button', { hasText: /^Run/ }).first().click();
+    let t = ''; for (let i = 0; i < 20 && !/Could not start Python/.test(t); i++) { await p.waitForTimeout(500); t = await p.evaluate(() => document.body.innerText); }
+    ok(/Could not start Python/.test(t), 'no error shown');
+    ok(await p.locator('button', { hasText: /Run again/ }).first().isEnabled(), 'Run button stays disabled');
+  });
+  await T('persona: service worker keeps the Python runtime from the CDN for offline use', async p => {
+    const src = await p.request.get(BASE + 'sw.js').then(r => r.text());
+    ok(/cdn\.jsdelivr\.net/.test(src) && /pyodide/.test(src) && /RUNTIME/.test(src), 'sw.js does not cache the runtime');
+  });
+  await T('persona: AI features off hides grading, runs and the Claude Code track; on brings them back', async p => {
+    await go(p, '#/today', 1200);
+    ok(await p.evaluate(() => MODS.some(isCC)), 'track missing with AI on');
+    await p.evaluate(() => { S.settings.ai = false; applyAi(); save(); });
+    await go(p, '#/interview/a01', 1200);
+    ok(await p.locator('.gradebox').count() === 0, 'grade boxes shown with AI off');
+    ok(await p.locator('button', { hasText: 'Show model answer' }).count() > 0, 'self-check missing');
+    ok(await p.evaluate(() => !MODS.some(isCC) && !schedule().units.some(u => isCC(u.mid))), 'Claude Code steps still planned');
+    await go(p, '#/learn/c01/lab', 1200); ok(await p.locator('button', { hasText: 'Run in Claude Code' }).count() === 0, 'run box shown with AI off');
+    await go(p, '#/cc/c01/1', 1200); ok(/AI features are off/.test(await text(p, '#page')), 'cc page does not explain');
+    await p.click('[aria-label=Settings]'); await p.waitForTimeout(300);
+    await p.selectOption('#st_ai', 'on'); await p.locator('[role=dialog] button', { hasText: 'Save' }).click(); await p.waitForTimeout(500);
+    ok(await p.evaluate(() => S.settings.ai === true && MODS.some(isCC)), 'turning AI back on did not restore the track');
+  });
+  await T('persona: step ticks are at least 44px on touch screens', async p => {
+    await go(p, '#/today', 1200);
+    const sz = await p.evaluate(() => { const b = document.querySelector('.unit .check').getBoundingClientRect(); return Math.min(b.width, b.height); });
+    ok(sz >= 44, 'tick is ' + sz + 'px');
+  }, { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  await T('persona: test results are announced to screen readers after Run', async p => {
+    await go(p, '#/dsa/d011', 1500);
+    await p.locator('button', { hasText: /^Run/ }).first().click(); await p.waitForTimeout(200);
+    ok(/Running/.test(await p.evaluate(() => (document.querySelector('.out [role=status]') || {}).textContent)), 'nothing announced while running');
+    let t = ''; for (let i = 0; i < 60 && !/pass|Error|failing/i.test(t); i++) { await p.waitForTimeout(500); t = await p.evaluate(() => (document.querySelector('.out [role=status]') || {}).textContent || ''); }
+    ok(/pass|Error|failing/i.test(t), 'live region empty: ' + t);
+  });
+  await T('persona: closing search returns focus to where it was', async p => {
+    await go(p, '#/today', 1000);
+    await p.locator('button[aria-label=Search]').first().focus(); await p.keyboard.press('Enter'); await p.waitForTimeout(300);
+    await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+    ok(await p.evaluate(() => document.activeElement.getAttribute('aria-label') === 'Search'), 'focus lost: ' + await p.evaluate(() => document.activeElement.tagName));
+  });
+  await T('persona: grader setup message offers the model answer, and no stray text', async p => {
+    await go(p, '#/interview/a01', 1200);
+    await p.locator('details summary', { hasText: 'Practise' }).first().click();
+    await p.locator('details textarea').first().fill('answer');
+    await p.locator('details button', { hasText: 'Grade' }).first().click(); await p.waitForTimeout(2500);
+    ok(/model answer/.test(await text(p, '.gradebox')), 'message does not point to the model answer');
+  });
+  await T('persona: mental map labels fit their boxes at 200% zoom', async p => {
+    await go(p, '#/learn/p01/chapter', 1200);
+    const over = await p.evaluate(() => [...document.querySelectorAll('.flow span')].filter(e => e.scrollWidth > e.clientWidth + 1).length);
+    ok(!over, over + ' labels overflow');
+  }, { viewport: { width: 405, height: 540 } });
+
+  /* ---- persona round 2 fixes ---- */
+  await T('persona: ticking a step by keyboard keeps focus on that step', async p => {
+    await go(p, '#/today', 1200);
+    const uid = await p.evaluate(() => document.querySelector('.unit .check').dataset.uid);
+    await p.locator('.unit .check').first().focus(); await p.keyboard.press('Space'); await p.waitForTimeout(500);
+    ok(await p.evaluate(u => document.activeElement && document.activeElement.dataset.uid === u, uid), 'focus moved to ' + await p.evaluate(() => document.activeElement.tagName));
+  });
+  await T('persona: offline, a missing lesson file never turns into the home page; Path survives', async (p, c) => {
+    await go(p, '#/path', 1500);
+    const sw = await p.request.get(BASE + 'sw.js').then(r => r.text());
+    ok(/mode === 'navigate'/.test(sw) && /status: 503/.test(sw) && /PROGRAM/.test(sw), 'sw.js fallback or precache missing');
+    await p.evaluate(() => { const orig = schedule; window.schedule = () => { const r = orig(); delete r.span.c05; return r; }; route(); });
+    await p.waitForTimeout(300); ok(!/Something went wrong/.test(await text(p, 'body')), 'Path crashed without one module');
+  });
+  await T('persona: the markdown library is served by the app, not a CDN', async p => {
+    await go(p, '#/today', 800);
+    ok(await p.evaluate(() => !!window.marked && [...document.scripts].some(s => /js\/vendor\/marked/.test(s.src)) && ![...document.scripts].some(s => /cdn\.jsdelivr/.test(s.src))), 'marked still loaded from a CDN');
+  });
+  await T('persona: module picker is full height on touch screens', async p => {
+    await go(p, '#/learn/a01/chapter', 1200);
+    const h = await p.evaluate(() => document.querySelector('select[aria-label=Module]').getBoundingClientRect().height);
+    ok(h >= 44, 'picker is ' + h + 'px tall');
+  }, { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  /* ---- persona round 3 fix ---- */
+  await T('persona: AI features off: no Sync nag or promise of AI grading on Today, Coach explains', async p => {
+    await go(p, '#/today', 1200); await p.evaluate(() => { S.settings.ai = false; applyAi(); save(); route(); }); await p.waitForTimeout(600);
+    const t = await text(p, '#page');
+    ok(!/Sync is not set up|grades it tonight|coach grades/i.test(t), 'Today still mentions the AI coach: ' + (t.match(/[^\n]*(Sync is not set up|grades it tonight)[^\n]*/) || [''])[0]);
+    ok(/Daily mock interview/.test(t), 'daily mock missing');
+    await go(p, '#/coach', 1000); ok(/AI features are off/.test(await text(p, '#page')), 'coach page does not explain');
   });
 
   await browser.close();
