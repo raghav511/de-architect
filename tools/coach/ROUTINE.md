@@ -10,7 +10,7 @@ Work in the repository root. Use a scratch folder such as `/tmp/da-coach`.
 2. `python3 tools/coach/coach.py fetch /tmp/da-coach/state.json`. If this fails, stop and report the error in one line; do not invent data.
 3. `python3 tools/coach/coach.py digest /tmp/da-coach/state.json > /tmp/da-coach/digest.md`, then read the digest completely. It lists his position in the program, steps ticked, quiz misses, problems worked on (with runs, hints, whether he opened the solution), the review queue, mock answers to grade, questions already asked, and the valid links you may use.
 4. Write `/tmp/da-coach/coach.json` following the schema below.
-5. `python3 tools/coach/coach.py post /tmp/da-coach/coach.json`. If it reports validation errors, fix the JSON and post again.
+5. `python3 tools/coach/coach.py post /tmp/da-coach/coach.json --state /tmp/da-coach/state.json`. If it reports validation errors, fix the JSON and post again.
 6. Finish with three lines: what you saw, the top weakness, and what tomorrow's mock targets.
 
 ## What good coaching looks like here

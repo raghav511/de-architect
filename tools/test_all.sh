@@ -21,7 +21,7 @@ step "nightly coach loop (fake sync, stub coach)" bash -c '
   export DA_SYNC_URL="http://127.0.0.1:8813/exec?k=e2ekey"
   node tools/coach/e2e_test.js user "'"$BASE"'" "$DA_SYNC_URL" | tee "$D/u.txt" && python3 tools/coach/coach.py fetch "$D/state.json" >/dev/null &&
   python3 tools/coach/coach.py digest "$D/state.json" > "$D/digest.md" && python3 tools/coach/stub_coach.py "$D/state.json" "$D/coach.json" &&
-  python3 tools/coach/coach.py post "$D/coach.json" && node tools/coach/e2e_test.js check "'"$BASE"'" "$DA_SYNC_URL" | tee "$D/c.txt"
+  python3 tools/coach/coach.py post "$D/coach.json" --state "$D/state.json" && node tools/coach/e2e_test.js check "'"$BASE"'" "$DA_SYNC_URL" | tee "$D/c.txt"
   r=$?; kill $SRV; ! grep -q FAIL "$D/u.txt" "$D/c.txt" && [ $r = 0 ]'
 step "UI crawl" node tools/crawl.js "$BASE" ${QUICK:+--quick}
 echo; [[ $fail == 0 ]] && echo "ALL GREEN" || echo "SOME CHECKS FAILED"

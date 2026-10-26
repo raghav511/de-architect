@@ -184,14 +184,19 @@ def digest(path, now=None):
     print('\n'.join(out))
 
 
-def validate(c, banks):
+def validate(c, banks, state=None):
     errs = []
     need = ['version', 'generated_at', 'summary', 'strengths', 'weaknesses', 'focus', 'review_add', 'mock_feedback', 'next_mock']
     for k in need:
         if k not in c: errs.append('missing ' + k)
     if c.get('version') != SCHEMA_VERSION: errs.append('version must be %d' % SCHEMA_VERSION)
-    try: dt.datetime.fromisoformat(c.get('generated_at', '').replace('Z', '+00:00'))
+    gen = None
+    try:
+        gen = dt.datetime.fromisoformat(c.get('generated_at', '').replace('Z', '+00:00'))
+        if gen.tzinfo is None: errs.append('generated_at needs a timezone offset')
+        elif gen > dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=1): errs.append('generated_at is in the future')
     except ValueError: errs.append('generated_at must be ISO 8601')
+    gday = gen.date() if gen else dt.date.today()
     for f in c.get('focus', []):
         if not re.match(r'^#/(learn|quiz|interview|path|py|dsa|sql|spark|git|design|mock|practice)/', f.get('href', '')): errs.append('bad focus href %r' % f.get('href'))
         if not f.get('title'): errs.append('focus item without title')
@@ -201,12 +206,16 @@ def validate(c, banks):
     for i in c.get('review_add', []):
         if i not in banks: errs.append('review_add unknown id ' + i)
     for k, fb in c.get('mock_feedback', {}).items():
-        if not re.match(r'^\d{4}-\d\d-\d\d$', k): errs.append('mock_feedback key must be a date: ' + k)
+        if not re.match(r'^\d{4}-\d\d-\d\d$', k): errs.append('mock_feedback key must be a date: ' + k); continue
+        if dt.date.fromisoformat(k) > gday: errs.append('mock_feedback for a future day: ' + k)
+        sm = ((state or {}).get('mock') or {}).get(k)
+        if sm and len(fb.get('items', [])) != len(sm.get('qs', [])): errs.append('mock_feedback %s has %d items but that mock had %d questions' % (k, len(fb.get('items', [])), len(sm.get('qs', []))))
         for it in fb.get('items', []):
             if not (isinstance(it.get('score'), int) and 1 <= it['score'] <= 5): errs.append('mock score must be 1-5 on ' + k)
             if not it.get('feedback'): errs.append('mock item without feedback on ' + k)
     for k, nm in c.get('next_mock', {}).items():
-        if not re.match(r'^\d{4}-\d\d-\d\d$', k): errs.append('next_mock key must be a date: ' + k)
+        if not re.match(r'^\d{4}-\d\d-\d\d$', k): errs.append('next_mock key must be a date: ' + k); continue
+        if not (gday <= dt.date.fromisoformat(k) <= gday + dt.timedelta(days=2)): errs.append('next_mock %s must be for today or the next two days' % k)
         want = 5 if dt.date.fromisoformat(k).weekday() == 6 else 3
         if len(nm.get('questions', [])) != want: errs.append('next_mock %s needs %d questions' % (k, want))
         for q in nm.get('questions', []):
@@ -214,10 +223,13 @@ def validate(c, banks):
     return errs
 
 
-def post(path, dry):
+def post(path, dry, state_path=None):
     c = json.load(open(path))
     _, _, banks = program()
-    errs = validate(c, banks)
+    state = None
+    if state_path:
+        b = json.load(open(state_path)); state = b.get('data') or b
+    errs = validate(c, banks, state)
     if errs:
         sys.exit('Coach report is invalid:\n- ' + '\n- '.join(errs))
     if dry:
@@ -234,5 +246,5 @@ if __name__ == '__main__':
     a = sys.argv[1:]
     if len(a) >= 2 and a[0] == 'fetch': fetch(a[1])
     elif len(a) >= 2 and a[0] == 'digest': digest(a[1], dt.datetime.fromisoformat(a[a.index('--now') + 1]) if '--now' in a else None)
-    elif len(a) >= 2 and a[0] == 'post': post(a[1], '--dry-run' in a)
+    elif len(a) >= 2 and a[0] == 'post': post(a[1], '--dry-run' in a, a[a.index('--state') + 1] if '--state' in a else None)
     else: print(__doc__)

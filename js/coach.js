@@ -6,6 +6,12 @@
 const MOCK_LEN = { daily: [15, 3], sunday: [30, 5] }; /* minutes, questions */
 function mockKind(k) { return new Date(k + 'T00:00:00').getDay() === 0 ? 'sunday' : 'daily'; }
 function coachData() { return S.coach || {}; }
+const coachTime = c => { const t = Date.parse((c || {}).generated_at || ''); return isNaN(t) ? 0 : t; };
+/* trust fix 1: a report older than about a day and a half is labelled stale, with its age */
+function coachAgeDays(c) { const t = coachTime(c); return t ? Math.floor((Date.now() - t) / 864e5) : null; }
+function coachStale(c) { const t = coachTime(c); return !!t && Date.now() - t > 36 * 36e5; }
+/* trust fix 9: a focus item that links to a problem counts as done once you solve it after the report */
+function focusDone(f, c) { const m = /^#\/(py|dsa|sql|spark)\/([a-z0-9]+)/.exec(f.href || ''); return !!(m && S.solved[m[2]] && ((S.seen || {})[m[2]] || 0) > coachTime(c)); }
 
 /* questions for a day: the coach's plan if it wrote one, otherwise a seeded pick from the interview sets up to the current module */
 async function mockQuestions(k) {
@@ -26,9 +32,21 @@ async function mockQuestions(k) {
 
 /* apply a coach file that sync just brought in: weak problems become due today in the review queue */
 function applyCoach(c) {
-  if (!c || !c.generated_at || S.coachApplied === c.generated_at) return 0;
-  const today = iso(new Date()); let n = 0;
-  (c.review_add || []).forEach(id => { if (!findQ(id)) return; S.rev = S.rev || {}; const r = S.rev[id]; if (!r || !r.due || r.due > today) { S.rev[id] = { box: r && r.due ? r.box : 0, due: today, t: Date.now(), coach: true }; n++; } });
+  const today = iso(new Date()), gen = coachTime(c);
+  if (!c || !gen) return 0;
+  /* trust fix 5: if today's mock was opened before this sync but not answered, use the questions the coach chose */
+  const plan = (c.next_mock || {})[today], m = (S.mock || {})[today];
+  if (plan && (plan.questions || []).length && m && !m.sub && !Object.values(m.a || {}).some(x => (x || '').trim()) && m.src !== 'coach') {
+    m.qs = plan.questions.map(q => ({ q: q.q, tag: q.tag || 'core', why: q.why || '', src: 'chosen by your coach' })); m.src = 'coach'; m.t = Date.now();
+  }
+  /* trust fix 7: apply each report once (the marker syncs across devices), and never re-queue a problem you touched after the report */
+  if (S.coachApplied && Date.parse(S.coachApplied) >= gen) return 0;
+  let n = 0;
+  (c.review_add || []).forEach(id => {
+    if (!findQ(id)) return; S.rev = S.rev || {}; const r = S.rev[id];
+    if ((r && (r.t || 0) > gen) || ((S.seen || {})[id] || 0) > gen) return;
+    if (!r || !r.due || r.due > today) { S.rev[id] = { box: r && r.due ? r.box : 0, due: today, t: Date.now(), coach: true }; n++; }
+  });
   S.coachApplied = c.generated_at;
   return n;
 }
@@ -36,6 +54,10 @@ function applyCoach(c) {
 function mockStatus(k) {
   const m = (S.mock || {})[k], fb = (coachData().mock_feedback || {})[k];
   if (fb) return ['Feedback ready', 'b-ok'];
+  /* trust fixes 2-4: say exactly why a submitted mock has no feedback yet */
+  if (m && m.sub && !S.settings.syncUrl) return ['Submitted · set up Sync to get it graded', 'b-bad'];
+  if (m && m.sub && (m.subAt || 0) > (S.lastSync || 0)) return ['Submitted · not synced yet', 'b-warn'];
+  if (m && m.sub && k < iso(new Date(Date.now() - 864e5))) return ['Not graded yet', 'b-bad'];
   if (m && m.sub) return ['Submitted · graded tonight', 'b-warn'];
   if (m && Object.values(m.a || {}).some(Boolean)) return ['In progress', 'b-warn'];
   return ['Not started', ''];
@@ -44,13 +66,15 @@ function mockStatus(k) {
 /* ---------------- Today: the coach card ---------------- */
 function coachCard() {
   const c = coachData(), today = iso(new Date()), kind = mockKind(today), [mins, nq] = MOCK_LEN[kind], [st, cls] = mockStatus(today);
-  const focus = (c.focus || []).slice(0, 4);
+  const focus = (c.focus || []).slice(0, 4), stale = coachStale(c), age = coachAgeDays(c);
   return el('section', { class: 'card pad stack', style: { borderColor: '#D9C6E6' } }, [
     el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Coach' }), el('span', { class: 'muted', style: { fontSize: '13px' }, text: c.generated_at ? 'last run ' + shortDate(c.generated_at.slice(0, 10)) : 'not run yet' })]),
+    !S.settings.syncUrl ? el('div', { class: 'hint', style: { background: 'var(--amber-l)', borderColor: 'var(--amber-b)' } }, [el('b', { text: 'Sync is not set up. ' }), 'Your coach cannot see your work or grade your mock until it is. ', el('button', { class: 'btn sm', onclick: settings, text: 'Open settings' })]) : null,
+    stale ? el('div', { class: 'hint', style: { background: 'var(--amber-l)', borderColor: 'var(--amber-b)' } }, [el('b', { text: 'This report is ' + age + ' day' + (age === 1 ? '' : 's') + ' old. ' }), 'The nightly coach has not reached this device since. Tap Sync progress; if it stays old, check that the Claude app was open on your Mac at midnight.']) : null,
     el('div', { class: 'item', style: { cursor: 'default' } }, [el('span', { class: 'grow' }, [el('span', { class: 't', text: (kind === 'sunday' ? 'Sunday mock interview' : 'Daily mock interview') + ' · ' + mins + ' min · ' + nq + ' questions' }), el('br'), el('span', { class: 's', text: 'Separate from the hour. Answer as you would out loud; your coach grades it tonight.' })]),
       cls ? el('span', { class: 'badge ' + cls, text: st }) : null, el('a', { class: 'btn sm pri', href: '#/mock/' + today, text: st === 'Not started' ? 'Start' : 'Open' })]),
     c.summary ? el('div', { style: { fontSize: '14.5px' }, html: mdi(c.summary) }) : el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Every night your coach reads your day (steps, quizzes, problems, hints, the mock), grades your mock answers, and writes targeted practice here. It needs Sync set up in Settings.' }),
-    focus.length ? el('div', { class: 'list' }, focus.map(f => el('a', { class: 'item', href: /^#\//.test(f.href || '') ? f.href : '#/coach' }, [el('span', { class: 'grow' }, [el('span', { class: 't', text: f.title }), el('br'), el('span', { class: 's', text: (f.mins ? f.mins + ' min · ' : '') + (f.why || '') })]), el('span', { class: 's', text: 'Open ›' })]))) : null,
+    focus.length ? el('div', { class: 'list', style: stale ? { opacity: 0.7 } : {} }, focus.map(f => el('a', { class: 'item', href: /^#\//.test(f.href || '') ? f.href : '#/coach' }, [el('span', { class: 'grow' }, [el('span', { class: 't', text: f.title }), el('br'), el('span', { class: 's', text: (f.mins ? f.mins + ' min · ' : '') + (f.why || '') })]), focusDone(f, c) ? el('span', { class: 'ok', text: '✓ done' }) : el('span', { class: 's', text: 'Open ›' })]))) : null,
     c.generated_at ? el('a', { href: '#/coach', style: { fontWeight: 600, fontSize: '14px' }, text: 'Full coach report ›' }) : null]);
 }
 
@@ -77,7 +101,8 @@ async function vMock(k) {
   if (!m) {
     if (k !== today) { $('#page').textContent = ''; $('#page').appendChild(el('section', { class: 'card pad' }, [el('p', { style: { margin: 0 }, text: 'There was no mock interview on this day.' }), el('a', { href: '#/mock', text: 'Go to today\'s mock' })])); return; }
     const kind = mockKind(k);
-    m = S.mock[k] = { kind, mins: MOCK_LEN[kind][0], qs: await mockQuestions(k), a: {}, secs: 0, sub: false, t: Date.now() };
+    const qs = await mockQuestions(k);
+    m = S.mock[k] = { kind, mins: MOCK_LEN[kind][0], qs, a: {}, secs: 0, sub: false, t: Date.now(), src: qs[0] && qs[0].src === 'chosen by your coach' ? 'coach' : 'bank' };
     save();
   }
   const fb = (coachData().mock_feedback || {})[k];
@@ -91,7 +116,7 @@ async function vMock(k) {
   page.appendChild(el('section', { class: 'card pad stack' }, [
     el('div', { class: 'row wrap' }, [el('span', { class: 'chip c-arch', text: m.kind === 'sunday' ? 'Sunday round · 30 min' : 'Daily round · 15 min' }), el('span', { class: 'grow' }), m.sub ? null : el('span', { class: 'muted', text: 'time left' }), m.sub ? null : clock]),
     el('span', { style: { fontSize: '14.5px' }, text: m.sub ? (fb ? 'Graded by your coach. Read the feedback and the stronger answer for each question, then say the stronger version out loud once.' : 'Submitted. Tap Sync progress so tonight\'s coach can grade it; the feedback appears here tomorrow.') : 'Answer each question as you would out loud: lead with the structure, then the detail, with numbers where you can. Type, or use your keyboard\'s dictation (the microphone on iPhone and iPad). Go past the time if you need to; the overrun is part of the feedback.' }),
-    fb ? el('div', { class: 'hint' }, [el('b', { text: (fb.score ? 'Overall ' + fb.score + ' / 5. ' : '') }), el('span', { html: mdi(fb.overall || '') })]) : null]));
+    fb ? el('div', { class: 'hint' }, [el('b', { text: (fb.score ? 'Overall ' + fb.score + ' / 5. ' : '') }), el('span', { html: mdi(fb.overall || '') })]) : m.sub ? el('span', { class: 'badge ' + mockStatus(k)[1], text: mockStatus(k)[0] }) : null]));
   m.qs.forEach((q, i) => {
     const f = fb && (fb.items || [])[i];
     const ta = el('textarea', { class: 'code', 'aria-label': 'Your answer to question ' + (i + 1), style: { minHeight: '150px', border: '1px solid var(--line2)', borderRadius: '10px', fontFamily: 'var(--body)', fontSize: '16px' } });

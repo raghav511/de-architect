@@ -430,6 +430,68 @@ async function T(name, fn, opt) {
     ok(/Platform 1/.test(t) && /Leadership 1/.test(t), 'practice tab should list Platform 1 and Leadership 1');
   });
 
+  await T('trust: merges keep typed mock answers and submitted quizzes; applied coach marker syncs', async p => {
+    await go(p, '#/today');
+    const r = await p.evaluate(() => {
+      const a = { mock: { '2026-10-26': { qs: [{ q: 'x' }], a: { 0: 'my long answer' }, sub: false, t: 1 } }, quiz: { p01: { sub: true, best: 70, last: 70 } }, coachApplied: '2026-10-26T00:05:00+05:30' };
+      const b = { mock: { '2026-10-26': { qs: [{ q: 'y' }], a: {}, sub: false, t: 9 } }, quiz: { p01: { sub: false, a: { 0: 'B' }, best: 60 } }, updated: 9 };
+      const m = mergeState(a, b);
+      return [m.mock['2026-10-26'].a[0], m.quiz.p01.sub, m.quiz.p01.best, m.coachApplied];
+    });
+    ok(r[0] === 'my long answer', 'typed mock answers lost in merge');
+    ok(r[1] === true && r[2] === 70, 'submitted quiz or best score lost in merge: ' + r);
+    ok(r[3] === '2026-10-26T00:05:00+05:30', 'applied coach marker not merged');
+  });
+
+  await T('trust: coach review is applied once, skips work done after the report, and fills an untouched mock', async p => {
+    await go(p, '#/today');
+    const r = await p.evaluate(() => {
+      const today = iso(new Date()), gen = new Date(Date.now() - 3 * 36e5).toISOString();
+      S.rev = { d011: { box: 1, due: '2099-01-01', t: Date.now() } }; S.seen = { d012: Date.now() }; S.coachApplied = null;
+      S.mock = { [today]: { kind: 'daily', qs: [{ q: 'bank question' }], a: {}, sub: false, t: 1, src: 'bank' } };
+      const c = { generated_at: gen, review_add: ['d011', 'd012', 'd013'], next_mock: { [today]: { questions: [{ q: 'coach q1' }, { q: 'coach q2' }, { q: 'coach q3' }] } } };
+      const n1 = applyCoach(c), n2 = applyCoach(c);
+      return [n1, n2, S.rev.d011.due, !!S.rev.d012, S.rev.d013 && S.rev.d013.due === today, S.mock[today].qs[0].q];
+    });
+    ok(r[0] === 1 && r[1] === 0, 'coach review applied ' + r[0] + ' then ' + r[1] + ' times');
+    ok(r[2] === '2099-01-01' && !r[3] && r[4], 'coach re-queued work done after the report: ' + r);
+    ok(r[5] === 'coach q1', 'untouched mock did not take the coach questions');
+  });
+
+  await T('trust: stale coach report and missing sync are called out; readiness counts only passed quizzes', async p => {
+    await go(p, '#/today');
+    await p.evaluate(() => { S.settings.syncUrl = ''; S.coach = { generated_at: new Date(Date.now() - 4.5 * 864e5).toISOString(), summary: 'old', focus: [] }; S.quiz = { p01: { sub: true, best: 10 }, p02: { sub: true, best: 90 } }; save(); });
+    await p.waitForTimeout(400); /* save() is debounced */
+    await hash(p, '#/path', 400); await hash(p, '#/today', 700); /* same-URL goto would not re-render */
+    const t = await text(p, '#page');
+    ok(/Sync is not set up/.test(t), 'missing sync not called out on the coach card');
+    ok(/This report is 4 days old/.test(t), 'stale coach report not labelled');
+    await go(p, '#/progress', 700);
+    const pr = await text(p, '#page');
+    ok(/Quizzes passed \(80%\+\)/.test(pr), 'readiness label not updated');
+    const pct = await p.evaluate(() => { const m = MODS.filter(x => (DATA.sprints[x] || {}).quiz && DATA.sprints[x].quiz.length); return Math.round(100 / m.length); });
+    ok(new RegExp('Quizzes passed \\(80%\\+\\)\\s*' + pct + '%').test(pr), 'a 10% quiz was counted as ready');
+  });
+
+  await T('trust: bad backup, bad sync URL and failed upload are refused', async p => {
+    await go(p, '#/progress', 700);
+    await p.setInputFiles('input[type=file]', { name: 'other.json', mimeType: 'application/json', buffer: Buffer.from('{"foo": 1}') });
+    await p.waitForTimeout(400);
+    ok(/not a Data Architect backup/.test(await text(p, '.toast')), 'unrelated JSON accepted as a backup');
+    await p.click('[aria-label="Settings"]'); await p.fill('#st_sync', 'ftp://example.com/x'); await p.click('.dialog button:has-text("Save")'); await p.waitForTimeout(300);
+    ok(/not valid/.test(await text(p, '.toast')) && !(await state(p)).settings.syncUrl, 'invalid sync URL saved');
+    await p.route('https://script.google.com/**', route => route.request().method() === 'POST' ? route.fulfill({ contentType: 'application/json', body: '{"ok": false, "error": "quota exceeded"}' }) : route.fulfill({ contentType: 'application/json', body: '{"ok": true, "data": {}, "coach": {}}' }));
+    await p.evaluate(() => { S.settings.syncUrl = 'https://script.google.com/macros/s/x/exec?k=a'; save(); });
+    await p.evaluate(() => doSync()); await p.waitForTimeout(700);
+    ok(/Sync failed/.test(await text(p, '.toast')), 'a refused upload was reported as synced: ' + await text(p, '.toast'));
+  });
+
+  await T('trust: a newer published version is announced', async p => {
+    await p.route('**/version.json*', route => route.fulfill({ contentType: 'application/json', body: '{"version": "9.9.9"}' }));
+    await go(p, '#/today', 1200);
+    ok(/Version 9\.9\.9 is available/.test(await text(p, '#page')), 'new version not announced');
+  });
+
   await T('review: sync merge keeps the newer review entry', async p => {
     await go(p, '#/today');
     const r = await p.evaluate(() => { const a = { rev: { d011: { box: 0, due: '2026-11-01', t: 1 } } }, b = { rev: { d011: { box: 2, due: null, t: 5 }, q011: { box: 1, due: '2026-11-05', t: 2 } } }; const m = mergeState(a, b); return [m.rev.d011.box, !!m.rev.q011]; });

@@ -298,10 +298,12 @@ function vGit(n) {
 }
 
 /* ---------------- What is new ---------------- */
+function newsAge() { const t = Date.parse((DATA.news || {}).updated || ''); return isNaN(t) ? 0 : Math.floor((Date.now() - t) / 864e5); }
 function vNews() {
   const N = DATA.news || { items: [] };
   const sc = schedule(), u = sc.units.find(x => x.kind === 'news' && x.mid === sc.cur);
   shell('What is new in AI', 'Updated ' + (N.updated || '') + ' · refreshed weekly', [
+    newsAge() > 10 ? el('div', { class: 'hint', style: { background: 'var(--amber-l)', borderColor: 'var(--amber-b)' } }, [el('b', { text: 'These items are ' + newsAge() + ' days old. ' }), 'The weekly refresh has not run since; treat "new" with care and check the sources.']) : null, /* trust fix 22 */
     el('section', { class: 'card pad stack' }, [el('p', { style: { margin: 0 }, text: N.note || '' }), u ? el('button', { class: 'btn', style: { alignSelf: 'flex-start' }, onclick: () => toggleUnit(u), text: u.isDone ? 'Mark not done' : 'Mark this week\'s reading done' }) : null]),
     el('div', { class: 'stack' }, N.items.map(x => el('section', { class: 'card pad stack' }, [el('b', { style: { fontSize: '18px' }, text: x.title }), el('span', { text: x.summary }), el('span', {}, [el('b', { style: { color: 'var(--plum-d)' }, text: 'Why it matters: ' }), x.why]), x.try ? el('span', {}, [el('b', { style: { color: 'var(--teal-d)' }, text: 'Test it yourself: ' }), x.try]) : null, x.url ? el('a', { href: x.url, target: '_blank', rel: 'noopener', style: { fontWeight: 600 }, text: 'Source: ' + (x.source || new URL(x.url).hostname) + ' ›' }) : null])))], { back: '#/today' });
 }
@@ -385,16 +387,20 @@ function programCard() {
   const sc = schedule(), U = sc.units, done = U.filter(u => u.isDone), mins = U.reduce((a, u) => a + u.mins, 0), dm = done.reduce((a, u) => a + u.mins, 0);
   const last = U.length ? U[U.length - 1].day : sc.today;
   const per = {}; done.forEach(u => { if (u.day !== '0000-00-00') per[u.day] = (per[u.day] || 0) + u.mins; });
-  let streak = 0; const d = new Date(); d.setHours(0, 0, 0, 0); if (!per[iso(d)]) d.setDate(d.getDate() - 1);
-  while (per[iso(d)]) { streak++; d.setDate(d.getDate() - 1); }
+  /* trust fix 14: a day with coding practice, a quiz or a mock is a study day too, not only ticked plan steps */
+  const active = new Set(Object.keys(per));
+  const addT = t => { if (t) active.add(iso(new Date(t))); };
+  Object.values(S.seen || {}).forEach(addT); Object.values(S.quiz || {}).forEach(q => addT(q.at)); Object.entries(S.mock || {}).forEach(([k, m]) => { if (m.sub || Object.values(m.a || {}).some(x => (x || '').trim())) active.add(k); });
+  let streak = 0; const d = new Date(); d.setHours(0, 0, 0, 0); if (!active.has(iso(d))) d.setDate(d.getDate() - 1);
+  while (active.has(iso(d))) { streak++; d.setDate(d.getDate() - 1); }
   const start = new Date(); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - 7 * 11 - ((start.getDay() + 6) % 7));
   const cells = [];
-  for (let i = 0; i < 84; i++) { const x = new Date(start); x.setDate(start.getDate() + i); const k = iso(x), v = per[k] || 0; cells.push(el('span', { title: shortDate(k) + ': ' + v + ' min', class: 'hm' + (v >= 90 ? ' h3' : v >= 45 ? ' h2' : v > 0 ? ' h1' : '') + (k === sc.today ? ' now' : '') })); }
+  for (let i = 0; i < 84; i++) { const x = new Date(start); x.setDate(start.getDate() + i); const k = iso(x), v = per[k] || 0; cells.push(el('span', { title: shortDate(k) + ': ' + v + ' min', class: 'hm' + (v >= 90 ? ' h3' : v >= 45 ? ' h2' : v > 0 || active.has(k) ? ' h1' : '') + (k === sc.today ? ' now' : '') })); }
   const stat = (n, t) => el('div', { class: 'stack', style: { gap: '0' } }, [el('b', { style: { font: '800 26px var(--display)' }, text: n }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: t })]);
   return el('section', { class: 'card pad stack' }, [
     el('div', { class: 'row wrap' }, [el('span', { class: 'lbl grow', text: 'Program' }), el('a', { href: '#/path', style: { fontWeight: 600, fontSize: '14px' }, text: 'Open the path ›' })]),
     el('div', { class: 'statrow' }, [stat(done.length + '/' + U.length, 'steps done'), stat(Math.round(dm / 60) + ' / ' + Math.round(mins / 60) + ' h', 'study hours'), stat(streak + (streak === 1 ? ' day' : ' days'), 'study streak'), stat(shortDate(last).slice(4), 'planned finish (week ' + weekOf(last) + ')')]),
     el('div', { class: 'bar' }, el('i', { style: { width: Math.round(100 * dm / Math.max(1, mins)) + '%' } })),
     el('span', { class: 'lbl', text: 'Last 12 weeks · minutes studied per day' }), el('div', { class: 'heat', 'aria-label': 'Study activity, last 12 weeks' }, cells),
-    el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Columns are weeks, rows are Monday to Sunday. Darker means more minutes.' })]);
+    el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Columns are weeks, rows are Monday to Sunday. Darker means more planned minutes ticked; the lightest shade also marks days with only coding practice, a quiz or a mock.' })]);
 }

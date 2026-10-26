@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.6.0';
+const VERSION = '1.6.1';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -187,6 +187,8 @@ function shell(title, eyebrow, body, opts) {
       el('button', { class: 'btn hide-s', id: 'syncBtn', onclick: doSync, title: 'Sync progress across your devices', 'aria-label': 'Sync progress' }, [svg(I.sync, 18), el('span', { class: 't', text: syncLabel() })]),
       el('button', { class: 'btn icon', onclick: settings, 'aria-label': 'Settings' }, svg(I.gear, 18))])]);
   const pageEl = opts.raw ? body : el('main', { class: 'page', id: 'page' }, body);
+  /* trust fix 21: tell the learner when a newer version is published instead of silently running an old one */
+  if (S.newVersion && S.newVersion !== VERSION && pageEl.prepend) pageEl.prepend(el('div', { class: 'hint row wrap', role: 'status', style: { margin: '0 0 12px' } }, [el('span', { class: 'grow' }, [el('b', { text: 'Version ' + S.newVersion + ' is available. ' }), 'You are on ' + VERSION + '; content and fixes may be out of date.']), el('button', { class: 'btn sm pri', onclick: doUpdate, text: 'Update now' })]));
   const main = el('div', { class: 'main' }, [top, pageEl.querySelector && pageEl.querySelector('h1') ? null : el('h1', { class: 'sr', text: title }), pageEl]);
   const app = el('div', { class: 'app' }, [side, main]);
   const same = shell.last === location.hash, y = window.scrollY; shell.last = location.hash;
@@ -745,7 +747,7 @@ async function vQuiz(m) {
   const qs = s.quiz; const st = S.quiz[w] = S.quiz[w] || { a: {}, sub: false, i: 0 };
   const page = $('#page'); let i = Math.min(st.i || 0, qs.length - 1);
   const weekSel = el('select', { class: 'btn sm', 'aria-label': 'Module', onchange: e => { location.hash = '#/quiz/' + e.target.value; } }, MODS.map(x => el('option', { value: x, selected: x === m ? 'selected' : null, text: modLabel(x) + ' · ' + modTitle(x) })));
-  const grade = (q, a) => { if (a == null || a === '') return 0; if (q.TYPE === 'mcq') return a === q.ANS ? 1 : 0; if (q.TYPE === 'fill') { const nz = x => String(x).toLowerCase().replace(/^\s*(the|a|an)\s+/, '').replace(/[^a-z0-9]/g, '').replace(/s$/, ''); const ok = q.ANS.split('|').map(nz); return ok.includes(nz(a)) ? 1 : 0; } return a.self || 0; };
+  const grade = (q, a) => { if (a == null || a === '') return 0; if (q.TYPE === 'mcq') return a === q.ANS ? 1 : 0; if (q.TYPE === 'fill') { const nz = x => String(x).toLowerCase().replace(/^\s*(the|a|an)\s+/, '').replace(/[^a-z0-9]/g, '').replace(/s$/, ''); const ok = q.ANS.split('|').map(nz); return nz(a) !== '' && ok.includes(nz(a)) ? 1 : 0; } /* trust fix 16: an answer of only punctuation never matches */ return a.self || 0; };
   function draw() {
     page.textContent = '';
     st.i = i; save(false);
@@ -757,7 +759,8 @@ async function vQuiz(m) {
       const score = qs.reduce((a, q, k) => a + grade(q, st.a[k]), 0), pct = Math.round(100 * score / qs.length);
       if (!st.best || pct > st.best) { st.best = pct; save(); }
       /* the nightly coach reads the last score and which questions were missed */
-      const miss = qs.map((q, k) => grade(q, st.a[k]) ? -1 : k).filter(k => k >= 0);
+      const pending = k => qs[k].TYPE === 'short' && st.a[k] && st.a[k].t && st.a[k].self === undefined; /* trust fix 15: not wrong, just not marked yet */
+      const miss = qs.map((q, k) => grade(q, st.a[k]) || pending(k) ? -1 : k).filter(k => k >= 0);
       if (st.last !== pct || JSON.stringify(st.miss) !== JSON.stringify(miss)) { st.last = pct; st.miss = miss; st.at = Date.now(); save(); }
       const toMark = qs.filter((q, k) => q.TYPE === 'short' && st.a[k] && st.a[k].t && st.a[k].self === undefined).length;
       page.appendChild(el('section', { class: 'card pad stack' }, [el('h2', { text: 'Score: ' + score + ' of ' + qs.length + ' (' + pct + '%)' }), el('span', { class: 'muted', text: (st.best ? 'Best: ' + st.best + '% · ' : '') + (pct >= 80 ? 'Pass mark reached (80%).' : 'The pass mark is 80%. Review the ones marked Review, then retake.') + (toMark ? ' ' + toMark + ' short answer' + (toMark > 1 ? 's' : '') + ' still to mark yourself below.' : '') }), el('div', { class: 'row wrap' }, [el('button', { class: 'btn pri', onclick: () => { S.quiz[w] = { a: {}, sub: false, i: 0, best: st.best }; save(); vQuiz(m); }, text: 'Retake' }), el('a', { class: 'btn', href: '#/today', text: 'Back to Today' })])]));
@@ -807,9 +810,12 @@ async function vInterview(m, focus) {
 function vProgress() {
   const pct = arr => arr.length ? Math.round(100 * arr.filter(x => S.solved[x.id]).length / arr.length) : 0;
   const sqlW = DATA.sql.filter(x => x.k === 'W' && !x.m), sqlO = DATA.sql.filter(x => x.k === 'O'), spW = DATA.spark.filter(x => x.k === 'W'), spO = DATA.spark.filter(x => x.k === 'O');
-  const quizP = (() => { let got = 0, n = 0; for (const w in S.quiz) if (S.quiz[w].sub) { n++; } return Math.round(100 * n / MODS.length); })();
-  const ivP = (() => { let t = 0; for (const w in S.iv) t += Object.values(S.iv[w]).filter(Boolean).length; return Math.min(100, Math.round(t / 2)); })();
-  const rows = [['Python', pct(DATA.py.filter(x => x.m !== 's00')), '#5B7A1E'], ['Data modelling', pct(DATA.sql.filter(x => x.m)), 'var(--plum)'], ['DSA', pct(DATA.dsa), 'var(--teal)'], ['SQL write', pct(sqlW), '#164C7E'], ['SQL optimize', pct(sqlO), '#164C7E'], ['PySpark write', pct(spW), '#8A3A0C'], ['PySpark optimize', pct(spO), '#8A3A0C'], ['Module quizzes', quizP, 'var(--blue)'], ['Interview sets', ivP, 'var(--plum)']];
+  /* trust fixes 12-13: a quiz counts only at the 80% pass mark, and interview readiness is ticked questions out of all of them */
+  const withQuiz = MODS.filter(m => (DATA.sprints[m] || {}).quiz && DATA.sprints[m].quiz.length);
+  const quizP = withQuiz.length ? Math.round(100 * withQuiz.filter(m => ((S.quiz[qk(m)] || {}).best || 0) >= 80).length / withQuiz.length) : 0;
+  const ivAll = MODS.reduce((a, m) => a + (((DATA.sprints[m] || {}).interview) || []).length, 0);
+  const ivP = ivAll ? Math.round(100 * MODS.reduce((a, m) => a + Object.values(S.iv[qk(m)] || {}).filter(Boolean).length, 0) / ivAll) : 0;
+  const rows = [['Python', pct(DATA.py.filter(x => x.m !== 's00')), '#5B7A1E'], ['Data modelling', pct(DATA.sql.filter(x => x.m)), 'var(--plum)'], ['DSA', pct(DATA.dsa), 'var(--teal)'], ['SQL write', pct(sqlW), '#164C7E'], ['SQL optimize', pct(sqlO), '#164C7E'], ['PySpark write', pct(spW), '#8A3A0C'], ['PySpark optimize', pct(spO), '#8A3A0C'], ['Quizzes passed (80%+)', quizP, 'var(--blue)'], ['Interview questions ticked', ivP, 'var(--plum)']];
   const grid = el('div', { class: 'dsa-grid', 'aria-label': '84 daily DSA problems' }, DATA.dsa.map((x, i) => el('a', { href: '#/dsa/' + x.id, title: (i + 1) + '. ' + x.t, class: S.solved[x.id] ? 'done' : i === dayIndex() % 84 ? 'today' : '' })));
   shell('Progress', 'Program, readiness and sync', [programCard(),
     el('div', { class: 'grid2' }, [
@@ -818,7 +824,7 @@ function vProgress() {
     el('section', { class: 'card pad stack' }, [el('h3', { text: 'Sync across MacBook, iPad and iPhone' }), el('p', { style: { margin: 0 }, text: S.settings.syncUrl ? 'Sync is set up. Tap Sync progress at the top on each device.' : 'Sync is not set up yet. Open Settings (gear icon) and paste your Google Apps Script URL. The repo has the script in sync/Code.gs and the steps in README.md.' }), el('div', { class: 'row wrap' }, [el('button', { class: 'btn', onclick: settings, text: 'Open settings' }), el('button', { class: 'btn', onclick: exportProgress, text: 'Download a backup' }), el('label', { class: 'btn' }, ['Restore a backup', el('input', { type: 'file', accept: 'application/json', style: { display: 'none' }, onchange: importProgress })])]), el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Last change: ' + (S.updated ? new Date(S.updated).toLocaleString() : 'never') + (S.lastSync ? ' · last sync: ' + new Date(S.lastSync).toLocaleString() : '') })])]);
 }
 function exportProgress() { const b = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' }); const a = el('a', { href: URL.createObjectURL(b), download: 'data-architect-progress-' + iso(new Date()) + '.json' }); document.body.appendChild(a); a.click(); a.remove(); }
-function importProgress(e) { const f = e.target.files[0]; if (!f) return; f.text().then(t => { const old = JSON.stringify(S); try { S = Object.assign(load(), JSON.parse(t)); save(); toast('Backup restored', () => { S = JSON.parse(old); save(); route(); }); route(); } catch (x) { toast('That file is not a Data Architect backup.'); } }); }
+function importProgress(e) { const f = e.target.files[0]; if (!f) return; f.text().then(t => { const old = JSON.stringify(S); try { const j = JSON.parse(t); if (!j || typeof j !== 'object' || Array.isArray(j) || !j.start || !('solved' in j || 'done' in j)) throw new Error('not a backup'); /* trust fix 19 */ S = Object.assign(load(), j); save(); toast('Backup restored', () => { S = JSON.parse(old); save(); route(); }); route(); } catch (x) { toast('That file is not a Data Architect backup.'); } }); }
 
 /* ---------------- Settings, sync, update ---------------- */
 function syncLabel() { return S.syncing ? 'Syncing…' : S.lastSync && Date.now() - S.lastSync < 60000 ? 'Synced' : 'Sync progress'; }
@@ -835,7 +841,10 @@ function settings() {
   confirmBox('Settings', body, [{ t: 'Save', cls: 'pri', v: 1 }, { t: 'Cancel', v: null }]).then(v => {
     if (!v) return;
     const g = id => body.querySelector('#' + id).value.trim();
-    const st0 = g('st_start'); if (/^\d{4}-\d\d-\d\d$/.test(st0)) { const d = new Date(st0 + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); S.start = iso(d); } S.settings.syncUrl = g('st_sync'); S.settings.aiKey = g('st_key'); S.settings.aiModel = g('st_model') || 'claude-haiku-5-5';
+    const su = g('st_sync'); /* trust fix 20: refuse a sync URL that cannot work, warn when it has no key */
+    if (su && !/^https:\/\/|^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(su)) { toast('That sync URL is not valid: it must start with https://. Settings were not saved.', null, 6000); return; }
+    if (su && /script\.google\.com/.test(su) && !/[?&]k=/.test(su)) setTimeout(() => toast('Saved. This sync URL has no ?k= key: anyone with the URL could read your progress.', null, 7000), 400);
+    const st0 = g('st_start'); if (/^\d{4}-\d\d-\d\d$/.test(st0)) { const d = new Date(st0 + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); S.start = iso(d); } S.settings.syncUrl = su; S.settings.aiKey = g('st_key'); S.settings.aiModel = g('st_model') || 'claude-haiku-5-5';
     const wd = Math.round(+g('st_wd')), we = Math.round(+g('st_we')); S.settings.capWd = wd >= 15 && wd <= 600 ? wd : 60; S.settings.capWe = we >= 15 && we <= 720 ? we : 120; S.settings.studyTime = g('st_time') || '07:00'; S.settings.theme = g('st_theme') || 'auto'; applyTheme();
     S.updated = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Could not save settings in this browser.'); return; }
     toast('Settings saved'); route();
@@ -854,9 +863,13 @@ async function doSync() {
     const keepSettings = S.settings;
     S = Object.assign(load(), merged, { settings: keepSettings });
     let coachMsg = '';
-    if (remote && remote.coach && remote.coach.generated_at) { S.coach = remote.coach; const n = applyCoach(remote.coach); coachMsg = ' Coach report from ' + shortDate(remote.coach.generated_at.slice(0, 10)) + (n ? ', ' + n + ' problem' + (n > 1 ? 's' : '') + ' added to review.' : '.'); }
-    const body = JSON.parse(JSON.stringify(S)); delete body.settings; delete body.syncing; delete body.coach; delete body.coachApplied;
-    await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'save', data: body }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+    if (remote && remote.coach && remote.coach.generated_at && coachTime(remote.coach) >= coachTime(S.coach)) { S.coach = remote.coach; /* trust fix 8 */ const n = applyCoach(remote.coach); coachMsg = ' Coach report from ' + shortDate(remote.coach.generated_at.slice(0, 10)) + (n ? ', ' + n + ' problem' + (n > 1 ? 's' : '') + ' added to review.' : '.'); }
+    const body = JSON.parse(JSON.stringify(S)); delete body.settings; delete body.syncing; delete body.coach;
+    /* trust fix 17: only say synced when the sync script confirms it saved */
+    const pr = await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'save', data: body }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+    if (!pr.ok) throw new Error('upload failed (' + pr.status + ')');
+    const pj = await pr.json().catch(() => null);
+    if (pj && pj.ok === false) throw new Error(pj.error || 'upload refused');
     S.lastSync = Date.now(); S.syncing = false; save(false); toast('Progress synced.' + coachMsg, null, coachMsg ? 6000 : 3500); route();
   } catch (e) { S.syncing = false; toast(/key/.test(e && e.message || '') ? 'Sync refused: the key at the end of your Sync URL (?k=…) does not match the one in the sync script.' : 'Sync failed. Your progress is safe on this device; try again.', null, 6000); if (b) b.querySelector('.t').textContent = 'Sync progress'; }
 }
@@ -872,14 +885,23 @@ function mergeState(a, b) {
   for (const id in out.undone) { out.undone[id] = Math.max((a.undone || {})[id] || 0, (b.undone || {})[id] || 0); if (out.undone[id] > (out.doneAt[id] || 0)) delete out.done[id]; }
   out.proj = {};
   new Set(Object.keys(a.proj || {}).concat(Object.keys(b.proj || {}))).forEach(id => { const x = (a.proj || {})[id] || { ms: {} }, y = (b.proj || {})[id] || { ms: {} }; out.proj[id] = Object.assign({}, x, y, { ms: {} }); new Set(Object.keys(x.ms || {}).concat(Object.keys(y.ms || {}))).forEach(k => { out.proj[id].ms[k] = !!((x.ms || {})[k] || (y.ms || {})[k]); }); });
-  /* mock interviews: per day, a submitted round beats a draft, otherwise the newer edit wins */
+  /* mock interviews: per day, a submitted round beats a draft; between drafts, the one with more written wins (trust fix 6), then the newer */
+  const written = m => Object.values(m.a || {}).join('').trim().length;
   out.mock = Object.assign({}, a.mock || {}, b.mock || {});
-  for (const k in out.mock) { const x = (a.mock || {})[k], y = (b.mock || {})[k]; out.mock[k] = !x ? y : !y ? x : (x.sub && !y.sub) ? x : (y.sub && !x.sub) ? y : (x.t || 0) >= (y.t || 0) ? x : y; }
+  for (const k in out.mock) { const x = (a.mock || {})[k], y = (b.mock || {})[k]; out.mock[k] = !x ? y : !y ? x : (x.sub && !y.sub) ? x : (y.sub && !x.sub) ? y : written(x) !== written(y) ? (written(x) > written(y) ? x : y) : (x.t || 0) >= (y.t || 0) ? x : y; }
+  /* quizzes: a submitted result beats an unsubmitted retake from another device, and the best score is kept (trust fix 18) */
+  for (const w of new Set(Object.keys(a.quiz || {}).concat(Object.keys(b.quiz || {})))) { const x = (a.quiz || {})[w], y = (b.quiz || {})[w]; if (x && y && !!x.sub !== !!y.sub) out.quiz[w] = Object.assign({}, x.sub ? x : y); if (x && y && (x.best || y.best)) out.quiz[w].best = Math.max(x.best || 0, y.best || 0); }
+  /* the coach report applied last, so a second device does not apply it again (trust fix 7) */
+  out.coachApplied = [a.coachApplied, b.coachApplied].filter(Boolean).sort().pop();
   /* review queue: the newer entry per problem wins */
   out.rev = Object.assign({}, a.rev || {}, b.rev || {});
   for (const id in out.rev) { const x = (a.rev || {})[id], y = (b.rev || {})[id]; out.rev[id] = !x ? y : !y ? x : (x.t || 0) >= (y.t || 0) ? x : y; }
   out.updated = Math.max(a.updated || 0, b.updated || 0);
   return out;
+}
+async function checkVersion() { /* at most once every 6 hours */
+  if (Date.now() - (S.versionCheckedAt || 0) < 6 * 36e5 && !S.newVersion) return;
+  try { const v = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.json()); S.versionCheckedAt = Date.now(); const was = S.newVersion; S.newVersion = v.version !== VERSION ? v.version : null; save(false); if (S.newVersion !== was) route(); } catch (e) { }
 }
 async function doUpdate() {
   toast('Checking for updates…');
@@ -950,6 +972,7 @@ window.addEventListener('keydown', e => { if (e.key === '`' && (e.ctrlKey || e.m
 (async () => {
   try { await loadData(); } catch (e) { $('#root').innerHTML = '<div style="padding:24px">Could not load the question bank. Check your connection and reload.</div>'; return; }
   route();
+  checkVersion();
   if ('serviceWorker' in navigator) {
     const hadController = !!navigator.serviceWorker.controller; /* first install: no reload; later updates: reload once */
     navigator.serviceWorker.register('sw.js').catch(() => { });
