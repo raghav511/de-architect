@@ -1,1 +1,1 @@
-{"version": "1.7.3", "date": "2026-10-26", "notes": ["The coach bubble (sparkle button) now answers through Claude Code on your Mac: no API key needed", "From iPhone and iPad it goes through Sync to your Mac, like grading"]}
+{"version": "1.7.4", "date": "2026-10-26", "notes": ["The coach bubble answers through Claude Code on your Mac (update the grader once: git pull, then bash tools/grader/install.sh)", "If the grader on your Mac is out of date, the coach says so instead of No answer"]}

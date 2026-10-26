@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.7.3';
+const VERSION = '1.7.4';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -1023,7 +1023,8 @@ async function askCoach(q, ctx, box) {
     try {
       const r = await macCall('chat', { page: ctx.title || ctx.page || '', problem: ctx.problem || '', code: (ctx.code || '').slice(0, 4000), question: q || 'Give me a hint.', history: hist },
         () => { reply.textContent = ''; reply.append(el('span', { class: 'spin' }), ' Waiting for Claude Code on your Mac (it must be awake)…'); });
-      reply.innerHTML = md2(r.text || 'No answer.');
+      /* an older grader on the Mac does not know the coach yet: it grades the question instead of answering */
+      reply.innerHTML = r.text ? md2(r.text) : r.score ? esc('The grader on your Mac is out of date. On the Mac run: cd ~/de-architect && git pull && bash tools/grader/install.sh') : 'No answer came back. Try again.';
       return;
     } catch (e) {
       const m = String(e.message || e);

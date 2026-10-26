@@ -57,6 +57,8 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ok((said.match(/Stub coach/g) || []).length >= 2, 'coach bubble: answered through the sync relay too');
   direct = true;
 
+  ok(await p.evaluate(async () => { const keep = window.macCall; window.macCall = async () => ({ score: 1, verdict: 'x' }); const box = document.createElement('div'); await askCoach('q', { title: 't' }, box); window.macCall = keep; return /out of date/.test(box.innerText); }), 'coach bubble: an out-of-date grader on the Mac is explained');
+
   // 4. practice run in Claude Code shows the answer and its cost
   await p.goto(BASE + '#/learn/c03/lab'); await p.waitForTimeout(1500);
   await p.locator('textarea[aria-label="Your prompt for Claude Code"]').fill('Why are EU amounts wrong? 3 lines.');
