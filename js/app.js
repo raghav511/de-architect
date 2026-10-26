@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.5.0';
+const VERSION = '1.6.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -38,7 +38,7 @@ let S = load();
 function load() {
   let s = {};
   try { s = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { s = {}; }
-  return Object.assign({ start: null, proj: {}, done: {}, doneAt: {}, undone: {}, code: {}, solved: {}, runs: {}, hints: {}, secs: {}, quiz: {}, iv: {}, tests: {}, settings: {}, layout: {}, rev: {}, updated: 0, week: null }, s);
+  return Object.assign({ start: null, proj: {}, done: {}, doneAt: {}, undone: {}, code: {}, solved: {}, runs: {}, hints: {}, secs: {}, quiz: {}, iv: {}, tests: {}, settings: {}, layout: {}, rev: {}, mock: {}, updated: 0, week: null }, s);
 }
 let saveT = null;
 function save(touch = true) {
@@ -161,7 +161,7 @@ function chipFor(k) { return { py: ['Python', 'c-py'], dsa: ['DSA', 'c-dsa'], co
 function chip(k) { const c = chipFor(k); return el('span', { class: 'chip ' + c[1], text: c[0] }); }
 
 /* ---------------- shell ---------------- */
-const NAV = [['#/today', 'Today', 'today'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/git', 'Git lessons', 'git'], ['#/news', 'What is new in AI', 'news'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/progress', 'Progress', 'prog']];
+const NAV = [['#/today', 'Today', 'today'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/git', 'Git lessons', 'git'], ['#/news', 'What is new in AI', 'news'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/mock', 'Mock interview', 'quiz'], ['#/coach', 'Coach', 'spark'], ['#/progress', 'Progress', 'prog']];
 const TABS = [['#/today', 'Today', 'today'], ['#/path', 'Path', 'path'], ['#/practice', 'Coding', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'Design', 'design']];
 function shell(title, eyebrow, body, opts) {
   opts = opts || {};
@@ -214,6 +214,8 @@ function route() {
     else if (r === 'quiz') vQuiz(p[1]);
     else if (r === 'interview') vInterview(p[1], p[2]);
     else if (r === 'progress') vProgress();
+    else if (r === 'mock') vMock(p[1]);
+    else if (r === 'coach') vCoach();
     else if (r === 'projects') vProjects();
     else if (r === 'project') vProject(p[1]);
     else vToday();
@@ -445,6 +447,7 @@ function vWork(kind, id, mode) {
       }
       last = r;
       S.runs[qid] = runs() + 1;
+      S.seen = S.seen || {}; S.seen[qid] = Date.now(); /* when you last worked on it, for the nightly coach */
       if (r.pass) {
         const first = !S.solved[qid]; S.solved[qid] = 1;
         if (review) {
@@ -753,6 +756,9 @@ async function vQuiz(m) {
     if (st.sub) {
       const score = qs.reduce((a, q, k) => a + grade(q, st.a[k]), 0), pct = Math.round(100 * score / qs.length);
       if (!st.best || pct > st.best) { st.best = pct; save(); }
+      /* the nightly coach reads the last score and which questions were missed */
+      const miss = qs.map((q, k) => grade(q, st.a[k]) ? -1 : k).filter(k => k >= 0);
+      if (st.last !== pct || JSON.stringify(st.miss) !== JSON.stringify(miss)) { st.last = pct; st.miss = miss; st.at = Date.now(); save(); }
       const toMark = qs.filter((q, k) => q.TYPE === 'short' && st.a[k] && st.a[k].t && st.a[k].self === undefined).length;
       page.appendChild(el('section', { class: 'card pad stack' }, [el('h2', { text: 'Score: ' + score + ' of ' + qs.length + ' (' + pct + '%)' }), el('span', { class: 'muted', text: (st.best ? 'Best: ' + st.best + '% · ' : '') + (pct >= 80 ? 'Pass mark reached (80%).' : 'The pass mark is 80%. Review the ones marked Review, then retake.') + (toMark ? ' ' + toMark + ' short answer' + (toMark > 1 ? 's' : '') + ' still to mark yourself below.' : '') }), el('div', { class: 'row wrap' }, [el('button', { class: 'btn pri', onclick: () => { S.quiz[w] = { a: {}, sub: false, i: 0, best: st.best }; save(); vQuiz(m); }, text: 'Retake' }), el('a', { class: 'btn', href: '#/today', text: 'Back to Today' })])]));
       const yours = (q, a) => a == null || a === '' ? 'no answer' : q.TYPE === 'mcq' ? a + ') ' + ((q.opts || []).find(o => o[0] === a) || ['', ''])[1] : q.TYPE === 'fill' ? String(a) : (a.t || 'no answer');
@@ -822,7 +828,7 @@ function settings() {
     f('st_start', 'Week 1 starts (pick any day in that week)', S.start, 'date'),
     el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: '10px' } }, [f('st_wd', 'Weekday minutes', S.settings.capWd || 60, 'number'), f('st_we', 'Weekend minutes', S.settings.capWe || 120, 'number'), f('st_time', 'Study time', S.settings.studyTime || '07:00', 'time')]),
     el('div', { class: 'field' }, [el('label', { for: 'st_theme', class: 'lbl', text: 'Theme' }), el('select', { id: 'st_theme', class: 'btn' }, [['auto', 'Match my device'], ['light', 'Light'], ['dark', 'Dark']].map(([v, t]) => el('option', { value: v, selected: (S.settings.theme || 'auto') === v ? 'selected' : null, text: t })))]),
-    f('st_sync', 'Sync URL (Google Apps Script web app)', S.settings.syncUrl, 'url', 'https://script.google.com/macros/s/…/exec'),
+    f('st_sync', 'Sync URL (Google Apps Script web app, ending in ?k=your key)', S.settings.syncUrl, 'url', 'https://script.google.com/macros/s/…/exec?k=…'),
     f('st_key', 'Coach AI key (optional, Anthropic API key, kept only on this device)', S.settings.aiKey, 'password', 'sk-ant-…'),
     f('st_model', 'Coach model', S.settings.aiModel || 'claude-haiku-5-5', 'text'),
     el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'The key never leaves this device except to call the AI provider. Without a key the coach still gives the step-by-step hints.' })]);
@@ -841,27 +847,34 @@ async function doSync() {
   S.syncing = true; const b = $('#syncBtn'); if (b) b.querySelector('.t').textContent = 'Syncing…';
   try {
     const remote = await fetch(url + (url.includes('?') ? '&' : '?') + 'action=load', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
+    if (remote && remote.ok === false) throw new Error(remote.error || 'sync refused');
     const local = JSON.parse(JSON.stringify(S));
     let merged = local;
     if (remote && remote.data) merged = mergeState(remote.data, local);
     const keepSettings = S.settings;
     S = Object.assign(load(), merged, { settings: keepSettings });
-    const body = JSON.parse(JSON.stringify(S)); delete body.settings; delete body.syncing;
+    let coachMsg = '';
+    if (remote && remote.coach && remote.coach.generated_at) { S.coach = remote.coach; const n = applyCoach(remote.coach); coachMsg = ' Coach report from ' + shortDate(remote.coach.generated_at.slice(0, 10)) + (n ? ', ' + n + ' problem' + (n > 1 ? 's' : '') + ' added to review.' : '.'); }
+    const body = JSON.parse(JSON.stringify(S)); delete body.settings; delete body.syncing; delete body.coach; delete body.coachApplied;
     await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'save', data: body }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
-    S.lastSync = Date.now(); S.syncing = false; save(false); toast('Progress synced'); route();
-  } catch (e) { S.syncing = false; toast('Sync failed. Your progress is safe on this device; try again.'); if (b) b.querySelector('.t').textContent = 'Sync progress'; }
+    S.lastSync = Date.now(); S.syncing = false; save(false); toast('Progress synced.' + coachMsg, null, coachMsg ? 6000 : 3500); route();
+  } catch (e) { S.syncing = false; toast(/key/.test(e && e.message || '') ? 'Sync refused: the key at the end of your Sync URL (?k=…) does not match the one in the sync script.' : 'Sync failed. Your progress is safe on this device; try again.', null, 6000); if (b) b.querySelector('.t').textContent = 'Sync progress'; }
 }
 function mergeState(a, b) {
   const out = Object.assign({}, a, b);
   ['done', 'solved'].forEach(k => { out[k] = Object.assign({}, a[k] || {}, b[k] || {}); });
   ['code', 'runs', 'hints', 'secs', 'quiz', 'iv', 'layout'].forEach(k => { out[k] = (b.updated || 0) >= (a.updated || 0) ? Object.assign({}, a[k] || {}, b[k] || {}) : Object.assign({}, b[k] || {}, a[k] || {}); });
   ['runs', 'hints', 'secs'].forEach(k => { for (const id in (a[k] || {})) out[k][id] = Math.max(a[k][id] || 0, (b[k] || {})[id] || 0); });
+  out.seen = Object.assign({}, a.seen || {}, b.seen || {}); for (const id in out.seen) out.seen[id] = Math.max((a.seen || {})[id] || 0, (b.seen || {})[id] || 0);
   /* un-ticked steps stay un-ticked: a later "undone" on either device beats an older "done" */
   out.doneAt = Object.assign({}, a.doneAt || {}, b.doneAt || {}); out.undone = Object.assign({}, a.undone || {}, b.undone || {});
   for (const id in out.doneAt) out.doneAt[id] = Math.max((a.doneAt || {})[id] || 0, (b.doneAt || {})[id] || 0);
   for (const id in out.undone) { out.undone[id] = Math.max((a.undone || {})[id] || 0, (b.undone || {})[id] || 0); if (out.undone[id] > (out.doneAt[id] || 0)) delete out.done[id]; }
   out.proj = {};
   new Set(Object.keys(a.proj || {}).concat(Object.keys(b.proj || {}))).forEach(id => { const x = (a.proj || {})[id] || { ms: {} }, y = (b.proj || {})[id] || { ms: {} }; out.proj[id] = Object.assign({}, x, y, { ms: {} }); new Set(Object.keys(x.ms || {}).concat(Object.keys(y.ms || {}))).forEach(k => { out.proj[id].ms[k] = !!((x.ms || {})[k] || (y.ms || {})[k]); }); });
+  /* mock interviews: per day, a submitted round beats a draft, otherwise the newer edit wins */
+  out.mock = Object.assign({}, a.mock || {}, b.mock || {});
+  for (const k in out.mock) { const x = (a.mock || {})[k], y = (b.mock || {})[k]; out.mock[k] = !x ? y : !y ? x : (x.sub && !y.sub) ? x : (y.sub && !x.sub) ? y : (x.t || 0) >= (y.t || 0) ? x : y; }
   /* review queue: the newer entry per problem wins */
   out.rev = Object.assign({}, a.rev || {}, b.rev || {});
   for (const id in out.rev) { const x = (a.rev || {})[id], y = (b.rev || {})[id]; out.rev[id] = !x ? y : !y ? x : (x.t || 0) >= (y.t || 0) ? x : y; }

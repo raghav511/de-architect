@@ -21,12 +21,17 @@ An AI-first study app for senior data engineer and data architect roles. It runs
 
 Settings → Pages → Build and deployment → Deploy from a branch → `main` / root. The app appears at `https://<user>.github.io/de-architect/`.
 
-## Sync between devices
+## Sync between devices, and the nightly coach
 
 1. Go to script.google.com → New project → paste `sync/Code.gs`.
-2. Deploy → New deployment → Web app → Execute as **Me** → Who has access **Only myself** (use **Anyone** if Safari will not sign in).
-3. Copy the `/exec` URL into Data Architect → Settings (gear) → Sync URL on every device.
-4. Tap **Sync progress** at the top right after a study session.
+2. Set `KEY` at the top to a long random string (for example the output of `openssl rand -hex 24`).
+3. Deploy → New deployment → Web app → Execute as **Me** → Who has access **Anyone**. The key keeps it private.
+4. Copy the `/exec` URL and add `?k=<your KEY>` to the end. Paste that into Data Architect → Settings (gear) → Sync URL on every device.
+5. Tap **Sync progress** after a study session.
+
+**Nightly coach.** A scheduled Claude task on the Mac runs at midnight: it fetches your synced progress, grades the day's mock interview, and uploads a coach report through the same sync script (`tools/coach/ROUTINE.md` has its instructions). The next Sync brings it into the app: a Coach card on Today, targeted practice, struggled problems due for review, and the next mock's questions. Its sync URL lives in `~/.data-architect/config.json` as `{"sync_url": "…?k=…"}` on the Mac, never in this repository. Test the loop locally with `tools/coach/fake_sync.py` and `tools/coach/e2e_test.js`.
+
+**Mock interviews.** 15 minutes and 3 questions every day; 30 minutes and 5 questions (including a design round) on Sundays. Open from Today or the Mock interview page; answers are graded by the nightly coach.
 
 ## Update the app
 
