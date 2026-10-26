@@ -25,7 +25,8 @@ def http(url, data=None):
     python.org builds of Python often have no CA bundle and fail every HTTPS request."""
     cmd = ['curl', '-sSL', '--fail', '--max-time', '90', url]
     if data is not None:
-        cmd[1:1] = ['-X', 'POST', '-H', 'Content-Type: text/plain;charset=utf-8', '--data-binary', '@-']
+        # no -X POST: Apps Script answers a POST with a 302, and the follow-up must be a GET (as browsers do)
+        cmd[1:1] = ['-H', 'Content-Type: text/plain;charset=utf-8', '--data-binary', '@-']
     try:
         r = subprocess.run(cmd, input=data, capture_output=True, text=True, timeout=120)
         if r.returncode == 0:
