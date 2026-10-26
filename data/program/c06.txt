@@ -1,0 +1,156 @@
+@@meta
+id: c06
+n: 6
+title: Privacy: what leaves your machine, and keeping customer data out
+goal: Know what Claude Code sends where, keep personal and production data out of AI sessions, and use synthetic or masked data to get the same help.
+hours: 2
+
+@@tickets
+C601 | learn | 0.5 | Lesson: data flows, retention and PII with AI tools | You can draw what leaves your laptop in a session and name four controls for customer data. | chapter
+C602 | ai | 0.75 | Practise in Claude Code: mask the practice data and fence it off | You created a masked sample, denied reads of raw data, and debugged using only the sample. | lab
+C603 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
+C604 | test | 0.33 | Quiz C6 | 80% or better. | quiz
+
+@@readings
+- [Data usage](https://docs.claude.com/en/docs/claude-code/data-usage). What Claude Code sends, retention, and training settings by account type.
+- [Monitoring and telemetry settings](https://docs.claude.com/en/docs/claude-code/settings). Read the environment variables section (telemetry and non-essential traffic).
+- [ICO: guide to anonymisation and pseudonymisation](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/data-sharing/anonymisation/). Why hashing is pseudonymisation, not anonymisation.
+
+@@chapter
+## C6.1 What leaves your machine
+
+In a Claude Code session, everything that becomes **context** is sent to the model provider to generate the next reply: your prompts, files Claude reads, command outputs, pasted logs and screenshots. Your code stays on disk, but what Claude reads is sent. Transcripts are also saved locally (under `~/.claude/projects`), and how long the provider keeps data and whether it may be used for training depend on your **account type and settings**: consumer plans have a privacy setting for model training, and commercial terms differ. Check your plan's privacy settings and your employer's policy before using AI on work code.
+
+For a data engineer the risk is concrete: one `SELECT * FROM customers LIMIT 100` output or one `head` of a production extract puts real names, emails and addresses into a third-party system, possibly against GDPR, DPDP (India) or your contracts.
+
+## C6.2 Four controls
+
+1. **No production data in sessions.** Work against dev, sample or synthetic data. Agents should not hold production credentials at all.
+2. **Fence off raw data.** Deny reads of raw data folders and exports: `"deny": ["Read(./data/raw/**)", "Read(./exports/**)"]`. Let the agent read a masked sample instead.
+3. **Mask or synthesise.** Create a sample with the same shape and edge cases but no real identities: hash or tokenise identifiers, fake names and emails, shift dates, bucket amounts if needed. Keep the **weird cases** (nulls, duplicates, decimal commas, long strings): those are what you are debugging.
+4. **Watch outputs.** Queries and logs the agent runs come back into the context. Ask for aggregates and counts, not rows ("count nulls per column", not "show rows with null email").
+
+Hashing is pseudonymisation, not anonymisation: the same email always hashes the same, and common emails can be guessed. Use a keyed hash (HMAC with a secret salt) and treat the result as still personal data.
+
+## C6.3 Privacy bugs AI can help you find
+
+Ask the agent to look for privacy problems in **code**, which is safe to share:
+
+- PII written to logs or printed in debug mode
+- PII copied into tables or files that do not need it (the practice warehouse stores emails only to count orders)
+- Missing deletion paths (right to erasure), or retention not enforced
+- Personal data in test fixtures copied from production
+
+*"Review this repo for places where personal data is logged, stored without need, or copied into tests. File:line, ranked."*
+
+## C6.4 Settings worth knowing
+
+- `cleanupPeriodDays` in settings controls how long local transcripts are kept.
+- `DISABLE_TELEMETRY=1` or `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` turn off optional telemetry and non-essential traffic.
+- Enterprise setups can route through a company gateway or cloud provider (Bedrock, Vertex) so data stays under company agreements.
+
+None of these make it safe to paste customer data. They reduce the footprint of what you do send.
+
+@@lab
+## Lab: mask, fence and debug on a sample (40 minutes)
+
+Fresh copy, then `cd ~/cc-sandbox`. Treat `data/orders.csv` as if it were a real customer extract (the emails are fake, but practise as if they were real).
+
+1. **Do not** let Claude read `data/orders.csv`. Add `"deny": ["Read(./data/orders.csv)"]` to `.claude/settings.json` (create it if needed).
+2. Ask Claude to write `tools/make_sample.py` **without reading the data file**, given only its header (paste the header line yourself): read the CSV and write `data/sample.csv` with emails replaced by an HMAC hash of the email (salt from the environment variable `MASK_SALT`), names removed, and every other column kept. Keep any duplicate order IDs.
+3. Run it yourself: `MASK_SALT=practice python3 tools/make_sample.py`. Check the output with `head -5 data/sample.csv`. No real-looking emails should remain.
+4. Now debug using only the sample: ask Claude to read `data/sample.csv` and check the EU amount and duplicate handling in `pipeline/ingest.py`.
+5. Ask Claude to review the repo for privacy issues (logging, storage of emails in the warehouse, tests with real-looking data). Fix the warehouse so it stores a hashed customer key instead of the email, or drop the column if nothing needs it.
+6. Check `git status`: commit the script, settings and sample, not `.env`.
+
+@@quiz
+TYPE: mcq
+TAG: ai
+Q: In a Claude Code session, which of these is sent to the model provider?
+A) Only your typed prompt
+B) Your prompts plus files Claude reads and command outputs that enter the conversation
+C) Nothing; everything runs locally
+D) Only files you explicitly upload
+ANS: B
+WHY: Whatever becomes context is sent so the model can answer. That includes outputs of queries the agent runs.
+---
+TYPE: mcq
+TAG: core
+Q: You hash customer emails with SHA-256 before sharing a sample. Is the data now anonymous?
+A) Yes, hashes cannot be reversed
+B) No, it is pseudonymised: the same email always gives the same hash, and common emails can be guessed
+C) Yes, if you also remove names
+D) Only if the file is small
+ANS: B
+WHY: Use a keyed hash with a secret salt and still treat the result as personal data.
+---
+TYPE: mcq
+TAG: ai
+Q: Which request keeps customer data out of the context while still debugging nulls?
+A) "Show me the rows where email is null"
+B) "Count null emails per day and per country"
+C) "Print the first 100 rows"
+D) "Export the table to CSV and read it"
+ANS: B
+WHY: Aggregates give the signal without the identities.
+---
+TYPE: fill
+TAG: ai
+Q: The settings key that controls how many days local Claude Code transcripts are kept is ____.
+ANS: cleanupPeriodDays|cleanupperioddays
+WHY: Transcripts live on your machine; keep them only as long as you need.
+---
+TYPE: short
+TAG: ai
+Q: A colleague pasted 50 production customer rows into an AI chat to debug a parser. What should happen now, and what process change prevents it?
+MODEL: Now: tell the data protection or security contact as the company policy requires, record what was shared and with which service and account type, and request deletion where the provider allows it. Prevention: a clear rule of no production personal data in AI tools; masked or synthetic samples kept ready for common datasets; deny rules for raw data paths in shared agent settings; agents without production credentials; and training with examples of safe prompts (aggregates and schemas instead of rows).
+
+@@interview
+Q: How do you let engineers use AI assistants without leaking customer data?
+TAG: ai
+A: Data minimisation by design. Agents work on code and on synthetic or masked samples, never production extracts, and they have no production credentials. Shared agent settings deny reads of raw-data folders. We keep masked samples for the main datasets, built with keyed hashing and preserved edge cases, so people do not need real data to debug. Prompts use aggregates and schemas, not rows. Commercial or enterprise terms cover retention and training, and logs mask PII. Engineers are trained with real examples.
+---
+Q: What is the difference between anonymisation and pseudonymisation, and why does it matter for a data platform?
+TAG: core
+A: Anonymised data cannot reasonably be linked back to a person, so it falls outside most privacy law. Pseudonymised data replaces identifiers with tokens or hashes but can still be linked, by whoever holds the key or by guessing, so it is still personal data with all the obligations. Most hashing on data platforms is pseudonymisation. It matters for access control, retention, deletion requests and what you may share with vendors, including AI tools.
+---
+Q: How would you build a test dataset for a pipeline that processes personal data?
+TAG: core
+A: Generate synthetic data from the schema and the real distributions (null rates, cardinalities, skew), not by copying rows. Deliberately include the edge cases that break things: nulls, duplicates, late records, unusual encodings, extreme values. Where real structure matters, mask a sample with keyed hashing and date shifting, and keep it under access control. Version it with the tests so bugs are reproducible.
+---
+Q: A right-to-erasure request arrives. How does your platform handle it, and how could AI help?
+TAG: core
+A: We need to find every place the person's data lives: raw, staged, curated, backups and derived datasets. Then delete or anonymise it within the legal deadline and prove it. That needs lineage, a stable customer key, and table formats that support deletes (Iceberg or Delta with compaction and snapshot expiry, or backups that age out). AI helps on the code side: finding tables and code paths that store identifiers, and writing the deletion jobs and tests. It should not see the personal data itself.
+---
+Q: Tell me how you would review a pipeline for privacy risks.
+TAG: core
+A: Trace personal data from source to every sink. For each step, check that the field is needed (minimisation), where it is stored and for how long, who can read it, whether it is logged or printed, and whether it is copied into tests or samples. Check deletion and retention are implemented, not just documented. I would use an AI reviewer to scan the code for logging and copying patterns, and verify the findings myself.
+
+@@tasks
+TITLE: Your masking script
+TASK: Do the lab. Paste `tools/make_sample.py` and the first 3 lines of `data/sample.csv`. Explain in 3 lines how your script protects identities and what it keeps for debugging.
+SUBMIT: the script, 3 sample lines, and your 3-line explanation.
+RUBRIC: - Uses a keyed hash (hmac with a salt from the environment), not a plain hash or a salt written in the code.
+- Removes or masks every identifying column (email) and keeps the debugging-relevant columns (dates, amounts in original format, country, duplicate ids).
+- The script reads only the CSV it needs and writes a new file; it does not print rows.
+- The explanation says hashing is pseudonymisation, so the sample still needs care.
+---
+TITLE: Privacy review of the practice project
+TASK: Ask Claude Code (or Try it here) to review the practice project for privacy issues: personal data logged, stored without need, or copied into tests. Then write your own short report: the issues ranked, and the fix you recommend for each.
+SUBMIT: your ranked privacy report with fixes.
+RUN: Review this repo for privacy issues: personal data or secrets logged, personal data stored without need, or copied into tests. File:line, ranked, max 8 lines. Do not print any data rows.
+RUBRIC: - Emails loaded into the warehouse orders table without a need: recommends dropping them or storing a keyed hash.
+- The token printed in debug mode (a secret, not PII, but a leak through logs).
+- Notes that data/orders.csv holds personal data that should not be read into AI sessions, and that fixtures should be synthetic.
+- Fixes are concrete and ranked by impact.
+---
+TITLE: Safe prompt rewrite
+TASK: Rewrite each request so you get the same help without sending personal data. Say what the AI should see instead.
+
+1. "Here are 200 rows from the customers table (pasted). Why does the dedup job keep two rows for some customers?"
+2. "Read prod_export_2026_10.csv and find why the phone numbers fail validation."
+3. "Connect to the production database and fix the orphaned orders."
+SUBMIT: three rewritten requests and what the AI sees in each.
+RUBRIC: - 1: share the schema, the dedup code and a synthetic or masked example of a duplicate pair, or counts by matching key; no real rows.
+- 2: share the validation code and synthetic phone strings covering the failing formats, or counts of failures by pattern (length, prefix); no file read.
+- 3: no production access; the AI writes and tests the fix query against dev or synthetic data; a human runs it in production after review, inside a transaction, with a row-count check.

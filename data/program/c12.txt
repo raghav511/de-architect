@@ -1,0 +1,186 @@
+@@meta
+id: c12
+n: 12
+title: Build your own agent with the Claude Agent SDK
+goal: Build a small production-minded agent in Python with the Claude Agent SDK: a data-quality investigator with custom tools, permissions, limits, structured output and a test set.
+hours: 2
+
+@@tickets
+C1201 | learn | 0.5 | Lesson: the Agent SDK, custom tools and production concerns | You can explain how the SDK relates to Claude Code and write a query() call with tools, permissions and limits. | chapter
+C1202 | ai | 0.75 | Practise in Claude Code: build the data-quality investigator | Your agent investigates the practice warehouse with custom tools and returns a validated JSON report. | lab
+C1203 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
+C1204 | test | 0.33 | Quiz C12 | 80% or better. | quiz
+
+@@readings
+- [Agent SDK overview](https://docs.claude.com/en/api/agent-sdk/overview). What the SDK gives you and how it relates to Claude Code.
+- [Agent SDK: Python reference](https://docs.claude.com/en/api/agent-sdk/python). query(), ClaudeAgentOptions, and custom tools.
+- [Anthropic: Building effective agents](https://www.anthropic.com/engineering/building-effective-agents). Re-read it now that you have built a few.
+
+@@chapter
+## C12.1 Claude Code as a library
+
+The **Claude Agent SDK** gives your own Python (or TypeScript) program the same agent harness that powers Claude Code: the loop, built-in tools (Read, Grep, Bash, Edit...), permissions, context management, MCP and subagents. You add your own tools and decide the rules. In AI 1 you built a loop by hand to understand it; for production you usually want this battle-tested harness and to spend your effort on tools, guardrails and evaluation.
+
+```bash
+pip install claude-agent-sdk
+```
+
+It needs credentials like Claude Code does: typically `ANTHROPIC_API_KEY` from the Anthropic Console in your environment (never in the code), or a cloud provider such as Bedrock or Vertex.
+
+## C12.2 One call
+
+```python
+import anyio
+from claude_agent_sdk import query, ClaudeAgentOptions
+
+async def main():
+    opts = ClaudeAgentOptions(
+        cwd="/Users/me/cc-sandbox",
+        allowed_tools=["Read", "Grep", "Glob"],   # read-only
+        max_turns=8,
+        model="sonnet",
+        system_prompt="You are a careful data engineer. Answer with evidence: file:line.",
+    )
+    async for msg in query(prompt="Why are DE amounts too high?", options=opts):
+        print(msg)          # assistant messages, tool use, and a final result with cost
+
+anyio.run(main)
+```
+
+The stream ends with a result message that carries the total cost and usage: log it every run.
+
+## C12.3 Custom tools
+
+Tools are where your domain knowledge lives. Define them in-process and expose them as an SDK MCP server:
+
+```python
+from claude_agent_sdk import tool, create_sdk_mcp_server
+
+@tool("revenue_by_country", "Revenue and order count per country from the warehouse", {})
+async def revenue_by_country(args):
+    con = sqlite3.connect("file:warehouse.db?mode=ro", uri=True)
+    rows = con.execute("SELECT country, COUNT(*), ROUND(SUM(amount),2) FROM orders GROUP BY 1").fetchall()
+    return {"content": [{"type": "text", "text": json.dumps(rows)}]}
+
+dq = create_sdk_mcp_server(name="dq", version="1.0.0", tools=[revenue_by_country])
+opts = ClaudeAgentOptions(mcp_servers={"dq": dq},
+                          allowed_tools=["mcp__dq__revenue_by_country", "Read", "Grep"], max_turns=10)
+```
+
+Good tools are small, well described, read-only by default, return compact JSON, and fail with a helpful message.
+
+## C12.4 From demo to production
+
+What separates a demo from something you would run nightly:
+
+- **Least privilege:** only the tools needed; no Bash unless essential; read-only data access.
+- **Limits:** `max_turns`, a budget, timeouts; stop on no progress.
+- **Structured output:** a schema the rest of your system validates (severity, findings, evidence), not prose.
+- **Evaluation:** a small set of cases with known answers (for example "inject a duplicate order: does the agent find it?"), run on every change to the prompt, tools or model.
+- **Observability:** log every run's prompt version, tool calls, cost and outcome.
+- **Human in the loop** for actions: the agent recommends, a person or a pipeline with tests applies.
+
+This is the same checklist as AI 1 to 3, now with a real harness. It is also a strong interview story: you built, constrained, evaluated and costed an agent.
+
+@@lab
+## Lab: the data-quality investigator (40 minutes)
+
+In ~/cc-sandbox (Python 3.10+, venv active, `pip install claude-agent-sdk`). Use Claude Code to help you write it. That is the point of the track.
+
+1. Load the warehouse: `python3 -m pipeline.run 2026-10-01 2026-10-07`.
+2. Write `agent/investigator.py` with two custom tools: `revenue_by_country` and `null_and_duplicate_counts` (both read-only, both compact JSON).
+3. Options: your tools plus Read and Grep only, `max_turns=10`, model sonnet or haiku, and a system prompt that requires evidence.
+4. Prompt: *"Investigate data quality in the warehouse. Return only JSON: {severity, findings: [{issue, evidence, suspected_cause_file_line}], recommended_fix}."* Parse the final result with `json.loads` and fail loudly if it is not valid.
+5. Print the cost from the result message.
+6. Eval: write `agent/eval.py` with 2 cases. First, on the buggy pipeline, a finding must mention DE or FR amounts. Second, after you fix the parser and reload, severity must not be fail. Run both.
+
+@@quiz
+TYPE: mcq
+TAG: ai
+Q: What does the Claude Agent SDK give you compared with calling the Messages API directly?
+A) Only cheaper tokens
+B) The Claude Code harness as a library: the agent loop, built-in tools, permissions, context management and MCP
+C) A different model
+D) A web UI
+ANS: B
+WHY: You focus on tools, rules and evaluation instead of rebuilding the loop.
+---
+TYPE: mcq
+TAG: ai
+Q: Your agent should investigate data but never change anything. Which configuration fits?
+A) allowed_tools with Bash and Edit, and a prompt saying "do not change anything"
+B) allowed_tools limited to read-only tools and your read-only custom tools; the data connection opened read-only
+C) No tools at all and a long prompt
+D) The largest model
+ANS: B
+WHY: Remove capabilities and enforce read-only at the data layer.
+---
+TYPE: mcq
+TAG: ai
+Q: Which is the best evidence that a prompt change made your agent better?
+A) The answers sound more confident
+B) Pass rate on a fixed eval set of cases with known answers, plus cost per run
+C) It uses more tools
+D) It writes longer reports
+ANS: B
+WHY: Measure on known cases; compare quality and cost before and after.
+---
+TYPE: fill
+TAG: ai
+Q: In the Python SDK, the options object that sets tools, max turns and the model is called ClaudeAgent____.
+ANS: Options|options
+WHY: ClaudeAgentOptions(...) is passed to query().
+---
+TYPE: short
+TAG: ai
+Q: List five things you would add before running your investigator agent nightly in production.
+MODEL: 1) Least privilege: a read-only data role, only the needed tools, no Bash. 2) Limits: max turns, a budget and timeouts, with a no-progress stop. 3) Structured output validated against a schema, failing loudly when invalid. 4) An eval set run on every change, with pass-rate and cost tracking. 5) Observability and alerting: log prompt version, tool calls, cost and outcome per run, and alert on failures or cost spikes. Also: the agent only recommends; fixes go through pull requests and tests.
+
+@@interview
+Q: Walk me through an AI agent you built. How did you make it reliable?
+TAG: ai
+A: (Use your investigator.) It investigates data quality in our warehouse with the Claude Agent SDK and two read-only custom tools: revenue by country and null and duplicate counts. Reliability came from the harness: read-only tools and a read-only connection, a turn limit and budget, a strict JSON output schema validated in code, and an eval set where I inject known problems (duplicates, a parsing bug) and check the agent finds them. It costs about X cents per run, logged every time. It recommends; humans or pipelines apply fixes.
+---
+Q: How do you evaluate an AI agent?
+TAG: ai
+A: A fixed set of realistic cases with known expected outcomes: some positive (an injected bug it must find), some negative (clean data where it must not raise false alarms), and edge cases. Score with checks in code where possible (it found the right table or field, valid JSON, severity correct), and with a rubric or LLM grader for free text, spot-checked by humans. Track pass rate, cost, turns and latency per version, and run the set on every change to the prompt, tools or model.
+---
+Q: Build or buy: when would you build a custom agent instead of using Claude Code directly?
+TAG: ai
+A: Use Claude Code directly for interactive engineering work. Build with the SDK when the task is a repeatable product or pipeline step with its own inputs and outputs (a nightly investigator, a triage bot, an internal assistant), when you need custom tools and strict permissions, structured output into other systems, evaluation and monitoring, or to embed it in your own app. If a scripted claude -p with a schema covers it, start there; move to the SDK when you need more control.
+---
+Q: What makes a good tool for an AI agent?
+TAG: ai
+A: A clear name and a description that says when to use it. A small, typed input schema. Compact, structured output (aggregates, capped rows). Read-only unless writing is the point, with writes idempotent and gated. Helpful errors the agent can recover from ("query must filter on order_date"). Enforcement inside the tool and the data layer, not in the description. Fast and deterministic.
+---
+Q: How do you control the cost of an agent in production?
+TAG: ai
+A: Turn and budget limits per run, the smallest model that passes the evals, compact tool outputs, stable prompt prefixes for caching, fewer and better tools (every tool description costs context), and logged cost per run with alerts. Review cost per useful outcome: per real issue found or ticket resolved, not per run.
+
+@@tasks
+TITLE: Your investigator agent
+TASK: Do the lab. Paste `agent/investigator.py`, one JSON report it produced on the buggy warehouse, and the cost of that run.
+SUBMIT: the agent code, one JSON report, and the run cost.
+RUBRIC: - Uses query() (or ClaudeSDKClient) with ClaudeAgentOptions: restricted allowed_tools, max_turns, model.
+- Defines at least two custom tools with @tool and create_sdk_mcp_server; read-only connection; compact JSON output.
+- Requires and parses JSON output (json.loads with error handling); fails loudly if invalid.
+- The report identifies the inflated DE/FR amounts (or the decimal-comma parsing) with evidence.
+- Logs or prints the cost from the result message.
+---
+TITLE: Your eval set
+TASK: Paste `agent/eval.py` and its output for both cases (buggy and fixed). Then propose 3 more eval cases that would make you trust the agent nightly, including one that checks it does not raise false alarms.
+SUBMIT: the eval script, its output, and three more cases.
+RUBRIC: - Runs the agent on known states and checks results in code (a finding mentions DE or FR amounts; severity not fail after the fix).
+- Prints pass or fail per case and a summary.
+- New cases include an injected duplicate order, a null in a key column, and a clean dataset where the agent must report ok (no false alarm).
+- Mentions tracking cost and pass rate per agent version.
+---
+TITLE: Production readiness review
+TASK: Your manager wants your investigator to run every night on the real warehouse and post to the team's Slack. Write a short production-readiness review (under 300 words): what must change, what risks remain, and how you will know it is working after a month.
+SUBMIT: your review.
+RUBRIC: - Access: a read-only role on curated or masked data, a scoped token from a secret manager, no PII in prompts or Slack messages.
+- Limits and failures: turns, budget, timeouts, retries, alert on failure; the agent recommends, never applies fixes.
+- Quality: the eval set in CI, a false-alarm rate tracked, versioned prompt and tools.
+- Security: tool results treated as untrusted (prompt injection from data); Slack posting is the only outbound action, with a fixed destination.
+- Success after a month: real issues found before users, false-alarm rate, cost per run and per useful finding, and team feedback.
+- Under 300 words.

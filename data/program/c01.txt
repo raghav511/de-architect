@@ -1,0 +1,216 @@
+@@meta
+id: c01
+n: 1
+title: Set up Claude Code and run your first real session
+goal: Install Claude Code, open the practice project, and finish one small change the right way: explore, plan, edit, test, review the diff, commit.
+hours: 2
+
+@@tickets
+C101 | learn | 0.5 | Lesson: how Claude Code works and how a session flows | You can explain the agent loop inside Claude Code and name five keys or commands you will use every day. | chapter
+C102 | ai | 0.75 | Practise in Claude Code: your first change on the practice project | You fixed one failing test in ~/cc-sandbox with Claude Code, read the diff yourself and committed it. | lab
+C103 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
+C104 | test | 0.33 | Quiz C1 | 80% or better. | quiz
+
+@@readings
+- [Claude Code overview](https://docs.claude.com/en/docs/claude-code/overview). What it is and where it runs (terminal, IDE, desktop, web).
+- [Quickstart](https://docs.claude.com/en/docs/claude-code/quickstart). Install, sign in, first session.
+- [Common workflows](https://docs.claude.com/en/docs/claude-code/common-workflows). Skim the list; you will use most of these later in the track.
+- [Anthropic: Claude Code best practices](https://www.anthropic.com/engineering/claude-code-best-practices). The "explore, plan, code, commit" workflow comes from here.
+
+@@chapter
+## C1.1 What Claude Code actually is
+
+Claude Code is an **agent in your terminal**. You already met agents in AI 1: a model in a loop with tools. Claude Code is that loop, built for software work:
+
+```
+you: a task in plain English
+loop:
+  Claude reads files, searches, runs commands (tools)
+  you approve the risky ones (permissions)
+  Claude edits files and checks its work
+until: it answers, or you stop it (Esc)
+```
+
+Three things make it different from pasting code into a chat window:
+
+1. **It sees your real project.** It can open any file, grep the codebase and run your tests, so its answer is based on your code, not a guess.
+2. **It acts.** It edits files and runs commands. That is the power and the risk: every lesson in this track is partly about controlling what it may do.
+3. **It remembers the project, not you.** Each session starts fresh. Durable knowledge goes in a `CLAUDE.md` file in the repo (lesson C7), not in your head.
+
+For a data engineer this means: "why does this dbt model double count", "add a test for late-arriving rows", "write the backfill script and dry-run it" become tasks you hand over and **review**, instead of tasks you type out.
+
+## C1.2 Install and sign in
+
+On your Mac (one of these):
+
+```bash
+curl -fsSL https://claude.ai/install.sh | bash     # native installer (recommended)
+brew install --cask claude-code                    # or Homebrew
+```
+
+Then in any project folder run `claude`. The first run asks you to sign in: either your Claude subscription (Pro or Max) or an Anthropic Console account billed per token. Run `/doctor` inside a session if anything looks wrong.
+
+On iPad or iPhone use the **Codespace** linked from the test page: a real Linux terminal in Safari with Claude Code already installed and the practice project open.
+
+## C1.3 The keys and commands you use every day
+
+| You want to | Do this |
+|---|---|
+| Point at a file | type `@` and pick it, e.g. `explain @pipeline/ingest.py` |
+| Run a shell command yourself | start the line with `!`, e.g. `! python3 -m unittest -q` (the output goes into the conversation) |
+| Stop Claude mid-step | `Esc` (it stops and waits; nothing is lost) |
+| Go back to an earlier point | `Esc` twice, or `/rewind`, then pick the message to return to |
+| Plan before any edit | `Shift+Tab` until the footer says **plan mode** |
+| Accept edits without asking each time | `Shift+Tab` to **accept edits** (only once you trust the plan) |
+| Start a clean conversation | `/clear` (do this between unrelated tasks) |
+| See what fills the context | `/context` |
+| Pick up yesterday's session | `claude -c` (continue) or `claude -r` (choose one) |
+| Change model | `/model` |
+
+When Claude wants to run a command or edit a file, you see a **permission prompt**: allow once, allow always for this kind of command in this project, or no. Say no freely; tell it why, and it adapts.
+
+## C1.4 The workflow that works: explore, plan, code, commit
+
+Most bad AI changes come from skipping straight to "fix it". A senior pattern:
+
+1. **Explore.** "Read @pipeline/ingest.py and @tests/test_ingest.py. Do not change anything yet. Which tests fail and why?"
+2. **Plan.** In plan mode: "Propose the smallest fix for the date-window bug. List files you would touch and how you will prove it works."
+3. **Code.** Approve the plan, let it edit, and let it **run the tests**.
+4. **Review and commit.** Read the diff yourself (`! git diff`). Ask "what could this break?" Then "commit with a message that explains the bug".
+
+The review step is not optional. You are accountable for every line Claude writes, in the same way you are for a junior engineer's pull request you approve.
+
+@@lab
+## Setup (once, 10 minutes)
+
+On your MacBook:
+
+```bash
+git clone https://github.com/raghav511/de-architect ~/de-architect   # skip if you have it
+bash ~/de-architect/labs/cc/new_sandbox.sh                            # fresh copy at ~/cc-sandbox, its own git repo
+cd ~/cc-sandbox && claude
+```
+
+On iPad or iPhone: open the Codespace from the test page, then run `claude` in its terminal.
+
+The practice project is a small orders pipeline with **known bugs**. Read its README, but do not look for the bugs by hand: the point is to find them with Claude Code.
+
+## Lab: your first change (35 minutes)
+
+1. In plan mode (`Shift+Tab`), ask: *"Explain this project in 6 lines: what it reads, what it writes, and how to run the tests. Do not edit anything."* Check the answer against the README.
+2. Run the tests yourself: `! python3 -m unittest -q`. Two tests fail.
+3. Ask: *"Look only at test_end_day_included. Explain why it fails, then propose the smallest fix. Wait for my go-ahead."*
+4. Approve, let Claude edit and re-run the tests. Exactly one fewer test should fail.
+5. Read `! git diff`. Is the change one line? Did it touch anything else?
+6. Ask Claude to commit with a clear message. Check with `! git log --oneline -2`.
+7. Press `Esc` twice and look at the rewind menu. You do not need to use it, but know it is there.
+
+Write down three things you noticed (for example: it asked before running the tests; plan mode refused to edit). You need them for task 1.
+
+@@quiz
+TYPE: mcq
+TAG: ai
+Q: You want Claude Code to investigate a bug without changing any file. What is the most reliable way?
+A) Ask nicely in the prompt not to edit
+B) Switch to plan mode with Shift+Tab before asking
+C) Use /clear first
+D) Run claude -c
+ANS: B
+WHY: Plan mode is enforced by the tool: Claude can read and think but not edit or run changing commands. A request in the prompt is only a request.
+---
+TYPE: mcq
+TAG: ai
+Q: What does starting a line with ! do in a Claude Code session?
+A) Forces Claude to obey the line
+B) Runs the line as a shell command yourself and adds the output to the conversation
+C) Marks the message as urgent
+D) Deletes the last message
+ANS: B
+WHY: Bash mode runs the command directly. It is the cheapest way to give Claude real evidence such as a test failure.
+---
+TYPE: fill
+TAG: ai
+Q: The file Claude Code reads at the start of every session in a repo, holding project facts and rules, is called ____.
+ANS: CLAUDE.md|claude.md
+WHY: Sessions start fresh; CLAUDE.md is the project's durable memory.
+---
+TYPE: mcq
+TAG: ai
+Q: Which order matches the recommended workflow for a non-trivial change?
+A) Code, test, explore, commit
+B) Explore, plan, code, commit
+C) Plan, commit, code, review
+D) Code, commit, review, plan
+ANS: B
+WHY: Exploring and planning first gives Claude the context it needs and you a chance to correct the approach before any edit.
+---
+TYPE: short
+TAG: ai
+Q: Claude Code made a fix and says "all tests pass". What do you still do before committing, and why?
+MODEL: Read the diff myself (git diff) to check the change is minimal and does what the plan said, run the tests myself or check the output it showed, and ask what the change could break (callers, other inputs, performance). I am accountable for the change, and "tests pass" only proves what the tests cover.
+
+@@interview
+Q: How do you use AI coding assistants in your day-to-day data engineering work?
+TAG: ai
+A: I use Claude Code as a pair that does the typing while I keep the judgment. For a bug, I make it reproduce the failure first, explore the relevant files in plan mode, and propose the smallest fix with a test. Then it edits and runs the tests, and I review the diff the way I would review a teammate's pull request. Where it saves the most time: boilerplate such as tests, backfill scripts and dbt model scaffolding, explaining unfamiliar code, and first drafts of design docs. Where I stay hands-on: data contracts, anything touching production data or credentials, and performance decisions, where I want the numbers myself.
+---
+Q: What risks do AI coding agents bring to a data platform team, and how do you manage them?
+TAG: ai
+A: Four risks. Wrong but plausible code, so every change goes through tests and human review. Over-broad actions such as deleting files or running against production, so permissions are least-privilege and production credentials are never on the machine. Leaks of secrets or customer data in prompts, so we deny reads of secret files and use synthetic data. Skill atrophy, so engineers still own the design and can explain every line. I treat the agent like a fast junior engineer with no production access.
+---
+Q: A teammate says "the AI wrote it, the tests pass, ship it". How do you respond?
+TAG: behavioral
+A: I agree tests are necessary, but they only prove what they cover. I would ask three questions: does the diff do only what we intended, what inputs are not tested (nulls, late data, duplicates, volume), and can the author explain the change? If the answer to the last is no, it is not ready. I would frame it as our normal review bar, not a special rule for AI code.
+---
+Q: When would you not use an AI agent for a task?
+TAG: ai
+A: When the cost of a subtle error is high and hard to detect: changing financial calculations without a strong test suite, schema migrations on production tables, or security-sensitive code, unless I can verify the result independently. Also when the task is mostly judgment, like choosing between two architectures for my team's constraints: AI can list options, but the decision and its trade-offs are mine.
+---
+Q: How do you make sure AI-assisted changes are reviewable?
+TAG: ai
+A: Small, focused changes: one bug or feature per session and per commit. I ask for a plan first, so the reviewer can compare the plan with the diff. The commit message explains why, not just what. And the change includes the test that proves it, ideally written to fail before the fix.
+
+@@tasks
+TITLE: Your first session, explained
+TASK: Do the practice lab first (fix one failing test in ~/cc-sandbox with Claude Code and commit it).
+
+Then write a short report of **what happened**, in your own words:
+
+1. The prompt you used to explore, and the one you used to ask for the fix.
+2. What plan mode stopped Claude from doing, or what it asked permission for.
+3. The diff of the fix (paste the output of `git show --stat HEAD` and the changed lines).
+4. One thing you would do differently next time.
+SUBMIT: your four-part report (prompts, permissions, the diff, one improvement).
+RUBRIC: - Exploration prompt asks to read specific files and forbids edits (or uses plan mode).
+- Fix prompt narrows to one failing test and asks for the smallest fix, ideally with "wait for my go-ahead".
+- Mentions a real permission prompt or plan-mode restriction and what was chosen.
+- The diff is minimal (the date comparison in clean(), changing `< end` to `<= end`) and nothing unrelated changed.
+- The improvement is specific (e.g. "ask it to run only the one test first", "check the diff before letting it commit").
+---
+TITLE: The right keys for the job
+TASK: For each situation, write the exact key, command or prompt you would use in Claude Code, and one line on why.
+
+1. Claude is halfway through editing three files and you realise it misunderstood the task.
+2. You finished the date bug and now want to work on something unrelated: the amount parser.
+3. You want Claude to see the real test failure without paying for it to explore.
+4. You came back the next morning and want yesterday's conversation.
+5. You want it to propose an approach for the amount bug without touching any file.
+6. You want to know why the session feels slow and expensive after an hour.
+SUBMIT: six numbered answers, each with the key or command and a one-line reason.
+RUBRIC: 1. Esc to stop, then explain the correction; optionally Esc twice or /rewind to go back to before the edits.
+2. /clear (fresh context for an unrelated task; saves tokens and avoids confusion).
+3. `! python3 -m unittest -q` (bash mode puts real output into the conversation).
+4. `claude -c` (continue) or `claude -r` to pick the session.
+5. Plan mode via Shift+Tab, then ask for a plan.
+6. /context to see what fills the context (and /compact or /clear as the fix).
+---
+TITLE: Explain a change you did not write
+TASK: In ~/cc-sandbox, ask Claude Code to explain `pipeline/load.py` to you **as a reviewer**: what it does, what could go wrong at scale, and one security issue. Do not let it change anything.
+
+Then write your own review comment, as you would on a teammate's pull request, using what you learned. Include the prompt you used.
+SUBMIT: your prompt, and your review comment (5 to 10 lines).
+RUN: Review pipeline/load.py as a senior data engineer. Do not change anything. In under 10 lines: what it does, what breaks at scale, and any security issue.
+RUBRIC: - Prompt asks for explanation only (no edits) and frames the review role.
+- Spots the SQL built with an f-string in the DELETE (SQL injection risk; use parameters with ?).
+- Notes at least one scale or correctness issue: one DELETE per day in a loop, no transaction around delete-plus-insert, loads emails (PII) into the warehouse, INSERT OR REPLACE hides duplicates.
+- The review comment is specific, polite and actionable (says what to change and why).

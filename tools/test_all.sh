@@ -23,6 +23,10 @@ step "nightly coach loop (fake sync, stub coach)" bash -c '
   python3 tools/coach/coach.py digest "$D/state.json" > "$D/digest.md" && python3 tools/coach/stub_coach.py "$D/state.json" "$D/coach.json" &&
   python3 tools/coach/coach.py post "$D/coach.json" --state "$D/state.json" && node tools/coach/e2e_test.js check "'"$BASE"'" "$DA_SYNC_URL" | tee "$D/c.txt"
   r=$?; kill $SRV; ! grep -q FAIL "$D/u.txt" "$D/c.txt" && [ $r = 0 ]'
+step "instant grading (fake sync, stub claude)" bash -c '
+  D=$(mktemp -d); python3 tools/coach/fake_sync.py 8814 gkey "$D" & SRV=$!
+  DA_SYNC_URL="http://127.0.0.1:8814/exec?k=gkey" DA_CLAUDE_BIN="$PWD/tools/grader/stub_claude.py" DA_GRADER_PORT=8766 DA_GRADER_POLL=1 DA_GRADER_LOG="$D/grader.log" python3 tools/grader/grader.py serve & GR=$!
+  sleep 1; node tools/grader/e2e_grader.js "'"$BASE"'" "http://127.0.0.1:8814/exec?k=gkey" 8766; r=$?; kill $SRV $GR; [ $r = 0 ]'
 step "UI crawl" node tools/crawl.js "$BASE" ${QUICK:+--quick}
 echo; [[ $fail == 0 ]] && echo "ALL GREEN" || echo "SOME CHECKS FAILED"
 exit $fail

@@ -81,7 +81,8 @@ def blocks(text, keys):
 
 def program():
     src = open(os.path.join(ROOT, 'js/plan.js')).read()
-    order = re.findall(r"'([a-z]\d\d)'", src[src.index('const BASE_MODS'):src.index(';', src.index('const BASE_MODS'))])
+    lst = lambda name: re.findall(r"'([a-z]\d\d)'", src[src.index('const ' + name):src.index(';', src.index('const ' + name))])
+    order = lst('BASE_MODS') + lst('CC_MODS')  # the Claude Code track runs alongside, on Wednesdays and Saturdays
     mods = {}
     for m in order:
         p = os.path.join(ROOT, 'data/program/%s.txt' % m)
@@ -165,6 +166,15 @@ def digest(path, now=None):
     rev = S.get('rev') or {}
     due = [k for k, r in rev.items() if r.get('due') and r['due'] <= now.strftime('%Y-%m-%d')]
     out += ['', '## Review queue', '%d problems in the queue, %d due now: %s' % (len(rev), len(due), ', '.join(due[:15]) or 'none')]
+    # instant grades from the grader on the Mac (tools/grader)
+    gs = sorted(((g.get('at', 0), k, g) for k, g in (S.get('grades') or {}).items() if g.get('s') == 'done' and g.get('r') and now - ms(g.get('at', 0)) < 7 * day), reverse=True)
+    out += ['', '## Instant grades in the last 7 days (%d)' % len(gs)]
+    if gs:
+        by = {}
+        for _, k, g in gs: by.setdefault(g.get('kind'), []).append(g['r'].get('score', 0))
+        out.append('Average by kind: ' + ', '.join('%s %.1f/5 (%d)' % (kd, sum(v) / len(v), len(v)) for kd, v in by.items()))
+    for t, k, g in gs[:20]:
+        out.append('- %s · %s · %s/5 · %s · fix: %s' % (ms(t).strftime('%a %H:%M'), k, g['r'].get('score'), short(g.get('q'), 80), short(g['r'].get('improve'), 160)))
     # mocks
     graded = prev.get('mock_feedback') or {}
     out += ['', '## Mock interviews to grade']
@@ -194,7 +204,7 @@ def digest(path, now=None):
     for m in near:
         hs = mods[m]['heads']
         out.append('- %s chapter sections: ' % label(m) + '; '.join('`#/learn/%s/chapter/%d-%d` %s' % (m, i, i, short(h, 50)) for i, h in enumerate(hs)))
-        out.append('  quiz `#/quiz/%s` · interview set `#/interview/%s` · path `#/path/%s`' % (m, m, m))
+        out.append('  quiz `#/quiz/%s` · interview set `#/interview/%s` · path `#/path/%s`' % (m, m, m) + (' · Claude Code test tasks `#/cc/%s/1` to `#/cc/%s/3`' % (m, m) if m.startswith('c') else ''))
     route = {'py': 'py', 'dsa': 'dsa', 'sql': 'sql', 'spark': 'spark'}
     unsolved = [x for qid, x in banks.items() if not S.get('solved', {}).get(qid) and (x.get('m') in near)]
     out.append('- Problems in these modules not yet solved: ' + '; '.join('`#/%s/%s` %s' % (route[x['kind']], x['id'], short(x['t'], 40)) for x in unsolved[:20]))
@@ -219,7 +229,7 @@ def validate(c, banks, state=None):
     except ValueError: errs.append('generated_at must be ISO 8601')
     gday = gen.date() if gen else dt.date.today()
     for f in c.get('focus', []):
-        if not re.match(r'^#/(learn|quiz|interview|path|py|dsa|sql|spark|git|design|mock|practice)/', f.get('href', '')): errs.append('bad focus href %r' % f.get('href'))
+        if not re.match(r'^#/(learn|quiz|interview|path|py|dsa|sql|spark|git|design|mock|practice|cc)/', f.get('href', '')): errs.append('bad focus href %r' % f.get('href'))
         if not f.get('title'): errs.append('focus item without title')
         m = re.match(r'^#/(py|dsa|sql|spark)/([a-z0-9]+)$', f.get('href', ''))
         if m and m.group(2) not in banks: errs.append('focus links to unknown problem ' + m.group(2))

@@ -1,0 +1,175 @@
+@@meta
+id: c03
+n: 3
+title: Context and cost: get more done with fewer credits
+goal: Understand what you pay for in a Claude Code session, see it with /context and real run numbers, and use the habits that cut cost without hurting quality.
+hours: 2
+
+@@tickets
+C301 | learn | 0.5 | Lesson: where the tokens go and how to spend fewer | You can name the four biggest cost drivers in a session and a habit that cuts each one. | chapter
+C302 | ai | 0.75 | Practise in Claude Code: halve the cost of the same task | You ran the same task twice and cut tokens in by at least a third with the same quality. | lab
+C303 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
+C304 | test | 0.33 | Quiz C3 | 80% or better. | quiz
+
+@@readings
+- [Manage costs effectively](https://docs.claude.com/en/docs/claude-code/costs). The official list of cost habits; read all of it.
+- [Claude docs: Prompt caching](https://docs.claude.com/en/docs/build-with-claude/prompt-caching). Why repeated context is cheaper, and what breaks the cache.
+- [Models overview](https://docs.claude.com/en/docs/about-claude/models/overview). Compare the price per million tokens for Haiku, Sonnet and Opus.
+
+@@chapter
+## C3.1 What you actually pay for
+
+Every turn of the agent loop sends the **whole conversation so far** to the model: your messages, Claude's replies, every file it read and every command output. You pay for:
+
+- **Input tokens**: the context sent each turn. This is usually the biggest part, because it grows with every file and log.
+- **Output tokens**: what Claude writes, including code. Output costs several times more per token than input.
+- **Cache**: repeated context (the system prompt, CLAUDE.md, earlier turns) is cached automatically and read back at a fraction of the price. Changing early context breaks the cache.
+- **Model**: Opus costs more per token than Sonnet, which costs more than Haiku. Effort and extended thinking add output tokens.
+
+On a subscription plan you do not see dollars, but the same tokens count against your usage limits. Either way, fewer wasted tokens mean more work per day.
+
+## C3.2 The four big drivers and the habit for each
+
+| Driver | What it looks like | Habit |
+|---|---|---|
+| **Long conversations** | one session for the whole day; each turn re-sends hours of history | `/clear` between unrelated tasks; `/compact keep the failing test names and the plan` when one task runs long |
+| **Exploration** | "fix the bug" makes it read ten files | point at files with `@`; give the error and the command; say where *not* to look |
+| **Noisy output** | full test logs, `cat` of a 5 MB CSV, verbose builds | `python3 -m unittest -q`, `pytest -q -x`, `| tail -40`, `head -20 data.csv`; never let it print whole data files |
+| **Wrong model** | Opus for renaming a variable | Haiku or Sonnet for routine work via `/model`; Opus for hard reasoning |
+
+Check before you guess: `/context` shows what fills the window (system prompt, CLAUDE.md, MCP tools, files, conversation). `/cost` (API billing) or `/usage` (subscription) shows spend.
+
+## C3.3 Structural savings
+
+- **Keep CLAUDE.md short.** It is loaded in every session. 40 precise lines beat 400 vague ones.
+- **Turn off what you do not use.** Every MCP server adds its tool descriptions to the context. Disable unused ones with `/mcp`.
+- **Delegate searches to a subagent** (lesson C11). The subagent reads twenty files in its own context and returns a 10-line summary; your main context stays small.
+- **Headless with limits** (lesson C9). Scripts can set `--max-turns` and `--max-budget-usd`, and restrict tools so a run cannot wander. The app's own grader does exactly this: no tools, a small model and a JSON schema, so a grade costs about a tenth of a cent instead of 25 cents.
+- **Ask for less.** "Answer in 5 lines", "only show the changed function", "no explanation, just the command".
+
+## C3.4 Do not save in the wrong place
+
+Cheap is not the goal; **cost per correct result** is. Skipping the test run saves tokens and ships a bug. A prompt that asks for a plan and a test costs more than "fix it", and is worth it. Cut waste: repeated history, aimless exploration, giant outputs and the wrong model. Do not cut verification.
+
+@@lab
+## Lab: the same task at half the price (40 minutes)
+
+Use **Try it here** (it shows tokens in, tokens out, cache and cost for each run) or your terminal with `/context` and `/cost`.
+
+1. **Baseline.** Run: *"Look through the project and tell me everything that could be wrong with it."* Note turns, tokens in, tokens out and cost.
+2. **Focused.** Run: *"In @pipeline/run.py and @pipeline/config.py only: is any secret printed or logged? Answer in 3 lines with file:line."* Note the numbers.
+3. **Model.** Run prompt 2 again with Haiku, then with Sonnet. Is the answer as good? What did each cost?
+4. **CLAUDE.md effect.** Open *Add a CLAUDE.md to this run* and paste 5 lines of project facts (what the project is, how to run tests, where the docs are). Re-run prompt 1. Did it explore less?
+5. In your terminal, start `claude` in ~/cc-sandbox, read two files, run the tests, then type `/context`. Which part of the window is biggest? Run `/compact keep only the test results` and check `/context` again.
+
+Keep the numbers. Task 1 asks for them.
+
+@@quiz
+TYPE: mcq
+TAG: ai
+Q: Why does a long Claude Code session get more expensive per message over time?
+A) The model gets tired
+B) Each turn re-sends the whole conversation, including files and outputs read earlier
+C) Prices rise during the day
+D) Output tokens get longer automatically
+ANS: B
+WHY: Context accumulates. /clear between tasks and /compact within a long task keep it small.
+---
+TYPE: mcq
+TAG: ai
+Q: Which change saves the most tokens when the agent keeps reading large test logs?
+A) Switching to a bigger model
+B) Running tests quietly (-q, -x) and tailing the output
+C) Adding more instructions to CLAUDE.md
+D) Turning on more MCP servers
+ANS: B
+WHY: Command output goes into the context and is re-sent every turn after. Quiet, short output is the cheapest evidence.
+---
+TYPE: fill
+TAG: ai
+Q: The slash command that shows what is filling the context window is /____.
+ANS: context
+WHY: Measure first: it shows system prompt, memory files, tools and conversation sizes.
+---
+TYPE: mcq
+TAG: ai
+Q: Which is a FALSE economy?
+A) /clear between unrelated tasks
+B) Pointing at files with @
+C) Skipping the test run to save tokens
+D) Using Haiku for a routine rename
+ANS: C
+WHY: Verification is what makes the result correct. Cost per correct result is the metric, not cost per session.
+---
+TYPE: short
+TAG: ai
+Q: Your team's Claude Code bill doubled this month. Give four concrete actions, in the order you would take them.
+MODEL: 1) Measure: find which users, repos and kinds of sessions cost most (usage reports, /cost, transcripts). 2) Fix the habits that cause growth: one task per session with /clear, @ file references instead of open-ended exploration, quiet test and build output. 3) Trim the fixed overhead in every session: a short CLAUDE.md, unused MCP servers disabled. 4) Right-size models: Sonnet or Haiku by default, Opus for hard problems; for scripts, headless runs with --max-turns, --max-budget-usd and restricted tools. Then review monthly, without cutting tests or reviews.
+
+@@interview
+Q: How would you control the cost of AI coding tools across a data engineering team?
+TAG: ai
+A: Measure first: usage by person and repo, and which kinds of sessions are expensive. Then cut waste without cutting verification. Habits: one task per session, @ references instead of open exploration, quiet test output. Structure: short CLAUDE.md files, only the MCP servers people use, subagents for broad searches. Model policy: a mid-tier model by default, the top model for hard reasoning, a small model for automated jobs. Automation runs headless with a turn and budget cap. I report cost per merged change rather than raw spend, so we do not push people into skipping tests.
+---
+Q: Explain prompt caching and when it fails to save money.
+TAG: ai
+A: The provider caches the unchanged beginning of a prompt, such as the system prompt, tool definitions and earlier conversation, so repeated reads cost a fraction of normal input. It fails when the start of the prompt changes every call, for example a timestamp or request ID at the top, or a reordered tool list, because the cache matches on an exact prefix. Fix: stable content first, variable content last.
+---
+Q: A scheduled AI job costs 10 times more than expected. How do you debug it?
+TAG: ai
+A: Look at the usage per run: turns, input and output tokens, cache reads. Usual causes: the agent explores because the prompt is vague; tool outputs are huge (full logs or tables); it retries in a loop with no stop condition; the cache is broken by a changing prefix; or the model is bigger than needed. Fixes: a precise prompt, trimmed tool output, max turns and a budget, stable prefixes, a smaller model, and an alert when cost per run passes a threshold.
+---
+Q: When is it worth paying for the most capable model?
+TAG: ai
+A: When the task needs deep reasoning across a lot of context and mistakes are costly: debugging a subtle concurrency or data-correctness issue, designing a migration, or reviewing a complex change. For routine edits, renames, boilerplate and summaries, a smaller model gives the same result for less. I sometimes plan with the strong model and implement with a cheaper one.
+---
+Q: What does "cost per correct result" mean, and why use it?
+TAG: ai
+A: Total spend divided by the number of changes that were correct and merged, including the cost of rework. It stops the wrong optimisation: a cheap session that produces a bug costs more after the incident and the rework. It rewards good prompts, verification and smaller tasks, which make each correct result cheaper.
+
+@@tasks
+TITLE: Your cost experiment
+TASK: Do the lab. Submit:
+
+1. A table of your runs: prompt (short), model, turns, tokens in, tokens out, cost, and whether the answer was useful.
+2. The biggest saving you found and why it worked.
+3. What `/context` showed as the largest part of the window in your terminal session, and what `/compact` changed.
+SUBMIT: your table of runs, the biggest saving with the reason, and your /context observation.
+RUN: Look through the project and tell me everything that could be wrong with it.
+RUBRIC: - At least three runs with real numbers, including a vague run and a focused run.
+- Explains the saving in terms of the cost model: less exploration and fewer files read, less output, a smaller model, or better caching.
+- The /context observation is plausible (conversation or files largest after reading and testing; system prompt and tools as fixed overhead) and notes that compact reduced the conversation part.
+- Does not claim savings from skipping verification.
+---
+TITLE: A cost policy for your team
+TASK: Write a one-page "AI coding cost policy" for a team of 8 data engineers using Claude Code. It must be practical: habits, defaults, limits for automated jobs, and how you will measure it. Keep it under 250 words.
+SUBMIT: the policy text.
+RUBRIC: - Habits: /clear between tasks, @ references, quiet outputs, short CLAUDE.md.
+- Defaults: model choice by task type, MCP servers only when used.
+- Automation: headless runs with --max-turns or --max-budget-usd, restricted tools, a small model where possible.
+- Measurement: cost per merged change or per task, reviewed regularly; explicitly does not cut tests or reviews.
+- Under 250 words and readable.
+---
+TITLE: Trim a CLAUDE.md
+TASK: Below is a bloated CLAUDE.md. Rewrite it to at most 15 lines that keep everything Claude actually needs every session. Say in one line what you removed and why.
+
+```
+# About this project
+This is a really important project for our company. We care a lot about quality.
+Please always write good code and be careful. Think step by step.
+The project is an orders pipeline. It is written in Python. Python is a programming language.
+It reads orders from data/orders.csv and loads them into SQLite (warehouse.db).
+To run tests you can use python3 -m unittest -q, or maybe pytest if installed.
+Our coding style: PEP 8, which is the Python style guide that says use 4 spaces...
+(the full PEP 8 summary, 120 lines)
+History: in 2024 we migrated from a cron job to this script. The cron job was written by Alex...
+(40 lines of history)
+EU shop exports decimal commas (12,50). US shop uses thousands commas (1,234.50).
+Never print WAREHOUSE_TOKEN. Never commit .env.
+Late files arrive up to 3 days after the order date.
+```
+SUBMIT: your trimmed CLAUDE.md and one line on what you removed.
+RUBRIC: - Keeps: what the project does, the test command, the decimal-comma rule, the late-data window, the secret rules.
+- Removes: generic exhortations ("be careful", "think step by step"), facts Claude knows (what Python is, PEP 8), history that does not affect decisions.
+- Uses terse bullet lines; at most 15 lines.
+- The reason mentions that CLAUDE.md is loaded every session, so every line costs tokens and attention.

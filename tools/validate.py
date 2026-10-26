@@ -44,7 +44,7 @@ def blocks(text, keys, letters):
     if b: res.append(b)
     return res
 
-mods = ['a01', 'a02', 'a03'] + ['p%02d' % i for i in range(1, 7)] + ['m%02d' % i for i in range(1, 4)] + ['d01', 'j01', 'r01'] + ['s%02d' % i for i in range(13)]
+mods = ['c%02d' % i for i in range(1, 13)] + ['a01', 'a02', 'a03'] + ['p%02d' % i for i in range(1, 7)] + ['m%02d' % i for i in range(1, 4)] + ['d01', 'j01', 'r01'] + ['s%02d' % i for i in range(13)]
 sparkbank = json.load(open('data/bank/spark.json'))
 sqlbank = json.load(open('data/bank/sql.json'))
 pybank = json.load(open('data/bank/py.json'))
@@ -89,7 +89,8 @@ for m in mods:
             bank = {'py': pybank, 'sql': sqlbank, 'spark': sparkbank}[tab.split(':')[0]]
             a, b = map(int, tab.split(':')[1].split('-'))
             if not (1 <= a <= b <= sum(1 for x in bank if x.get('m') == m)): err(m, tid, 'exercise range', tab, 'out of bounds')
-        elif tab not in ('chapter', 'lab', 'practice', 'quiz', 'interview', 'coding', 'readings', 'mock'): err(m, tid, 'unknown tab', tab)
+        elif tab not in ('chapter', 'lab', 'practice', 'quiz', 'interview', 'coding', 'readings', 'mock', 'cc'): err(m, tid, 'unknown tab', tab)
+        if tab == 'cc' and 'tasks' not in s: err(m, tid, 'cc ticket but no @@tasks')
         if tab == 'coding' and 'coding' not in s: err(m, tid, 'coding ticket but no @@coding')
         if not done: err(m, tid, 'empty done-when')
     q = blocks(s.get('quiz'), ['TYPE', 'TAG', 'Q', 'ANS', 'WHY', 'MODEL'], True)
@@ -121,7 +122,11 @@ for m in mods:
         base = 'projects/ai-foundations/'
         for pth in set(re.findall(r'`(?:python3? (?:-m \w+ )?)?((?:labs|harness|tasks|tests|prompts|data|memory|automations|workflows)/[\w./-]+?\.(?:py|txt|jsonl|md|yml\.example|yml))', t)):
             if not os.path.exists(base + pth) and '_mine' not in pth: err(m, 'lab mentions missing file', pth)
-    if m not in design and not m.startswith('x') and not m.startswith('p'): warn(m, 'no design problem')
+    for i, x in enumerate(blocks(s.get('tasks'), ['TITLE', 'TASK', 'SUBMIT', 'RUBRIC', 'RUN'], False)):
+        for f in ('TITLE', 'TASK', 'SUBMIT', 'RUBRIC'):
+            if not x.get(f, '').strip(): err(m, 'task', i + 1, 'missing', f)
+    if m.startswith('c') and len(blocks(s.get('tasks'), ['TITLE', 'TASK', 'SUBMIT', 'RUBRIC', 'RUN'], False)) < 3: err(m, 'needs 3 or more @@tasks')
+    if m not in design and not m.startswith(('x', 'p', 'c')): warn(m, 'no design problem')
     for l in re.findall(r'\]\((https?://[^)\s]+)\)', t):
         if ' ' in l or l.endswith('.'): err(m, 'suspicious link', l)
 

@@ -1,0 +1,178 @@
+@@meta
+id: c02
+n: 2
+title: Prompts that get the change you want
+goal: Write prompts for coding agents that name the goal, the context, the constraints and how to verify, and see the difference in quality and cost on the practice project.
+hours: 2
+
+@@tickets
+C201 | learn | 0.5 | Lesson: the anatomy of a good coding prompt | You can rewrite a vague request into goal, context, constraints, verification and output, and explain each part. | chapter
+C202 | ai | 0.75 | Practise in Claude Code: three prompts for the same bug | You ran a vague, a better and a strong prompt for the amount bug and compared answers, turns and cost. | lab
+C203 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
+C204 | test | 0.33 | Quiz C2 | 80% or better. | quiz
+
+@@readings
+- [Claude docs: Prompt engineering overview](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/overview). Read "Be clear, direct and detailed".
+- [Anthropic: Claude Code best practices](https://www.anthropic.com/engineering/claude-code-best-practices). Read the sections on being specific and on giving Claude a target to verify against.
+- [Common workflows](https://docs.claude.com/en/docs/claude-code/common-workflows). Read "Fix bugs efficiently" and "Work with tests".
+
+@@chapter
+## C2.1 Why "fix the bug" is an expensive prompt
+
+A coding agent fills every gap you leave with exploration. "Fix the bug" makes it read the whole project, guess which bug you mean, and pick its own definition of done. That costs turns and tokens, and the guess may be wrong. A good prompt removes guesses. Five parts, in this order:
+
+| Part | Question it answers | Example for the practice project |
+|---|---|---|
+| **Goal** | What outcome? | EU amounts like `12,50` must parse as 12.5 |
+| **Context** | Where to look, what is known? | `@pipeline/ingest.py` `parse_amount`; `@docs/vendor_notes.md` says DE and FR use a decimal comma |
+| **Constraints** | What must not change? | Keep the US format `1,234.50` working; no new dependencies; do not touch load.py |
+| **Verification** | How do we know it worked? | `test_eu_amount` and `test_us_amount` pass; add a test for `1.234,50` |
+| **Output** | What do you want back? | A plan first; after the fix, a 3-line summary and the diff |
+
+You do not need all five every time. For a quick question, goal and context are enough. For a change, never skip **verification**: an agent with a test to pass corrects itself; an agent without one stops when the code looks plausible.
+
+## C2.2 Context beats cleverness
+
+The model is capable; what it lacks is **your** knowledge. The highest-value sentences in a prompt are facts it cannot find:
+
+- "The EU shop exports decimal commas; the US shop uses thousands commas." (business rule)
+- "This runs daily on 50 million rows, so avoid per-row Python regex." (scale)
+- "We tried rounding before; finance rejected it." (history)
+- "The fix must work on Spark 3.3, our cluster version." (environment)
+
+Point at files with `@` instead of describing them. Paste the exact error and the exact command that produced it. If a screenshot explains it better (a dashboard showing the wrong total), drag it into the terminal.
+
+## C2.3 Ask for a plan, then steer early
+
+For anything bigger than a one-line fix, ask for a plan first (plan mode). Reading a 10-line plan takes a minute and catches the wrong approach before 200 lines are written. Good follow-ups:
+
+- "Option 2, but keep the function signature unchanged."
+- "What would break if a value has no decimal part, like `1,234`?"
+- "Do it in two commits: tests first, then the fix."
+
+If Claude goes off track mid-edit, press `Esc` and correct it at once. A short correction now is cheaper than a long one later.
+
+## C2.4 Patterns worth keeping
+
+- **Test first:** "Write a failing test that shows the bug. Run it to prove it fails. Then fix the code until it passes. Do not change the test."
+- **Interview me:** "Before you start, ask me up to 3 questions about anything ambiguous."
+- **Explain like a reviewer:** "Explain this diff as if reviewing it for a teammate: risks, edge cases, what is not tested."
+- **Bound the output:** "Answer in under 8 lines" or "only the changed function". Shorter answers cost less and are easier to check.
+- **Name what you do not want:** "Do not refactor unrelated code. Do not add logging."
+
+Anti-patterns: several unrelated tasks in one prompt; "make it better"; "fix everything"; letting a session wander across topics without `/clear`.
+
+@@lab
+## Lab: three prompts, one bug (40 minutes)
+
+You will measure the difference a prompt makes. Use **Try it here** below the lab (it runs real Claude Code on your Mac against a fresh copy of the practice project, read-only, and shows turns, tokens and cost), or your terminal.
+
+1. **Vague.** Run: *"Fix the bug."* Note what it chose to look at, the turns and the cost.
+2. **Better.** Run: *"Amounts from the EU shop are parsed wrongly. Look at parse_amount in @pipeline/ingest.py and explain the problem."*
+3. **Strong.** Write your own five-part prompt (goal, context, constraints, verification, output) for the same bug. Ask for a plan only, not code.
+4. Compare the three runs in the table under the box: which answer was most correct, which was cheapest, which would you trust to act on?
+5. In your terminal (`cd ~/cc-sandbox && claude`), give the strong prompt, approve the plan, and let Claude fix it **test first**. Check that `python3 -m unittest -q` passes and read the diff.
+
+Keep your strong prompt and the three run numbers (turns, tokens in, cost). Task 1 asks for them.
+
+@@quiz
+TYPE: mcq
+TAG: ai
+Q: Which single addition most improves an agent's chance of finishing a code change correctly?
+A) Saying "please be careful"
+B) A way to verify the result, such as a test that must pass
+C) Asking it to think about the problem
+D) Writing the prompt in capital letters
+ANS: B
+WHY: With a concrete check the agent can detect and correct its own mistakes. Without one it stops when the code looks plausible.
+---
+TYPE: mcq
+TAG: ai
+Q: You know the job runs on 50 million rows a day. Where does that belong?
+A) Nowhere; the model will figure it out
+B) In the prompt (or CLAUDE.md) as context, because it changes which solution is right
+C) Only in the commit message
+D) In a code comment after the change
+ANS: B
+WHY: Scale is a fact the model cannot discover from the code alone, and it changes the right design.
+---
+TYPE: mcq
+TAG: ai
+Q: Claude starts refactoring a module you did not ask about. Best response?
+A) Let it finish, then revert
+B) Press Esc, say "only change parse_amount; no refactoring", and continue
+C) Close the terminal
+D) Approve, since refactoring is good
+ANS: B
+WHY: Correct early: Esc keeps the context, and a precise constraint prevents the drift from recurring.
+---
+TYPE: fill
+TAG: ai
+Q: The prompting pattern where you ask for a failing test that proves the bug before any fix is called test-____ development.
+ANS: driven|first
+WHY: The test is both the target and the proof.
+---
+TYPE: short
+TAG: ai
+Q: Rewrite this prompt for a coding agent: "the revenue numbers look off, can you check".
+MODEL: Goal: revenue by country must match the source files. Context: DE and FR totals are about 100 times too high; amounts are parsed in parse_amount in pipeline/ingest.py; docs/vendor_notes.md says the EU shop uses decimal commas. Constraints: keep the US format working, no new dependencies, change only ingest.py and its tests. Verification: add a test with an EU amount, run python3 -m unittest -q, all pass. Output: a plan first; after the fix, a 3-line summary and the diff.
+
+@@interview
+Q: How do you write prompts for AI coding tools so the output is reliable?
+TAG: ai
+A: I give the agent what it cannot discover: the goal in one sentence, the files and business rules that matter, the constraints (what must not change, versions, scale), and how to verify, usually a test that must pass. For anything non-trivial I ask for a plan first and steer before code is written. I keep one task per session and bound the output. Reliability comes mostly from verification, not wording: an agent with a failing test to fix converges; one without just produces plausible code.
+---
+Q: Your team's AI-generated code keeps missing edge cases. What would you change?
+TAG: ai
+A: Make edge cases part of the definition of done. Ask for the failing tests first, including nulls, empty inputs, duplicates, late data and type edge cases, and review those tests before the fix. Put recurring rules in CLAUDE.md ("all parsers handle empty strings and None"). Add a review prompt: "list inputs this change does not handle". And track it: if a class of bug recurs, add a check that runs automatically, such as a hook or a CI test.
+---
+Q: How do you decide how much context to give an AI assistant?
+TAG: ai
+A: Enough to remove guesses, no more. Facts it cannot find (business rules, scale, history, environment) always go in. Files it can find, I point to with @ rather than paste. I avoid dumping whole logs; I give the error and the command. Too little context causes wrong guesses and exploration cost; too much dilutes attention and costs tokens. If I repeat the same context every session, it moves to CLAUDE.md.
+---
+Q: Give an example where asking for a plan first saved you time.
+TAG: behavioral
+A: (Use your own.) Example shape: we needed to deduplicate late-arriving events in a pipeline. The first plan proposed a full-table rewrite every run. Because I saw that in the plan, I steered it to a merge on the last three days of partitions, which matched our late-data window. That avoided a change that would have tripled compute cost. The plan took two minutes to read; the wrong implementation would have taken an hour to review and redo.
+---
+Q: What are anti-patterns when prompting coding agents?
+TAG: ai
+A: Vague goals ("make it better"), several unrelated tasks in one prompt, no verification step, letting a session drift across topics without clearing context, pasting secrets or production data, and accepting large diffs without reading them. Also over-specifying the how when the what is unclear: describe the outcome and constraints, and let the agent propose the approach for you to judge.
+
+@@tasks
+TITLE: Your three prompts, measured
+TASK: Do the lab: run the vague, better and strong prompts for the EU amount bug (with Try it here or in your terminal).
+
+Submit:
+
+1. Your strong prompt, with the five parts labelled (goal, context, constraints, verification, output).
+2. A small table of the three runs: turns, tokens in, cost, and whether the answer was correct.
+3. Two sentences: what made the strong prompt better, and was it also cheaper? If not, why might a better prompt cost more?
+SUBMIT: the labelled prompt, the table of three runs, and your two-sentence conclusion.
+RUN: Fix the bug.
+RUBRIC: - All five parts present and specific to the project (parse_amount, decimal comma, DE/FR, keep US format, a named test or command, plan-first output).
+- The table has real numbers for three runs.
+- The conclusion links prompt quality to fewer wasted turns or a more correct answer, and notes that a strong prompt can cost more when it asks for more work (tests, a plan), which is worth paying for.
+---
+TITLE: Rewrite four bad prompts
+TASK: Rewrite each prompt so a coding agent would get it right the first time on a data team. Invent reasonable details where needed, and say which details you invented.
+
+1. "speed up the daily job"
+2. "add tests"
+3. "clean up this SQL"
+4. "why is the dashboard wrong"
+SUBMIT: four rewritten prompts, each with goal, context, constraints and verification.
+RUBRIC: - Each rewrite states a measurable goal (runtime target, which function to test, what "clean" means, which metric is wrong).
+- Each names where to look (files, tables, the job or DAG name) and at least one constraint (same results, no schema change, no new dependencies, a budget).
+- Each has verification: a benchmark command, tests that must fail before the fix, a row-count or result comparison, a reconciliation query.
+- Prompt 1 asks for measurement before optimising; prompt 4 asks for investigation before any change.
+---
+TITLE: Plan review
+TASK: In plan mode in ~/cc-sandbox, ask Claude Code for a plan to make the loader in `pipeline/load.py` safe to re-run (idempotent) and safe from SQL injection. Do **not** approve it yet.
+
+Paste the plan, then write your review of it: what you would accept, what you would change, and the exact follow-up prompt you would send.
+SUBMIT: the plan Claude gave, your review, and your follow-up prompt.
+RUN: In under 12 lines, propose a plan (no code) to make pipeline/load.py idempotent and safe from SQL injection. List the files you would change and how you would test it.
+RUBRIC: - The plan or the review covers parameterised SQL (`?` placeholders) instead of the f-string.
+- Covers wrapping delete-plus-insert in one transaction so a failure does not leave a day half-loaded.
+- Has a test idea, e.g. load the same day twice and expect the same row count.
+- The review is critical where it should be (scope creep, missing test, unnecessary refactor), and the follow-up prompt is a precise correction.

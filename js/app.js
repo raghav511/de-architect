@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.6.1';
+const VERSION = '1.7.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -38,7 +38,7 @@ let S = load();
 function load() {
   let s = {};
   try { s = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { s = {}; }
-  return Object.assign({ start: null, proj: {}, done: {}, doneAt: {}, undone: {}, code: {}, solved: {}, runs: {}, hints: {}, secs: {}, quiz: {}, iv: {}, tests: {}, settings: {}, layout: {}, rev: {}, mock: {}, updated: 0, week: null }, s);
+  return Object.assign({ start: null, proj: {}, done: {}, doneAt: {}, undone: {}, code: {}, solved: {}, runs: {}, hints: {}, secs: {}, quiz: {}, iv: {}, tests: {}, settings: {}, layout: {}, rev: {}, mock: {}, grades: {}, updated: 0, week: null }, s);
 }
 let saveT = null;
 function save(touch = true) {
@@ -135,6 +135,7 @@ function parseSprint(text) {
     const f = /```(?:\w+)?\n([\s\S]*?)```/.exec(c.SOLUTION); c.CODE = f ? f[1] : ''; return c;
   });
   o.interview = blocks(s.interview, ['Q', 'SRC', 'TAG', 'A'], false);
+  o.tasks = blocks(s.tasks, ['TITLE', 'TASK', 'SUBMIT', 'RUBRIC', 'RUN'], false); /* Claude Code tests */
   return o;
 }
 
@@ -220,6 +221,7 @@ function route() {
     else if (r === 'coach') vCoach();
     else if (r === 'projects') vProjects();
     else if (r === 'project') vProject(p[1]);
+    else if (r === 'cc') vCC(p[1], p[2]);
     else vToday();
   } catch (e) { console.error(e); shell('Something went wrong', '', [el('div', { class: 'card pad' }, [el('p', { text: String(e.message || e) }), el('a', { class: 'btn', href: '#/today', text: 'Back to Today' })])]); }
 }
@@ -514,6 +516,8 @@ function vWork(kind, id, mode) {
     hintBox, hintBtn,
     el('div', { class: 'stack', style: { gap: '6px', borderTop: '1px solid var(--line)', paddingTop: '10px' } }, [el('label', { style: { fontWeight: 700 }, text: 'I\'m stuck. Ask the coach' }), el('div', { class: 'row' }, [stuck, el('button', { class: 'btn', onclick: () => askCoach(stuck.value, { title, problem: Q.p, code: ta.value, hints: H }, stuckOut), text: 'Ask' })]), stuckOut]),
     fups.length ? el('div', { class: 'stack', style: { gap: '8px', borderTop: '1px solid var(--line)', paddingTop: '10px' } }, [el('span', { class: 'lbl', style: { color: 'var(--plum-d)' }, text: 'Interviewer follow-ups' })].concat(fups)) : null,
+    el('div', { class: 'stack', style: { gap: '6px', borderTop: '1px solid var(--line)', paddingTop: '10px' } }, [el('span', { class: 'lbl', text: 'Interviewer review of your code' }), el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Correctness, edge cases, Big-O and what a senior engineer would change. Graded by Claude on your Mac.' }),
+      gradeBox({ kind: 'code', key: 'code:' + qid, title, label: 'Review my code', text: () => ta.value, payload: () => ({ language: lang, problem: (Q.p || title) + (Q.k === 'O' ? '\n(Optimize question: make it faster, same result.)' : ''), code: ta.value, tests: !last ? 'not run yet' : last.err ? 'error: ' + String(last.err).slice(0, 400) : (last.tests || []).map(t => (t.ok ? 'PASS ' : 'FAIL ') + (t.call || t.name) + (t.ok ? '' : ' (' + (t.call ? 'expected ' + t.want + ', got ' + t.got : t.note || '') + ')')).join('\n').slice(0, 1500) || (last.pass ? 'passed' : 'failed') }) })]),
     kind !== 'test' ? el('div', { class: 'stack', style: { gap: '6px', borderTop: '1px solid var(--line)', paddingTop: '10px' } }, [el('span', { class: 'lbl', text: 'Spaced review' }), revInfo, revBtn]) : null]);
   stuck.addEventListener('keydown', e => { if (e.key === 'Enter') askCoach(stuck.value, { title, problem: Q.p, code: ta.value, hints: H }, stuckOut); });
   paintHints(); paintOut();
@@ -730,13 +734,16 @@ function vDesign(m) {
     el('h1', { style: { fontSize: '26px' }, text: D.title }),
     el('div', { class: 'stack', style: { gap: '4px' } }, [el('span', { class: 'lbl', text: 'Problem statement' }), el('p', { style: { margin: 0, fontSize: '16.5px' }, text: D.prompt })]),
     el('div', { class: 'stack', style: { gap: '4px' } }, [el('span', { class: 'lbl', text: 'What you hand in' }), el('p', { style: { margin: 0 }, text: D.deliverable })]),
-    el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Work through the six steps below in one sitting, writing your answer in each box. Then ask the coach (bottom right) to review it like an interviewer.' }),
+    el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Work through the six steps below in one sitting, writing your answer in each box. Then tap Grade my design at the bottom for an interviewer\'s grade.' }),
     du ? el('button', { class: 'btn', style: { alignSelf: 'flex-start' }, onclick: () => toggleUnit(du), text: du.isDone ? 'Mark not done' : 'Mark this design done' }) : null]);
+  const notesAll = () => STEPS.map((x, i) => (S.code['design_' + m + '_' + i] || '').trim() ? '## ' + (i + 1) + '. ' + x[0] + '\n' + S.code['design_' + m + '_' + i].trim() : '').filter(Boolean).join('\n\n');
+  const gradeCard = el('section', { class: 'card pad stack' }, [el('h3', { text: 'Grade my design' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'When you have written all six steps, get an interviewer\'s grade on the whole design: requirements, estimates, trade-offs, failure handling and cost.' }),
+    gradeBox({ kind: 'design', key: 'design:' + m, title: D.title, label: 'Grade my design', text: notesAll, payload: () => ({ prompt: D.prompt, deliverable: D.deliverable, notes: notesAll() }) })]);
   shell('System design studio', 'Design problem · module ' + modLabel(m), [problem, tabs,
     el('div', { class: 'grid2' }, [el('section', { class: 'card pad stack' }, [stepBox]),
       el('div', { class: 'stack', style: { gap: '18px' } }, [
         el('section', { class: 'card pad stack' }, [el('h3', { text: 'Back-of-envelope calculator' }), el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '10px' } }, [inp('trips', 'Users or trips per day'), inp('events', 'Events per user'), inp('bytes', 'Bytes per event'), inp('peak', 'Peak ÷ average'), inp('years', 'Years kept'), inp('repl', 'Replication factor')]), out]),
-        el('section', { class: 'card pad row wrap' }, [el('div', { class: 'grow stack', style: { gap: '2px' } }, [el('span', { class: 'lbl', text: 'Round timer' }), clock]), tb, el('button', { class: 'btn', onclick: () => { secs = 0; clock.textContent = '40:00'; }, text: 'Reset' })])])])]);
+        el('section', { class: 'card pad row wrap' }, [el('div', { class: 'grow stack', style: { gap: '2px' } }, [el('span', { class: 'lbl', text: 'Round timer' }), clock]), tb, el('button', { class: 'btn', onclick: () => { secs = 0; clock.textContent = '40:00'; }, text: 'Reset' })])])]), gradeCard]);
 }
 
 /* ---------------- Quiz ---------------- */
@@ -770,7 +777,8 @@ async function vQuiz(m) {
         page.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('span', { class: 'lbl grow', text: 'Q' + (k + 1) }), el('span', { class: 'badge ' + (g ? 'b-ok' : sh && st.a[k].self === undefined ? 'b-warn' : 'b-bad'), text: g ? 'Right' : sh && st.a[k].self === undefined ? 'Mark yourself' : 'Review' })]), el('div', { html: mdi(q.Q) }),
           el('div', { style: { fontSize: '14.5px' } }, [el('b', { text: 'Your answer: ' }), el('span', { html: mdi(yours(q, st.a[k])) })]),
           el('div', { class: 'muted', html: '<b>' + (q.TYPE === 'short' ? 'Model answer' : 'Answer') + ':</b> ' + mdi(q.TYPE === 'mcq' ? q.ANS + ') ' + ((q.opts || []).find(o => o[0] === q.ANS) || ['', ''])[1] : q.TYPE === 'fill' ? q.ANS.split('|')[0] : (q.MODEL || q.ANS || '')) }), q.WHY ? el('div', { class: 'why', html: mdi(q.WHY) }) : null,
-          sh ? el('div', { class: 'row wrap' }, [el('span', { class: 'muted', text: 'Compare with the model answer:' }), el('button', { class: 'btn sm', 'aria-pressed': String(st.a[k].self === 1), onclick: () => { st.a[k].self = 1; save(); draw(); }, text: 'I got it' }), el('button', { class: 'btn sm', 'aria-pressed': String(st.a[k].self === 0), onclick: () => { st.a[k].self = 0; save(); draw(); }, text: 'Not yet' })]) : null]));
+          sh ? gradeBox({ kind: 'answer', key: 'quiz:' + w + ':' + k, title: q.Q, label: 'Grade my answer', text: () => st.a[k].t, payload: () => ({ question: q.Q, model_answer: q.MODEL || q.ANS || '', answer: st.a[k].t }), onResult: g => { if (st.a[k].self === undefined) { st.a[k].self = g.r.score >= 4 ? 1 : 0; save(); draw(); } } }) : null,
+          sh ? el('div', { class: 'row wrap' }, [el('span', { class: 'muted', text: 'Compare with the model answer (the grade marks it for you; you can change it):' }), el('button', { class: 'btn sm', 'aria-pressed': String(st.a[k].self === 1), onclick: () => { st.a[k].self = 1; save(); draw(); }, text: 'I got it' }), el('button', { class: 'btn sm', 'aria-pressed': String(st.a[k].self === 0), onclick: () => { st.a[k].self = 0; save(); draw(); }, text: 'Not yet' })]) : null]));
       });
       return;
     }
@@ -780,9 +788,9 @@ async function vQuiz(m) {
     if (q.TYPE === 'mcq') (q.opts || []).forEach(([k, t]) => card.appendChild(el('button', { class: 'opt', 'aria-pressed': String(st.a[i] === k), onclick: () => { st.a[i] = k; save(); draw(); } }, [el('b', { text: k }), el('span', { html: mdi(t) })])));
     else if (q.TYPE === 'fill') { const inp = el('input', { type: 'text', value: st.a[i] || '', 'aria-label': 'Your answer', style: { minHeight: '46px', border: '1px solid var(--line2)', borderRadius: '10px', padding: '0 12px' } }); inp.addEventListener('input', () => { st.a[i] = inp.value; save(); }); card.appendChild(inp); }
     else { const ta = el('textarea', { class: 'code', style: { minHeight: '140px', border: '1px solid var(--line2)', borderRadius: '10px', fontFamily: 'var(--body)', fontSize: '16px' }, 'aria-label': 'Your answer' }); ta.value = (st.a[i] && st.a[i].t) || ''; ta.addEventListener('input', () => { st.a[i] = Object.assign({}, st.a[i] || {}, { t: ta.value }); save(); }); card.appendChild(ta);
-      card.appendChild(el('div', { class: 'row wrap' }, [el('span', { class: 'muted', text: 'After submitting you compare with the model answer and mark yourself.' })])); }
+      card.appendChild(el('div', { class: 'row wrap' }, [el('span', { class: 'muted', text: 'After you submit, Claude grades this answer (score, what to fix and a stronger answer) and you compare with the model answer.' })])); }
     page.append(card, el('div', { class: 'row wrap' }, [el('button', { class: 'btn', disabled: i === 0 ? true : null, onclick: () => { i--; draw(); }, text: 'Previous' }), el('span', { class: 'grow' }), i < qs.length - 1 ? el('button', { class: 'btn pri', onclick: () => { i++; draw(); }, text: 'Save and next' }) : null,
-      el('button', { class: 'btn dark', onclick: async () => { const left = qs.length - answered; const v = await confirmBox('Submit the quiz?', left ? left + ' question' + (left > 1 ? 's are' : ' is') + ' unanswered. They count as wrong.' : 'All questions answered.', [{ t: 'Submit', cls: 'pri', v: 1 }, { t: 'Keep answering', v: null }]); if (v) { st.sub = true; const qu = modUnits(m).find(u => u.kind === 'quiz'); if (qu && !S.done[qu.uid]) { S.done[qu.uid] = iso(new Date()); S.doneAt = S.doneAt || {}; S.doneAt[qu.uid] = Date.now(); } save(); draw(); window.scrollTo(0, 0); } }, text: 'Submit' })]), el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Questions' }), pal]));
+      el('button', { class: 'btn dark', onclick: async () => { const left = qs.length - answered; const v = await confirmBox('Submit the quiz?', left ? left + ' question' + (left > 1 ? 's are' : ' is') + ' unanswered. They count as wrong.' : 'All questions answered.', [{ t: 'Submit', cls: 'pri', v: 1 }, { t: 'Keep answering', v: null }]); if (v) { st.sub = true; qs.forEach((q, k) => { if (q.TYPE === 'short' && st.a[k] && (st.a[k].t || '').trim()) gradeNow('quiz:' + w + ':' + k, 'answer', { question: q.Q, model_answer: q.MODEL || q.ANS || '', answer: st.a[k].t }, st.a[k].t, q.Q); }); const qu = modUnits(m).find(u => u.kind === 'quiz'); if (qu && !S.done[qu.uid]) { S.done[qu.uid] = iso(new Date()); S.doneAt = S.doneAt || {}; S.doneAt[qu.uid] = Date.now(); } save(); draw(); window.scrollTo(0, 0); } }, text: 'Submit' })]), el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Questions' }), pal]));
   }
   draw();
 }
@@ -798,9 +806,15 @@ async function vInterview(m, focus) {
   page.appendChild(el('div', { class: 'row wrap' }, [el('select', { class: 'btn sm', 'aria-label': 'Module', onchange: e => { location.hash = '#/interview/' + e.target.value; } }, MODS.map(x => el('option', { value: x, selected: x === m ? 'selected' : null, text: modLabel(x) + ' · ' + modTitle(x) }))), ivCount])); paintCount();
   s.interview.forEach((q, k) => {
     const ans = mdEl(q.A || ''); ans.style.display = 'none';
-    const tick = el('button', { class: 'check', 'aria-pressed': String(!!st[k]), 'aria-label': 'I can answer this', style: st[k] ? { background: 'var(--teal)', borderColor: 'var(--teal)' } : {}, onclick: () => { st[k] = !st[k]; save(); tick.setAttribute('aria-pressed', String(!!st[k])); tick.style.background = st[k] ? 'var(--teal)' : ''; tick.style.borderColor = st[k] ? 'var(--teal)' : ''; tick.textContent = ''; if (st[k]) tick.appendChild(svg(I.check, 16)); paintCount(); } }, st[k] ? svg(I.check, 16) : null);
+    const setTick = v => { st[k] = v; save(); tick.setAttribute('aria-pressed', String(!!st[k])); tick.style.background = st[k] ? 'var(--teal)' : ''; tick.style.borderColor = st[k] ? 'var(--teal)' : ''; tick.textContent = ''; if (st[k]) tick.appendChild(svg(I.check, 16)); paintCount(); };
+    const tick = el('button', { class: 'check', 'aria-pressed': String(!!st[k]), 'aria-label': 'I can answer this', style: st[k] ? { background: 'var(--teal)', borderColor: 'var(--teal)' } : {}, onclick: () => setTick(!st[k]) }, st[k] ? svg(I.check, 16) : null);
+    const akey = 'iv_' + w + '_' + k;
+    const ta = el('textarea', { class: 'code', 'aria-label': 'Your answer', placeholder: 'Answer as you would out loud: structure first, then detail, with numbers.', style: { minHeight: '130px', border: '1px solid var(--line2)', borderRadius: '10px', fontFamily: 'var(--body)', fontSize: '16px' } });
+    ta.value = S.code[akey] || ''; ta.addEventListener('input', () => { S.code[akey] = ta.value; save(); });
+    const prac = el('details', { open: S.code[akey] ? '' : null }, [el('summary', { style: { cursor: 'pointer', fontWeight: 600 }, text: 'Practise: write your answer and get graded' }), el('div', { class: 'stack', style: { gap: '8px', marginTop: '8px' } }, [ta,
+      gradeBox({ kind: 'answer', key: 'iv:' + w + ':' + k, title: q.Q, label: 'Grade my answer', text: () => ta.value, payload: () => ({ question: q.Q, model_answer: q.A || '', answer: ta.value }), onResult: g => { if (g.r.score >= 4 && !st[k]) { setTick(true); toast('Scored ' + g.r.score + ' / 5: ticked as ready.'); } } })])]);
     const show = el('button', { class: 'btn sm', 'aria-expanded': 'false', onclick: () => { const o = ans.style.display === 'none'; ans.style.display = o ? 'block' : 'none'; show.textContent = o ? 'Hide model answer' : 'Show model answer'; show.setAttribute('aria-expanded', String(o)); } }, 'Show model answer');
-    page.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row', style: { alignItems: 'flex-start' } }, [tick, el('div', { class: 'grow stack', style: { gap: '4px' } }, [el('b', { style: { fontSize: '16.5px' }, html: mdi(q.Q) }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: [q.TAG ? chipFor(q.TAG)[0] : '', q.SRC].filter(Boolean).join(' · ') })])]), show, ans]));
+    page.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row', style: { alignItems: 'flex-start' } }, [tick, el('div', { class: 'grow stack', style: { gap: '4px' } }, [el('b', { style: { fontSize: '16.5px' }, html: mdi(q.Q) }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: [q.TAG ? chipFor(q.TAG)[0] : '', q.SRC].filter(Boolean).join(' · ') })])]), prac, show, ans]));
   });
   if (!s.interview.length) page.appendChild(el('section', { class: 'card pad' }, [el('p', { style: { margin: 0 }, text: 'This module has no interview set. ' }), el('a', { href: '#/path/' + m, text: 'Back to the module' })]));
   if (s.raw.mock) { const mk = el('section', { class: 'card pad', id: 'mock' }, [el('h2', { text: 'Mock interview' }), mdEl(s.raw.mock)]); page.appendChild(mk); if (focus === 'mock') setTimeout(() => mk.scrollIntoView({ block: 'start' }), 50); }
@@ -817,7 +831,10 @@ function vProgress() {
   const ivP = ivAll ? Math.round(100 * MODS.reduce((a, m) => a + Object.values(S.iv[qk(m)] || {}).filter(Boolean).length, 0) / ivAll) : 0;
   const rows = [['Python', pct(DATA.py.filter(x => x.m !== 's00')), '#5B7A1E'], ['Data modelling', pct(DATA.sql.filter(x => x.m)), 'var(--plum)'], ['DSA', pct(DATA.dsa), 'var(--teal)'], ['SQL write', pct(sqlW), '#164C7E'], ['SQL optimize', pct(sqlO), '#164C7E'], ['PySpark write', pct(spW), '#8A3A0C'], ['PySpark optimize', pct(spO), '#8A3A0C'], ['Quizzes passed (80%+)', quizP, 'var(--blue)'], ['Interview questions ticked', ivP, 'var(--plum)']];
   const grid = el('div', { class: 'dsa-grid', 'aria-label': '84 daily DSA problems' }, DATA.dsa.map((x, i) => el('a', { href: '#/dsa/' + x.id, title: (i + 1) + '. ' + x.t, class: S.solved[x.id] ? 'done' : i === dayIndex() % 84 ? 'today' : '' })));
-  shell('Progress', 'Program, readiness and sync', [programCard(),
+  const rg = recentGrades(14), kinds = { answer: 'Answers', code: 'Code', design: 'Design', cc: 'Claude Code' };
+  const gradeCard = rg.length ? el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('span', { class: 'lbl grow', text: 'Instant grades · last 14 days' })].concat(Object.keys(kinds).filter(k => rg.some(g => g.kind === k)).map(k => { const xs = rg.filter(g => g.kind === k); return el('span', { class: 'chip c-test', text: kinds[k] + ' ' + (xs.reduce((a, g) => a + g.score, 0) / xs.length).toFixed(1) + ' / 5' }); }))),
+    el('div', { class: 'stack', style: { gap: '6px' } }, rg.slice(0, 8).map(g => el('div', { class: 'row', style: { alignItems: 'flex-start' } }, [scoreBadge(g.score), el('div', { class: 'grow' }, [el('b', { style: { fontSize: '14px' }, html: mdi(g.q || g.key) }), el('div', { class: 'muted', style: { fontSize: '13px' }, html: mdi(g.improve || '') })])])))]) : null;
+  shell('Progress', 'Program, readiness and sync', [programCard(), gradeCard,
     el('div', { class: 'grid2' }, [
       el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Readiness by interview round' })].concat(rows.map(([n, p, c]) => el('div', { style: { display: 'grid', gridTemplateColumns: '140px minmax(0,1fr) 44px', gap: '10px', alignItems: 'center' } }, [el('span', { style: { fontWeight: 600 }, text: n }), el('div', { class: 'bar' }, el('i', { style: { width: p + '%', background: c } })), el('b', { style: { textAlign: 'right' }, text: p + '%' })])))),
       el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('span', { class: 'lbl grow', text: 'DSA ladder · 84 days' }), el('b', { text: DATA.dsa.filter(x => S.solved[x.id]).length + ' solved' })]), grid, el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Each row is two weeks. Tap a square to open that problem.' })])]),
@@ -827,6 +844,11 @@ function exportProgress() { const b = new Blob([JSON.stringify(S, null, 1)], { t
 function importProgress(e) { const f = e.target.files[0]; if (!f) return; f.text().then(t => { const old = JSON.stringify(S); try { const j = JSON.parse(t); if (!j || typeof j !== 'object' || Array.isArray(j) || !j.start || !('solved' in j || 'done' in j)) throw new Error('not a backup'); /* trust fix 19 */ S = Object.assign(load(), j); save(); toast('Backup restored', () => { S = JSON.parse(old); save(); route(); }); route(); } catch (x) { toast('That file is not a Data Architect backup.'); } }); }
 
 /* ---------------- Settings, sync, update ---------------- */
+function graderStatus() {
+  const t = el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Instant grading: checking…' });
+  graderHealthy().then(ok => { t.textContent = 'Instant grading: ' + (ok ? 'the grader on this Mac is running.' : S.settings.syncUrl ? 'answers go through Sync to the grader on your Mac (it must be awake).' : 'set up Sync, and run bash tools/grader/install.sh on your Mac once.'); });
+  return t;
+}
 function syncLabel() { return S.syncing ? 'Syncing…' : S.lastSync && Date.now() - S.lastSync < 60000 ? 'Synced' : 'Sync progress'; }
 function settings() {
   const f = (id, label, val, type, ph) => el('div', { class: 'field' }, [el('label', { for: id, class: 'lbl', text: label }), el('input', { id, type: type || 'text', value: val || '', placeholder: ph || '', autocomplete: 'off' })]);
@@ -837,7 +859,8 @@ function settings() {
     f('st_sync', 'Sync URL (Google Apps Script web app, ending in ?k=your key)', S.settings.syncUrl, 'url', 'https://script.google.com/macros/s/…/exec?k=…'),
     f('st_key', 'Coach AI key (optional, Anthropic API key, kept only on this device)', S.settings.aiKey, 'password', 'sk-ant-…'),
     f('st_model', 'Coach model', S.settings.aiModel || 'claude-haiku-5-5', 'text'),
-    el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'The key never leaves this device except to call the AI provider. Without a key the coach still gives the step-by-step hints.' })]);
+    el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'The key never leaves this device except to call the AI provider. Without a key the coach still gives the step-by-step hints.' }),
+    graderStatus()]);
   confirmBox('Settings', body, [{ t: 'Save', cls: 'pri', v: 1 }, { t: 'Cancel', v: null }]).then(v => {
     if (!v) return;
     const g = id => body.querySelector('#' + id).value.trim();
@@ -896,6 +919,9 @@ function mergeState(a, b) {
   /* review queue: the newer entry per problem wins */
   out.rev = Object.assign({}, a.rev || {}, b.rev || {});
   for (const id in out.rev) { const x = (a.rev || {})[id], y = (b.rev || {})[id]; out.rev[id] = !x ? y : !y ? x : (x.t || 0) >= (y.t || 0) ? x : y; }
+  /* instant grades: a finished grade beats a pending one for the same job, otherwise the newer wins */
+  out.grades = Object.assign({}, a.grades || {}, b.grades || {});
+  for (const k in out.grades) { const x = (a.grades || {})[k], y = (b.grades || {})[k]; out.grades[k] = !x ? y : !y ? x : x.job && x.job === y.job && (x.s === 'done') !== (y.s === 'done') ? (x.s === 'done' ? x : y) : (x.at || 0) >= (y.at || 0) ? x : y; }
   out.updated = Math.max(a.updated || 0, b.updated || 0);
   return out;
 }

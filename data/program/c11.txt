@@ -1,0 +1,178 @@
+@@meta
+id: c11
+n: 11
+title: Subagents and parallel work: agentic patterns in practice
+goal: Use subagents to keep context small and get focused expertise, run independent work in parallel with git worktrees, and choose the right agentic pattern for a task.
+hours: 2
+
+@@tickets
+C1101 | learn | 0.5 | Lesson: subagents, worktrees and orchestration patterns | You can explain when a subagent helps, how to define one, and three multi-agent patterns with their costs. | chapter
+C1102 | ai | 0.75 | Practise in Claude Code: a reviewer subagent and two parallel fixes | A reviewer subagent checks your changes, and two bugs are fixed in parallel worktrees, then merged. | lab
+C1103 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
+C1104 | test | 0.33 | Quiz C11 | 80% or better. | quiz
+
+@@readings
+- [Subagents](https://docs.claude.com/en/docs/claude-code/sub-agents). Defining agents, tools and models, and how delegation works.
+- [Common workflows: run parallel sessions with git worktrees](https://docs.claude.com/en/docs/claude-code/common-workflows). Worktrees for parallel Claude sessions.
+- [Anthropic: How we built our multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system). When multi-agent pays off, and its token cost.
+
+@@chapter
+## C11.1 What a subagent is
+
+A **subagent** is a separate Claude with its own context window, its own instructions and its own tool list. The main session hands it a task; it works (reading files, searching, running tests) and returns only a summary. Two benefits:
+
+1. **Context stays small.** The subagent reads twenty files; your main conversation receives ten lines. That saves tokens in every later turn and keeps the main agent focused.
+2. **Focus.** A reviewer with a review checklist and read-only tools reviews better than a generalist halfway through implementing.
+
+The cost: the subagent's own tokens, and some latency. Use subagents for broad searches, reviews and independent sub-tasks, not for one-line questions.
+
+## C11.2 Defining one
+
+Run `/agents` to create one interactively, or write a file in `.claude/agents/` (project, shared) or `~/.claude/agents/` (personal):
+
+```markdown
+---
+name: pipeline-reviewer
+description: Reviews pipeline code changes for correctness, idempotency, late data, security and privacy. Use after any change under pipeline/.
+tools: Read, Grep, Glob, Bash
+model: sonnet
+---
+You are a senior data engineer reviewing a change. Do not edit files.
+Run `git diff` to see the change and `python3 -m unittest -q` to check tests.
+Report at most 8 findings ranked by impact, each with file:line and a concrete failing input.
+End with APPROVE or REQUEST CHANGES.
+```
+
+Claude delegates automatically when the task matches the description, or you ask: *"Use the pipeline-reviewer subagent on my changes."* Keep tools minimal: a reviewer does not need Edit.
+
+## C11.3 Parallel work with worktrees
+
+Two independent tasks in the same folder will collide. Git **worktrees** give each task its own folder on its own branch, sharing one repository:
+
+```bash
+git worktree add ../cc-amounts -b fix/amounts
+git worktree add ../cc-loader  -b fix/loader
+# terminal 1: cd ../cc-amounts && claude     terminal 2: cd ../cc-loader && claude
+git merge fix/amounts fix/loader            # back in the main folder, after review
+git worktree remove ../cc-amounts
+```
+
+Rules: only parallelise tasks that touch different files and do not need each other's results. One person still reviews each branch.
+
+## C11.4 Choosing a pattern
+
+| Pattern | Shape | Good for | Watch out |
+|---|---|---|---|
+| **Single agent** | one loop | most tasks | context growth on long tasks |
+| **Explore with subagents** | main agent fans out searches | big codebases, research | summaries can drop details |
+| **Writer and reviewer** | one writes, a fresh one reviews | quality on important changes | review needs a real checklist |
+| **Orchestrator and workers** | a planner splits work, workers do parts in parallel | many independent pieces (migrating 40 models) | coordination cost; merge conflicts; several times the tokens |
+
+Multi-agent systems can use several times the tokens of a single agent. Use them when the work is genuinely parallel or needs separate expertise, and measure whether quality or speed actually improved.
+
+@@lab
+## Lab: a reviewer and two parallel fixes (40 minutes)
+
+Fresh copy, `cd ~/cc-sandbox`.
+
+1. Create `.claude/agents/pipeline-reviewer.md` from the lesson (or with `/agents`).
+2. Make a small change yourself (for example, rename a variable in `ingest.py`), then ask: *"Use the pipeline-reviewer subagent on my changes."* Check its verdict and findings. Then `git checkout .` to undo your change.
+3. Create two worktrees: `fix/amounts` (the EU amount bug) and `fix/loader` (SQL injection and the transaction in load.py).
+4. Open two terminals and run `claude` in each worktree with a precise prompt. Let both work at the same time.
+5. In each worktree, ask the reviewer subagent to review before you commit.
+6. Merge both branches in the main folder, run the tests, and remove the worktrees.
+7. Note: did the reviewer catch anything real? How long did the parallel work take compared with doing them one after another?
+
+@@quiz
+TYPE: mcq
+TAG: ai
+Q: What is the main context benefit of delegating a broad code search to a subagent?
+A) The subagent is a smarter model
+B) The search happens in the subagent's own context; only a summary returns to the main conversation
+C) Subagents are free
+D) It disables permissions
+ANS: B
+WHY: Your main context, re-sent every turn, stays small.
+---
+TYPE: mcq
+TAG: ai
+Q: Which two tasks are safe to run in parallel worktrees?
+A) Fix the parser, then write the docs that describe the fixed parser
+B) Fix the parser in ingest.py, and fix SQL injection in load.py
+C) Rename a function, and update all its callers
+D) Two people editing the same file
+ANS: B
+WHY: Independent files and no dependency between results.
+---
+TYPE: mcq
+TAG: ai
+Q: A reviewer subagent's definition should usually...
+A) Have every tool, including Edit and Write
+B) Have read-only tools plus the test command, and a concrete review checklist and output format
+C) Have no description
+D) Use the largest model always
+ANS: B
+WHY: A reviewer should not change code; a checklist and format make reviews consistent.
+---
+TYPE: fill
+TAG: git
+Q: The git command that creates a second working folder on a new branch for parallel work is git ____ add.
+ANS: worktree
+WHY: Each worktree has its own files and branch but shares one repository.
+---
+TYPE: short
+TAG: ai
+Q: Your manager wants a 5-agent system to migrate 40 SQL models to dbt. When is that worth it, and what would you measure?
+MODEL: Worth it when the models are mostly independent and the per-model work is similar, so an orchestrator can split the work and workers run in parallel, each with tests to pass. Otherwise a single agent working model by model is cheaper and simpler. Measure correctness (row-count and checksum comparisons between old and new outputs per model), human review time, total tokens and cost compared with a single-agent baseline on a sample, wall-clock time, and merge conflicts. Start with a pilot of 5 models.
+
+@@interview
+Q: When would you use a multi-agent architecture instead of a single agent?
+TAG: ai
+A: When the work is genuinely parallel (many independent pieces), when sub-tasks need separate context or expertise (researcher, implementer, reviewer), or when one context would overflow. Otherwise a single agent is cheaper, simpler and easier to debug. Multi-agent systems can use several times the tokens and add coordination failures, so I prove the gain on a pilot with measured quality, cost and time.
+---
+Q: How do you keep an AI agent effective on a large codebase?
+TAG: ai
+A: Manage context. A short CLAUDE.md with a map of the repo, subfolder CLAUDE.md files for local rules, subagents for broad exploration so the main context stays small, precise @ references, one task per session, and good tests the agent can run in that area. For big changes, a plan first, then work split into independent chunks, possibly in parallel worktrees.
+---
+Q: Explain the writer and reviewer pattern and why it works.
+TAG: ai
+A: One agent implements; a second agent with a fresh context and a review checklist reviews the diff and runs the tests. The reviewer is not anchored to the writer's reasoning, so it catches different mistakes, much like human code review. It works best when the reviewer has a concrete checklist and must give evidence (a failing input) for each finding. A human still approves.
+---
+Q: What failure modes do you see in multi-agent systems?
+TAG: ai
+A: Duplicated or conflicting work when the split is unclear. Workers losing context the orchestrator had. Summaries that drop critical details. Merge conflicts. Runaway token cost. Agents agreeing with each other's mistakes. Mitigations: clear task boundaries and interfaces, shared tests as the source of truth, budgets per worker, structured handoffs, and a final verification step independent of the agents.
+---
+Q: How would you organise AI-assisted work across a team of engineers?
+TAG: behavioral
+A: Shared repo configuration (CLAUDE.md, settings, commands, reviewer subagents) so everyone gets the same baseline. Small, reviewable tasks. Parallelism through branches and worktrees, not shared folders. Clear ownership: each AI-assisted change has a human author accountable for it. A short weekly exchange of what worked and what did not, feeding back into the shared configuration.
+
+@@tasks
+TITLE: Your reviewer subagent
+TASK: Paste `.claude/agents/pipeline-reviewer.md` and the review it produced on one of your fix branches. Then judge it: one finding that was right, one that was wrong or low value (if any), and one thing it missed.
+SUBMIT: the agent file, its review, and your three-point judgment.
+RUBRIC: - Frontmatter with name, a description that says when to use it, minimal tools (no Edit or Write), and optionally a model.
+- The body has a concrete checklist and an output format (ranked, file:line, evidence, verdict).
+- The review is real (it references actual files and changes).
+- The judgment shows critical thinking: verifies a finding, rejects a weak one with a reason, and names a real gap.
+---
+TITLE: Parallel fixes
+TASK: Do the parallel part of the lab. Paste the commands you used to create, use, merge and remove the worktrees, the final `git log --oneline --graph -6`, and the test output after the merge. Then say whether parallel was worth it here, and why.
+SUBMIT: the commands, the git log graph, the test output, and your conclusion.
+RUBRIC: - Uses git worktree add with two separate branches and folders, and git worktree remove at the end.
+- Each task touched different files (ingest.py and load.py).
+- After merging, the tests pass.
+- The conclusion weighs the time saved against the setup and review overhead, and notes that it only pays off for independent tasks.
+---
+TITLE: Pick the pattern
+TASK: For each scenario, choose single agent, subagent exploration, writer and reviewer, or orchestrator and workers. Justify each choice in 2 or 3 lines, including the cost trade-off.
+
+1. Fix a failing unit test in one module.
+2. Understand how a 300-file legacy ETL repo handles late-arriving data.
+3. Change the revenue calculation used by finance reports.
+4. Add the same data-quality checks to 60 independent dbt models.
+SUBMIT: four choices with justifications.
+RUBRIC: - 1: single agent (small, contained; extra agents only add cost).
+- 2: subagent exploration (broad reading that should not flood the main context; summaries back).
+- 3: writer and reviewer, plus a human finance sign-off (high stakes; an independent review catches errors; reconciliation tests).
+- 4: orchestrator and workers, or batched single agents (independent and repetitive), with a per-model test and a pilot to measure cost.
+- Each justification mentions cost or context.

@@ -1,0 +1,181 @@
+@@meta
+id: c07
+n: 7
+title: Set up projects for AI: CLAUDE.md, slash commands and skills
+goal: Make a repo AI-ready: a lean CLAUDE.md, shared settings, and reusable slash commands and skills for the workflows your team repeats.
+hours: 2
+
+@@tickets
+C701 | learn | 0.5 | Lesson: project memory and reusable workflows | You can say what belongs in CLAUDE.md, a slash command and a skill, and where each file lives. | chapter
+C702 | ai | 0.75 | Practise in Claude Code: make the practice project AI-ready | The project has a CLAUDE.md, a /review-pipeline command and a data-checks skill, and you used each. | lab
+C703 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
+C704 | test | 0.33 | Quiz C7 | 80% or better. | quiz
+
+@@readings
+- [Manage Claude's memory](https://docs.claude.com/en/docs/claude-code/memory). CLAUDE.md locations, imports and what to put in them.
+- [Slash commands](https://docs.claude.com/en/docs/claude-code/slash-commands). Custom commands, arguments and frontmatter.
+- [Agent Skills in Claude Code](https://docs.claude.com/en/docs/claude-code/skills). How skills are found and loaded only when relevant.
+
+@@chapter
+## C7.1 Three layers of reuse
+
+| Layer | What it is | Loaded | Use it for |
+|---|---|---|---|
+| **CLAUDE.md** | project memory: facts and rules | every session, automatically | how to build and test, conventions, gotchas, what not to touch |
+| **Slash command** | a saved prompt you trigger by name | when you type `/name` | repeated tasks you start yourself: review, release notes, backfill plan |
+| **Skill** | a folder with instructions (and optional scripts) | when Claude judges it relevant, from its description | know-how Claude should apply on its own: "how we write dbt tests" |
+
+Setting up a project well is mostly deciding which layer each piece of knowledge belongs to.
+
+## C7.2 CLAUDE.md that earns its tokens
+
+Locations: `./CLAUDE.md` in the repo (shared, committed), `~/.claude/CLAUDE.md` (your personal rules for every project), and CLAUDE.md files in subfolders (loaded when Claude works there). `/init` drafts one by exploring the repo; then cut it down.
+
+Good content is **specific and non-obvious**:
+
+```markdown
+# Orders pipeline
+- Run: python3 -m pipeline.run START END   Tests: python3 -m unittest -q
+- EU shop amounts use a decimal comma (12,50); US uses thousands commas (1,234.50).
+- Orders can be re-sent with a later updated_at: keep the latest. Late files arrive up to 3 days late.
+- Never print or log WAREHOUSE_TOKEN. Never read .env or data/raw.
+- Every bug fix starts with a failing test. Keep changes small; no drive-by refactors.
+```
+
+Leave out what Claude already knows (PEP 8, what pandas is), long history, and generic advice ("write clean code"). You can import other files with `@path/to/file.md` when a section gets long. When Claude makes the same mistake twice, add one line.
+
+## C7.3 Slash commands
+
+A Markdown file in `.claude/commands/` becomes `/filename`. `$ARGUMENTS` is replaced by what you type after the command:
+
+```markdown
+---
+description: Review a pipeline module for correctness, idempotency, security and privacy
+---
+Review @$ARGUMENTS as a senior data engineer. Do not edit.
+Check: idempotency on re-run, late and duplicate data, SQL built from strings,
+secrets or PII in logs, and missing tests.
+Output: max 10 findings, ranked by impact, each with file:line and a failing input.
+```
+
+Saved as `.claude/commands/review-pipeline.md`, you run `/review-pipeline pipeline/load.py`. Commit the folder so the whole team gets the same review.
+
+## C7.4 Skills
+
+A skill is a folder `.claude/skills/<name>/` with a `SKILL.md`:
+
+```markdown
+---
+name: data-checks
+description: Use when writing or reviewing data validation, tests for pipelines, or data quality checks in this repo.
+---
+# How we write data checks
+1. Every loader gets a re-run test: load the same day twice, same row count.
+2. Check row counts against the source, and nulls in key columns.
+3. Amount checks: no negatives unless refunds; totals per country within 3x of last week.
+Use the helpers in tests/helpers.py (create them if missing).
+```
+
+Only the name and description sit in context until the skill is needed. Then Claude loads the body (and can run scripts in the folder). This keeps sessions lean while knowledge is available. Write the description as **when to use it**: that is what Claude matches on.
+
+@@lab
+## Lab: make the practice project AI-ready (40 minutes)
+
+Fresh copy, then `cd ~/cc-sandbox && claude`.
+
+1. Run `/init`. Read what it wrote. Cut it to at most 15 lines using the rules above. Add the decimal-comma and late-data rules from `docs/vendor_notes.md`.
+2. Create `.claude/commands/review-pipeline.md` (the example above, improved as you like). Run `/review-pipeline pipeline/load.py`.
+3. Create `.claude/skills/data-checks/SKILL.md`. Then, **without naming the skill**, ask: *"Add data quality checks for the loader."* Did Claude use the skill? (It usually says when it loads one.)
+4. Start a new session (`/clear`) and ask *"How do I run the tests here, and what is special about EU amounts?"*. The answer should come from CLAUDE.md, with no exploration.
+5. Commit CLAUDE.md, `.claude/commands` and `.claude/skills`.
+
+Use **Try it here** to compare: run *"How do I run the tests and what is special about amounts?"* with and without your CLAUDE.md pasted. Compare the turns and tokens.
+
+@@quiz
+TYPE: mcq
+TAG: ai
+Q: Which belongs in a project's CLAUDE.md?
+A) A summary of PEP 8
+B) "EU amounts use a decimal comma; keep the US format working"
+C) "Always write high-quality code"
+D) The full history of the project since 2019
+ANS: B
+WHY: A specific, non-obvious project fact that changes what Claude does. The others are generic, known, or irrelevant to decisions.
+---
+TYPE: mcq
+TAG: ai
+Q: What does $ARGUMENTS do in a custom slash command file?
+A) Lists all files in the repo
+B) Is replaced with the text typed after the command name
+C) Declares environment variables
+D) Sets permissions
+ANS: B
+WHY: /review-pipeline pipeline/load.py puts pipeline/load.py where $ARGUMENTS appears.
+---
+TYPE: mcq
+TAG: ai
+Q: How does Claude decide to use a skill you did not name?
+A) It loads every skill fully at the start of each session
+B) It matches the task against the skill's name and description, then loads the body when relevant
+C) Only when you type /skills
+D) Randomly
+ANS: B
+WHY: Only the description is in context up front, which is why it should say when to use the skill.
+---
+TYPE: fill
+TAG: ai
+Q: The command that drafts a CLAUDE.md by exploring the repository is /____.
+ANS: init
+WHY: Then trim what it writes.
+---
+TYPE: short
+TAG: ai
+Q: Your team keeps asking Claude for the same release-notes format. Command, skill or CLAUDE.md? Explain.
+MODEL: A slash command such as /release-notes, committed in .claude/commands, because it is a task people start on purpose with a fixed prompt and format, possibly with an argument like the version or tag range. CLAUDE.md would load it every session for no reason. A skill fits know-how Claude should apply on its own when relevant, which this is not.
+
+@@interview
+Q: How do you set up a repository so AI coding agents are effective for the whole team?
+TAG: ai
+A: A short committed CLAUDE.md with the build and test commands, data rules, gotchas and what not to touch. Shared .claude/settings.json with least-privilege permissions. Slash commands for repeated workflows such as review, backfill plan and release notes, so everyone gets the same quality. Skills for team know-how like how we write dbt tests. Good tests and fast feedback, because agents are only as good as the checks they can run. I treat these files like code: reviewed in pull requests and improved when the agent makes a repeated mistake.
+---
+Q: What makes a good CLAUDE.md, and what makes a bad one?
+TAG: ai
+A: Good: short, specific and actionable. Commands, conventions, business rules the code does not make obvious, known traps, and boundaries ("never touch migrations without asking"). Bad: long, generic ("write clean code"), things the model already knows, history that does not affect decisions, and stale instructions. It is loaded every session, so every line costs tokens and attention. I add a line when the agent repeats a mistake and prune it quarterly.
+---
+Q: How would you standardise code review quality across a team using AI?
+TAG: ai
+A: Encode the review checklist as a shared slash command or skill in the repo: what our team checks (idempotency, late data, PII in logs, partition pruning, tests) and the output format (ranked findings with file:line and a failing input). Run it automatically on pull requests in CI as well. Humans still approve, but the baseline is consistent, and we improve the checklist when incidents show a gap.
+---
+Q: Your agent keeps making the same mistake in a repo. What do you do?
+TAG: ai
+A: First check whether the repo makes the right thing discoverable: is there a test that would catch it? If not, add one, since that is the strongest fix. Then add a precise line to CLAUDE.md ("dates in this repo are UTC; never call datetime.now() without tz"). If it is a whole procedure, make it a skill. If it is dangerous, enforce it with a hook or permission rule instead of hoping the instruction is followed.
+---
+Q: What is the difference between guidance and enforcement when configuring AI agents?
+TAG: ai
+A: Guidance (CLAUDE.md, skills, prompts) shapes what the model tries to do, and it can be ignored or misapplied. Enforcement (permission rules, hooks, sandboxing, CI checks) is applied by the harness regardless of what the model decides. Use guidance for quality and conventions; use enforcement for anything where a mistake is unacceptable, such as secrets, destructive commands or production access.
+
+@@tasks
+TITLE: Your CLAUDE.md
+TASK: Paste the CLAUDE.md you wrote for the practice project (at most 15 lines). Then say which two lines you think save the most mistakes, and why.
+SUBMIT: your CLAUDE.md and your two picks with reasons.
+RUBRIC: - Contains the run and test commands.
+- Contains the decimal-comma rule and the keep-latest updated_at or late-data rule.
+- Contains secret or data boundaries (never print the token, never read .env or raw data).
+- Has a working-style rule (failing test first, small changes).
+- No generic filler; at most 15 lines; the picks are justified by real failure modes.
+---
+TITLE: A review slash command
+TASK: Paste your `.claude/commands/review-pipeline.md` and the output of running it on `pipeline/load.py` (shortened is fine). Then improve the command once based on what the output lacked, and paste the improved version.
+SUBMIT: the first command file, its output, and the improved command file.
+RUBRIC: - Valid command file: optional frontmatter with description, and a body using $ARGUMENTS.
+- The checklist is specific to data pipelines (idempotency, late or duplicate data, SQL injection, PII or secrets in logs, missing tests).
+- The output format is constrained (ranked, file:line, max N findings, no edits).
+- The improvement responds to a real gap in the first output (for example asking for a failing input per finding, or adding a missing check).
+---
+TITLE: Design a skill
+TASK: Write a complete `SKILL.md` for a skill your real team would use, for example "how we write dbt models", "how we backfill a table safely" or "how we handle schema changes from upstream". Include the frontmatter. Keep it under 40 lines.
+SUBMIT: your SKILL.md.
+RUBRIC: - Frontmatter has name and a description that says when to use it (task triggers), not just what it is.
+- The body is a procedure with concrete, checkable steps and team-specific rules (naming, tests, partition strategy, approvals), not generic advice.
+- Includes verification (which tests or checks prove it was done right) and safety boundaries (what needs a human).
+- Under 40 lines.

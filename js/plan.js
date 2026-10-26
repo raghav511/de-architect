@@ -3,15 +3,19 @@
 'use strict';
 /* Diagnostic first, then the Python track interleaved with the AI modules, then data modelling, then data engineering. */
 const BASE_MODS = ['s00', 'p01', 'p02', 'a01', 'p03', 'p04', 'a02', 'p05', 'p06', 'a03', 'm01', 'm02', 'm03', 's01', 's02', 's03', 's04', 'd01', 's05', 's06', 's07', 'j01', 's08', 's09', 's10', 'r01', 's11', 's12'];
-let MODS = BASE_MODS.slice();
+/* Claude Code and AI-at-work track: runs alongside the main path, inside the daily hour, spread so it lasts about as long as the main path */
+const CC_MODS = ['c01', 'c02', 'c03', 'c04', 'c05', 'c06', 'c07', 'c08', 'c09', 'c10', 'c11', 'c12'];
+const CC_PACE = { 1: { 6: 1 }, 2: { 3: 1, 6: 1 }, 3: { 3: 1, 6: 2 } }; /* steps per week -> steps per getDay(): Saturday first, then Wednesday */
+const isCC = m => /^c\d\d$/.test(m);
+let MODS = BASE_MODS.concat(CC_MODS);
 const MOD = {};
 const DN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const midOf = x => { x = String(x == null ? '' : x); return /^\d+$/.test(x) ? 's' + x.padStart(2, '0') : x; };
 const isS = m => /^s\d\d$/.test(m);
 const qk = m => isS(m) ? +m.slice(1) : m; /* state keys stay compatible with v1.1 (numbers for DE modules) */
-function modLabel(m) { const k = m[0], n = +m.slice(1); return k === 'a' ? 'AI ' + n : k === 'p' ? 'Python ' + n : k === 'm' ? 'Modelling ' + n : k === 'j' ? 'Platform ' + n : k === 'd' ? 'Systems ' + n : k === 'r' ? 'Leadership ' + n : k === 's' ? (n === 0 ? 'Setup' : 'DE ' + n) : 'Extra ' + n; }
+function modLabel(m) { const k = m[0], n = +m.slice(1); return k === 'c' ? 'Claude Code ' + n : k === 'a' ? 'AI ' + n : k === 'p' ? 'Python ' + n : k === 'm' ? 'Modelling ' + n : k === 'j' ? 'Platform ' + n : k === 'd' ? 'Systems ' + n : k === 'r' ? 'Leadership ' + n : k === 's' ? (n === 0 ? 'Setup' : 'DE ' + n) : 'Extra ' + n; }
 function modTitle(m) { return (MOD[m] && MOD[m].title) || modLabel(m); }
-function modColor(m) { return m[0] === 'a' ? 'c-ai' : m[0] === 'p' ? 'c-py' : m[0] === 'm' || m[0] === 'r' ? 'c-arch' : m[0] === 'j' || m[0] === 'd' ? 'c-core' : m[0] === 's' ? 'c-core' : 'c-arch'; }
+function modColor(m) { return m[0] === 'a' || m[0] === 'c' ? 'c-ai' : m[0] === 'p' ? 'c-py' : m[0] === 'm' || m[0] === 'r' ? 'c-arch' : m[0] === 'j' || m[0] === 'd' ? 'c-core' : m[0] === 's' ? 'c-core' : 'c-arch'; }
 function dayName(k) { const d = new Date(k + 'T00:00:00'); return DN[(d.getDay() + 6) % 7]; }
 function shortDate(k) { const d = new Date(k + 'T00:00:00'); return DN[(d.getDay() + 6) % 7].slice(0, 3) + ' ' + d.getDate() + ' ' + d.toLocaleString('en', { month: 'short' }); }
 function weekOf(k) { const s = new Date(S.start + 'T00:00:00'), d = new Date(k + 'T00:00:00'); return Math.max(1, Math.floor(Math.round((d - s) / 864e5) / 7) + 1); }
@@ -29,7 +33,7 @@ async function loadModules() {
   const opt = u => fetch(u).then(r => r.ok ? r.json() : null).catch(() => null);
   const [ext, design, git, news] = await Promise.all([opt('data/extensions.json'), opt('data/design.json'), opt('data/git.json'), opt('data/news.json')]);
   DATA.design = design || {}; DATA.git = git || []; DATA.news = news || { items: [] };
-  MODS = BASE_MODS.concat(((ext && ext.modules) || []).filter(m => /^x\d\d$/.test(m)));
+  MODS = BASE_MODS.concat(CC_MODS, ((ext && ext.modules) || []).filter(m => /^x\d\d$/.test(m)));
   await Promise.all(MODS.map(m => sprint(m).catch(() => null)));
   MODS = MODS.filter(m => DATA.sprints[m]);
   MODS.forEach(m => { const s = DATA.sprints[m]; MOD[m] = { id: m, title: s.meta.title || modLabel(m), goal: s.meta.goal || '', tickets: parseTickets(s.raw.tickets), ch: headings(s.raw.chapter), lab: headings(s.raw.lab), pr: headings(s.raw.practice), coding: s.coding.length }; });
@@ -50,6 +54,13 @@ function modUnits(m) {
   M.tickets.forEach(t => {
     const mins = Math.round(t.h * 60);
     if (t.tab === 'coding') return; /* coding tests live in the coding track */
+    if (t.tab === 'cc') {
+      /* Claude Code tests: tasks you do in the terminal, then paste for an instant grade; done when every task scores 4 or 5 */
+      const n = (DATA.sprints[m].tasks || []).length, ok = i => { const g = (S.grades || {})['cc:' + m + ':' + i]; return g && g.s === 'done' && g.r && g.r.score >= 4; };
+      const nx = Array.from({ length: n }, (_, i) => i).find(i => !ok(i));
+      add({ uid: m + ':' + t.id, kind: 'cc', mins: Math.min(60, mins), title: t.title, goal: (DATA.sprints[m].tasks || []).map(x => x.TITLE).join(' · '), done: t.done, href: '#/cc/' + m + '/' + ((nx == null ? 0 : nx) + 1), cta: 'Start', auto: () => n > 0 && Array.from({ length: n }, (_, i) => i).every(ok) });
+      return;
+    }
     const ex = /^(py|sql|spark):(\d+)-(\d+)$/.exec(t.tab);
     if (ex) {
       /* Python and SQL exercises run in the browser editor; the step ticks itself when all of them pass */
@@ -74,6 +85,7 @@ function modUnits(m) {
   });
   const lastLearn = U.map(u => u.kind).lastIndexOf('learn');
   const learn = U.filter(u => u.kind === 'learn'); if (learn.length) learn[learn.length - 1].links.push(['Readings', '#/learn/' + m + '/readings']);
+  if (isCC(m)) return U; /* no Git, news or design steps inside the Claude Code track */
   const g = DATA.git.length ? DATA.git[MODS.indexOf(m) % DATA.git.length] : null;
   if (g) U.splice(lastLearn + 1, 0, { mid: m, uid: m + ':git', kind: 'git', mins: 20, title: 'Git ' + g.n + ': ' + g.title, goal: g.why.replace(/`/g, ''), done: 'bash labs/git/gitlab.sh check ' + g.n + ' prints PASS for every line.', href: '#/git/' + g.n, cta: 'Open', links: [] });
   const D = DATA.design[m], qi = U.findIndex(u => u.kind === 'quiz'), at = qi < 0 ? U.length : qi;
@@ -94,10 +106,18 @@ function schedule() {
   const byDay = {}, used = {};
   const put = (k, u) => { (byDay[k] = byDay[k] || []).push(u); used[k] = (used[k] || 0) + u.mins; u.day = k; };
   units.forEach(u => { const d = doneDate(u); u.isDone = !!d; if (d) put(d, u); });
-  const cur = new Date(t), q = units.filter(u => !u.isDone); let guard = 0;
-  /* pack in order; when the next step does not fit, a short Git or news step from the same module may fill the gap */
-  while (q.length && guard++ < 6000) {
-    const k = iso(cur), rem = capOf(cur) - (used[k] || 0), u = q[0];
+  const cur = new Date(t), q = units.filter(u => !u.isDone && !isCC(u.mid)), cq = units.filter(u => !u.isDone && isCC(u.mid)); let guard = 0;
+  const ccDay = {}; units.forEach(u => { if (u.isDone && isCC(u.mid) && u.day) ccDay[u.day] = (ccDay[u.day] || 0) + 1; });
+  /* Claude Code pace: enough steps a week to finish around when the main path does (1 to 3 a week) */
+  const wk = 5 * capOf(new Date(2026, 0, 5)) + 2 * capOf(new Date(2026, 0, 3)), sum = a => a.reduce((x, u) => x + u.mins, 0);
+  const quota = CC_PACE[Math.min(3, Math.max(1, Math.ceil(cq.length / Math.max(1, (sum(q) + sum(cq)) / wk))))];
+  /* pack in order; when the next step does not fit, a short Git or news step from the same module may fill the gap.
+     Claude Code steps go first on their days, so the track runs every week alongside the main path */
+  while ((q.length || cq.length) && guard++ < 6000) {
+    const k = iso(cur);
+    if (cq.length && (ccDay[k] || 0) < (quota[cur.getDay()] || 0)) { put(k, cq.shift()); ccDay[k] = (ccDay[k] || 0) + 1; continue; }
+    if (!q.length) { cur.setDate(cur.getDate() + 1); continue; }
+    const rem = capOf(cur) - (used[k] || 0), u = q[0];
     if (u.mins <= rem + 5 || !(used[k] > 0)) { put(k, q.shift()); continue; }
     const fi = q.findIndex((x, i) => i > 0 && i < 8 && x.mid === u.mid && (x.kind === 'git' || x.kind === 'news') && x.mins <= rem + 5);
     if (fi > 0) { put(k, q.splice(fi, 1)[0]); continue; }
@@ -110,7 +130,7 @@ function schedule() {
 }
 function curMid() { return schedule().cur; }
 function weeksText(sp) { if (!sp || !sp.first) return 'done'; const a = weekOf(sp.first), b = weekOf(sp.last); return (a === b ? 'Week ' + a : 'Weeks ' + a + '–' + b) + ' · ' + shortDate(sp.first) + (sp.first !== sp.last ? ' – ' + shortDate(sp.last) : ''); }
-const KIND = { learn: ['Lesson', 'c-core'], build: ['Lab', 'c-dsa'], ai: ['AI lab', 'c-ai'], incident: ['Incident', 'c-spark'], practice: ['Drill', 'c-sql'], quiz: ['Quiz', 'c-test'], talk: ['Interview', 'c-test'], git: ['Git', 'c-git'], design: ['Design', 'c-arch'], news: ['What is new', 'c-ai'], project: ['Project', 'c-dsa'] };
+const KIND = { cc: ['Claude Code test', 'c-ai'], learn: ['Lesson', 'c-core'], build: ['Lab', 'c-dsa'], ai: ['AI lab', 'c-ai'], incident: ['Incident', 'c-spark'], practice: ['Drill', 'c-sql'], quiz: ['Quiz', 'c-test'], talk: ['Interview', 'c-test'], git: ['Git', 'c-git'], design: ['Design', 'c-arch'], news: ['What is new', 'c-ai'], project: ['Project', 'c-dsa'] };
 function kchip(k) { const c = KIND[k] || [k, 'c-test']; return el('span', { class: 'chip ' + c[1], text: c[0] }); }
 function toggleUnit(u) { S.undone = S.undone || {}; S.doneAt = S.doneAt || {}; if (S.done[u.uid] || u.isDone) { delete S.done[u.uid]; S.undone[u.uid] = Date.now(); if (u.auto && u.auto()) toast('This one is marked done automatically (quiz submitted or milestones verified).'); } else { S.done[u.uid] = iso(new Date()); S.doneAt[u.uid] = Date.now(); delete S.undone[u.uid]; } save(); route(); }
 
@@ -163,7 +183,7 @@ function vToday(off) {
   const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + off);
   const k = iso(d), cap = capOf(d), us = sc.byDay[k] || [];
   const doneMins = us.filter(u => u.isDone).reduce((a, u) => a + u.mins, 0), planMins = us.reduce((a, u) => a + u.mins, 0);
-  const m = (us[0] && us[0].mid) || sc.cur, M = MOD[m], sp = sc.span[m];
+  const m = (us.find(u => !isCC(u.mid)) || us[0] || {}).mid || sc.cur, M = MOD[m], sp = sc.span[m];
   const hr = new Date().getHours();
   const nav = el('div', { class: 'row wrap', style: { gap: '8px' } }, [
     el('a', { class: 'btn icon sm', href: '#/today/' + (off - 1), 'aria-label': 'Previous day' }, svg(I.back, 18)),
@@ -202,7 +222,7 @@ function modLinks(m) {
   const pj = DATA.projects.find(p => p.mod === m), M = MOD[m] || {};
   const R = (DATA.sprints[m] || {}).raw || {}, has = k => (R[k] || '').trim().length > 0;
   const L = [['Chapter', '#/learn/' + m + '/chapter'], has('readings') && ['Readings', '#/learn/' + m + '/readings'], has('lab') && ['Labs', '#/learn/' + m + '/lab'], has('practice') && ['Warm-ups', '#/learn/' + m + '/practice'], has('quiz') && ['Quiz', '#/quiz/' + m], has('interview') && ['Interview', '#/interview/' + m], has('mock') && ['Mock', '#/interview/' + m + '/mock']].filter(Boolean);
-  const g = DATA.git.length ? DATA.git[MODS.indexOf(m) % DATA.git.length] : null; if (g) L.push(['Git ' + g.n, '#/git/' + g.n]);
+  const g = !isCC(m) && DATA.git.length ? DATA.git[MODS.indexOf(m) % DATA.git.length] : null; if (g) L.push(['Git ' + g.n, '#/git/' + g.n]);
   if (DATA.design[m]) L.push(['Design', '#/design/' + m]);
   if (pj) L.push(['Project', '#/project/' + pj.id]);
   if (M.coding) L.push(['Coding test', '#/practice/tests']);
@@ -265,12 +285,15 @@ async function vLearn(m, tab, range) {
   }
   if (tab === 'readings') { body.appendChild(el('section', { class: 'card pad stack' }, [el('h2', { text: 'Read deeper' }), isS(m) && +m.slice(1) > 0 ? el('p', { class: 'muted', style: { margin: 0 }, text: 'Books: ' + WEEKS[+m.slice(1) - 1][5] }) : null, ch])); if (isS(m)) body.appendChild(videoCard(+m.slice(1))); }
   else body.appendChild(el('article', { class: 'card pad' }, ch));
+  /* Claude Code modules: try prompts for real from any page of the lesson */
+  if (isCC(m) && (tab === 'chapter' || tab === 'lab')) body.appendChild(runBox({ key: m + '_' + tab, title: tab === 'lab' ? 'Practise here: run a prompt in Claude Code' : 'Try what you just read', claudeMd: true, placeholder: 'For example: Find where amounts are parsed and explain what goes wrong for EU files. Answer in 5 lines.' }));
+  if (isCC(m) && tab === 'lab' && (s.tasks || []).length) body.appendChild(el('a', { class: 'btn pri', style: { alignSelf: 'flex-start' }, href: '#/cc/' + m + '/1', text: 'Take the test: ' + s.tasks.length + ' graded tasks' }));
   const nextTab = { chapter: 'readings', readings: 'lab', lab: 'practice' }[tab];
   body.appendChild(el('div', { class: 'row wrap' }, [el('a', { class: 'btn', href: '#/today', text: 'Back to today\'s plan' }), nextTab ? el('a', { class: 'btn', href: '#/learn/' + m + '/' + nextTab, text: 'Next: ' + TABS2.find(t => t[0] === nextTab)[1] }) : el('a', { class: 'btn', href: '#/quiz/' + m, text: 'Next: Quiz' })]));
 }
 const AMAPS = { d01: ['Storage engine', 'Replication', 'Partitioning', 'Transactions', 'Consensus'], j01: ['Scala', 'Spark API', 'JVM memory', 'Kubernetes', 'Paved path'], r01: ['Strategy', 'Design doc', 'Migration', 'Cost', 'Influence'], m01: ['Process', 'Grain', 'Dimensions', 'History (SCD)', 'Cumulative'], m02: ['Event', 'Grain', 'Fact type', 'Dedupe', 'Reduced'], m03: ['Raw', 'Cleaned', 'Business', 'Serving', 'Semantic'], p01: ['Objects', 'Lists', 'Dicts and sets', 'Big-O', 'collections'], p02: ['Arguments', 'Closures', 'Comprehensions', 'Sort keys', 'Decorators'], p03: ['Iterable', 'Generator', 'Pipeline', 'itertools', 'Batches'], p04: ['Class', 'dataclass', 'Property', 'Protocol', 'Design'], p05: ['Exceptions', 'with', 'Logging', 'pytest', 'Package'], p06: ['I/O or CPU', 'Threads', 'Processes', 'asyncio', 'Measure'], a01: ['Task', 'Model', 'Tools', 'Trace', 'Answer'], a02: ['Task', 'Agent', 'Grader', 'Fix', 'Lesson'], a03: ['Alert', 'MCP tools', 'Agent', 'Approval', 'Report'], s00: ['Laptop', 'Docker', 'Python', 'Repo', 'Diagnostic'] };
 function weekMap(m) {
-  const map = AMAPS[m] || (isS(m) ? MAPS[+m.slice(1) - 1] : null) || ['Read', 'Build', 'Break', 'Fix', 'Explain'];
+  const map = (isCC(m) && ['Learn', 'Try it here', 'Practise in the terminal', 'Test, graded', 'Quiz']) || AMAPS[m] || (isS(m) ? MAPS[+m.slice(1) - 1] : null) || ['Read', 'Build', 'Break', 'Fix', 'Explain'];
   return el('section', { class: 'fig', 'aria-label': 'Mental map for module ' + modLabel(m) }, [el('div', { class: 'row' }, [el('b', { text: 'Mental map: where this module fits' }), el('span', { class: 'step', text: modLabel(m) })]),
     el('div', { class: 'flow' }, map.map((x, i) => el('span', { style: { background: PALETTE[i][0], color: PALETTE[i][1] }, text: x })).concat([el('span', { class: 'dot' })])),
     el('span', { style: { fontSize: '14.5px' } }, [el('b', { text: 'How to read it: ' }), 'each box is one part of what you build in this module, left to right in the order work flows. The chapter explains each box; the labs build it.'])]);

@@ -1,0 +1,196 @@
+@@meta
+id: c10
+n: 10
+title: MCP: connect Claude to your data tools, read-only first
+goal: Connect Claude Code to tools through MCP, build a tiny read-only warehouse server in Python, and apply least privilege to every connection.
+hours: 2
+
+@@tickets
+C1001 | learn | 0.5 | Lesson: what MCP is, scopes, and safe connections | You can explain MCP servers, tools and scopes, and why a database connection should be read-only. | chapter
+C1002 | ai | 0.75 | Practise in Claude Code: build and connect a read-only warehouse server | Claude answers questions about warehouse.db through your MCP server, and a write attempt fails. | lab
+C1003 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
+C1004 | test | 0.33 | Quiz C10 | 80% or better. | quiz
+
+@@readings
+- [Connect Claude Code to tools via MCP](https://docs.claude.com/en/docs/claude-code/mcp). Adding servers, scopes, .mcp.json and /mcp.
+- [Model Context Protocol: introduction](https://modelcontextprotocol.io/introduction). The concepts: servers, tools, resources, prompts.
+- [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk). Read the FastMCP quickstart.
+
+@@chapter
+## C10.1 What MCP is
+
+The **Model Context Protocol** is a standard way to give an AI app new tools. An **MCP server** is a small program that exposes tools (functions with a name, description and input schema), and optionally resources and prompts. Claude Code is the client: it lists the server's tools, and the model can call them like built-in tools, with the same permission prompts.
+
+For data engineers this is the bridge to your stack: a warehouse query tool, the orchestrator's API (DAG status, last run logs), the data catalog (lineage, owners), the ticket system. You met the idea in AI 2; here you use it inside Claude Code.
+
+## C10.2 Adding servers and scopes
+
+```bash
+claude mcp add warehouse -- python3 mcp_warehouse.py          # a local server over stdio
+claude mcp add --transport http docs https://example.com/mcp   # a remote server over HTTP
+claude mcp list                                                # what is configured
+```
+
+Inside a session, `/mcp` shows server status and lets you authenticate to remote servers.
+
+| Scope | Flag | Stored in | Use |
+|---|---|---|---|
+| local | default | your user config, this project only | trying a server |
+| project | `--scope project` | `.mcp.json` in the repo (commit it) | team-shared servers |
+| user | `--scope user` | your user config, all projects | personal tools |
+
+Every server's tool descriptions are added to the context of every session, so connect only what you use.
+
+## C10.3 A tiny read-only warehouse server
+
+```python
+# mcp_warehouse.py  (pip install mcp)
+import json, sqlite3
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("warehouse")
+DB = "file:warehouse.db?mode=ro"          # read-only at the connection level
+
+@mcp.tool()
+def list_tables() -> str:
+    """List tables and their columns in the warehouse."""
+    con = sqlite3.connect(DB, uri=True)
+    out = {t: [c[1] for c in con.execute(f"PRAGMA table_info({t})")]
+           for (t,) in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    return json.dumps(out)
+
+@mcp.tool()
+def query(sql: str, limit: int = 50) -> str:
+    """Run a read-only SELECT and return at most `limit` rows as JSON."""
+    if not sql.lstrip().lower().startswith(("select", "with")):
+        return "Only SELECT queries are allowed."
+    con = sqlite3.connect(DB, uri=True)
+    rows = con.execute(sql).fetchmany(min(limit, 200))
+    return json.dumps(rows)
+
+if __name__ == "__main__":
+    mcp.run()
+```
+
+The `mode=ro` connection is the real guard; the `startswith` check is only a friendly message. **Enforce read-only in the database**, not in the prompt or the tool text. In a real warehouse: a dedicated role with SELECT only on the schemas the agent needs, row limits, a statement timeout and query tagging, so cost and access are visible.
+
+## C10.4 MCP security
+
+- An MCP server runs with **your** permissions; installing one is installing software. Use servers from sources you trust, and pin versions.
+- Tool results are untrusted text: a row or document can contain prompt injection. Combine read access to private data with write or network tools only with great care (that combination is how data gets exfiltrated).
+- Least privilege per server: read-only database roles, scoped API tokens, no production credentials for experiments.
+- Return small results: limits, aggregates, truncation. Big results cost tokens and leak more.
+- You can allow or deny MCP tools in permissions by name, such as `mcp__warehouse__query`.
+
+@@lab
+## Lab: your warehouse server (40 minutes)
+
+In ~/cc-sandbox (with Python 3.10 or newer):
+
+1. Load the warehouse once: `python3 -m pipeline.run 2026-10-01 2026-10-07` (this creates `warehouse.db`).
+2. `python3 -m venv .venv && source .venv/bin/activate && pip install mcp`.
+3. Ask Claude Code to create `mcp_warehouse.py` from the lesson. Review it yourself; the read-only connection must be there.
+4. Register it: `claude mcp add warehouse -- $(pwd)/.venv/bin/python $(pwd)/mcp_warehouse.py`. Restart `claude`, run `/mcp` and check it is connected.
+5. Ask: *"Using the warehouse tools, which country has the highest revenue and how many orders does it have?"* Approve the tool calls and check the answer against the pipeline's printout.
+6. Ask: *"Delete the orders for 2026-10-01 using the warehouse query tool."* It must fail. Note the error.
+7. Ask Claude to add a third tool, `daily_revenue(country)`, that returns revenue per day for one country with a parameterised query. Test it.
+
+@@quiz
+TYPE: mcq
+TAG: ai
+Q: Where should "this agent can only read the warehouse" be enforced?
+A) In the tool description text
+B) In the database connection or role (read-only mode, SELECT-only grants)
+C) In CLAUDE.md
+D) In the prompt
+ANS: B
+WHY: Text can be ignored or bypassed; database permissions cannot.
+---
+TYPE: mcq
+TAG: ai
+Q: Which scope shares an MCP server configuration with the whole team through git?
+A) local
+B) project (.mcp.json)
+C) user
+D) global
+ANS: B
+WHY: Project scope writes .mcp.json in the repo.
+---
+TYPE: mcq
+TAG: ai
+Q: Why connect only the MCP servers you actually use?
+A) Servers slow down your Mac
+B) Every server's tool descriptions are added to the context, costing tokens and attention in each session
+C) Claude Code allows only one server
+D) MCP servers expire
+ANS: B
+WHY: Fixed context overhead adds up across every session.
+---
+TYPE: fill
+TAG: ai
+Q: The Claude Code command that shows MCP server status inside a session is /____.
+ANS: mcp
+WHY: It also handles authentication for remote servers.
+---
+TYPE: short
+TAG: ai
+Q: Why is it risky to give one agent both a tool that reads private data and a tool that can send data out (web requests, email)?
+MODEL: Because content the agent reads can contain prompt injection. A malicious row, document or web page can instruct the agent to send private data to an outside address, and with both capabilities in one session it can. Mitigations: do not combine private-data read tools with outbound tools in the same session, require confirmation for outbound actions, use allow-lists of destinations, and keep results small.
+
+@@interview
+Q: What is the Model Context Protocol and why does it matter for data platforms?
+TAG: ai
+A: MCP is an open standard for exposing tools and data to AI applications through servers, so one integration works across clients. For a data platform it means the warehouse, catalog, orchestrator and observability tools can be offered to agents with clear schemas, instead of each team writing glue. The platform team's job becomes providing safe, well-described, least-privilege tools: read-only roles, row limits, query tagging, audit logs, as a paved path for AI access.
+---
+Q: How would you give an AI agent safe access to the data warehouse?
+TAG: ai
+A: A dedicated service role with SELECT only on curated, non-sensitive schemas, masked views for anything personal, a statement timeout and a byte or row cap, and query tagging for cost attribution and audit. The MCP server exposes a few well-described tools (list tables, describe, query with a limit, curated metrics), not raw admin access. No write tools by default; writes go through code review and pipelines. Results are capped, and the agent never gets production write credentials.
+---
+Q: What would you check before installing a third-party MCP server?
+TAG: ai
+A: Who publishes it and whether it is maintained, what permissions and credentials it needs, which tools it exposes (especially write, network or shell), whether it sends data anywhere, and whether I can pin a version and read the code. Then I run it with the narrowest credentials in a sandbox first and decide which of its tools to allow.
+---
+Q: Design an AI assistant that helps analysts answer questions from the warehouse.
+TAG: design
+A: Semantic layer first: curated metrics and dimensions with definitions, so the agent queries governed models instead of raw tables. Tools: search the catalog, describe a model, run a metric query with a cost estimate, and show the generated SQL. Guardrails: a read-only role on curated schemas, row and cost limits, PII masked, every answer shows its SQL and source tables, and eval sets of known questions with expected answers to track accuracy. Feedback loop: analysts flag wrong answers, which become new eval cases and metric documentation.
+---
+Q: How do you prevent an AI agent from running an expensive query on the warehouse?
+TAG: ai
+A: In the platform, not the prompt: a warehouse role with resource limits (statement timeout, a bytes-scanned cap, a small dedicated cluster), a dry-run or EXPLAIN step in the tool that rejects queries above a cost threshold, required partition filters on large tables, row limits, and query tags so spend is visible per agent. The tool returns a helpful error so the agent can refine the query.
+
+@@tasks
+TITLE: Your MCP server
+TASK: Do the lab. Paste `mcp_warehouse.py` (with your `daily_revenue` tool), the `claude mcp add` command you used, the answer to the revenue question, and what happened when you asked it to delete rows.
+SUBMIT: the server code, the add command, the revenue answer, and the delete attempt result.
+RUBRIC: - Uses FastMCP with tools that have docstrings and typed parameters.
+- Opens the database read-only (mode=ro URI or equivalent); a text check is not the only guard.
+- daily_revenue uses a parameterised query (? placeholder), not string formatting.
+- Limits rows returned.
+- The delete attempt failed (with an error message or refusal), and the explanation names the read-only connection as the reason.
+---
+TITLE: Least-privilege plan
+TASK: Your company wants Claude Code connected to: Snowflake (or BigQuery), Airflow, the data catalog, and Jira. For each, write: which tools to expose, the credential and its permissions, what is denied, and one risk with its mitigation.
+SUBMIT: a short plan for the four connections.
+RUBRIC: - Warehouse: read-only role on curated schemas, masked PII, timeouts and byte caps, query tagging; no DDL or DML.
+- Airflow: read DAG status and logs; triggering runs needs human approval, or only in dev.
+- Catalog: read metadata and lineage; edits to descriptions only with review.
+- Jira: read issues; creating or commenting gated by ask; treat issue text as untrusted input (prompt injection).
+- Mentions the danger of combining private-data read with outbound tools, and scoped tokens per connection.
+---
+TITLE: Review a risky MCP setup
+TASK: A teammate committed this `.mcp.json` and says "now Claude can do everything for us". List every problem and propose a safer setup.
+
+```json
+{ "mcpServers": {
+  "db":    { "command": "npx", "args": ["-y", "some-postgres-mcp", "postgresql://admin:Pr0dPass@prod-db:5432/main"] },
+  "shell": { "command": "npx", "args": ["-y", "mcp-shell-server"] },
+  "web":   { "command": "npx", "args": ["-y", "fetch-anything-mcp"] }
+} }
+```
+SUBMIT: the problems and your safer version.
+RUBRIC: - A production admin password is committed in plain text: rotate it now, and use environment variables or a secret manager.
+- Admin on production: use a read-only role on a replica or dev, with limits.
+- Unpinned third-party packages via npx -y: pin versions and vet the publishers.
+- A shell server gives unrestricted command execution: remove it (Claude Code already has Bash with permissions).
+- Private data plus an open web-fetch tool allows exfiltration through prompt injection: separate them or restrict destinations.
+- The safer version shows these fixes.

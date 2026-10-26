@@ -1,0 +1,171 @@
+@@meta
+id: c09
+n: 9
+title: Headless Claude and loops: scripts, schedules and CI
+goal: Run Claude Code without a human in the loop safely: claude -p in scripts, structured JSON output, turn and budget limits, scheduled jobs and CI, with the same stop conditions you built in AI 1.
+hours: 2
+
+@@tickets
+C901 | learn | 0.5 | Lesson: claude -p, structured output and safe loops | You can write a headless command with restricted tools, a JSON schema and a budget, and explain each flag. | chapter
+C902 | ai | 0.75 | Practise in Claude Code: a nightly data-quality report | A script runs claude -p over the pipeline's output and writes a JSON report, with limits, on a schedule. | lab
+C903 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
+C904 | test | 0.33 | Quiz C9 | 80% or better. | quiz
+
+@@readings
+- [Headless mode](https://docs.claude.com/en/docs/claude-code/headless). claude -p, output formats and multi-turn scripting.
+- [CLI reference](https://docs.claude.com/en/docs/claude-code/cli-reference). Every flag; skim, then search when needed.
+- [Claude Code GitHub Actions](https://docs.claude.com/en/docs/claude-code/github-actions). Running Claude in CI on issues and pull requests.
+
+@@chapter
+## C9.1 From chat to command
+
+`claude -p "prompt"` (print mode) runs one task and exits. It reads stdin too, so it fits in pipes:
+
+```bash
+python3 -m unittest -q 2>&1 | tail -30 | claude -p "Summarise the failing tests in 3 lines"
+git diff main | claude -p "Write a commit message: one summary line, then why"
+```
+
+With no human to approve prompts, **you decide in advance** what the run may do. These flags are the harness from AI 1, ready-made:
+
+| Flag | Purpose |
+|---|---|
+| `--tools "Read,Grep,Glob"` | which built-in tools exist at all (`""` = none) |
+| `--allowedTools "Bash(python3 -m unittest *)"` | which may run without asking |
+| `--permission-mode plan` / `dontAsk` | how anything else is handled |
+| `--max-turns 8` | step limit |
+| `--max-budget-usd 0.50` | money limit |
+| `--model haiku` | cheapest model that does the job |
+| `--output-format json` | machine-readable result with cost and usage |
+| `--json-schema '{...}'` | force the answer into your schema (`structured_output` in the JSON) |
+| `--no-session-persistence` | do not save a transcript |
+
+## C9.2 Structured output: the bridge to code
+
+Scripts need data, not prose. Ask for JSON with a schema and parse it:
+
+```bash
+claude -p --model haiku --tools "" --output-format json \
+  --json-schema '{"type":"object","properties":{"severity":{"type":"string","enum":["ok","warn","fail"]},"reasons":{"type":"array","items":{"type":"string"}}},"required":["severity","reasons"]}' \
+  "Data quality summary: $(python3 dq_stats.py)" | python3 -c 'import json,sys; r=json.load(sys.stdin); print(r["structured_output"], r["total_cost_usd"])'
+```
+
+This app's instant grader works exactly like this: no tools, an empty folder, a small model, a schema. A grade costs about a tenth of a cent and takes under 10 seconds.
+
+## C9.3 Loops and schedules
+
+A **loop** is a script that calls the agent repeatedly until a condition is met: "fix lint errors until the linter is clean, at most 5 rounds". Always:
+
+1. A **check you run yourself** (the linter, the tests), not the agent's opinion that it is done.
+2. A **maximum** number of rounds and a budget.
+3. A **no-progress** stop: the same failure twice means stop and report.
+4. A **record**: log each round's cost and result.
+
+Schedules: cron or launchd on your Mac, a scheduled GitHub Actions workflow, or your orchestrator (an Airflow task that calls `claude -p`). In GitHub, `anthropics/claude-code-action` runs Claude on pull requests and issues (for example when someone writes `@claude` in a comment), with the API key as a repository secret.
+
+Inside an interactive session there is also `/loop`, which re-runs a prompt or command on an interval (for example watching a deploy). It suits quick watching, not production jobs.
+
+## C9.4 Safety for unattended runs
+
+Unattended means no one sees a bad command before it runs. So: the narrowest tools that work (often read-only), no secrets in the environment beyond the one key the run needs, a container or CI runner rather than your laptop, outputs reviewed before they change anything shared (a pull request, not a push to main), and an alert when cost per run jumps. Treat untrusted inputs (issue text, PR descriptions from strangers) as potential prompt injection.
+
+@@lab
+## Lab: a nightly data-quality report (40 minutes)
+
+In ~/cc-sandbox:
+
+1. Ask Claude Code (interactively) to write `tools/dq_stats.py`: it loads `data/orders.csv` with the pipeline's own `clean()` for the last 7 days of data, and prints **aggregates only** as JSON: row count, duplicates dropped, null counts, revenue per country, min and max amount.
+2. Run it yourself and check the numbers make sense.
+3. Write `tools/dq_report.sh` that pipes the stats into `claude -p` with `--model haiku --tools "" --output-format json`, a schema of `{"severity": "ok|warn|fail", "findings": [...], "next_check": "..."}`, and `--max-budget-usd 0.10`. It saves the structured output to `reports/dq-$(date +%F).json`.
+4. Run it twice: once on the buggy pipeline (EU amounts inflated: severity should not be ok) and once after fixing the parser.
+5. Schedule it: on your Mac add a cron line (`crontab -e`, for example `0 7 * * * cd ~/cc-sandbox && bash tools/dq_report.sh`), or write the GitHub Actions workflow file you would use (you do not need to push it).
+
+@@quiz
+TYPE: mcq
+TAG: ai
+Q: Which flag forces claude -p to return data in your JSON shape?
+A) --output-format text
+B) --json-schema with a JSON Schema
+C) --verbose
+D) --model json
+ANS: B
+WHY: The result appears as structured_output in the JSON output, validated against your schema.
+---
+TYPE: mcq
+TAG: ai
+Q: A headless job summarises logs and must never edit files or run commands. Which setting fits best?
+A) --dangerously-skip-permissions
+B) --tools "" or a read-only tool list such as Read,Grep,Glob
+C) --permission-mode acceptEdits
+D) No flags; it will ask
+ANS: B
+WHY: Remove the capability rather than hope the model does not use it. In headless mode there is no one to ask.
+---
+TYPE: mcq
+TAG: ai
+Q: In an automated "fix until tests pass" loop, what decides that the loop is done?
+A) The agent saying "done"
+B) A test or lint command your script runs, plus round and budget limits
+C) A fixed sleep
+D) The model's confidence score
+ANS: B
+WHY: Verification is external; limits stop runaway cost.
+---
+TYPE: fill
+TAG: ai
+Q: The flag that caps the money a single claude -p run may spend is --max-budget-____.
+ANS: usd
+WHY: Pair it with --max-turns.
+---
+TYPE: short
+TAG: ai
+Q: Design a GitHub Actions job where Claude reviews every pull request in a data repo. What permissions, inputs and outputs, and what risks?
+MODEL: Trigger on pull_request, run claude-code-action or claude -p on the diff with read-only tools and a review prompt or skill (idempotency, late data, PII, SQL injection). The output is a PR review comment; it never pushes or merges. Use the API key as a repository secret with a least-privilege GITHUB_TOKEN (read contents, write PR comments), plus turn and budget limits. Risks: prompt injection from PR text or code by outside contributors (so do not expose secrets to forks, and limit tools), noisy or false findings (rank them and require evidence), cost growth (budget per run, alerts), and over-trust (humans still approve).
+
+@@interview
+Q: How would you automate a recurring engineering task with an AI agent safely?
+TAG: ai
+A: Headless runs with the narrowest tools that work, a schema for the output so code can check it, a step and budget limit, and an external verification step (tests, linters, row-count checks), not the agent's own claim. It runs in CI or a container without production credentials. Changes go through a pull request for human review. I log cost and outcome per run with alerts, and treat untrusted inputs as possible prompt injection.
+---
+Q: What is the difference between an agent loop and a scripted loop around an agent?
+TAG: ai
+A: The agent loop is inside one run: the model chooses tools until it answers. A scripted loop is my code calling the agent repeatedly, with my own checks between runs, for example run the linter, and if it fails, call the agent with the errors, at most N times. The scripted loop gives deterministic control points: verification, limits, logging and stopping when there is no progress.
+---
+Q: Where would you use AI in a data pipeline itself, at runtime, and where not?
+TAG: ai
+A: Good fits: classifying or extracting from unstructured text with a schema and validation, summarising data-quality findings for humans, triaging alerts, and drafting documentation. Each needs structured output, confidence handling, cost limits and a fallback. Poor fits: anything that must be exact and deterministic, like financial calculations, joins and deduplication logic, where plain code is cheaper, faster and auditable. AI writes that code; it does not replace it at runtime.
+---
+Q: How do you keep the cost of scheduled AI jobs predictable?
+TAG: ai
+A: Fix the shape of each run: a precise prompt, limited tools, a small model, trimmed inputs (aggregates, not raw data), a schema for output, and max turns and budget flags. Track cost per run and alert on spikes. Cache stable prompt prefixes. Batch work where latency does not matter. Review monthly which jobs still earn their cost.
+---
+Q: Your AI-powered PR reviewer posts many low-value comments. How do you fix it?
+TAG: ai
+A: Tighten the prompt into a checklist of what matters for our repo, require each finding to include file:line and a concrete failing scenario, rank by impact, and cap at a few findings. Drop categories that are pure style (linters handle those). Measure: track which comments lead to changes, and prune the checklist items that never do.
+
+@@tasks
+TITLE: Your headless report script
+TASK: Do the lab. Paste `tools/dq_report.sh`, the JSON report from the buggy run and from the fixed run, and the cost of each run.
+SUBMIT: the script, the two reports, and the cost of each run.
+RUBRIC: - Uses claude -p with --tools "" (or read-only tools), a small model, --output-format json and --json-schema with severity and findings.
+- Has a budget or turn limit (--max-budget-usd or --max-turns).
+- Feeds aggregates only (no raw rows or emails) into the prompt.
+- The buggy run reports warn or fail with the inflated DE/FR revenue as a finding; the fixed run is ok or has fewer findings.
+- Saves the structured output to a dated file and shows the cost.
+---
+TITLE: A safe fix-until-green loop
+TASK: Write a bash or Python script `tools/fix_loop` that asks Claude Code to fix failing unit tests in the practice project, re-runs the tests itself after each round, and stops correctly. It may let Claude edit files under `pipeline/` only.
+SUBMIT: the script, and 3 lines on how it stops and what stops it from doing damage.
+RUBRIC: - Runs the tests itself (python3 -m unittest -q) to decide success; does not trust the agent's claim.
+- Has a maximum number of rounds and a budget per round (--max-budget-usd or --max-turns).
+- Detects no progress (the same failures twice) and stops.
+- Restricts tools and permissions (for example --allowedTools Edit, Read and the test command, scoped to pipeline/; no curl or rm; never --dangerously-skip-permissions on a laptop).
+- Logs each round (failures and cost) and leaves changes for review (a branch or commit, no push).
+---
+TITLE: CI reviewer design
+TASK: Write the GitHub Actions workflow YAML you would use to have Claude review pull requests in a data repo (use `anthropics/claude-code-action@v1` or a `claude -p` step). Then list three risks and your mitigation for each.
+SUBMIT: the workflow YAML and three risks with mitigations.
+RUBRIC: - Triggers on pull_request (and optionally an @claude comment); uses the API key from secrets, never inline.
+- Sets least-privilege permissions (contents: read, pull-requests: write).
+- The prompt or skill reflects data-repo concerns and asks for ranked findings with evidence.
+- Risks include prompt injection from PR content or forks (no secrets on fork PRs, limited tools), cost (limits), and noisy or wrong reviews (human approval still required).

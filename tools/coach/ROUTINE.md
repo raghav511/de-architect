@@ -75,4 +75,6 @@ On the run that happens on Sunday night (after his Sunday round), also write `we
 }
 ```
 
+The digest also lists **instant grades** from the last 7 days (answers, code, designs and Claude Code tasks graded on the Mac within seconds of submission). Treat low scores (1 to 3) and their "fix" notes as evidence of weak spots, alongside quizzes and problems. The Claude Code track (modules c01 to c12) runs on Wednesdays and Saturdays; a focus item may point to `#/cc/<module>/<task>` or `#/learn/<module>/lab` when a Claude Code skill is weak.
+
 Rules the validator enforces: at most 4 focus items; every `href` must be an app route from the digest's valid links (problem routes must use real ids); `review_add` ids must exist; scores are integers 1–5; a Sunday `next_mock` has 5 questions, other days 3. Also (not checked, but the app relies on it): one feedback item per question, in the same order as the questions. Keep `mock_feedback` from the previous report for the last 14 days so older feedback stays visible in the app, and add tonight's grading to it. If no mock was submitted, still write a summary, focus items and tomorrow's mock.

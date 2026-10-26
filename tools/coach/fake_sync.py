@@ -1,7 +1,7 @@
-"""A local stand-in for sync/Code.gs, for testing the app and the nightly coach without Google.
+"""A local stand-in for sync/Code.gs, for testing the app, the nightly coach and the grader without Google.
 Usage: python3 tools/coach/fake_sync.py [port] [key] [dir]   (defaults 8812, testkey, /tmp/da-sync)
 GET ?k=KEY returns {ok, data, coach}; POST {action: save|saveCoach} stores them, like the real script."""
-import json, os, sys
+import json, os, sys, time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -44,6 +44,14 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         if not self._ok():
             return self._send({'ok': False, 'error': 'wrong or missing key'})
+        q = parse_qs(urlparse(self.path).query)
+        a = q.get('action', ['load'])[0]
+        jobs = read('jobs.json') or []
+        if a == 'jobs':
+            return self._send({'ok': True, 'jobs': [j for j in jobs if j['status'] == 'pending']})
+        if a == 'results':
+            ids = [i for i in q.get('ids', [''])[0].split(',') if i]
+            return self._send({'ok': True, 'results': {j['id']: {'status': j['status'], 'result': j.get('result'), 'at': j['at'], 'doneAt': j.get('doneAt')} for j in jobs if j['id'] in ids}})
         self._send({'ok': True, 'data': read('progress.json'), 'coach': read('coach.json')})
 
     def do_POST(self):
@@ -54,6 +62,17 @@ class H(BaseHTTPRequestHandler):
             json.dump(body['data'], open(path('progress.json'), 'w'))
         elif body.get('action') == 'saveCoach' and body.get('coach'):
             json.dump(body['coach'], open(path('coach.json'), 'w'))
+        elif body.get('action') == 'ask' and (body.get('job') or {}).get('id'):
+            jobs = read('jobs.json') or []
+            if not any(j['id'] == body['job']['id'] for j in jobs):
+                jobs.append({'id': body['job']['id'], 'kind': body['job'].get('kind', ''), 'payload': body['job'].get('payload', {}), 'status': 'pending', 'at': int(time.time() * 1000)})
+            json.dump(jobs, open(path('jobs.json'), 'w'))
+        elif body.get('action') == 'answer' and body.get('id'):
+            jobs = read('jobs.json') or []
+            for j in jobs:
+                if j['id'] == body['id']:
+                    j.update(status='done', result=body.get('result'), doneAt=int(time.time() * 1000))
+            json.dump(jobs, open(path('jobs.json'), 'w'))
         self._send({'ok': True})
 
     def log_message(self, *a):

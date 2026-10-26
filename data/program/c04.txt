@@ -1,0 +1,168 @@
+@@meta
+id: c04
+n: 4
+title: Debugging with AI: reproduce, prove, fix, review
+goal: Use Claude Code to find bugs faster without trusting guesses: reproduce first, make it rank hypotheses, prove the cause with evidence, fix test-first and review the change like an incident.
+hours: 2
+
+@@tickets
+C401 | learn | 0.5 | Lesson: a debugging loop that works with an agent | You can describe the reproduce, hypothesise, prove, fix, review loop and the prompt for each step. | chapter
+C402 | ai | 0.75 | Practise in Claude Code: find and fix the revenue bug from the symptom | Starting only from "FR revenue is 100x too high", you found the cause with evidence and fixed it test-first. | lab
+C403 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
+C404 | test | 0.33 | Quiz C4 | 80% or better. | quiz
+
+@@readings
+- [Common workflows: fix bugs efficiently](https://docs.claude.com/en/docs/claude-code/common-workflows). The short official version of this lesson.
+- [Anthropic: Claude Code best practices](https://www.anthropic.com/engineering/claude-code-best-practices). Read "Write tests, commit; code, iterate, commit".
+- [Julia Evans: debugging zine](https://wizardzines.com/zines/debugging-guide/). A human debugging mindset; it applies unchanged with an agent.
+
+@@chapter
+## C4.1 Why agents misdebug
+
+A model sees a symptom and pattern-matches a likely cause. Often right, sometimes confidently wrong, and the fix for the wrong cause can make the symptom disappear while the bug stays (for example, rounding the totals instead of fixing the parser). The cure is the same as for humans: **no fix without evidence**.
+
+## C4.2 The loop, and the prompt for each step
+
+1. **Reproduce.** Get a command that shows the bug. *"Run python3 -m pipeline.run 2026-10-01 2026-10-07 and show me the totals."* If you cannot reproduce it, you cannot know you fixed it.
+2. **Hypothesise.** *"List 3 possible causes for FR revenue being 100 times too high, most likely first, and for each the quickest check that would confirm or rule it out. Do not change code."*
+3. **Prove.** Run the checks. *"Show 5 FR rows from the CSV and what parse_amount returns for each."* Evidence beats explanation.
+4. **Fix test-first.** *"Write a failing test that reproduces this with one EU amount. Run it, show it fails. Then make the smallest fix. Do not change the test."*
+5. **Review.** *"What other inputs could this fix break? Is the same bug anywhere else?"* Then read the diff yourself and re-run the original reproduction.
+
+Plan mode is ideal for steps 1 to 3: Claude can read and run read-only checks but cannot jump to a fix.
+
+## C4.3 Give the agent good evidence
+
+- The **exact** error and the **exact** command, not "it crashes".
+- A small input that fails. For data bugs, a 5-row sample is worth more than the 5 GB file.
+- What changed recently: `! git log --oneline -10` or `git diff main` in the conversation.
+- What you already ruled out, so it does not repeat it.
+
+For "it worked last week" bugs, ask Claude to run `git bisect` with a test command: it is very good at that mechanical search.
+
+## C4.4 Finding issues before they are bugs
+
+Use the agent as a reviewer, not only a fixer:
+
+- *"Review @pipeline/load.py for correctness, idempotency, security and performance. Rank issues by impact, with file:line. Do not fix."*
+- `/security-review` runs a security-focused review of your pending changes.
+- *"Which code paths have no tests? Write the 3 tests most likely to catch a real bug."*
+- After a fix: *"Search the repo for the same pattern elsewhere."* Bugs come in families.
+
+Treat findings as leads, not verdicts. Ask for the evidence (the input that fails) before you spend time on a reported issue.
+
+@@lab
+## Lab: from symptom to fix (40 minutes)
+
+Start a fresh copy: `bash ~/de-architect/labs/cc/new_sandbox.sh` and `cd ~/cc-sandbox && claude`. Pretend you only know the symptom: **"FR revenue on the dashboard is about 100 times too high."**
+
+1. Plan mode. Reproduce: ask Claude to run the pipeline and show the totals.
+2. Ask for three ranked hypotheses with a quick check for each. Do not accept a fix yet.
+3. Run the checks until one hypothesis is proven with output you can see.
+4. Leave plan mode. Fix test-first: a failing test for one EU amount, then the smallest fix.
+5. Ask: *"What other inputs could break this parser?"* Add one more test if it finds a real one (for example `1.234,50`).
+6. Re-run the pipeline. FR and DE totals should now be in the same range as the others. Read the diff, then commit.
+7. Bonus: ask it to review `pipeline/load.py` for issues ranked by impact, without fixing. Keep the list for C5.
+
+Save your prompts and the evidence that proved the cause. Task 1 asks for them.
+
+@@quiz
+TYPE: mcq
+TAG: ai
+Q: Claude proposes rounding the totals to fix inflated revenue. What is the problem?
+A) Rounding is slow
+B) It hides the symptom without fixing the cause (wrong parsing), so the data stays wrong
+C) Nothing; the totals look right afterwards
+D) Rounding needs a new dependency
+ANS: B
+WHY: A fix must address a proven cause. Hiding the symptom is how silent data corruption ships.
+---
+TYPE: mcq
+TAG: ai
+Q: What should come first when debugging with an agent?
+A) Ask it to fix the bug
+B) Get a command that reproduces the bug
+C) Ask it to refactor the module
+D) Switch to the biggest model
+ANS: B
+WHY: Reproduction gives both of you evidence and a way to confirm the fix.
+---
+TYPE: mcq
+TAG: ai
+Q: Why ask for ranked hypotheses with a check for each, before any fix?
+A) It makes the answer longer
+B) It forces evidence-based debugging and avoids the agent locking onto its first guess
+C) It is required by Claude Code
+D) It is cheaper than running tests
+ANS: B
+WHY: Cheap checks on several causes beat an expensive fix for the wrong one.
+---
+TYPE: fill
+TAG: git
+Q: The git command that binary-searches commit history to find the commit that introduced a bug is git ____.
+ANS: bisect
+WHY: Give Claude a test command and it can drive git bisect run for you.
+---
+TYPE: short
+TAG: ai
+Q: After a fix passes the tests, what two review questions do you ask, and why?
+MODEL: "What other inputs could this change break?" checks for regressions and edge cases the tests do not cover, such as other formats, nulls, or empty strings. "Does the same pattern exist anywhere else in the code?" catches the rest of the bug family, because bugs are often copied. Then I read the diff myself and re-run the original reproduction.
+
+@@interview
+Q: Walk me through how you debug a data quality issue, such as inflated revenue for one country.
+TAG: core
+A: Reproduce: get the exact query or run that shows the wrong number and pin the scope (which country, which dates, since when). Narrow: compare source rows with loaded rows for a small sample, and check recent changes in code, upstream schema and config. Hypothesise and test cheaply: parsing, duplicates, a join fan-out, currency, timezone. Prove the cause with a minimal example, fix it with a test that reproduces it, backfill the affected partitions, and add a check (for example, revenue per country within an expected range) so it is caught automatically next time. Then write a short incident note.
+---
+Q: How do AI tools change your debugging process?
+TAG: ai
+A: They speed up the mechanical parts: reading unfamiliar code, generating hypotheses, writing the reproduction test, running bisect, searching for the same pattern elsewhere. They do not change the discipline. I still require a reproduction, evidence for the cause and a failing test before the fix, because a model can be confidently wrong. I use plan mode to keep it investigating instead of patching.
+---
+Q: A fix made the symptom go away, but you are not sure it fixed the cause. What do you do?
+TAG: core
+A: Go back to evidence. Can I explain, with a concrete input, why the old code produced the wrong output and the new code does not? Does a test reproduce the original failure and pass now? Does the original reproduction pass? If I cannot explain it, I treat it as unresolved: maybe the symptom moved or the data changed. I would keep monitoring and add a check rather than close it.
+---
+Q: How do you use AI for code review without drowning in false positives?
+TAG: ai
+A: Scope and rank: review one change or file, rank issues by impact, and require file:line plus a failing input or concrete scenario for each. I treat findings as leads: anything without evidence goes to the bottom. I keep a short list of what our team cares about (idempotency, PII, partition pruning) in CLAUDE.md or a review command, so the review is consistent.
+---
+Q: Tell me about a time you found the root cause of a tricky bug.
+TAG: behavioral
+A: (Use your own, with this shape.) Situation: a metric drifted by a few percent after a release. Action: reproduced on one day of data, bisected the changes, and found that a join on a slowly changing dimension matched two versions of a row. I proved it with a 10-row example, fixed the join to use the validity window, added a uniqueness test, and backfilled. Result: numbers reconciled with finance, and the uniqueness test caught a similar issue two months later.
+
+@@tasks
+TITLE: Your debugging trail
+TASK: Do the lab. Submit your debugging trail:
+
+1. The reproduction command and what it showed.
+2. Claude's three hypotheses (short) and the check that proved the real cause, with the evidence output.
+3. The failing test you added and the fix (the diff).
+4. What else you checked after the fix.
+SUBMIT: the four parts of your trail, with real outputs pasted.
+RUN: FR revenue on the dashboard is about 100 times too high. Do not fix anything. Give 3 ranked hypotheses, and for each the quickest check that would confirm or rule it out.
+RUBRIC: - Reproduction shows the inflated FR or DE totals.
+- Hypotheses are ranked, with checks; the proof shows a concrete EU amount (like '12,50' or '379,41') parsed 100 times too large.
+- The test fails before the fix and passes after; the fix handles the decimal comma and keeps the US format working.
+- After the fix: re-ran the pipeline, considered other formats (like '1.234,50') or searched for the same pattern.
+---
+TITLE: Review and rank
+TASK: Ask Claude Code (or use Try it here) to review `pipeline/load.py` and `pipeline/run.py` for correctness, idempotency, security, privacy and performance, ranked by impact, with file:line, **without fixing**.
+
+Then add your own judgment: which finding is the most important, which is a false positive or low value, and why.
+SUBMIT: the ranked findings and your judgment.
+RUN: Review pipeline/load.py and pipeline/run.py for correctness, idempotency, security, privacy and performance. Rank issues by impact with file:line. Do not fix anything. Max 10 lines.
+RUBRIC: - Finds the SQL injection risk from the f-string DELETE in load.py.
+- Finds the token printed in debug mode in run.py.
+- Notes non-atomic delete and insert (no single transaction) or other idempotency risks.
+- Notes PII (emails) being loaded into the warehouse.
+- Your judgment ranks sensibly (security and correctness first) and calls out at least one weak or low-value finding with a reason.
+---
+TITLE: Prompt for a production incident
+TASK: It is 9 am. A daily job failed overnight with `KeyError: 'currency'` in `transform_orders.py`, line 88, after an upstream team "made a small change". Downstream dashboards are stale.
+
+Write the exact sequence of prompts (at least 4) you would give Claude Code, from first look to the fix, and say what you would check yourself between them. Assume Claude can read the code and the last run's log, but has **no** production access.
+SUBMIT: your numbered prompts, with your own checks between them.
+RUBRIC: - Starts by reproducing or inspecting evidence: the traceback, the log, a sample of the new upstream file, the schema diff.
+- Asks for hypotheses before fixes (the column was renamed or removed, made optional, or moved to a nested field).
+- The fix is defensive and explicit (a schema check with a clear error, or a mapping), plus a test using a sample of the new format; it does not silently default missing currency.
+- Covers recovery: rerun or backfill the failed day, tell downstream users, and add a contract or schema check so the next upstream change fails loudly.
+- Keeps the human doing production actions; Claude has no prod access.

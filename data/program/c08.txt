@@ -1,0 +1,201 @@
+@@meta
+id: c08
+n: 8
+title: Hooks: guardrails that always run
+goal: Use hooks to enforce what instructions only suggest: block dangerous commands and secret access, format and test after edits, and log what the agent did.
+hours: 2
+
+@@tickets
+C801 | learn | 0.5 | Lesson: hook events, inputs and how to block | You can name the main hook events, what a hook receives and how it blocks an action. | chapter
+C802 | ai | 0.75 | Practise in Claude Code: a guard hook and a test hook | A PreToolUse hook blocks writes to .env and risky SQL, and a hook runs the tests when Claude finishes. | lab
+C803 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
+C804 | test | 0.33 | Quiz C8 | 80% or better. | quiz
+
+@@readings
+- [Hooks reference](https://docs.claude.com/en/docs/claude-code/hooks). Events, input JSON, exit codes and JSON output.
+- [Get started with hooks](https://docs.claude.com/en/docs/claude-code/hooks-guide). A worked example.
+- [Security](https://docs.claude.com/en/docs/claude-code/security). Hooks run with your permissions; review them like code.
+
+@@chapter
+## C8.1 Why hooks
+
+CLAUDE.md says "never edit .env". The model usually obeys. **Usually** is not good enough for secrets, production or destructive commands. A hook is a command that Claude Code runs at a fixed point, every time, whatever the model decides. It is enforcement, not guidance.
+
+## C8.2 Events
+
+| Event | When | Typical use |
+|---|---|---|
+| `PreToolUse` | before a tool runs (Bash, Edit, Write, Read...) | block risky commands or edits; can deny |
+| `PostToolUse` | after a tool succeeds | format the file, run a linter, log |
+| `UserPromptSubmit` | when you send a prompt | add context, block prompts containing secrets |
+| `Stop` | when Claude finishes its turn | run tests; tell Claude to continue if they fail |
+| `SessionStart` | session begins | load context such as the current branch or open tickets |
+| `PreCompact` | before compaction | save notes |
+| `Notification` | Claude needs your attention | desktop alert |
+
+Hooks are configured in settings files (user, project or local), with a **matcher** for tool names:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash|Edit|Write",
+        "hooks": [{ "type": "command", "command": "python3 .claude/hooks/guard.py" }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "Edit|Write",
+        "hooks": [{ "type": "command", "command": "python3 -m unittest -q 2>&1 | tail -5" }] }
+    ]
+  }
+}
+```
+
+## C8.3 Inputs and blocking
+
+The hook gets JSON on **stdin**: the event name, `tool_name`, and `tool_input` (for Bash the `command`, for Edit and Write the `file_path` and content). It answers with its **exit code**:
+
+- `0`: carry on (stdout may be shown or added as context, depending on the event)
+- `2`: **block**. For `PreToolUse` the tool call is cancelled, and what you print on **stderr** is shown to Claude so it can adjust
+- other codes: a non-blocking error, shown to you
+
+A minimal guard in Python:
+
+```python
+import json, re, sys
+e = json.load(sys.stdin)
+ti = e.get('tool_input', {})
+path = ti.get('file_path', '')
+cmd = ti.get('command', '')
+if re.search(r'(^|/)\.env', path) or re.search(r'\.env\b', cmd):
+    print('Blocked: .env holds secrets. Use environment variables.', file=sys.stderr); sys.exit(2)
+if re.search(r'\b(DROP|TRUNCATE)\b', cmd, re.I) or re.search(r'rm\s+-rf', cmd):
+    print('Blocked: destructive command. Ask the human to run it.', file=sys.stderr); sys.exit(2)
+sys.exit(0)
+```
+
+Hooks can also return JSON for finer control (for example a `PreToolUse` decision of allow, deny or ask, with a reason). Start with exit codes. They are simple and robust.
+
+## C8.4 Rules for safe hooks
+
+- Hooks run **as you**, with your permissions. Review hook scripts like production code, and never install hooks from a repo you do not trust.
+- Pipe-test before trusting: `echo '{"tool_name":"Bash","tool_input":{"command":"rm -rf /tmp/x"}}' | python3 .claude/hooks/guard.py; echo $?` should print the reason and `2`.
+- Keep them fast (they run on every matching call) and quiet on success.
+- A hook that fails open (crashes and returns 1) does not block. Test the block path.
+- `/hooks` shows what is active. Use a Stop hook with care: a failing check that tells Claude to continue forever needs a limit.
+
+@@lab
+## Lab: two hooks (40 minutes)
+
+Fresh copy, `cd ~/cc-sandbox`.
+
+1. Write `.claude/hooks/guard.py` (start from the lesson). Extend it to block `curl ... | sh` and any SQL `DELETE` without a `WHERE`.
+2. Pipe-test it with four JSON inputs: a safe command, `rm -rf build`, an Edit of `.env`, and `curl x | sh`. Check the exit codes (0, 2, 2, 2).
+3. Register it in `.claude/settings.json` under `PreToolUse` with matcher `Bash|Edit|Write`.
+4. Start `claude` and ask it to "add WAREHOUSE_TOKEN=abc to .env". It should be blocked, and Claude should see your reason and adapt.
+5. Add a `PostToolUse` hook for `Edit|Write` that runs the tests quietly and shows the last 5 lines. Ask Claude to fix the EU amount bug and watch the tests run after each edit.
+6. Run `/hooks` to see both. Commit `.claude/`.
+
+@@quiz
+TYPE: mcq
+TAG: ai
+Q: Why use a hook instead of a CLAUDE.md line to stop edits to .env?
+A) Hooks are cheaper
+B) A hook is enforced by the harness every time; CLAUDE.md is guidance the model can miss
+C) CLAUDE.md cannot mention files
+D) Hooks make the model smarter
+ANS: B
+WHY: Enforcement for must-never rules; guidance for conventions.
+---
+TYPE: mcq
+TAG: ai
+Q: A PreToolUse hook exits with code 2 and prints a reason on stderr. What happens?
+A) The tool runs and the reason is logged
+B) The tool call is blocked and the reason is shown to Claude
+C) Claude Code crashes
+D) The session ends
+ANS: B
+WHY: Exit code 2 blocks, and stderr becomes feedback the model can act on.
+---
+TYPE: mcq
+TAG: ai
+Q: Which event fits "run the formatter on every file Claude edits"?
+A) SessionStart
+B) PostToolUse with matcher Edit|Write
+C) UserPromptSubmit
+D) PreCompact
+ANS: B
+WHY: After a successful edit, the hook receives the file path in tool_input.
+---
+TYPE: fill
+TAG: ai
+Q: A hook receives its event data as JSON on standard ____.
+ANS: input|in|stdin
+WHY: Read it with json.load(sys.stdin) or jq.
+---
+TYPE: short
+TAG: ai
+Q: Your guard hook has a bug and crashes with exit code 1 on every call. What is the consequence, and how do you prevent it?
+MODEL: A crash with exit code 1 is a non-blocking error, so the hook fails open: risky actions are no longer blocked, and the only sign is an error message. Prevent it by pipe-testing the hook with safe and unsafe inputs before enabling it, wrapping the parsing in try/except so it exits 2 (fail closed) on unexpected input for high-risk rules, keeping it simple, and testing it in CI.
+
+@@interview
+Q: How would you enforce safety rules for AI agents working in your data repositories?
+TAG: ai
+A: Layers. Permission rules deny secret files and destructive commands. Hooks enforce what rules cannot express: blocking DELETE without WHERE, curl piped to a shell, edits to migration folders, or anything touching production configs, with a clear reason fed back to the agent. Post-edit hooks run formatters and fast tests so problems surface immediately. All of it is committed to the repo, reviewed like code and tested. Unattended runs go in sandboxes without credentials. CLAUDE.md explains the why, but enforcement does not depend on the model reading it.
+---
+Q: Give an example of a hook that improved AI output quality, not just safety.
+TAG: ai
+A: A PostToolUse hook that runs the linter and the module's unit tests after every edit, with output trimmed to the last few lines. The agent sees failures immediately in the same turn and fixes them, instead of piling up broken edits. Another is a Stop hook that runs the full quick test suite and asks the agent to continue if anything fails, with a retry limit.
+---
+Q: What are the risks of hooks themselves?
+TAG: ai
+A: They run arbitrary commands with the user's permissions, so a malicious or careless hook in a cloned repo is a supply-chain risk. Review hooks like code and do not enable project hooks from untrusted repos. A buggy hook can fail open (stop blocking) or fail closed (block everything). Slow hooks slow every action. Hooks that print too much fill the context and cost tokens. Test them and keep them small.
+---
+Q: How do you audit what an AI agent did in a repository?
+TAG: ai
+A: Git history for the code (small commits with clear messages), session transcripts kept locally for a retention period, and a logging hook that writes each tool call (time, tool, command or file) to an append-only log. In CI, the agent runs with its own identity and least-privilege token, so actions are attributable. For sensitive repos, I review the logs of unattended runs.
+---
+Q: When would you block an action in a hook versus ask the human?
+TAG: ai
+A: Block when the action is never acceptable for the agent: reading secrets, destructive commands, production endpoints. Ask (via permission rules or a hook decision of ask) when it is sometimes fine but needs judgment: pushing a branch, installing a dependency, fetching a URL. Allow silently when it is routine and safe, like tests and diffs, so humans are not trained to approve everything.
+
+@@tasks
+TITLE: Your guard hook
+TASK: Paste your `.claude/hooks/guard.py`, the hooks section of `.claude/settings.json`, and the output of your four pipe tests (each command and its exit code).
+SUBMIT: the hook script, the settings section, and the pipe-test results.
+RUBRIC: - Reads JSON from stdin and inspects tool_input (file_path and command).
+- Blocks .env edits or reads, rm -rf, curl piped to sh, and DELETE without WHERE, with exit code 2 and a reason on stderr.
+- Exits 0 for safe input.
+- Settings use PreToolUse with matcher Bash|Edit|Write and type command.
+- Pipe tests show 0 for safe input and 2 for the three dangerous cases.
+---
+TITLE: Hook design for a real team
+TASK: Your team's dbt repo has had three AI-related incidents: (1) an agent edited a file in `models/marts/finance/` that needs finance sign-off, (2) an agent ran `dbt run --target prod`, (3) an agent's change broke the SQL lint and nobody noticed until CI.
+
+Design the hooks (event, matcher, what the script checks, block or allow) that prevent each. Write the settings JSON and describe each script in 2 to 4 lines (code optional).
+SUBMIT: your settings JSON and a description of each hook script.
+RUBRIC: - (1) PreToolUse on Edit|Write that blocks or asks for paths under models/marts/finance/, with a reason pointing to the sign-off process.
+- (2) PreToolUse on Bash that blocks commands containing --target prod (or the prod profile), with a reason to use dev.
+- (3) PostToolUse on Edit|Write for .sql files that runs the linter (for example sqlfluff lint on the file) and shows a short output; or a Stop hook that lints changed files.
+- Valid settings structure (hooks, event, matcher, hooks array, type command); mentions testing the hooks.
+---
+TITLE: Debug a broken hook
+TASK: A teammate's hook is meant to block edits to `.env`, but edits still go through. Find every bug and give the fixed version.
+
+```json
+{ "hooks": { "PostToolUse": [ { "matcher": "Edit",
+  "hooks": [ { "type": "command", "command": "python3 guard_env.py" } ] } ] } }
+```
+```python
+import sys, json
+data = json.loads(sys.argv[1])
+if data["tool_input"]["file_path"] == ".env":
+    print("no editing .env")
+    sys.exit(1)
+```
+SUBMIT: each bug with an explanation, and the fixed settings and script.
+RUBRIC: - PostToolUse runs after the edit, so it cannot prevent it: use PreToolUse.
+- The matcher misses Write (and possibly MultiEdit or Read): use Edit|Write or similar.
+- The input comes on stdin, not argv: use json.load(sys.stdin).
+- file_path is usually absolute, so == ".env" never matches: use endswith or a regex on the basename, including .env.* variants.
+- Exit 1 does not block: use exit 2, and print the reason to stderr.
+- The script path is relative: use a path the hook can find (for example .claude/hooks/guard_env.py from the project root, or $CLAUDE_PROJECT_DIR).
