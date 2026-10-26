@@ -4,7 +4,7 @@
   python3 tools/coach/coach.py post   COACH.json [--dry-run]  validate a coach report and upload it
 The sync URL (with ?k=KEY) comes from $DA_SYNC_URL or ~/.data-architect/config.json {"sync_url": "..."}.
 Your progress never goes into this repository: it travels only between the app, your Google Drive and this Mac."""
-import json, os, re, sys, glob, datetime as dt, urllib.request
+import json, os, re, sys, glob, subprocess, datetime as dt, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SCHEMA_VERSION = 1
@@ -20,10 +20,30 @@ def sync_url():
     return u
 
 
+def http(url, data=None):
+    """GET (or POST data) and return the response text. Uses curl, which trusts the macOS system certificates;
+    python.org builds of Python often have no CA bundle and fail every HTTPS request."""
+    cmd = ['curl', '-sSL', '--fail', '--max-time', '90', url]
+    if data is not None:
+        cmd[1:1] = ['-X', 'POST', '-H', 'Content-Type: text/plain;charset=utf-8', '--data-binary', '@-']
+    try:
+        r = subprocess.run(cmd, input=data, capture_output=True, text=True, timeout=120)
+        if r.returncode == 0:
+            return r.stdout
+        err = r.stderr.strip().replace(url, '<sync url>')
+    except FileNotFoundError:
+        err = 'curl not found'
+    try:  # fall back to Python's own HTTP client
+        req = urllib.request.Request(url, data=data.encode() if data is not None else None, headers={'Content-Type': 'text/plain;charset=utf-8'}, method='POST' if data is not None else 'GET')
+        with urllib.request.urlopen(req, timeout=90) as r:
+            return r.read().decode()
+    except Exception as e:
+        sys.exit('Could not reach the sync script (curl: %s; python: %s)' % (err, str(e).replace(url, '<sync url>')))
+
+
 def fetch(out):
     u = sync_url()
-    with urllib.request.urlopen(u + ('&' if '?' in u else '?') + 'action=load', timeout=60) as r:
-        body = json.loads(r.read().decode())
+    body = json.loads(http(u + ('&' if '?' in u else '?') + 'action=load'))
     if body.get('ok') is False:
         sys.exit('Sync refused: ' + str(body.get('error')))
     json.dump(body, open(out, 'w'))
@@ -235,9 +255,7 @@ def post(path, dry, state_path=None):
     if dry:
         print('valid; not uploaded (dry run)'); return
     u = sync_url()
-    req = urllib.request.Request(u, data=json.dumps({'action': 'saveCoach', 'coach': c}).encode(), headers={'Content-Type': 'text/plain;charset=utf-8'}, method='POST')
-    with urllib.request.urlopen(req, timeout=60) as r:
-        res = json.loads(r.read().decode())
+    res = json.loads(http(u, json.dumps({'action': 'saveCoach', 'coach': c})))
     if res.get('ok') is False: sys.exit('Upload refused: ' + str(res.get('error')))
     print('uploaded coach report generated', c['generated_at'])
 
