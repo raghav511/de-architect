@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.7.5';
+const VERSION = '1.7.6';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -853,6 +853,8 @@ function graderStatus() {
   return t;
 }
 function syncLabel() { return S.syncing ? 'Syncing…' : S.lastSync && Date.now() - S.lastSync < 60000 ? 'Synced' : 'Sync progress'; }
+/* preferences that follow you across devices; the API key, sync URL, theme and notifications stay per device */
+const PREF_KEYS = ['capWd', 'capWe', 'studyTime', 'ai', 'coachVia', 'gradeModel'];
 function settings() {
   const f = (id, label, val, type, ph) => el('div', { class: 'field' }, [el('label', { for: id, class: 'lbl', text: label }), el('input', { id, type: type || 'text', value: val || '', placeholder: ph || '', autocomplete: 'off' })]);
   const body = el('div', { class: 'stack' }, [
@@ -861,10 +863,14 @@ function settings() {
     el('div', { class: 'field' }, [el('label', { for: 'st_theme', class: 'lbl', text: 'Theme' }), el('select', { id: 'st_theme', class: 'btn' }, [['auto', 'Match my device'], ['light', 'Light'], ['dark', 'Dark']].map(([v, t]) => el('option', { value: v, selected: (S.settings.theme || 'auto') === v ? 'selected' : null, text: t })))]),
     f('st_sync', 'Sync URL (Google Apps Script web app, ending in ?k=your key)', S.settings.syncUrl, 'url', 'https://script.google.com/macros/s/…/exec?k=…'),
     el('div', { class: 'field' }, [el('label', { for: 'st_ai', class: 'lbl', text: 'AI features' }), el('select', { id: 'st_ai', class: 'btn' }, [['on', 'On: instant grading, practice runs and the Claude Code track'], ['off', 'Off: study without AI (self-check with model answers)']].map(([v, t]) => el('option', { value: v, selected: (S.settings.ai === false ? 'off' : 'on') === v ? 'selected' : null, text: t })))]),
+    el('div', { class: 'field' }, [el('label', { for: 'st_coach', class: 'lbl', text: 'Coach bubble answers with' }), el('select', { id: 'st_coach', class: 'btn' }, [['mac', 'Claude Code on my Mac'], ['key', 'My API key'], ['hints', 'Hints only (no AI)']].map(([v, t]) => el('option', { value: v, selected: (S.settings.coachVia || 'mac') === v ? 'selected' : null, text: t })))]),
+    el('div', { class: 'field' }, [el('label', { for: 'st_grade', class: 'lbl', text: 'Instant grading model' }), el('select', { id: 'st_grade', class: 'btn' }, [['auto', 'Automatic'], ['haiku', 'Haiku (cheapest)'], ['sonnet', 'Sonnet (most thorough)']].map(([v, t]) => el('option', { value: v, selected: (S.settings.gradeModel || 'auto') === v ? 'selected' : null, text: t })))]),
     f('st_key', 'Coach AI key (optional, Anthropic API key, kept only on this device)', S.settings.aiKey, 'password', 'sk-ant-…'),
     f('st_model', 'Coach model', S.settings.aiModel || 'claude-haiku-5-5', 'text'),
     el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'The key never leaves this device except to call the AI provider. Without a key the coach still gives the step-by-step hints.' }),
     graderStatus(),
+    el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Coach: the other source is used if the first cannot answer. Grading: Automatic uses Haiku for answers and Sonnet for code, designs and Claude Code tasks.' }),
+    el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Your study minutes, study time, week 1 start, AI features, coach and grading choices sync to your other devices (Mac, iPhone, Android) when you tap Sync progress. Theme, keys, the sync URL and notifications stay on this device.' }),
     el('label', { class: 'row', style: { gap: '10px', fontSize: '14.5px' } }, [el('input', { type: 'checkbox', id: 'st_notify', checked: S.settings.notifyUpdates ? 'checked' : null, style: { width: '20px', height: '20px' } }), 'Notify me when an app update is available']),
     el('div', { class: 'row wrap', style: { gap: '8px', fontSize: '13.5px' } }, [el('span', { class: 'muted grow', text: 'App version ' + VERSION + (S.latest ? ' · latest ' + S.latest.version + ' (checked ' + verAge(S.latest.at) + ')' : '') }), el('button', { class: 'btn sm', onclick: () => { document.querySelectorAll('.scrim').forEach(x => x.remove()); updateDialog(); }, text: 'Check for updates' })])]);
   confirmBox('Settings', body, [{ t: 'Save', cls: 'pri', v: 1 }, { t: 'Cancel', v: null }]).then(v => {
@@ -875,6 +881,7 @@ function settings() {
     if (su && /script\.google\.com/.test(su) && !/[?&]k=/.test(su)) setTimeout(() => toast('Saved. This sync URL has no ?k= key: anyone with the URL could read your progress.', null, 7000), 400);
     const st0 = g('st_start'); if (/^\d{4}-\d\d-\d\d$/.test(st0)) { const d = new Date(st0 + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); S.start = iso(d); } S.settings.syncUrl = su; S.settings.aiKey = g('st_key'); S.settings.aiModel = g('st_model') || 'claude-haiku-5-5';
     const wd = Math.round(+g('st_wd')), we = Math.round(+g('st_we')); S.settings.capWd = wd >= 15 && wd <= 600 ? wd : 60; S.settings.capWe = we >= 15 && we <= 720 ? we : 120; S.settings.studyTime = g('st_time') || '07:00'; S.settings.theme = g('st_theme') || 'auto'; applyTheme(); S.settings.ai = g('st_ai') !== 'off'; applyAi();
+    S.settings.coachVia = g('st_coach') || 'mac'; S.settings.gradeModel = g('st_grade') || 'auto'; S.settings.prefsAt = Date.now(); /* newest preferences win when devices sync */
     const nt = body.querySelector('#st_notify').checked; S.settings.notifyUpdates = nt;
     if (nt && window.Notification && Notification.permission === 'default') Notification.requestPermission().then(r => { if (r !== 'granted') { S.settings.notifyUpdates = false; save(false); toast('Notifications were not allowed, so update alerts stay in the app.', null, 6000); } });
     if (nt && !window.Notification) setTimeout(() => toast('This browser cannot show notifications here (on iPhone, add the app to the Home Screen first). You will still see update alerts in the app.', null, 8000), 400);
@@ -893,10 +900,15 @@ async function doSync() {
     let merged = local;
     if (remote && remote.data) merged = mergeState(remote.data, local);
     const keepSettings = S.settings;
+    /* shared preferences travel with the progress; the newer set wins (device-only settings never leave this device) */
+    const rp = remote && remote.data && remote.data.prefs;
+    if (rp && (rp.at || 0) > (keepSettings.prefsAt || 0)) { PREF_KEYS.forEach(k => { if (k in rp) keepSettings[k] = rp[k]; }); keepSettings.prefsAt = rp.at; }
     S = Object.assign(load(), merged, { settings: keepSettings });
+    applyTheme(); applyAi();
     let coachMsg = '';
     if (remote && remote.coach && remote.coach.generated_at && coachTime(remote.coach) >= coachTime(S.coach)) { S.coach = remote.coach; /* trust fix 8 */ const n = applyCoach(remote.coach); coachMsg = ' Coach report from ' + shortDate(remote.coach.generated_at.slice(0, 10)) + (n ? ', ' + n + ' problem' + (n > 1 ? 's' : '') + ' added to review.' : '.'); }
     const body = JSON.parse(JSON.stringify(S)); delete body.settings; delete body.syncing; delete body.coach;
+    body.prefs = Object.assign({ at: S.settings.prefsAt || 0 }, ...PREF_KEYS.filter(k => k in S.settings).map(k => ({ [k]: S.settings[k] })));
     /* trust fix 17: only say synced when the sync script confirms it saved */
     const pr = await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'save', data: body }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
     if (!pr.ok) throw new Error('upload failed (' + pr.status + ')');
@@ -1019,23 +1031,41 @@ async function askCoach(q, ctx, box) {
   const key = S.settings.aiKey;
   /* what "it sees this page" means: the visible text of the page, trimmed */
   const seen = (($('#page') || {}).innerText || '').replace(/\n{2,}/g, '\n').slice(0, 2500);
-  let macWhy = '';
-  /* Claude Code on the Mac first (the grader service, direct or through Sync); an API key only as a fallback or for photos */
-  if (aiOn() && !ctx.img) {
-    const hist = [...box.querySelectorAll('.m')].filter(m => m !== reply).slice(-7, -1).map(m => ({ me: m.classList.contains('me'), t: m.textContent }));
-    try {
-      const r = await macCall('chat', { page: (ctx.title || ctx.page || '') + ' (' + new Date().toDateString() + ')\n' + seen, problem: ctx.problem || '', code: (ctx.code || '').slice(0, 4000), question: q || 'Give me a hint.', history: hist },
-        () => { reply.textContent = ''; reply.append(el('span', { class: 'spin' }), ' Waiting for Claude Code on your Mac (it must be awake)…'); });
-      /* an older grader on the Mac does not know the coach yet: it grades the question instead of answering */
+  /* Settings → Coach bubble answers with: the Mac first (default), the API key first, or hints only */
+  const via = aiOn() ? (S.settings.coachVia || 'mac') : 'hints';
+  const order = via === 'hints' ? [] : via === 'key' ? ['key', 'mac'] : ['mac', 'key'];
+  const notes = [];
+  for (const src of order) {
+    if (src === 'key') {
+      if (!key) { if (via === 'key') notes.push('No API key is saved on this device.'); continue; }
+      const r = await askWithKey(q, ctx, key, seen);
       if (r.text) { reply.innerHTML = md2(r.text); return; }
-      macWhy = r.score ? 'The grader on your Mac is out of date. On the Mac run: cd ~/de-architect && git pull && bash tools/grader/install.sh' : 'No answer came back from your Mac.';
-    } catch (e) {
-      const m = String(e.message || e);
-      macWhy = m === 'nograder' ? '' : m === 'timeout' ? 'Your Mac did not answer in time. Is it awake, with the grader running?' : 'Claude Code on your Mac could not answer: ' + m.slice(0, 160);
+      notes.push(r.why);
+    } else {
+      if (ctx.img) { if (!key) notes.push('Photos need an API key in Settings.'); continue; }
+      const r = await askMac(q, ctx, box, reply, seen);
+      if (r.text) { reply.innerHTML = md2(r.text); return; }
+      if (r.why) notes.push(r.why);
     }
-    if (!key) { reply.textContent = macWhy || hintText(ctx); return; }
   }
-  if (!key) { reply.textContent = (ctx.img && aiOn() ? 'Photos need an API key in Settings. ' : '') + hintText(ctx); return; }
+  reply.textContent = (notes.length ? notes.join(' ') + ' ' : '') + hintText(ctx, via === 'hints');
+}
+/* the coach through Claude Code on the Mac (the grader service, direct or through Sync) */
+async function askMac(q, ctx, box, reply, seen) {
+  const hist = [...box.querySelectorAll('.m')].filter(m => m !== reply).slice(-7, -1).map(m => ({ me: m.classList.contains('me'), t: m.textContent }));
+  try {
+    const r = await macCall('chat', { page: (ctx.title || ctx.page || '') + ' (' + new Date().toDateString() + ')\n' + seen, problem: ctx.problem || '', code: (ctx.code || '').slice(0, 4000), question: q || 'Give me a hint.', history: hist },
+      () => { reply.textContent = ''; reply.append(el('span', { class: 'spin' }), ' Waiting for Claude Code on your Mac (it must be awake)…'); });
+    if (r.text) return { text: r.text };
+    /* an older grader on the Mac does not know the coach yet: it grades the question instead of answering */
+    return { why: r.score ? 'The grader on your Mac is out of date. On the Mac run: cd ~/de-architect && git pull && bash tools/grader/install.sh.' : 'No answer came back from your Mac.' };
+  } catch (e) {
+    const m = String(e.message || e);
+    return { why: m === 'nograder' ? '' : m === 'timeout' ? 'Your Mac did not answer in time. Is it awake, with the grader running?' : 'Claude Code on your Mac could not answer: ' + m.slice(0, 160) + '.' };
+  }
+}
+/* the coach through an Anthropic API key saved on this device */
+async function askWithKey(q, ctx, key, seen) {
   try {
     const content = [];
     if (ctx.img) content.push({ type: 'image', source: { type: 'base64', media_type: ctx.img.split(';')[0].slice(5), data: ctx.img.split(',')[1] } });
@@ -1043,13 +1073,14 @@ async function askCoach(q, ctx, box) {
     const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
       body: JSON.stringify({ model: S.settings.aiModel || 'claude-haiku-5-5', max_tokens: 600, system: 'You are a data engineering interview coach for a senior data engineer preparing for tier-1 and architect roles. Give intuition and a guiding question before answers. Never give a full solution unless the user explicitly asks for it. Keep replies under 150 words, plain language.', messages: [{ role: 'user', content }] }) });
     const j = await r.json();
-    if (r.status === 401 || (j.error && /api.key|authentication/i.test(j.error.message || j.error.type || ''))) { reply.textContent = (macWhy ? macWhy + ' ' : '') + 'The API key saved in Settings was rejected (revoked or mistyped). Remove it in Settings; the coach then uses only Claude Code on your Mac.'; return; }
-    reply.innerHTML = md2((j.content || []).map(c => c.text || '').join('') || (j.error && j.error.message) || 'No answer.');
-  } catch (e) { reply.textContent = (macWhy ? macWhy + ' ' : '') + 'The coach could not reach the AI service with your API key. Check your connection.'; }
+    if (r.status === 401 || (j.error && /api.key|authentication/i.test(j.error.message || j.error.type || ''))) return { why: 'The API key saved in Settings was rejected (revoked or mistyped): remove it in Settings.' };
+    const text = (j.content || []).map(c => c.text || '').join('');
+    return text ? { text } : { why: 'The AI service returned no answer' + (j.error && j.error.message ? ': ' + j.error.message : '') + '.' };
+  } catch (e) { return { why: 'The coach could not reach the AI service with your API key. Check your connection.' }; }
 }
-function hintText(ctx) {
-  const hs = ctx.hints || [];
-  return hs.length ? 'Try this question first: ' + (hs[Math.min(hs.length - 1, (S.hints[location.hash.split('/')[2]] || 0))] || hs[0]) + (aiOn() ? ' (For full answers, run the grader on your Mac: bash tools/grader/install.sh.)' : '') : 'Break the problem into the smallest step you can test, then run it.' + (aiOn() ? ' For full answers, run the grader on your Mac (bash tools/grader/install.sh).' : '');
+function hintText(ctx, plain) {
+  const hs = ctx.hints || [], more = !plain && aiOn();
+  return hs.length ? 'Try this question first: ' + (hs[Math.min(hs.length - 1, (S.hints[location.hash.split('/')[2]] || 0))] || hs[0]) + (more ? ' (For full answers, run the grader on your Mac: bash tools/grader/install.sh.)' : '') : 'Break the problem into the smallest step you can test, then run it.' + (more ? ' For full answers, run the grader on your Mac (bash tools/grader/install.sh).' : '');
 }
 
 /* ---------------- boot ---------------- */

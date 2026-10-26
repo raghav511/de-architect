@@ -41,6 +41,7 @@ function gradeNow(key, kind, payload, text, title) {
   return p;
 }
 async function gradeRun(key, kind, payload, text, title) {
+  if (kind !== 'run' && kind !== 'chat' && S.settings.gradeModel && S.settings.gradeModel !== 'auto') payload = Object.assign({ model: S.settings.gradeModel }, payload); /* Settings → Instant grading model */
   S.grades = S.grades || {};
   const prev = S.grades[key];
   const hist = ((prev && prev.hist) || []).concat(prev && prev.s === 'done' && prev.r ? [{ at: prev.at, q: prev.q, score: prev.r.score, model: prev.r.model, turns: prev.r.turns, tokens: prev.r.tokens, cost: prev.r.cost, ms: prev.r.ms }] : []).slice(-6);

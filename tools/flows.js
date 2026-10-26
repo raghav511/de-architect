@@ -632,6 +632,48 @@ async function T(name, fn, opt) {
     await go(p, '#/coach', 1000); ok(/AI features are off/.test(await text(p, '#page')), 'coach page does not explain');
   });
 
+  /* ---- preferences (Settings) ---- */
+  await T('preferences: coach source and grading model are chosen in Settings and saved', async p => {
+    await go(p, '#/today', 1000); await p.click('[aria-label=Settings]'); await p.waitForTimeout(300);
+    await p.selectOption('#st_coach', 'hints'); await p.selectOption('#st_grade', 'sonnet');
+    await p.locator('.scrim [role=dialog] button', { hasText: 'Save' }).click(); await p.waitForTimeout(300);
+    const st = await p.evaluate(() => [S.settings.coachVia, S.settings.gradeModel, S.settings.prefsAt > 0]);
+    ok(st[0] === 'hints' && st[1] === 'sonnet' && st[2], 'not saved: ' + JSON.stringify(st));
+  });
+  await T('preferences: the coach follows the chosen source', async p => {
+    await go(p, '#/today', 1000);
+    const r = await p.evaluate(async () => {
+      const calls = []; window.macCall = async () => { calls.push('mac'); return { text: 'from mac' }; };
+      const f = window.fetch; window.fetch = (u, o) => { if (/api\.anthropic/.test(u)) { calls.push('key'); return Promise.resolve(new Response(JSON.stringify({ content: [{ text: 'from key' }] }))); } return f(u, o); };
+      const ask = async () => { const b = document.createElement('div'); await askCoach('q', { title: 't' }, b); return b.innerText; };
+      S.settings.aiKey = 'sk-test';
+      S.settings.coachVia = 'mac'; const a = await ask();
+      S.settings.coachVia = 'key'; const b = await ask();
+      S.settings.coachVia = 'hints'; const c = await ask();
+      window.fetch = f; S.settings.aiKey = ''; return { a, b, c, calls };
+    });
+    ok(/from mac/.test(r.a) && /from key/.test(r.b) && !/from/.test(r.c) && r.calls.join() === 'mac,key', JSON.stringify(r));
+  });
+  await T('preferences: the grading model choice travels with the grading request', async p => {
+    await go(p, '#/today', 1000);
+    const m = await p.evaluate(async () => { let got = null; window.graderHealthy = async () => true; window.gradeDirect = async (k, pl) => { got = pl.model || 'default'; return { score: 4, verdict: 'v', strengths: [], issues: [], improve: '', better: '' }; };
+      S.settings.gradeModel = 'haiku'; await gradeNow('x1', 'code', { code: 'a' }, 'a', 't'); const one = got;
+      S.settings.gradeModel = 'auto'; await gradeNow('x2', 'code', { code: 'a' }, 'a', 't'); return [one, got]; });
+    ok(m[0] === 'haiku' && m[1] === 'default', JSON.stringify(m));
+  });
+  await T('preferences: sync shares them across devices, newest wins, keys stay on the device', async (p, c) => {
+    let posted = null;
+    await c.route('https://sync.example/**', async r => { if (r.request().method() === 'POST') { posted = JSON.parse(r.request().postData()); return r.fulfill({ contentType: 'application/json', body: '{"ok":true}' }); }
+      return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, data: { start: '2026-10-26', updated: 1, prefs: { at: Date.now() + 60000, capWd: 45, coachVia: 'key', gradeModel: 'sonnet', ai: true } } }) }); });
+    await go(p, '#/today', 1000);
+    await p.evaluate(() => { S.settings.syncUrl = 'https://sync.example/exec?k=x'; S.settings.aiKey = 'sk-secret'; S.settings.theme = 'dark'; S.settings.capWd = 60; S.settings.prefsAt = 1; save(); });
+    await p.evaluate(() => doSync()); await p.waitForTimeout(1500);
+    const st = await p.evaluate(() => [S.settings.capWd, S.settings.coachVia, S.settings.gradeModel, S.settings.aiKey, S.settings.theme, S.settings.syncUrl]);
+    ok(st[0] === 45 && st[1] === 'key' && st[2] === 'sonnet', 'remote preferences not applied: ' + JSON.stringify(st));
+    ok(st[3] === 'sk-secret' && st[4] === 'dark' && /sync\.example/.test(st[5]), 'device-only settings changed');
+    ok(posted && posted.data.prefs && posted.data.prefs.capWd === 45 && !JSON.stringify(posted).includes('sk-secret') && !('settings' in posted.data), 'upload leaked device settings or missed prefs');
+  });
+
   await browser.close();
   results.forEach(r => console.log(r.join('  ')));
   const f = results.filter(r => r[0] === 'FAIL').length;

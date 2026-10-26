@@ -83,7 +83,7 @@ def claude_bin():
 def grade(kind, payload):
     """Run one grading call. Returns a dict with the schema fields plus model, ms and cost."""
     t0 = time.time()
-    model = MODELS.get(kind, 'haiku')
+    model = payload.get('model') if payload.get('model') in ('haiku', 'sonnet') else MODELS.get(kind, 'haiku')  # Settings → Instant grading model
     cmd = [claude_bin(), '-p', '--model', model, '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}',
            '--disable-slash-commands', '--exclude-dynamic-system-prompt-sections', '--no-session-persistence',
            '--output-format', 'json', '--json-schema', json.dumps(SCHEMA), '--system-prompt', SYSTEM]
