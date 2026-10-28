@@ -1,4 +1,4 @@
-/* Simulated users: six people with different devices, skills, habits and needs run realistic end-to-end tasks
+/* Simulated users: seven people with different devices, skills, habits and needs run realistic end-to-end tasks
    in the real app. Each task is scripted the way that person would do it; probes record what they would notice.
    node tools/personas/run.js BASE OUTDIR [persona]
    Needs: the app on BASE, fake_sync on 8814 (key gkey), and a stub grader on 8766 (see tools/test_all.sh). */
@@ -21,6 +21,8 @@ const PERSONAS = [
     about: 'Refuses AI tools and cloud sync for personal data; studies offline on a plane; wants the app useful with no AI at all.' },
   { id: 'sofia', name: 'Sofia, 26, fast-moving Python developer', engine: 'chromium', ctx: Object.assign({}, devices['Pixel 7'], { colorScheme: 'dark', reducedMotion: 'reduce' }), sync: true, grader: 'relay',
     about: 'Android Chrome in dark mode with reduced motion; binges on weekends; pokes at edge cases: back button, retake, reset, backup, search.' },
+  { id: 'dev', name: 'Dev, 41, on-call SRE and parent', engine: 'webkit', ctx: Object.assign({}, devices['iPad (gen 7) landscape']), gap: 3,
+    about: 'iPad Safari in landscape; misses days when on call or with the kids, then comes back wanting to know what he missed; uses Claude Code but no sync.' },
 ];
 
 const short = s => String(s || '').replace(/\s+/g, ' ').slice(0, 160);
@@ -56,6 +58,7 @@ async function run(P) {
 
   await go('#/today', 2000);
   if (P.sync) await p.evaluate(u => { S.settings.syncUrl = u; save(); }, SYNC);
+  if (P.gap) await p.evaluate(n => { const d = new Date(); d.setDate(d.getDate() - n); S.start = iso(d); S.done = {}; save(); }, P.gap);
   await p.waitForTimeout(300);
 
   /* ---------- everyone: first look at Today ---------- */
@@ -380,6 +383,42 @@ async function run(P) {
     });
   }
 
+  if (P.id === 'dev') {
+    await task('come back after missing days and see what happened', async () => {
+      await go('#/today', 1200); await probe(p, P, 'Today after a gap', notes); await shot('gap');
+      const r = await p.evaluate(() => { const sc = schedule(); return { note: (document.querySelector('.behind') || {}).innerText || '', cur: (document.querySelector('.unit.cur .t') || {}).innerText || '', first: (sc.units.find(u => !u.isDone && !isCC(u.mid)) || {}).title }; });
+      if (!/Catching up/.test(r.note)) return 'no word about the missed days';
+      return r.cur === r.first || 'Up next is "' + r.cur + '", not the earliest open step "' + r.first + '"';
+    });
+    await task('check the week strip for the missed days', async () => {
+      const t = await p.$$eval('.wkday.past', a => a.map(x => x.innerText));
+      if (t.some(x => /—/.test(x))) note('Today week strip', 'clarity', 'a missed day shows only a dash');
+      return true;
+    });
+    await task('catch up on a skipped DSA problem first', async () => {
+      const s = await p.$$eval('.item .s', a => a.map(x => x.innerText).join(' | '));
+      return /from (Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test(s) || new Date().getDay() === 1 || 'coding track jumped past unsolved problems: ' + s.slice(0, 120);
+    });
+    await task('do the first step by touch and see the plan move', async () => {
+      const before = await p.$eval('.unit.cur .t', e => e.innerText);
+      await p.locator('.unit.cur .check').tap(); await p.waitForTimeout(500);
+      const after = await p.$eval('.unit.cur .t', e => e.innerText).catch(() => '');
+      return (after && after !== before) || 'Up next did not move on';
+    });
+    await task('open Path and continue the current module', async () => {
+      await go('#/path', 1200); await probe(p, P, 'Path iPad', notes); await shot('path');
+      const href = await p.$eval('.pcard.cur .go', e => e.getAttribute('href')).catch(() => null);
+      if (!href) return 'no Continue button on the current module';
+      await p.locator('.pcard.cur .go').tap(); await p.waitForTimeout(1200); await probe(p, P, 'Continue target', notes);
+      return (await p.evaluate(() => (document.querySelector('#page') || {}).innerText.length > 80)) || 'Continue opened an empty page';
+    });
+    await task('skip ahead to tomorrow and come back', async () => {
+      await go('#/today/1', 900); const t = await p.evaluate(() => document.querySelector('h1').innerText + '|' + location.hash);
+      await p.locator('a', { hasText: 'Back to today' }).first().tap(); await p.waitForTimeout(700);
+      return /#\/today$/.test(await p.evaluate(() => location.hash)) || 'Back to today failed (' + t + ')';
+    });
+  }
+
   errs.forEach(e => notes.push({ where: 'any', kind: 'error', msg: 'page error: ' + short(e) }));
   await b.close();
   return { id: P.id, name: P.name, about: P.about, tasks, notes };
@@ -388,10 +427,23 @@ async function run(P) {
 (async () => {
   const out = [];
   for (const P of PERSONAS.filter(x => !ONLY || x.id === ONLY)) { try { out.push(await run(P)); } catch (e) { out.push({ id: P.id, name: P.name, crash: short(e.message), tasks: [], notes: [] }); } }
+  /* severity: P0 blocks a task or breaks the page; P1 confuses or excludes someone; P2 is polish. Rating starts at 10. */
+  const SEV = { error: 'P0', layout: 'P1', a11y: 'P1', clarity: 'P1', touch: 'P2', text: 'P2' };
+  for (const r of out) {
+    const seen = new Set(); r.issues = [];
+    if (r.crash) r.issues.push({ sev: 'P0', where: 'run', msg: r.crash });
+    r.tasks.filter(t => !t.ok).forEach(t => r.issues.push({ sev: 'P0', where: t.name, msg: t.why }));
+    r.notes.forEach(n => { const k = n.where + n.msg; if (seen.has(k)) return; seen.add(k); r.issues.push({ sev: SEV[n.kind] || 'P2', where: n.where, msg: n.msg }); });
+    const c = x => r.issues.filter(i => i.sev === x).length;
+    r.count = { P0: c('P0'), P1: c('P1'), P2: c('P2') };
+    r.rating = Math.max(1, Math.round(10 - 3 * r.count.P0 - 1.5 * r.count.P1 - 0.5 * r.count.P2));
+  }
   fs.writeFileSync(OUT + '/results.json', JSON.stringify(out, null, 1));
   for (const r of out) {
     console.log('\n## ' + r.name + (r.crash ? ' CRASH ' + r.crash : ''));
     r.tasks.forEach(t => console.log((t.ok ? '  ok   ' : '  FAIL ') + t.name + ' (' + t.secs + ' s)' + (t.why ? ': ' + t.why : '')));
-    const seen = new Set(); r.notes.forEach(n => { const k = n.where + n.msg; if (seen.has(k)) return; seen.add(k); console.log('  note [' + n.kind + '] ' + n.where + ': ' + n.msg); });
+    r.issues.forEach(i => console.log('  ' + i.sev + ' ' + i.where + ': ' + i.msg));
+    console.log('  RATING ' + r.rating + '/10 · P0 ' + r.count.P0 + ' · P1 ' + r.count.P1 + ' · P2 ' + r.count.P2);
   }
+  console.log('\nRATINGS ' + out.map(r => r.id + '=' + r.rating).join(' '));
 })();

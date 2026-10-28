@@ -124,10 +124,15 @@ function schedule() {
     if (fi > 0) { put(k, q.splice(fi, 1)[0]); continue; }
     cur.setDate(cur.getDate() + 1);
   }
+  /* within a day the main path comes first, so a carried-over step is never pushed below a Claude Code step */
+  Object.values(byDay).forEach(a => a.sort((x, y) => isCC(x.mid) - isCC(y.mid)));
+  /* days since the start with nothing ticked: their steps were not skipped, they moved to today and later */
+  const missed = [];
+  for (const d = new Date((S.start || iso(t)) + 'T00:00:00'); d < t && missed.length < 400; d.setDate(d.getDate() + 1)) if (!(byDay[iso(d)] || []).some(u => u.isDone)) missed.push(iso(d));
   const span = {};
   units.forEach(u => { const s = span[u.mid] = span[u.mid] || { first: null, last: null, n: 0, done: 0, mins: 0 }; if (u.day !== '0000-00-00') { if (!s.first || u.day < s.first) s.first = u.day; if (!s.last || u.day > s.last) s.last = u.day; } s.n++; s.mins += u.mins; if (u.isDone) s.done++; });
   const next = units.find(u => !u.isDone);
-  return { units, byDay, used, span, today: iso(t), cur: next ? next.mid : MODS[MODS.length - 1], next };
+  return { units, byDay, used, span, missed, today: iso(t), cur: next ? next.mid : MODS[MODS.length - 1], next };
 }
 function curMid() { return schedule().cur; }
 function weeksText(sp) { if (!sp || !sp.first) return 'done'; const a = weekOf(sp.first), b = weekOf(sp.last); return (a === b ? 'Week ' + a : 'Weeks ' + a + '–' + b) + ' · ' + shortDate(sp.first) + (sp.first !== sp.last ? ' – ' + shortDate(sp.last) : ''); }
@@ -170,9 +175,12 @@ function codingTrack(off) {
   const items = [];
   const due = off ? [] : revDue();
   due.slice(0, 3).forEach(x => items.push([kindOf(x.id), x, 'review', '#/' + kindOf(x.id) + '/' + x.id + '/review', 'Review · ' + revText(S.rev[x.id])]));
-  if (ds[d]) items.push(['dsa', ds[d], '20 min', '#/dsa/' + ds[d].id, 'DSA · ' + WEEKS[w - 1][4] + ' · ' + ds[d].lv]);
-  if (SQ[d] != null && qs[SQ[d]]) items.push(['sql', qs[SQ[d]], '15 min', '#/sql/' + qs[SQ[d]].id, 'SQL · ' + (qs[SQ[d]].k === 'O' ? 'optimize' : 'write') + ' · ' + qs[SQ[d]].lv]);
-  if (SP[d] != null && ps[SP[d]]) items.push(['spark', ps[SP[d]], '15 min', '#/spark/' + ps[SP[d]].id, 'PySpark · ' + (ps[SP[d]].k === 'O' ? 'optimize' : 'write') + ' · ' + ps[SP[d]].lv]);
+  /* today (not a day you browse to) catches up: the earliest unsolved problem from this week's earlier days comes first */
+  const pick = (list, map) => { let j = d; if (!off) for (let i = 0; i < d; i++) { const x = list[map ? map[i] : i]; if ((map ? map[i] != null : true) && x && !S.solved[x.id]) { j = i; break; } } const x = list[map ? map[j] : j]; return (map ? map[j] != null : true) && x ? [x, j < d ? ' · from ' + DN[j].slice(0, 3) : ''] : [null, '']; };
+  const [dx, dl] = pick(ds), [qx, ql] = pick(qs, SQ), [px, pl] = pick(ps, SP);
+  if (dx) items.push(['dsa', dx, '20 min', '#/dsa/' + dx.id, 'DSA · ' + WEEKS[w - 1][4] + ' · ' + dx.lv + dl]);
+  if (qx) items.push(['sql', qx, '15 min', '#/sql/' + qx.id, 'SQL · ' + (qx.k === 'O' ? 'optimize' : 'write') + ' · ' + qx.lv + ql]);
+  if (px) items.push(['spark', px, '15 min', '#/spark/' + px.id, 'PySpark · ' + (px.k === 'O' ? 'optimize' : 'write') + ' · ' + px.lv + pl]);
   return el('section', { class: 'card pad stack', style: { borderColor: '#BFE3D6' } }, [
     el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Coding track' }), el('span', { class: 'chip c-dsa', text: 'separate from the hour' })]),
     el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'One DSA problem a day plus SQL and PySpark, on their own time. Problems you struggled with come back here for review after 3, 7 and 21 days.' }),
@@ -189,7 +197,7 @@ function weekStrip(sc, k0) {
     const k = iso(d), us = sc.byDay[k] || [], off = Math.round((d - t) / 864e5), mins = us.reduce((a, u) => a + u.mins, 0);
     return el('a', { class: 'wkday' + (k === sc.today ? ' today' : '') + (k === k0 ? ' sel' : '') + (off < 0 ? ' past' : ''), href: '#/today/' + off, 'aria-label': dayName(k) + ' ' + shortDate(k) }, [
       el('div', { class: 'row' }, [el('b', { class: 'grow', text: DN[(d.getDay() + 6) % 7].slice(0, 3) + ' ' + d.getDate() }), el('span', { class: 's', text: mins + '/' + capOf(d) })]),
-      el('div', { class: 'stack', style: { gap: '3px' } }, us.length ? us.map(u => el('span', { class: 'wu' + (u.isDone ? ' ok' : ''), title: u.title, text: (u.isDone ? '✓ ' : '') + (KIND[u.kind] || [u.kind])[0] + ' · ' + u.title })) : [el('span', { class: 's', text: off < 0 ? '—' : 'free' })])]);
+      el('div', { class: 'stack', style: { gap: '3px' } }, us.length ? us.map(u => el('span', { class: 'wu' + (u.isDone ? ' ok' : ''), title: u.title, text: (u.isDone ? '✓ ' : '') + (KIND[u.kind] || [u.kind])[0] + ' · ' + u.title })) : [el('span', { class: 's', text: off < 0 ? (sc.missed.includes(k) ? 'Missed · moved to today' : '—') : 'free' })])]);
   }));
 }
 
@@ -214,6 +222,7 @@ function vToday(off) {
   const plan = el('section', { class: 'card pad stack plan' }, [
     el('div', { class: 'row planhead' }, [ring, el('h2', { class: 'grow', text: off === 0 ? 'Your plan for today' : 'Plan for ' + dayName(k) }), el('span', { class: 'muted', text: doneMins + ' of ' + planMins + ' min done' })]),
     nav,
+    off === 0 && sc.missed.length ? el('div', { class: 'hint behind', role: 'status' }, [el('b', { text: 'Catching up. ' }), 'Nothing was done on ' + missedText(sc.missed) + ', so nothing was skipped: today starts with the first step you have not done, and the rest of the plan moves out by ' + sc.missed.length + (sc.missed.length === 1 ? ' day.' : ' days.')]) : null,
     el('span', { class: 'muted order', text: 'Do these in order. Each card says what to do, how you know it is done, and opens the exact section. Anything you do not finish moves to the next free day automatically.' })]
     .concat(us.length ? us.map(u => unitCard(u, { fold: true, cur: u === cur })) : [el('p', { style: { margin: 0 }, text: off < 0 ? 'Nothing was done on this day.' : 'Nothing planned. Everything is done.' })])
     .concat(off === 0 && us.length && us.every(u => u.isDone) && sc.next ? [el('div', { class: 'hint' }, [el('b', { text: 'Done for today. ' }), 'Want to keep going? Next up: ' + sc.next.title + ' (planned ' + shortDate(sc.next.day) + '). ', el('a', { href: sc.next.href, text: 'Start it now' })])] : []));
@@ -236,6 +245,7 @@ function vToday(off) {
     el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [off === 0 ? coachCard() : null, modCard, codingTrack(off), desCard])]),
     el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'This week' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'minutes planned / budget · tap a day to see it' }), el('button', { class: 'btn sm', onclick: exportIcs, text: 'Add to calendar' })]), weekStrip(sc, k)])]);
 }
+function missedText(ks) { const n = ks.map(k => dayName(k) + (ks.length > 2 ? '' : ' ' + shortDate(k).slice(4))); return ks.length > 3 ? ks.length + ' days since ' + dayName(ks[0]) + ' ' + shortDate(ks[0]).slice(4) : n.length === 1 ? n[0] : n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1]; }
 function weekText(k) { return 'Week ' + weekOf(k); }
 function modLinks(m) {
   const pj = DATA.projects.find(p => p.mod === m), M = MOD[m] || {};
