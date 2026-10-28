@@ -61,7 +61,7 @@ async function run(P) {
   /* ---------- everyone: first look at Today ---------- */
   await task('open Today and understand what to do now', async () => {
     await go('#/today'); await probe(p, P, 'Today', notes); await shot('today');
-    const t = await p.evaluate(() => ({ units: document.querySelectorAll('.unit').length, hero: (document.querySelector('.hero b') || {}).innerText || '', cc: [...document.querySelectorAll('.unit .chip')].some(x => /Claude Code/.test(x.innerText)), load: performance.now() }));
+    const t = await p.evaluate(() => ({ units: document.querySelectorAll('.unit').length, hero: (document.querySelector('.unit.cur .t, .hero b') || {}).innerText || '' /* the plan's Up next card, or the ahead-of-plan banner */, cc: [...document.querySelectorAll('.unit .chip')].some(x => /Claude Code/.test(x.innerText)), load: performance.now() }));
     if (!t.units) return 'no steps on Today';
     if (!t.hero) note('Today', 'clarity', 'no "start here" step at the top');
     return true;

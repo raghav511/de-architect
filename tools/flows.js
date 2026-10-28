@@ -28,14 +28,15 @@ async function T(name, fn, opt) {
 (async () => {
   browser = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
 
-  await T('today: tick a step updates progress, hero, sidebar and persists', async p => {
+  await T('today: tick a step updates progress, up next, sidebar and persists', async p => {
     await go(p, '#/today');
     const first = await text(p, '.unit .t');
-    const hero1 = await text(p, '.hero b');
-    ok(hero1 === first, 'hero should show the first step: ' + hero1 + ' vs ' + first);
+    ok(!(await p.$('.hero')), 'the Up next banner should be folded into the plan while steps are open');
+    ok((await text(p, '.unit.cur .t')) === first, 'the first step should be the expanded Up next card');
+    ok(/Up next/i.test(await text(p, '.unit.cur')) && /· \d+ min$/.test(await text(p, '.unit.cur .acts .btn.pri')), 'Up next label or timed main button missing');
     await p.click('.unit .check'); await p.waitForTimeout(400);
     ok(await p.$('.unit.done'), 'first unit not marked done');
-    const hero2 = await text(p, '.hero b'); ok(hero2 !== first, 'hero did not move to the next step');
+    const cur2 = await text(p, '.unit.cur .t'); ok(cur2 && cur2 !== first, 'Up next did not move to the next step');
     const side = await text(p, '.side .week'); ok(/Today: [1-9]\d* of/.test(side), 'sidebar minutes not updated: ' + side);
     const s = await state(p); ok(Object.values(s.done).some(v => /^\d{4}-\d\d-\d\d$/.test(v)), 'done not saved with a date');
     await p.reload(); await p.waitForTimeout(800); ok(await p.$('.unit.done'), 'done lost after reload');
@@ -340,6 +341,46 @@ async function T(name, fn, opt) {
     ok(badge === 'Right', 'variant answer graded ' + badge);
   });
 
+  await T('today: later steps fold to a row and open in place', async p => {
+    await go(p, '#/today');
+    const n = await p.$$eval('.plan .unit', us => us.length); ok(n >= 2, 'need two steps today, got ' + n);
+    ok(await p.$$eval('.plan .unit.cur', us => us.length) === 1, 'exactly one Up next card expected');
+    const row = p.locator('.plan .unit.folded').first();
+    ok(!(await row.locator('.goal').isVisible()), 'folded row should hide its details');
+    const btn = row.locator('.unfold'); ok((await btn.getAttribute('aria-expanded')) === 'false', 'toggle should start collapsed');
+    await btn.click(); await p.waitForTimeout(150);
+    const opened = p.locator('.plan .unit').nth(1);
+    ok(await opened.locator('.goal').isVisible() && await opened.locator('.acts .btn.pri').isVisible(), 'details did not open in place');
+    ok((await opened.locator('.unfold').getAttribute('aria-expanded')) === 'true', 'aria-expanded not updated');
+    await opened.locator('.unfold').click(); await p.waitForTimeout(150);
+    ok(!(await opened.locator('.goal').isVisible()), 'details did not fold again');
+    const r = await p.$eval('.planhead .ring', e => e.getAttribute('aria-label')); ok(/% of the plan done/.test(r), 'progress ring missing a label');
+    ok(await p.$('.plan .daynav [aria-label="Next day"]'), 'day arrows should sit inside the plan card');
+  });
+
+  await T('today on iPhone: the Up next step and its button show without scrolling', async p => {
+    await go(p, '#/today', 900);
+    const b = await p.$eval('.unit.cur .acts .btn.pri', e => { const r = e.getBoundingClientRect(); const tb = document.querySelector('.tabbar').getBoundingClientRect(); return { bottom: r.bottom, tab: tb.top }; });
+    ok(b.bottom <= b.tab, 'Up next button hidden behind the tab bar: ' + JSON.stringify(b));
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'page scrolls sideways');
+  }, { viewport: { width: 390, height: 664 }, isMobile: true, hasTouch: true }); /* Safari's visible area on an iPhone 13 */
+
+  await T('quiz on iPhone: buttons pinned above the tab bar, leave from the corner', async p => {
+    await go(p, '#/quiz/s01', 1000);
+    for (const y of [0, 400]) {
+      await p.evaluate(v => scrollTo(0, v), y); await p.waitForTimeout(150);
+      const g = await p.evaluate(() => { const d = document.querySelector('.qdock').getBoundingClientRect(), t = document.querySelector('.tabbar').getBoundingClientRect(), f = document.querySelector('.fab').getBoundingClientRect(); return { db: d.bottom, dt: d.top, tt: t.top, hit: !(f.bottom <= d.top || f.top >= d.bottom || f.right <= d.left || f.left >= d.right), vh: innerHeight }; });
+      ok(g.db <= g.tt + 1 && g.dt >= 0 && g.dt < g.vh, 'dock not visible above the tab bar at scroll ' + y + ': ' + JSON.stringify(g));
+      ok(!g.hit, 'coach button covers the dock: ' + JSON.stringify(g));
+    }
+    ok(/0 of \d+ answered/.test(await text(p, '.qtop')), 'progress text missing from the top bar');
+    await p.click('.opt >> nth=0'); await p.waitForTimeout(200);
+    ok(/1 of \d+ answered/.test(await text(p, '.qtop')), 'progress did not update');
+    ok(await p.$('.pal ~ button:has-text("Reset and exit")'), 'Reset and exit should sit under the question numbers');
+    await p.click('.qtop [aria-label="Leave"]'); await p.click('.dialog button:has-text("Leave, keep answers")'); await p.waitForTimeout(400);
+    ok(/#\/today/.test(p.url()), 'leave did not go back to Today');
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
   await T('settings: week 1 start snaps to Monday', async p => {
     await go(p, '#/today');
     await p.click('[aria-label="Settings"]'); await p.fill('#st_start', '2026-10-22'); await p.click('.dialog button:has-text("Save")'); await p.waitForTimeout(300);
@@ -350,7 +391,7 @@ async function T(name, fn, opt) {
     await go(p, '#/today');
     const mods = await p.evaluate(() => MODS.slice(0, 14).join(' '));
     ok(mods === 's00 p01 p02 a01 p03 p04 a02 p05 p06 a03 m01 m02 m03 s01', 'module order: ' + mods);
-    ok(/setup/i.test(await text(p, '.hero')), 'first step should be in Setup: ' + await text(p, '.hero'));
+    const first = await p.evaluate(() => schedule().units.find(u => !isCC(u.mid)).mid); ok(first === 's00', 'first non-Claude-Code step should be in Setup: ' + first);
   });
 
   await T('python: solving the level-check tasks ticks the Setup step', async p => {
