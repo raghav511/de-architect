@@ -422,6 +422,7 @@ async function T(name, fn, opt) {
     await p.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 3); S.start = iso(d); S.since = null; S.done = {}; save(); }); await p.waitForTimeout(400);
     await p.reload(); await p.waitForSelector('.behind', { timeout: 30000 });
     ok(!(await p.isVisible('.hsub')), 'the hour-budget line still shows on a phone');
+    ok((await text(p, '.plan .order')).length < 80, 'the plan instructions are longer than one line');
     const b = await p.$eval('.unit.cur .acts .btn.pri', e => { const r = e.getBoundingClientRect(); return { bottom: r.bottom, tab: document.querySelector('.tabbar').getBoundingClientRect().top }; });
     ok(b.bottom <= b.tab, 'Up next button pushed behind the tab bar by the note: ' + JSON.stringify(b));
   }, { viewport: { width: 390, height: 664 }, isMobile: true, hasTouch: true });

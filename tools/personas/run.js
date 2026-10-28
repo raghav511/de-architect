@@ -49,7 +49,7 @@ async function run(P) {
   const p = await c.newPage();
   const notes = [], tasks = [], errs = [];
   p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => { errs.push('native dialog: ' + d.message()); d.dismiss(); });
-  const go = async (h, w) => { await p.goto(BASE + h); await p.waitForTimeout(w || 1200); };
+  const go = async (h, w) => { await p.goto(BASE + h); await p.waitForSelector('#page h1', { timeout: 30000 }).catch(() => {}); await p.waitForTimeout(w || 1200); }; /* a busy machine can take longer than the pause to start the app */
   const shot = n => p.screenshot({ path: OUT + '/' + P.id + '_' + n + '.png', fullPage: false }).catch(() => {});
   const task = async (name, fn) => { const t0 = Date.now(); let ok = true, why = ''; try { const r = await fn(); if (r === false) { ok = false; why = 'could not complete'; } else if (typeof r === 'string') { ok = false; why = r; } } catch (e) { ok = false; why = short(e.message); } tasks.push({ name, ok, why, secs: Math.round((Date.now() - t0) / 100) / 10 }); if (!ok) await shot('fail_' + tasks.length); };
   const note = (where, kind, msg) => notes.push({ where, kind, msg });
@@ -67,6 +67,10 @@ async function run(P) {
     const t = await p.evaluate(() => ({ units: document.querySelectorAll('.unit').length, hero: (document.querySelector('.unit.cur .t, .hero b') || {}).innerText || '' /* the plan's Up next card, or the ahead-of-plan banner */, cc: [...document.querySelectorAll('.unit .chip')].some(x => /Claude Code/.test(x.innerText)), load: performance.now() }));
     if (!t.units) return 'no steps on Today';
     if (!t.hero) note('Today', 'clarity', 'no "start here" step at the top');
+    /* round 1 lessons: the Up next button must be reachable without scrolling on phones, and nobody is told they missed days before they began */
+    const g = await p.evaluate(() => { const b = document.querySelector('.unit.cur .acts .btn.pri'), tb = document.querySelector('.tabbar'); const r = b && b.getBoundingClientRect(); return { below: !!(b && r.bottom > (tb && tb.offsetParent ? tb.getBoundingClientRect().top : innerHeight)), note: !!document.querySelector('.behind'), missed: schedule().missed.length }; });
+    if (g.below && (P.ctx.isMobile || P.ctx.hasTouch)) note('Today', 'layout', 'the Up next button is below the fold on first open');
+    if (g.note && !P.gap) note('Today', 'clarity', 'a catching-up note shows for someone who has not missed a day');
     return true;
   });
 

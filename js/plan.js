@@ -223,7 +223,7 @@ function vToday(off) {
     el('div', { class: 'row planhead' }, [ring, el('h2', { class: 'grow', text: off === 0 ? 'Your plan for today' : 'Plan for ' + dayName(k) }), el('span', { class: 'muted', text: doneMins + ' of ' + planMins + ' min done' })]),
     nav,
     off === 0 && sc.missed.length ? el('div', { class: 'hint behind', role: 'status' }, [el('b', { text: 'Catching up · ' }), missedText(sc.missed) + ' moved to today. Nothing was skipped.']) : null,
-    el('span', { class: 'muted order', text: 'Do these in order. Each card says what to do, how you know it is done, and opens the exact section. Anything you do not finish moves to the next free day automatically.' })]
+    el('span', { class: 'muted order', text: 'Do these in order. Anything unfinished moves to the next free day.' })]
     .concat(us.length ? us.map(u => unitCard(u, { fold: true, cur: u === cur })) : [el('p', { style: { margin: 0 }, text: off < 0 ? 'Nothing was done on this day.' : 'Nothing planned. Everything is done.' })])
     .concat(off === 0 && us.length && us.every(u => u.isDone) && sc.next ? [el('div', { class: 'hint' }, [el('b', { text: 'Done for today. ' }), 'Want to keep going? Next up: ' + sc.next.title + ' (planned ' + shortDate(sc.next.day) + '). ', el('a', { href: sc.next.href, text: 'Start it now' })])] : []));
   const D = DATA.design[m], du = sc.units.find(u => u.uid === m + ':design');

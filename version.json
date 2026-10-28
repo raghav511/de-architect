@@ -1,10 +1,8 @@
 {
-  "version": "1.7.12",
+  "version": "1.7.13",
   "date": "2026-10-28",
   "notes": [
-    "Today: the catching-up note is one short line (Mon and Tue moved to today. Nothing was skipped.), so at large text the Up next button stays on screen",
-    "Today: the day chip says when today's plan runs over the budget (60-minute day \u00b7 5 min over)",
-    "Phones: the hour-budget line under the greeting is hidden; it is in the day chip and Settings",
-    "Tests: large-text iPhone note check, chip matches the plan, budget line hidden on phones"
+    "Today: the instructions above the plan are one line (Do these in order. Anything unfinished moves to the next free day.)",
+    "Simulated users: each screen waits for the page heading, so a slow machine is not reported as a broken app; Today checks the Up next button is on screen and no false catching-up note"
   ]
 }
