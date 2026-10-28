@@ -251,15 +251,52 @@ function modLinks(m) {
 }
 
 /* ---------------- Path ---------------- */
+/* topic pictures for the Path cards: one simple drawing per track, coloured by the track's tokens */
+function trackOf(x) { return x === 's00' ? 'setup' : { p: 'python', a: 'ai', m: 'model', d: 'systems', j: 'platform', r: 'lead', c: 'cc' }[x[0]] || 'de'; }
+const ART = {
+  setup: '<rect x="18" y="30" width="64" height="40" rx="5" fill="var(--card)" stroke="currentColor" stroke-width="4"/><rect x="10" y="70" width="80" height="8" rx="4" fill="currentColor"/><path d="M38 50l8 8 16-16" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>',
+  python: '<path d="M50 18c-14 0-16 6-16 12v8h17v4H27c-8 0-13 6-13 16s5 16 12 16h6v-9c0-7 5-12 12-12h16c6 0 10-4 10-10V30c0-7-6-12-20-12z" fill="currentColor"/><path d="M50 82c14 0 16-6 16-12v-8H49v-4h24c8 0 13-6 13-16s-5-16-12-16h-6v9c0 7-5 12-12 12H40c-6 0-10 4-10 10v13c0 7 6 12 20 12z" fill="#F2C94C"/><circle cx="42" cy="27" r="3" fill="var(--card)"/><circle cx="58" cy="73" r="3" fill="var(--card)"/>',
+  ai: '<rect x="24" y="32" width="52" height="40" rx="12" fill="var(--card)" stroke="currentColor" stroke-width="4"/><circle cx="40" cy="52" r="5" fill="currentColor"/><circle cx="60" cy="52" r="5" fill="currentColor"/><path d="M50 32V20" stroke="currentColor" stroke-width="4"/><circle cx="50" cy="17" r="5" fill="currentColor"/><path d="M42 63h16" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><path d="M80 22l3 7 7 3-7 3-3 7-3-7-7-3 7-3z" fill="currentColor"/>',
+  model: '<rect x="38" y="38" width="24" height="24" rx="4" fill="currentColor"/><g fill="var(--card)" stroke="currentColor" stroke-width="4"><rect x="12" y="12" width="20" height="16" rx="3"/><rect x="68" y="12" width="20" height="16" rx="3"/><rect x="12" y="72" width="20" height="16" rx="3"/><rect x="68" y="72" width="20" height="16" rx="3"/></g><path d="M30 28l10 10M70 28L60 38M30 72l10-10M70 72L60 62" stroke="currentColor" stroke-width="4"/>',
+  de: '<g fill="var(--card)" stroke="currentColor" stroke-width="4"><ellipse cx="24" cy="34" rx="12" ry="5"/><path d="M12 34v28c0 3 5 5 12 5s12-2 12-5V34"/><ellipse cx="76" cy="34" rx="12" ry="5"/><path d="M64 34v28c0 3 5 5 12 5s12-2 12-5V34"/></g><path d="M40 50h18" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="M54 43l8 7-8 7" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>',
+  systems: '<g fill="var(--card)" stroke="currentColor" stroke-width="4"><rect x="22" y="16" width="56" height="18" rx="4"/><rect x="22" y="41" width="56" height="18" rx="4"/><rect x="22" y="66" width="56" height="18" rx="4"/></g><g fill="currentColor"><circle cx="32" cy="25" r="3"/><circle cx="32" cy="50" r="3"/><circle cx="32" cy="75" r="3"/></g>',
+  platform: '<circle cx="50" cy="50" r="30" fill="var(--card)" stroke="currentColor" stroke-width="4"/><circle cx="50" cy="50" r="8" fill="currentColor"/><path d="M50 50V24M50 50l20.3-12.8M50 50l25.3 5.8M50 50l11.3 23.4M50 50l-11.3 23.4M50 50l-25.3 5.8M50 50L29.7 37.2" stroke="currentColor" stroke-width="4"/>',
+  lead: '<path d="M10 84l26-40 14 20 12-16 28 36z" fill="currentColor"/><path d="M62 48V16" stroke="currentColor" stroke-width="4"/><path d="M62 16h20l-5 7 5 7H62z" fill="#F2C94C"/>',
+  cc: '<rect x="12" y="22" width="76" height="56" rx="8" fill="#12202F"/><circle cx="22" cy="31" r="2.5" fill="#E08A1E"/><circle cx="30" cy="31" r="2.5" fill="#F2C94C"/><circle cx="38" cy="31" r="2.5" fill="#5CC8B0"/><path d="M24 48l8 6-8 6" fill="none" stroke="#5CC8B0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M38 62h16" stroke="#fff" stroke-width="4" stroke-linecap="round"/><path d="M74 44l3 7 7 3-7 3-3 7-3-7-7-3 7-3z" fill="currentColor"/>'
+};
+function topicArt(x, size) { const t = trackOf(x); return el('span', { class: 'tart a-' + t, 'aria-hidden': 'true', html: '<svg viewBox="0 0 100 100" width="' + size + '" height="' + size + '">' + ART[t] + '</svg>' }); }
+const ROADMAP_TEXT = 'Setup and the diagnostic first, then the Python track (Python 1–6) woven between the AI modules (AI 1–3), then data modelling (Modelling 1–3), then the data engineering modules, with Systems 1 (distributed systems and storage internals) after DE 4, Platform 1 (Scala, the JVM, Kubernetes and Hadoop) after DE 7 and Leadership 1 (strategy, migrations, cost, influence) after DE 10. A module ends when its steps are done, not on a fixed week. After the last module, new Extra modules arrive every week: big-tech papers and problems, plus fresh questions on earlier topics.';
+function weekOneBtn() { return el('button', { class: 'btn sm', onclick: async () => { const v = await confirmBox('Restart the calendar?', 'Week 1 becomes this week. Your progress is kept; only the week numbers change.', [{ t: 'Make this week 1', cls: 'pri', v: 1 }, { t: 'Cancel', v: null }]); if (v) { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); S.start = iso(d); save(); route(); } }, text: 'Make this week 1' }); }
+/* ---------------- Path: picture cards for every module ---------------- */
+function vPathMap() {
+  const sc = schedule(), cur = sc.cur, i = MODS.indexOf(cur), nx = sc.units.find(u => u.mid === cur && !u.isDone);
+  const cards = MODS.map(x => {
+    const s = sc.span[x] || { n: 0, done: 0 }, fin = s.n > 0 && s.done === s.n, isCur = x === cur, pct = s.n ? Math.round(100 * s.done / s.n) : 0;
+    return el('div', { class: 'pcard' + (isCur ? ' cur' : '') + (fin ? ' fin' : ''), 'data-mid': x }, [
+      el('div', { class: 'band a-' + trackOf(x) }, topicArt(x, isCur ? 96 : 64)),
+      el('div', { class: 'bd' }, [
+        el('div', { class: 'row', style: { gap: '6px' } }, [el('span', { class: 'chip ' + modColor(x), text: modLabel(x) }), fin ? el('span', { class: 'tag', text: '✓ Done' }) : isCur ? el('span', { class: 'tag', text: 'You are here' }) : null]),
+        el('a', { class: 'pt', href: '#/path/' + x, text: modTitle(x) }),
+        el('div', { class: 'bar', role: 'img', 'aria-label': s.done + ' of ' + s.n + ' steps done' }, el('i', { style: { width: pct + '%' } })),
+        el('span', { class: 's', text: s.done + '/' + s.n + ' steps · ' + weeksText(s.n ? s : null) }),
+        isCur && nx ? el('a', { class: 'btn sm pri go', href: nx.href, text: 'Continue: ' + nx.title }) : null])]);
+  });
+  const road = el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Roadmap' }), weekOneBtn()]),
+    el('span', { class: 'muted', style: { fontSize: '14px' }, text: ROADMAP_TEXT })]);
+  const grid = el('section', { class: 'pgrid', 'aria-label': 'Modules' }, cards);
+  shell('Path', MODS.length + ' modules so far · you are on module ' + (i + 1), [el('div', { class: 'grid2 wide' }, [grid, el('div', { class: 'stack', style: { gap: '18px' } }, [road])])]);
+  /* bring the current module into view when it is further down the page */
+  setTimeout(() => { const c = document.querySelector('.pcard.cur'); if (c && c.getBoundingClientRect().top > innerHeight * .6) c.scrollIntoView({ block: 'center' }); }, 0);
+}
 function vPath(m) {
+  if (m == null || m === '') return vPathMap();
   const sc = schedule();
   m = MOD[midOf(m)] ? midOf(m) : sc.cur;
   const M = MOD[m], sp = sc.span[m], us = sc.units.filter(u => u.mid === m);
-  const pick = el('nav', { class: 'modpick', 'aria-label': 'Modules' }, MODS.map(x => { const s = sc.span[x] || {}; return el('a', { href: '#/path/' + x, 'aria-current': String(x === m), class: (x === sc.cur ? 'cur ' : '') + (s.n && s.done === s.n ? 'fin ' : '') + modColor(x), text: modLabel(x) }); }));
   const total = us.reduce((a, u) => a + u.mins, 0);
   const head = el('section', { class: 'card pad stack' }, [
     el('div', { class: 'row wrap', style: { gap: '6px' } }, [el('span', { class: 'chip ' + modColor(m), text: 'Module ' + modLabel(m) }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: weeksText(sp) + ' · ' + Math.round(total / 6) / 10 + ' h in the daily hour' + (M.coding ? ' + coding' : '') })]),
-    el('h1', { text: M.title }), el('p', { style: { margin: 0, fontSize: '16px' }, text: M.goal }),
+    el('div', { class: 'phead' }, [topicArt(m, 80), el('h1', { text: M.title })]), el('p', { style: { margin: 0, fontSize: '16px' }, text: M.goal }),
     el('div', { class: 'row' }, [el('div', { class: 'bar grow' }, el('i', { style: { width: Math.round(100 * sp.done / sp.n) + '%' } })), el('b', { text: sp.done + ' of ' + sp.n + ' steps' })]),
     el('span', { class: 'lbl', text: 'Everything in this module' }), modLinks(m)]);
   const steps = el('section', { class: 'card pad stack' }, [el('h2', { text: 'Steps, in order, with the day each is planned' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Each step fits in one day\'s budget. Tick a step here or on Today. Unfinished steps slide to the next free day, so the dates always stay true.' })]
@@ -273,11 +310,9 @@ function vPath(m) {
     const sec = (title, kind, items, href) => el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [chip(kind), el('h3', { class: 'grow', text: title })]), el('div', { class: 'list' }, items.map(x => el('a', { class: 'item', href: href(x) }, [el('span', { class: 'grow' }, [el('span', { class: 't', text: x.t }), el('br'), el('span', { class: 's', text: (x.k ? (x.k === 'O' ? 'Optimize · ' : 'Write · ') : '') + x.lv })]), S.solved[x.id] ? el('span', { class: 'ok', text: '✓' }) : null])))]);
     extra.push(el('div', { class: 'cols3' }, [sec('DSA on this topic', 'dsa', byWeek(DATA.dsa, w), x => '#/dsa/' + x.id), sec('SQL on this topic', 'sql', byWeek(DATA.sql, w), x => '#/sql/' + x.id), sec('PySpark on this topic', 'spark', byWeek(DATA.spark, w), x => '#/spark/' + x.id)]));
   }
-  const road = el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Roadmap' }), el('button', { class: 'btn sm', onclick: async () => { const v = await confirmBox('Restart the calendar?', 'Week 1 becomes this week. Your progress is kept; only the week numbers change.', [{ t: 'Make this week 1', cls: 'pri', v: 1 }, { t: 'Cancel', v: null }]); if (v) { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); S.start = iso(d); save(); route(); } }, text: 'Make this week 1' })]),
-    el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Setup and the diagnostic first, then the Python track (Python 1–6) woven between the AI modules (AI 1–3), then data modelling (Modelling 1–3), then the data engineering modules, with Systems 1 (distributed systems and storage internals) after DE 4, Platform 1 (Scala, the JVM, Kubernetes and Hadoop) after DE 7 and Leadership 1 (strategy, migrations, cost, influence) after DE 10. A module ends when its steps are done, not on a fixed week. After the last module, new Extra modules arrive every week: big-tech papers and problems, plus fresh questions on earlier topics.' }),
-    el('div', { class: 'list' }, MODS.map(x => { const s = sc.span[x] || { n: 0, done: 0 }; return el('a', { class: 'item', href: '#/path/' + x }, [el('span', { class: 'chip ' + modColor(x), style: { flex: 'none', minWidth: '62px', justifyContent: 'center' }, text: modLabel(x) }), el('span', { class: 'grow' }, [el('span', { class: 't', text: modTitle(x) }), el('br'), el('span', { class: 's', text: weeksText(s) })]), el('span', { class: 's', style: { fontWeight: 700, flex: 'none' }, text: s.done === s.n ? '✓ done' : x === sc.cur ? 'now · ' + s.done + '/' + s.n : s.done + '/' + s.n })]); }))]);
-  setTimeout(() => { const c = pick.querySelector('[aria-current=true]'); if (c && pick.scrollWidth > pick.clientWidth) pick.scrollLeft = c.offsetLeft - 16; }, 0);
-  shell('Path', 'Module ' + modLabel(m) + ' · ' + MODS.length + ' modules so far', [pick, el('div', { class: 'grid2 wide' }, [el('div', { class: 'stack', style: { gap: '18px' } }, [head, steps]), el('div', { class: 'stack', style: { gap: '18px' } }, [road])])].concat(extra));
+  const k = MODS.indexOf(m), near = el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Module ' + (k + 1) + ' of ' + MODS.length }), el('a', { class: 'btn sm', href: '#/path', text: 'All modules' })])]
+    .concat([[k - 1, 'Previous'], [k + 1, 'Next']].filter(([j]) => MODS[j]).map(([j, t]) => { const x = MODS[j], s = sc.span[x] || { n: 0, done: 0 }; return el('a', { class: 'item', href: '#/path/' + x }, [topicArt(x, 44), el('span', { class: 'grow' }, [el('span', { class: 's', text: t + ' · ' + modLabel(x) }), el('br'), el('span', { class: 't', text: modTitle(x) })]), el('span', { class: 's', style: { fontWeight: 700, flex: 'none' }, text: s.n && s.done === s.n ? '✓' : s.done + '/' + s.n })]); })));
+  shell('Path', 'Module ' + modLabel(m) + ' · ' + MODS.length + ' modules so far', [el('div', { class: 'grid2 wide' }, [el('div', { class: 'stack', style: { gap: '18px' } }, [head, steps]), el('div', { class: 'stack', style: { gap: '18px' } }, [near])])].concat(extra), { back: '#/path' });
 }
 
 /* ---------------- Learn ---------------- */

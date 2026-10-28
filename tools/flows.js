@@ -313,6 +313,34 @@ async function T(name, fn, opt) {
     ok(await p.$('.tabmore[aria-current=page]'), 'More tab not highlighted on a non-tab page');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
+  await T('path: every module is a picture card; the current one is larger with Continue', async p => {
+    await go(p, '#/path', 1000);
+    const n = await p.evaluate(() => [document.querySelectorAll('.pgrid .pcard').length, MODS.length, document.querySelectorAll('.pgrid .pcard .tart svg').length]);
+    ok(n[0] === n[1] && n[2] === n[1], 'cards ' + n[0] + ', modules ' + n[1] + ', pictures ' + n[2]);
+    ok(!(await p.$('.modpick')), 'old pill rows still shown');
+    const cur = await p.evaluate(() => { const c = document.querySelector('.pcard.cur'); return c && { mid: c.dataset.mid, cur: schedule().cur, tag: c.querySelector('.tag').innerText, go: (c.querySelector('a.go') || {}).getAttribute && c.querySelector('a.go').getAttribute('href'), next: (schedule().units.find(u => u.mid === schedule().cur && !u.isDone) || {}).href }; });
+    ok(cur && cur.mid === cur.cur && /you are here/i.test(cur.tag), 'current module card wrong: ' + JSON.stringify(cur));
+    ok(cur.go === cur.next, 'Continue should open the next open step: ' + JSON.stringify(cur));
+    ok(await p.$eval('.pcard .bar', e => /steps done/.test(e.getAttribute('aria-label'))), 'progress bar has no label');
+    await p.click('.pcard:nth-child(3) a.pt'); await p.waitForTimeout(500);
+    const mid = await p.evaluate(() => MODS[2]); ok(p.url().endsWith('#/path/' + mid), 'card did not open its module: ' + p.url());
+  });
+
+  await T('path: a module page shows its picture, neighbours and the way back to all modules', async p => {
+    await go(p, '#/path/p02', 1000);
+    ok(await p.$('#page .phead .tart svg'), 'topic picture missing beside the title');
+    const near = await text(p, '#page .grid2 > .stack:last-child'); ok(/Module \d+ of \d+/.test(near) && /Previous/.test(near) && /Next/.test(near), 'neighbours missing: ' + near.slice(0, 120));
+    await p.click('a:has-text("All modules")'); await p.waitForTimeout(500);
+    ok(await p.$('.pgrid .pcard'), 'All modules did not open the picture cards');
+  });
+
+  await T('path on iPhone: two columns of cards, the current one full width, nothing sideways', async p => {
+    await go(p, '#/path', 1200);
+    const g = await p.evaluate(() => { const cs = [...document.querySelectorAll('.pcard')], c = document.querySelector('.pcard.cur'), o = cs.find(x => x !== c), grid = document.querySelector('.pgrid').getBoundingClientRect(); return { cols: getComputedStyle(document.querySelector('.pgrid')).gridTemplateColumns.split(' ').length, curW: c.getBoundingClientRect().width, gridW: grid.width, oW: o.getBoundingClientRect().width, sx: document.documentElement.scrollWidth - innerWidth }; });
+    ok(g.cols === 2 && g.curW > g.gridW - 2 && g.oW < g.gridW / 2 + 1 && g.sx <= 0, JSON.stringify(g));
+    ok(await p.evaluate(() => { const r = document.querySelector('.pcard.cur').getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; }), 'current module not in view');
+  }, { viewport: { width: 390, height: 664 }, isMobile: true, hasTouch: true });
+
   await T('path: make this week 1 asks first and updates week numbers', async p => {
     await go(p, '#/path');
     await p.evaluate(() => { S.start = '2026-09-07'; save(); route(); }); await p.waitForTimeout(400);
