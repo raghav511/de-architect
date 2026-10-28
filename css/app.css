@@ -243,7 +243,8 @@ textarea.code{flex:1;width:100%;border:0;resize:none;padding:14px 16px;font:14px
 .grid2.wide{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
 @media (max-width:1023px){.grid2.wide{grid-template-columns:1fr}}
 .item[aria-current=true]{background:var(--blue-l)}
-@media (max-width:560px){.unit{gap:10px;padding:12px}}
+@media (max-width:560px){.unit{gap:10px;padding:12px}.unit.cur .acts{order:1}.unit.cur .goal,.unit.cur .dw{order:2}} /* phones: the Up next button sits under its title, details below */
+.behind{background:var(--amber-xl);border-color:var(--amber-l)}
 .tabbar .tabmore{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:58px;min-height:50px;justify-content:center;font:600 11.5px var(--body);color:var(--muted);background:none;border:0;cursor:pointer}
 .tabbar .tabmore[aria-current=page]{color:var(--teal)}
 .sheetwrap{align-items:flex-end}

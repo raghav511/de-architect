@@ -1,1 +1,12 @@
-{"version": "1.7.8", "date": "2026-10-28", "notes": ["Path: every module is now a picture card with a drawing of its topic, its progress and its weeks; the one you are on is larger with a Continue button", "Path: a module's page shows its topic picture, plus the previous and next module and a way back to all modules"]}
+{
+  "version": "1.7.9",
+  "date": "2026-10-28",
+  "notes": [
+    "Today: when earlier days had nothing done, a Catching up note says so and that nothing was skipped; the plan moves out by that many days",
+    "Today: the main path step comes before a Claude Code step on the same day, so the program's first step is Up next",
+    "Week strip: a missed day says 'Missed \u00b7 moved to today' instead of a dash",
+    "Coding track: today shows the earliest unsolved problem from this week first (marked 'from Mon')",
+    "Phones: the Up next button sits right under its title so it shows above the tab bar",
+    "Tests: missed-days journey; a 7th simulated user (Dev, returns after missed days on iPad) and P0/P1/P2 ratings in the persona run"
+  ]
+}

@@ -27,10 +27,10 @@ step "instant grading (fake sync, stub claude)" bash -c '
   D=$(mktemp -d); python3 tools/coach/fake_sync.py 8814 gkey "$D" & SRV=$!
   DA_SYNC_URL="http://127.0.0.1:8814/exec?k=gkey" DA_CLAUDE_BIN="$PWD/tools/grader/stub_claude.py" DA_GRADER_PORT=8766 DA_GRADER_POLL=1 DA_GRADER_LOG="$D/grader.log" python3 tools/grader/grader.py serve & GR=$!
   sleep 1; node tools/grader/e2e_grader.js "'"$BASE"'" "http://127.0.0.1:8814/exec?k=gkey" 8766; r=$?; kill $SRV $GR; [ $r = 0 ]'
-step "simulated users (6 personas, real browsers incl. Safari engine)" bash -c '
+step "simulated users (7 personas, P0/P1 fail the run, real browsers incl. Safari engine)" bash -c '
   D=$(mktemp -d); python3 tools/coach/fake_sync.py 8814 gkey "$D" & SRV=$!
   DA_SYNC_URL="http://127.0.0.1:8814/exec?k=gkey" DA_CLAUDE_BIN="$PWD/tools/grader/stub_claude.py" DA_GRADER_PORT=8766 DA_GRADER_POLL=1 DA_GRADER_LOG="$D/grader.log" python3 tools/grader/grader.py serve & GR=$!
-  sleep 1; node tools/personas/run.js "'"$BASE"'" "$D/personas" | tee "$D/p.txt"; kill $SRV $GR; ! grep -q "FAIL\|CRASH\|note \[" "$D/p.txt"'
+  sleep 1; node tools/personas/run.js "'"$BASE"'" "$D/personas" | tee "$D/p.txt"; kill $SRV $GR; ! grep -qE "^  P[01] |CRASH" "$D/p.txt"'
 step "UI crawl" node tools/crawl.js "$BASE" ${QUICK:+--quick}
 echo; [[ $fail == 0 ]] && echo "ALL GREEN" || echo "SOME CHECKS FAILED"
 exit $fail

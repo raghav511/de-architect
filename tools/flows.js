@@ -28,6 +28,22 @@ async function T(name, fn, opt) {
 (async () => {
   browser = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
 
+  await T('today: two missed days carry forward, say so, and keep the first step on top', async p => {
+    await go(p, '#/today');
+    await p.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 2); S.start = iso(d); S.done = {}; save(); });
+    await p.reload(); await p.waitForSelector('.unit .t', { timeout: 30000 }); await p.waitForTimeout(400);
+    const sc = await p.evaluate(() => { const s = schedule(); return { missed: s.missed.length, first: s.units.find(u => !isCC(u.mid)).title, today: (s.byDay[s.today] || []).map(u => isCC(u.mid)) }; });
+    ok(sc.missed === 2, 'expected 2 missed days, got ' + sc.missed);
+    ok(/Catching up/.test(await text(p, '.behind')) && /2 days/.test(await text(p, '.behind')), 'no catching-up note on Today');
+    ok((await text(p, '.unit.cur .t')) === sc.first, 'Up next is not the program\'s first step');
+    ok(sc.today.indexOf(true) === -1 || sc.today.indexOf(true) > sc.today.lastIndexOf(false), 'a Claude Code step sits above a main step');
+    ok(/from (Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test((await p.$$eval('.item .s', a => a.map(x => x.innerText))).join(' ')), 'coding track did not catch up on the first unsolved problem');
+    const strip = await p.$$eval('.wkday.past', a => a.map(x => x.innerText));
+    ok(strip.every(t => !/—/.test(t) || !/0\//.test(t)) || strip.some(t => /Missed · moved to today/.test(t)) || new Date().getDay() <= 2, 'missed days in the week strip do not say where the work went');
+    await p.evaluate(() => { S.done[schedule().units.find(u => !isCC(u.mid)).uid] = iso(new Date()); save(); }); await p.reload(); await p.waitForTimeout(800);
+    ok(await p.$('.behind'), 'note should stay while earlier days are still empty');
+  });
+
   await T('today: tick a step updates progress, up next, sidebar and persists', async p => {
     await go(p, '#/today');
     const first = await text(p, '.unit .t');
