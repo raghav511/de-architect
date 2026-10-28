@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.7.14';
+const VERSION = '1.8.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -47,7 +47,7 @@ addEventListener('pagehide', flushSave); document.addEventListener('visibilitych
 function save(touch = true) {
   if (touch) S.updated = Date.now();
   clearTimeout(saveT);
-  saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Could not save in this browser (storage full or private mode).'); } }, 150);
+  saveT = setTimeout(() => { saveT = null; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Could not save in this browser (storage full or private mode).'); } }, 150);
 }
 if (!S.start) { const d = new Date(); const m = (d.getDay() + 6) % 7; d.setDate(d.getDate() - m); S.start = iso(d); S.since = iso(new Date()); save(); } /* since: missed days count from the day you began, not from the Monday the calendar snaps to */
 function iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
@@ -176,7 +176,7 @@ function shell(title, eyebrow, body, opts) {
   const inTabs = TABS.some(x => x[0].split('/')[1] === route);
   const more = el('button', { class: 'tabmore' + (hasUpdate() ? ' hasdot' : ''), 'aria-label': 'More sections' + (hasUpdate() ? ' (update available)' : ''), 'aria-current': inTabs ? null : 'page', onclick: () => {
     const sc2 = el('div', { class: 'scrim sheetwrap', onclick: e => { if (e.target === sc2) sc2.remove(); } }, [el('div', { class: 'sheet', role: 'dialog', 'aria-label': 'All sections' }, [el('div', { class: 'row' }, [el('b', { class: 'grow', style: { fontSize: '18px' }, text: 'All sections' }), el('button', { class: 'btn icon sm', 'aria-label': 'Close', onclick: () => sc2.remove(), text: '×' })]),
-      el('div', { class: 'sheetgrid' }, NAV.map(([h, t, ic]) => { const href = h.replace('/0', '/' + wk); return el('a', { href, onclick: () => sc2.remove(), 'aria-current': href.split('/')[1] === route ? 'page' : null }, [svg(I[ic], 22), t]); }).concat([el('button', { onclick: () => { sc2.remove(); doSync(); } }, [svg(I.sync, 22), syncLabel()]), el('button', { class: hasUpdate() ? 'hasdot' : '', onclick: () => { sc2.remove(); doUpdate(); } }, [svg(I.update, 22), hasUpdate() ? 'Update to ' + S.newVersion : 'Update app · v' + VERSION]), el('button', { onclick: () => { sc2.remove(); settings(); } }, [svg(I.gear, 22), 'Settings'])]))])]);
+      el('div', { class: 'sheetgrid' }, NAV.map(([h, t, ic]) => { const href = h.replace('/0', '/' + wk); return el('a', { href, onclick: () => sc2.remove(), 'aria-current': href.split('/')[1] === route ? 'page' : null }, [svg(I[ic], 22), t]); }).concat([el('button', { onclick: () => { sc2.remove(); doSync(); } }, [svg(I.sync, 22), syncLabel()]), el('a', { href: '#/profile', class: hasUpdate() ? 'hasdot' : '', onclick: () => sc2.remove(), 'aria-current': route === 'profile' ? 'page' : null }, [svg(I.gear, 22), hasUpdate() ? 'Profile · Update to ' + S.newVersion : 'Profile and settings'])]))])]);
     document.body.appendChild(sc2);
     const k = e => { if (e.key === 'Escape') { sc2.remove(); document.removeEventListener('keydown', k); } }; document.addEventListener('keydown', k);
   } }, [svg('<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>', 22), 'More']);
@@ -187,9 +187,7 @@ function shell(title, eyebrow, body, opts) {
     opts.extra || null,
     el('div', { class: 'row topbtns', style: { gap: '8px' } }, [
       el('button', { class: 'btn icon', onclick: () => openSearch(), title: 'Search (⌘K or /)', 'aria-label': 'Search' }, svg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>', 18)),
-      el('button', { class: 'btn hide-s' + (hasUpdate() ? ' pri hasdot' : ''), onclick: doUpdate, title: 'Installed version ' + VERSION + (hasUpdate() ? '; ' + S.newVersion + ' is available' : '') + '. Check for updates', 'aria-label': 'Update app' }, [svg(I.update, 18), el('span', { class: 't', text: updateLabel() }), hasUpdate() ? null : el('span', { class: 'ver mono', text: 'v' + VERSION })]),
-      el('button', { class: 'btn hide-s', id: 'syncBtn', onclick: doSync, title: 'Sync progress across your devices', 'aria-label': 'Sync progress' }, [svg(I.sync, 18), el('span', { class: 't', text: syncLabel() })]),
-      el('button', { class: 'btn icon', onclick: settings, 'aria-label': 'Settings' }, svg(I.gear, 18))])]);
+      avatarBtn(route === 'profile')])]);
   const pageEl = opts.raw ? body : el('main', { class: 'page', id: 'page' }, body);
   /* trust fix 21: tell the learner when a newer version is published instead of silently running an old one */
   if (hasUpdate() && pageEl.prepend) pageEl.prepend(el('div', { class: 'hint row wrap', role: 'status', style: { margin: '0 0 12px' } }, [el('span', { class: 'grow' }, [el('b', { text: 'Version ' + S.newVersion + ' is available. ' }), 'You are on ' + VERSION + '; content and fixes may be out of date.']), el('button', { class: 'btn sm pri', onclick: doUpdate, text: 'See what is new' })]));
@@ -220,6 +218,7 @@ function route() {
     else if (r === 'quiz') vQuiz(p[1]);
     else if (r === 'interview') vInterview(p[1], p[2]);
     else if (r === 'progress') vProgress();
+    else if (r === 'profile') vProfile();
     else if (r === 'mock') vMock(p[1]);
     else if (r === 'coach') vCoach();
     else if (r === 'projects') vProjects();
@@ -862,44 +861,63 @@ function graderStatus() {
 }
 function syncLabel() { return S.syncing ? 'Syncing…' : S.lastSync && Date.now() - S.lastSync < 60000 ? 'Synced' : 'Sync progress'; }
 /* preferences that follow you across devices; the API key, sync URL, theme and notifications stay per device */
-const PREF_KEYS = ['capWd', 'capWe', 'studyTime', 'ai', 'coachVia', 'gradeModel'];
-function settings() {
-  const f = (id, label, val, type, ph) => el('div', { class: 'field' }, [el('label', { for: id, class: 'lbl', text: label }), el('input', { id, type: type || 'text', value: val || '', placeholder: ph || '', autocomplete: 'off' })]);
-  const body = el('div', { class: 'stack' }, [
-    f('st_start', 'Week 1 starts (pick any day in that week)', S.start, 'date'),
-    el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: '10px' } }, [f('st_wd', 'Weekday minutes', S.settings.capWd || 60, 'number'), f('st_we', 'Weekend minutes', S.settings.capWe || 120, 'number'), f('st_time', 'Study time', S.settings.studyTime || '07:00', 'time')]),
-    el('div', { class: 'field' }, [el('label', { for: 'st_theme', class: 'lbl', text: 'Theme' }), el('select', { id: 'st_theme', class: 'btn' }, [['auto', 'Match my device'], ['light', 'Light'], ['dark', 'Dark']].map(([v, t]) => el('option', { value: v, selected: (S.settings.theme || 'auto') === v ? 'selected' : null, text: t })))]),
-    f('st_sync', 'Sync URL (Google Apps Script web app, ending in ?k=your key)', S.settings.syncUrl, 'url', 'https://script.google.com/macros/s/…/exec?k=…'),
-    el('div', { class: 'field' }, [el('label', { for: 'st_ai', class: 'lbl', text: 'AI features' }), el('select', { id: 'st_ai', class: 'btn' }, [['on', 'On: instant grading, practice runs and the Claude Code track'], ['off', 'Off: study without AI (self-check with model answers)']].map(([v, t]) => el('option', { value: v, selected: (S.settings.ai === false ? 'off' : 'on') === v ? 'selected' : null, text: t })))]),
-    el('div', { class: 'field' }, [el('label', { for: 'st_coach', class: 'lbl', text: 'Coach bubble answers with' }), el('select', { id: 'st_coach', class: 'btn' }, [['mac', 'Claude Code on my Mac'], ['key', 'My API key'], ['hints', 'Hints only (no AI)']].map(([v, t]) => el('option', { value: v, selected: (S.settings.coachVia || 'mac') === v ? 'selected' : null, text: t })))]),
-    el('div', { class: 'field' }, [el('label', { for: 'st_grade', class: 'lbl', text: 'Instant grading model' }), el('select', { id: 'st_grade', class: 'btn' }, [['auto', 'Automatic'], ['haiku', 'Haiku (cheapest)'], ['sonnet', 'Sonnet (most thorough)']].map(([v, t]) => el('option', { value: v, selected: (S.settings.gradeModel || 'auto') === v ? 'selected' : null, text: t })))]),
-    f('st_key', 'Coach AI key (optional, Anthropic API key, kept only on this device)', S.settings.aiKey, 'password', 'sk-ant-…'),
-    f('st_model', 'Coach model', S.settings.aiModel || 'claude-haiku-5-5', 'text'),
-    el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'The key never leaves this device except to call the AI provider. Without a key the coach still gives the step-by-step hints.' }),
-    graderStatus(),
-    el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Coach: the other source is used if the first cannot answer. Grading: Automatic uses Haiku for answers and Sonnet for code, designs and Claude Code tasks.' }),
-    el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Your study minutes, study time, week 1 start, AI features, coach and grading choices sync to your other devices (Mac, iPhone, Android) when you tap Sync progress. Theme, keys, the sync URL and notifications stay on this device.' }),
-    el('label', { class: 'row', style: { gap: '10px', fontSize: '14.5px' } }, [el('input', { type: 'checkbox', id: 'st_notify', checked: S.settings.notifyUpdates ? 'checked' : null, style: { width: '20px', height: '20px' } }), 'Notify me when an app update is available']),
-    el('div', { class: 'row wrap', style: { gap: '8px', fontSize: '13.5px' } }, [el('span', { class: 'muted grow', text: 'App version ' + VERSION + (S.latest ? ' · latest ' + S.latest.version + ' (checked ' + verAge(S.latest.at) + ')' : '') }), el('button', { class: 'btn sm', onclick: () => { document.querySelectorAll('.scrim').forEach(x => x.remove()); updateDialog(); }, text: 'Check for updates' })])]);
-  confirmBox('Settings', body, [{ t: 'Save', cls: 'pri', v: 1 }, { t: 'Cancel', v: null }]).then(v => {
-    if (!v) return;
+const PREF_KEYS = ['capWd', 'capWe', 'studyTime', 'ai', 'coachVia', 'gradeModel', 'name'];
+/* Settings live on the Profile page (avatar, top right); settings() is kept for the buttons that say "Open settings" */
+function settings(focusId) { if (focusId === 'st_sync') profileTab = 'sync'; if (location.hash !== '#/profile') location.hash = '#/profile'; else route(); if (focusId) setTimeout(() => { const x = document.getElementById(focusId); if (x) x.focus(); }, 150); }
+function userName() { return (S.settings.name || '').trim() || 'Raghavendra'; }
+function avatarBtn(cur) { return el('a', { class: 'avatar' + (hasUpdate() ? ' hasdot' : ''), href: '#/profile', 'aria-label': 'Profile and settings' + (hasUpdate() ? ' (update available)' : ''), 'aria-current': cur ? 'page' : null, title: 'Profile: sync, updates, theme, AI and settings' }, el('span', { 'aria-hidden': 'true', text: userName().slice(0, 1).toUpperCase() })); }
+function saveSettings(body) {
     const g = id => body.querySelector('#' + id).value.trim();
     const su = g('st_sync'); /* trust fix 20: refuse a sync URL that cannot work, warn when it has no key */
-    if (su && !/^https:\/\/|^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(su)) { toast('That sync URL is not valid: it must start with https://. Settings were not saved.', null, 6000); return; }
+    if (su && !/^https:\/\/|^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(su)) { toast('That sync URL is not valid: it must start with https://. Settings were not saved.', null, 6000); return false; }
     if (su && /script\.google\.com/.test(su) && !/[?&]k=/.test(su)) setTimeout(() => toast('Saved. This sync URL has no ?k= key: anyone with the URL could read your progress.', null, 7000), 400);
     const st0 = g('st_start'); if (/^\d{4}-\d\d-\d\d$/.test(st0)) { const d = new Date(st0 + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); if (iso(d) !== S.start) S.since = iso(new Date()); S.start = iso(d); } S.settings.syncUrl = su; S.settings.aiKey = g('st_key'); S.settings.aiModel = g('st_model') || 'claude-haiku-5-5';
-    const wd = Math.round(+g('st_wd')), we = Math.round(+g('st_we')); S.settings.capWd = wd >= 15 && wd <= 600 ? wd : 60; S.settings.capWe = we >= 15 && we <= 720 ? we : 120; S.settings.studyTime = g('st_time') || '07:00'; S.settings.theme = g('st_theme') || 'auto'; applyTheme(); S.settings.ai = g('st_ai') !== 'off'; applyAi();
+    const wd = Math.round(+g('st_wd')), we = Math.round(+g('st_we')); S.settings.capWd = wd >= 15 && wd <= 600 ? wd : 60; S.settings.capWe = we >= 15 && we <= 720 ? we : 120; S.settings.studyTime = g('st_time') || '07:00'; S.settings.accent = g('st_accent') || 'teal'; S.settings.name = g('st_name'); applyTheme(); S.settings.ai = g('st_ai') !== 'off'; applyAi();
     S.settings.coachVia = g('st_coach') || 'mac'; S.settings.gradeModel = g('st_grade') || 'auto'; S.settings.prefsAt = Date.now(); /* newest preferences win when devices sync */
     const nt = body.querySelector('#st_notify').checked; S.settings.notifyUpdates = nt;
     if (nt && window.Notification && Notification.permission === 'default') Notification.requestPermission().then(r => { if (r !== 'granted') { S.settings.notifyUpdates = false; save(false); toast('Notifications were not allowed, so update alerts stay in the app.', null, 6000); } });
     if (nt && !window.Notification) setTimeout(() => toast('This browser cannot show notifications here (on iPhone, add the app to the Home Screen first). You will still see update alerts in the app.', null, 8000), 400);
-    S.updated = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Could not save settings in this browser.'); return; }
-    toast('Settings saved'); route();
-  });
+    S.updated = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Could not save settings in this browser.'); return false; }
+  toast('Saved'); return true;
+}
+/* Profile: the three things you do most are one tap at the top; everything else sits in short tabs that save as you change them */
+var profileTab = 'sync'; /* var: route() can run before this line during start-up */
+function vProfile() {
+  const f = (id, label, val, type, ph) => el('div', { class: 'field' }, [el('label', { for: id, class: 'lbl', text: label }), el('input', { id, type: type || 'text', value: val || '', placeholder: ph || '', autocomplete: 'off' })]);
+  const sel = (id, label, cur, opts) => el('div', { class: 'field' }, [el('label', { for: id, class: 'lbl', text: label }), el('select', { id, class: 'btn' }, opts.map(([v, t]) => el('option', { value: v, selected: cur === v ? 'selected' : null, text: t })))]);
+  const note = t => el('span', { class: 'muted', style: { fontSize: '13px' }, text: t });
+  const sc = schedule(), done = sc.units.filter(u => u.isDone).length, last = sc.units.reduce((a, u) => u.day > a ? u.day : a, '');
+  const syncState = S.syncing ? 'Syncing…' : !S.settings.syncUrl ? 'Sync is not set up' : S.lastSync ? 'Synced ' + verAge(S.lastSync) : 'Not synced on this device yet';
+  const mode = S.settings.theme || 'auto';
+  const modeSeg = el('div', { class: 'seg', role: 'group', 'aria-label': 'Mode' }, [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']].map(([v, t]) => el('button', { 'aria-pressed': String(mode === v), 'data-mode': v, onclick: () => { S.settings.theme = v; applyTheme(); save(); modeSeg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === v))); }, text: t })));
+  const quick = el('div', { class: 'pquick' }, [
+    el('button', { class: 'qa', id: 'syncBtn', onclick: () => S.settings.syncUrl ? doSync() : pick('sync', 'st_sync'), 'aria-label': 'Sync progress' }, [svg(I.sync, 22), el('b', { class: 't', text: S.settings.syncUrl ? 'Sync now' : 'Set up sync' }), el('span', { class: 's', text: syncState })]),
+    el('button', { class: 'qa' + (hasUpdate() ? ' hasdot' : ''), onclick: doUpdate, 'aria-label': 'Update app' }, [svg(I.update, 22), el('b', { class: 't', text: updateLabel() }), el('span', { class: 's ver', text: 'v' + VERSION })]),
+    el('div', { class: 'qa qmode' }, [el('b', { text: 'Mode' }), modeSeg])]);
+  const T = [['sync', 'Sync'], ['look', 'Look'], ['plan', 'Plan'], ['ai', 'AI'], ['data', 'Data']];
+  const panels = {
+    sync: [f('st_sync', 'Sync URL (Apps Script, ends in ?k=your key)', S.settings.syncUrl, 'url', 'https://script.google.com/macros/s/…/exec?k=…'), note('Your plan, minutes and AI choices sync across devices. Theme, keys and this URL stay on this device.'),
+      el('label', { class: 'row', style: { gap: '10px', fontSize: '14.5px' } }, [el('input', { type: 'checkbox', id: 'st_notify', checked: S.settings.notifyUpdates ? 'checked' : null, style: { width: '22px', height: '22px' } }), 'Notify me when an app update is available'])],
+    look: [sel('st_accent', 'Accent colour', S.settings.accent || 'teal', [['teal', 'Teal'], ['blue', 'Blue'], ['plum', 'Plum']]), f('st_name', 'Your name (used in the greeting)', S.settings.name || '', 'text', 'Raghavendra')],
+    plan: [f('st_start', 'Week 1 starts (pick any day in that week)', S.start, 'date'), el('div', { class: 'tri' }, [f('st_wd', 'Weekday minutes', S.settings.capWd || 60, 'number'), f('st_we', 'Weekend minutes', S.settings.capWe || 120, 'number'), f('st_time', 'Study time', S.settings.studyTime || '07:00', 'time')])],
+    ai: [sel('st_ai', 'AI features', S.settings.ai === false ? 'off' : 'on', [['on', 'On: instant grading, practice runs and the Claude Code track'], ['off', 'Off: study without AI (self-check with model answers)']]),
+      el('div', { class: 'duo' }, [sel('st_coach', 'Coach answers with', S.settings.coachVia || 'mac', [['mac', 'Claude Code on my Mac'], ['key', 'My API key'], ['hints', 'Hints only (no AI)']]), sel('st_grade', 'Grading model', S.settings.gradeModel || 'auto', [['auto', 'Automatic'], ['haiku', 'Haiku (cheapest)'], ['sonnet', 'Sonnet (most thorough)']])]),
+      el('div', { class: 'duo' }, [f('st_key', 'API key (Anthropic, only on this device)', S.settings.aiKey, 'password', 'sk-ant-…'), f('st_model', 'Coach model', S.settings.aiModel || 'claude-haiku-5-5', 'text')]), graderStatus()],
+    data: [note('Back up your progress to a file or restore it, without cloud sync.'), el('a', { class: 'btn', href: '#/progress', style: { alignSelf: 'flex-start' }, text: 'Back up or restore' })] };
+  const tabBtns = T.map(([k, t]) => el('button', { role: 'tab', id: 'pt_' + k, 'aria-controls': 'pp_' + k, 'aria-selected': String(k === profileTab), tabindex: k === profileTab ? '0' : '-1', onclick: () => pick(k), text: t }));
+  const tablist = el('div', { class: 'tabs ptabs', role: 'tablist', 'aria-label': 'Settings', onkeydown: e => { const i = T.findIndex(x => x[0] === profileTab), n = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (n) { e.preventDefault(); pick(T[(i + n + T.length) % T.length][0]); $('#pt_' + profileTab).focus(); } } }, tabBtns);
+  const panelEls = T.map(([k]) => el('div', { class: 'stack', role: 'tabpanel', id: 'pp_' + k, 'aria-labelledby': 'pt_' + k, hidden: k === profileTab ? null : 'hidden' }, panels[k]));
+  /* switching tabs changes nothing else on screen, so the page never jumps */
+  function pick(k, focusId) { profileTab = k; tabBtns.forEach(b => { const on = b.id === 'pt_' + k; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; }); panelEls.forEach(p => { p.hidden = p.id !== 'pp_' + k; }); if (focusId) { const x = document.getElementById(focusId); if (x) x.focus(); } }
+  const form = el('section', { class: 'card pad stack', onchange: () => { if (saveSettings(form)) { document.querySelectorAll('.avatar span, .avatar.big').forEach(a => { a.textContent = userName().slice(0, 1).toUpperCase(); }); } } }, [tablist].concat(panelEls, [note('Changes save as you make them.')]));
+  const body = el('div', { class: 'stack profile' }, [
+    el('section', { class: 'card pad row phero' }, [el('span', { class: 'avatar big', 'aria-hidden': 'true', text: userName().slice(0, 1).toUpperCase() }), el('div', { class: 'grow stack', style: { gap: '2px', minWidth: 0 } }, [el('h1', { text: userName() }), el('span', { class: 'muted', text: 'Week ' + weekOf(sc.today) + ' · ' + done + ' of ' + sc.units.length + ' steps' + (last ? ' · ends ' + shortDate(last) : '') })])]),
+    quick, form]);
+  shell('Profile', 'Sync, updates, theme, AI and settings', body);
 }
 async function doSync() {
   const url = S.settings.syncUrl;
-  if (!url) { toast('Set up sync first: open Settings (gear icon).'); settings(); return; }
+  if (!url) { toast('Set up sync first: paste your sync URL on your profile.'); settings('st_sync'); return; }
   S.syncing = true; const b = $('#syncBtn'); if (b) b.querySelector('.t').textContent = 'Syncing…';
   try {
     const remote = await fetch(url + (url.includes('?') ? '&' : '?') + 'action=load', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
@@ -1092,7 +1110,7 @@ function hintText(ctx, plain) {
 }
 
 /* ---------------- boot ---------------- */
-function applyTheme() { const t = S.settings.theme; if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
+function applyTheme() { const t = S.settings.theme, a = S.settings.accent, r = document.documentElement; if (t === 'light' || t === 'dark') r.dataset.theme = t; else delete r.dataset.theme; if (a === 'blue' || a === 'plum') r.dataset.accent = a; else delete r.dataset.accent; }
 applyTheme();
 let navCount = 0;
 window.addEventListener('hashchange', () => { navCount++; route(); });

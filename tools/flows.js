@@ -17,6 +17,9 @@ const hash = async (p, h, w) => { await p.evaluate(x => { location.hash = x; }, 
 const text = (p, s) => p.$eval(s, e => e.innerText).catch(() => '');
 const state = p => p.evaluate(() => JSON.parse(localStorage.getItem('keystone:v1') || '{}'));
 function ok(cond, msg) { if (!cond) throw new Error(msg); }
+/* Profile (avatar, top right): open it on a tab; set a field the way a person does (type, then leave the field) */
+const profile = async (p, tab) => { await p.click('.avatar'); await p.waitForSelector('#pt_sync', { timeout: 20000 }); if (tab) await p.click('#pt_' + tab); await p.waitForTimeout(150); };
+const setField = async (p, sel, v) => { await p.fill(sel, v); await p.dispatchEvent(sel, 'change'); await p.waitForTimeout(150); };
 async function T(name, fn, opt) {
   if (FILTER && !name.toLowerCase().includes(FILTER.toLowerCase())) return;
   const { c, p } = await ctx(opt);
@@ -51,6 +54,13 @@ async function T(name, fn, opt) {
     ok(!(await p.$('.behind')), 'a first-day user sees a catching-up note');
     ok(await p.evaluate(() => schedule().missed.length === 0), 'missed days counted before the user began');
     const fresh = await p.evaluate(() => !!JSON.parse(localStorage.getItem('keystone:v1')).since); ok(fresh, 'first run did not record the start day');
+  });
+
+  await T('closing a tab does not overwrite progress another tab saved later', async p => {
+    await go(p, '#/today'); await p.waitForSelector('.unit .check'); await p.click('.unit .check'); await p.waitForTimeout(500);
+    await p.evaluate(() => { const o = JSON.parse(localStorage.getItem('keystone:v1')); o.done['from-other-tab'] = '2026-10-28'; localStorage.setItem('keystone:v1', JSON.stringify(o)); });
+    await p.reload(); await p.waitForSelector('.unit .t', { timeout: 30000 });
+    ok(await p.evaluate(() => !!S.done['from-other-tab']), 'the other tab\'s save was overwritten when this one closed');
   });
 
   await T('today: a tick right before closing the page is kept', async p => {
@@ -109,27 +119,48 @@ async function T(name, fn, opt) {
     ok(/90-minute day/.test(await text(p, '#page')), 'day chip not updated');
   });
 
-  await T('settings: save, reopen shows values, bad minutes fall back, theme applies', async p => {
+  await T('settings: profile saves as you go, reopen shows values, bad minutes fall back, theme applies', async p => {
     await go(p, '#/today');
-    await p.click('[aria-label="Settings"]'); await p.waitForTimeout(300);
-    await p.fill('#st_wd', '5'); await p.fill('#st_we', '150'); await p.fill('#st_time', '06:30');
-    await p.fill('#st_sync', 'https://script.google.com/macros/s/abc/exec'); await p.fill('#st_key', 'sk-ant-test');
-    await p.selectOption('#st_theme', 'dark');
-    await p.click('.dialog button:has-text("Save")'); await p.waitForTimeout(400);
+    await profile(p, 'plan');
+    await setField(p, '#st_wd', '5'); await setField(p, '#st_we', '150'); await setField(p, '#st_time', '06:30');
+    await p.click('#pt_sync'); await setField(p, '#st_sync', 'https://script.google.com/macros/s/abc/exec');
+    await p.click('#pt_ai'); await setField(p, '#st_key', 'sk-ant-test');
+    await p.click('[data-mode=dark]'); await p.waitForTimeout(400);
     const s = await state(p); ok(s.settings.capWd === 60, 'invalid weekday minutes should fall back to 60, got ' + s.settings.capWd);
     ok(s.settings.capWe === 150 && s.settings.studyTime === '06:30', 'weekend/time not saved');
     ok(await p.evaluate(() => document.documentElement.dataset.theme === 'dark'), 'dark theme not applied');
     await p.reload(); await p.waitForTimeout(700);
     ok(await p.evaluate(() => document.documentElement.dataset.theme === 'dark'), 'theme lost after reload');
-    await p.click('[aria-label="Settings"]'); await p.waitForTimeout(300);
     ok((await p.inputValue('#st_sync')).includes('abc') && (await p.inputValue('#st_key')) === 'sk-ant-test', 'settings not shown on reopen');
-    await p.keyboard.press('Escape');
   });
+
+  await T('profile: avatar opens it; sync, update and mode are one tap without scrolling; tabs switch in place', async p => {
+    await go(p, '#/today');
+    ok(!(await p.$('.top [aria-label="Sync progress"]')) && !(await p.$('.top [aria-label="Update app"]')) && !(await p.$('.top [aria-label=Settings]')), 'old top-bar buttons still there');
+    await profile(p);
+    const r = await p.evaluate(() => ['#syncBtn', '.pquick [aria-label="Update app"]', '[data-mode=dark]', '#pt_ai'].map(q => { const b = document.querySelector(q).getBoundingClientRect(); return b.bottom <= innerHeight && b.top >= 0; }));
+    ok(r.every(Boolean), 'quick actions or tabs need scrolling: ' + JSON.stringify(r));
+    const y = await p.evaluate(() => scrollY); await p.click('#pt_ai');
+    ok(await p.isVisible('#st_ai') && !(await p.isVisible('#st_sync')) && (await p.evaluate(() => scrollY)) === y, 'AI tab did not open in place');
+    await p.keyboard.press('ArrowRight'); ok(await p.evaluate(() => document.activeElement.id === 'pt_data') && await p.isVisible('#pp_data'), 'arrow keys do not move between tabs');
+    await p.click('#pt_look'); await p.selectOption('#st_accent', 'plum'); await p.waitForTimeout(300);
+    ok(await p.evaluate(() => document.documentElement.dataset.accent === 'plum' && JSON.parse(localStorage.getItem('keystone:v1')).settings.accent === 'plum'), 'accent not applied and saved');
+    await setField(p, '#st_name', 'Asha'); ok((await text(p, '.top .avatar')).trim() === 'A', 'avatar letter did not follow the name');
+    await go(p, '#/today'); ok(/Asha/.test(await text(p, 'h1')), 'greeting does not use the name');
+  });
+
+  await T('profile on iPhone: one tap from the More sheet, quick actions and tabs on the first screen', async p => {
+    await go(p, '#/today');
+    await p.click('.tabmore'); await p.click('.sheetgrid a:has-text("Profile and settings")'); await p.waitForSelector('#pt_sync');
+    const r = await p.evaluate(() => { const tb = document.querySelector('.tabbar').getBoundingClientRect().top; return ['#syncBtn', '[data-mode=dark]', '#pt_data', '#st_sync'].map(q => document.querySelector(q).getBoundingClientRect().bottom <= tb); });
+    ok(r.every(Boolean), 'something needs scrolling on the phone: ' + JSON.stringify(r));
+    await p.click('.tabmore'); ok(await p.locator('.sheet button', { hasText: /Sync/ }).count() === 1, 'Sync is not one tap from the More sheet'); await p.keyboard.press('Escape');
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'page scrolls sideways');
+  }, { viewport: { width: 390, height: 664 }, isMobile: true, hasTouch: true });
 
   await T('sync: without URL opens settings; failing URL keeps progress', async p => {
     await go(p, '#/today');
-    await p.click('#syncBtn'); await p.waitForTimeout(300); ok(await p.$('#st_sync'), 'settings not opened');
-    await p.keyboard.press('Escape');
+    await profile(p); await p.click('#syncBtn'); await p.waitForTimeout(300); ok(await p.evaluate(() => document.activeElement.id === 'st_sync'), 'Set up sync did not take you to the sync URL');
     await p.evaluate(() => { S.settings.syncUrl = 'http://127.0.0.1:9/none'; S.done['a01:A101'] = '2026-10-24'; save(); });
     await p.click('#syncBtn'); await p.waitForTimeout(2500);
     ok(/Sync failed|synced/i.test(await text(p, '.toast')), 'no sync result toast');
@@ -315,7 +346,7 @@ async function T(name, fn, opt) {
 
   await T('old saved data from v1.1 loads without errors', async p => {
     await go(p, '#/today');
-    await p.evaluate(() => { saveT && clearTimeout(saveT); localStorage.setItem('keystone:v1', JSON.stringify({ start: '2026-10-12', done: { w1d0les1: 1, w1d0dsa: 1 }, quiz: { 1: { a: { 0: 'A' }, sub: true, i: 0 } }, iv: { 1: { 0: true } }, solved: { d011: 1 }, settings: { syncUrl: '' }, week: 2, dayPick: 1 })); }); await p.reload(); await p.waitForTimeout(800);
+    await p.evaluate(() => { saveT && clearTimeout(saveT); saveT = null; localStorage.setItem('keystone:v1', JSON.stringify({ start: '2026-10-12', done: { w1d0les1: 1, w1d0dsa: 1 }, quiz: { 1: { a: { 0: 'A' }, sub: true, i: 0 } }, iv: { 1: { 0: true } }, solved: { d011: 1 }, settings: { syncUrl: '' }, week: 2, dayPick: 1 })); }); await p.reload(); await p.waitForTimeout(800);
     for (const h of ['#/today', '#/path', '#/progress', '#/quiz/s01', '#/interview/1', '#/learn/1', '#/path/3']) { await go(p, h, 600); ok(!(/Something went wrong/.test(await text(p, '.top'))), h + ' broke'); }
     await go(p, '#/path/s01', 600); ok(await p.$('.unit.done:has-text("Quiz 1")'), 'old submitted quiz 1 should count as done');
   });
@@ -328,9 +359,9 @@ async function T(name, fn, opt) {
 
   await T('keyboard: dialogs trap focus start and Escape closes; focus visible', async p => {
     await go(p, '#/today');
-    await p.click('[aria-label="Settings"]'); await p.waitForTimeout(200);
+    await profile(p); await p.click('.pquick [aria-label="Update app"]'); await p.waitForTimeout(600);
     const f = await p.evaluate(() => document.activeElement && document.activeElement.closest('.dialog') !== null); ok(f, 'focus not moved into dialog');
-    await p.keyboard.press('Escape'); await p.waitForTimeout(150); ok(!(await p.$('.dialog')), 'escape did not close settings');
+    await p.keyboard.press('Escape'); await p.waitForTimeout(150); ok(!(await p.$('.dialog')), 'escape did not close the dialog');
     await p.keyboard.press('Tab'); await p.keyboard.press('Tab');
     const outline = await p.evaluate(() => getComputedStyle(document.activeElement).outlineStyle); ok(outline !== 'none', 'no visible focus ring');
   });
@@ -458,7 +489,7 @@ async function T(name, fn, opt) {
 
   await T('settings: week 1 start snaps to Monday', async p => {
     await go(p, '#/today');
-    await p.click('[aria-label="Settings"]'); await p.fill('#st_start', '2026-10-22'); await p.click('.dialog button:has-text("Save")'); await p.waitForTimeout(300);
+    await profile(p, 'plan'); await setField(p, '#st_start', '2026-10-22'); await p.waitForTimeout(200);
     ok((await state(p)).start === '2026-10-19', 'start not snapped: ' + (await state(p)).start);
   });
 
@@ -594,7 +625,7 @@ async function T(name, fn, opt) {
     await p.setInputFiles('input[type=file]', { name: 'other.json', mimeType: 'application/json', buffer: Buffer.from('{"foo": 1}') });
     await p.waitForTimeout(400);
     ok(/not a Data Architect backup/.test(await text(p, '.toast')), 'unrelated JSON accepted as a backup');
-    await p.click('[aria-label="Settings"]'); await p.fill('#st_sync', 'ftp://example.com/x'); await p.click('.dialog button:has-text("Save")'); await p.waitForTimeout(300);
+    await profile(p, 'sync'); await setField(p, '#st_sync', 'ftp://example.com/x'); await p.waitForTimeout(200);
     ok(/not valid/.test(await text(p, '.toast')) && !(await state(p)).settings.syncUrl, 'invalid sync URL saved');
     await p.route('https://script.google.com/**', route => route.request().method() === 'POST' ? route.fulfill({ contentType: 'application/json', body: '{"ok": false, "error": "quota exceeded"}' }) : route.fulfill({ contentType: 'application/json', body: '{"ok": true, "data": {}, "coach": {}}' }));
     await p.evaluate(() => { S.settings.syncUrl = 'https://script.google.com/macros/s/x/exec?k=a'; save(); });
@@ -615,7 +646,7 @@ async function T(name, fn, opt) {
   });
 
   await T('update app: shows installed and latest version, up to date', async p => {
-    await go(p, '#/today');
+    await go(p, '#/profile', 1200);
     ok(/v\d+\.\d+\.\d+/.test(await text(p, '[aria-label="Update app"]')), 'version not shown on the Update app button');
     await p.click('[aria-label="Update app"]'); await p.waitForTimeout(1500);
     const t = await text(p, '.scrim [role=dialog]'), v = await p.evaluate(() => VERSION);
@@ -628,9 +659,11 @@ async function T(name, fn, opt) {
     await go(p, '#/today', 1500);
     ok(/Version 9\.9\.9 is available/.test(await text(p, '.toast')), 'no toast for the new version');
     ok(/9\.9\.9 is available/.test(await text(p, '#page')), 'no banner');
-    ok(await p.locator('[aria-label="Update app"].hasdot').count() === 1 && /Update to 9\.9\.9/.test(await text(p, '[aria-label="Update app"]')), 'button does not show the update');
+    ok(await p.locator('.top .avatar.hasdot').count() === 1, 'no dot on the avatar');
+    await profile(p); ok(await p.locator('[aria-label="Update app"].hasdot').count() === 1 && /Update to 9\.9\.9/.test(await text(p, '[aria-label="Update app"]')), 'button does not show the update');
     await p.reload(); await p.waitForTimeout(1500);
     ok(!/is available/.test(await text(p, '.toast')), 'toast repeated for the same version');
+    await p.waitForSelector('[aria-label="Update app"]');
     await p.click('[aria-label="Update app"]'); await p.waitForTimeout(1200);
     const t = await text(p, '.scrim [role=dialog]');
     ok(/Update available/.test(t) && /Update now to 9\.9\.9/.test(t) && /Big new thing/.test(t), 'dialog: ' + t.slice(0, 200));
@@ -652,9 +685,8 @@ async function T(name, fn, opt) {
     await go(p, '#/today', 1500);
     const shown = await p.evaluate(async () => { S.settings.notifyUpdates = true; window.Notification = { permission: 'granted' }; /* headless Chrome always reports denied */ const reg = await navigator.serviceWorker.ready; let got = null; reg.showNotification = (t, o) => { got = [t, o.tag]; return Promise.resolve(); }; navigator.serviceWorker.getRegistration = () => Promise.resolve(reg); notifyUpdate({ version: '9.9.9', notes: ['x'] }); await new Promise(r => setTimeout(r, 300)); return got; });
     ok(shown && /9\.9\.9/.test(shown[0]) && shown[1] === 'da-update', 'no notification: ' + JSON.stringify(shown));
-    await p.click('[aria-label=Settings]'); await p.waitForTimeout(400);
-    const t = await text(p, '.scrim [role=dialog]');
-    ok(/App version \d/.test(t) && /Notify me when an app update/.test(t), 'settings lack the version or the toggle');
+    await profile(p); const t = await text(p, '#page');
+    ok(/v\d+\.\d+\.\d+/.test(t) && /Notify me when an app update/.test(t), 'profile lacks the version or the toggle');
   });
 
   /* ---- persona round 1 fixes ---- */
@@ -680,8 +712,7 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => !MODS.some(isCC) && !schedule().units.some(u => isCC(u.mid))), 'Claude Code steps still planned');
     await go(p, '#/learn/c01/lab', 1200); ok(await p.locator('button', { hasText: 'Run in Claude Code' }).count() === 0, 'run box shown with AI off');
     await go(p, '#/cc/c01/1', 1200); ok(/AI features are off/.test(await text(p, '#page')), 'cc page does not explain');
-    await p.click('[aria-label=Settings]'); await p.waitForTimeout(300);
-    await p.selectOption('#st_ai', 'on'); await p.locator('[role=dialog] button', { hasText: 'Save' }).click(); await p.waitForTimeout(500);
+    await profile(p, 'ai'); await p.selectOption('#st_ai', 'on'); await p.waitForTimeout(500);
     ok(await p.evaluate(() => S.settings.ai === true && MODS.some(isCC)), 'turning AI back on did not restore the track');
   });
   await T('persona: step ticks are at least 44px on touch screens', async p => {
@@ -750,9 +781,8 @@ async function T(name, fn, opt) {
 
   /* ---- preferences (Settings) ---- */
   await T('preferences: coach source and grading model are chosen in Settings and saved', async p => {
-    await go(p, '#/today', 1000); await p.click('[aria-label=Settings]'); await p.waitForTimeout(300);
-    await p.selectOption('#st_coach', 'hints'); await p.selectOption('#st_grade', 'sonnet');
-    await p.locator('.scrim [role=dialog] button', { hasText: 'Save' }).click(); await p.waitForTimeout(300);
+    await go(p, '#/today', 1000); await profile(p, 'ai');
+    await p.selectOption('#st_coach', 'hints'); await p.selectOption('#st_grade', 'sonnet'); await p.waitForTimeout(300);
     const st = await p.evaluate(() => [S.settings.coachVia, S.settings.gradeModel, S.settings.prefsAt > 0]);
     ok(st[0] === 'hints' && st[1] === 'sonnet' && st[2], 'not saved: ' + JSON.stringify(st));
   });

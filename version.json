@@ -1,8 +1,12 @@
 {
-  "version": "1.7.14",
+  "version": "1.8.0",
   "date": "2026-10-28",
   "notes": [
-    "Simulated users: editor pages put their heading outside the main page area, so the harness now waits for any heading (it was waiting 30 s per visit)",
-    "Simulated users: the screen-reader run check accepts the Running message or, when Python is already warm, the result announcement"
+    "Profile: tap your avatar (top right) for one page with Sync now, Update app and Light/Dark/Auto as one-tap buttons at the top",
+    "Profile: Sync, Look (accent colour, your name), Plan, AI (features, coach, grading model, API key, model) and Data are short tabs that open in place; every change saves at once, no Save button",
+    "Phones: More has Sync and Profile; the Profile header folds away so everything fits on the first screen",
+    "Dark mode: the selected tab is readable everywhere in the app",
+    "Fix: closing a tab no longer overwrites progress another open tab saved after it",
+    "Tests: profile journeys on Mac and iPhone, other-tab save, Profile in the accessibility check; simulated users use the profile"
   ]
 }

@@ -115,7 +115,7 @@ async function run(P) {
       return (await p.locator('summary', { hasText: 'Compare' }).count()) === 1 || 'no comparison of runs';
     });
     await task('sync progress at the end of the session', async () => {
-      await go('#/today'); await p.locator('#syncBtn').click(); await p.waitForTimeout(2500);
+      await go('#/profile'); await p.locator('#syncBtn').click(); await p.waitForTimeout(2500);
       const t = await p.evaluate(() => (document.querySelector('.toast') || {}).innerText || '');
       return /synced/i.test(t) || 'sync message: ' + short(t);
     });
@@ -197,14 +197,14 @@ async function run(P) {
       await p.waitForTimeout(300);
       return (await p.evaluate(() => Object.keys((S.quiz.p01 || {}).a || {}).length > 0)) || 'answer not saved by keyboard';
     });
-    await task('open settings by keyboard, change minutes, close with Escape', async () => {
+    await task('open the profile by keyboard and change weekday minutes', async () => {
       await go('#/today', 1500);
-      await p.locator('button[aria-label=Settings]').focus(); await p.keyboard.press('Enter'); await p.waitForTimeout(400);
-      const inDialog = await p.evaluate(() => !!document.activeElement.closest('.scrim [role=dialog]'));
-      if (!inDialog) note('Settings', 'a11y', 'focus does not move into the settings dialog');
-      await shot('settings_zoom'); await probe(p, P, 'Settings dialog', notes);
-      await p.keyboard.press('Escape'); await p.waitForTimeout(300);
-      return (await p.locator('.scrim [role=dialog]').count()) === 0 || 'Escape did not close settings';
+      await p.locator('.top .avatar').focus(); await p.keyboard.press('Enter'); await p.waitForTimeout(800);
+      await p.locator('#pt_sync').focus(); await p.keyboard.press('ArrowRight'); await p.keyboard.press('ArrowRight'); await p.keyboard.press('Enter');
+      if (!(await p.evaluate(() => document.activeElement.id === 'pt_plan'))) note('Profile', 'a11y', 'arrow keys do not move between profile tabs');
+      await p.locator('#st_wd').focus(); await p.keyboard.press('Meta+A'); await p.keyboard.type('45'); await p.keyboard.press(TAB); await p.waitForTimeout(400);
+      await shot('settings_zoom'); await probe(p, P, 'Profile', notes);
+      return (await p.evaluate(() => S.settings.capWd === 45)) || 'minutes not saved by keyboard';
     });
     await task('read a Python lesson at 200% zoom', async () => {
       await go('#/learn/p01/chapter', 1500); await probe(p, P, 'Python lesson', notes); await shot('lesson_zoom');
@@ -281,9 +281,9 @@ async function run(P) {
 
   if (P.id === 'kenji') {
     await task('turn AI features off in Settings', async () => {
-      await go('#/today', 1200); await p.locator('button[aria-label=Settings]').click(); await p.waitForTimeout(300);
+      await go('#/today', 1200); await p.locator('.top .avatar').click(); await p.waitForTimeout(600); await p.locator('#pt_ai').click();
       if (!(await p.locator('#st_ai').count())) return 'no AI setting';
-      await p.selectOption('#st_ai', 'off'); await p.locator('.scrim [role=dialog] button', { hasText: 'Save' }).click(); await p.waitForTimeout(600);
+      await p.selectOption('#st_ai', 'off'); await p.waitForTimeout(600);
       return (await p.evaluate(() => S.settings.ai === false)) || 'setting not saved';
     });
     await task('use the app with no AI key, no grader and no sync', async () => {
