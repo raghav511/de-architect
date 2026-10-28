@@ -216,13 +216,13 @@ function vToday(off) {
     el('a', { class: 'btn icon sm', href: '#/today/' + (off + 1), 'aria-label': 'Next day' }, svg(I.fwd, 18)),
     off ? el('a', { class: 'btn sm', href: '#/today', text: 'Back to today' }) : null,
     el('span', { class: 'grow' }),
-    el('span', { class: 'chip ' + (cap > 60 ? 'c-arch' : 'c-core'), text: (cap >= 120 ? cap / 60 + '-hour' : cap + '-minute') + ' day' })]);
+    el('span', { class: 'chip ' + (cap > 60 ? 'c-arch' : 'c-core'), text: (cap >= 120 ? cap / 60 + '-hour' : cap + '-minute') + ' day' + (planMins > cap ? ' · ' + (planMins - cap) + ' min over' : '') })]);
   const pct = planMins ? Math.round(100 * doneMins / planMins) : 0, cur = off === 0 ? us.find(u => !u.isDone) : null;
   const ring = el('span', { class: 'ring', role: 'img', 'aria-label': pct + '% of the plan done', html: '<svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="17" fill="none" stroke="var(--line)" stroke-width="5"/><circle cx="21" cy="21" r="17" fill="none" stroke="var(--teal)" stroke-width="5" stroke-linecap="round" stroke-dasharray="' + (pct * 1.068).toFixed(1) + ' 107" transform="rotate(-90 21 21)"/></svg>' });
   const plan = el('section', { class: 'card pad stack plan' }, [
     el('div', { class: 'row planhead' }, [ring, el('h2', { class: 'grow', text: off === 0 ? 'Your plan for today' : 'Plan for ' + dayName(k) }), el('span', { class: 'muted', text: doneMins + ' of ' + planMins + ' min done' })]),
     nav,
-    off === 0 && sc.missed.length ? el('div', { class: 'hint behind', role: 'status' }, [el('b', { text: 'Catching up. ' }), 'Nothing was done on ' + missedText(sc.missed) + ', so nothing was skipped: today starts with the first step you have not done, and the rest of the plan moves out by ' + sc.missed.length + (sc.missed.length === 1 ? ' day.' : ' days.')]) : null,
+    off === 0 && sc.missed.length ? el('div', { class: 'hint behind', role: 'status' }, [el('b', { text: 'Catching up · ' }), missedText(sc.missed) + ' moved to today. Nothing was skipped.']) : null,
     el('span', { class: 'muted order', text: 'Do these in order. Each card says what to do, how you know it is done, and opens the exact section. Anything you do not finish moves to the next free day automatically.' })]
     .concat(us.length ? us.map(u => unitCard(u, { fold: true, cur: u === cur })) : [el('p', { style: { margin: 0 }, text: off < 0 ? 'Nothing was done on this day.' : 'Nothing planned. Everything is done.' })])
     .concat(off === 0 && us.length && us.every(u => u.isDone) && sc.next ? [el('div', { class: 'hint' }, [el('b', { text: 'Done for today. ' }), 'Want to keep going? Next up: ' + sc.next.title + ' (planned ' + shortDate(sc.next.day) + '). ', el('a', { href: sc.next.href, text: 'Start it now' })])] : []));
@@ -240,12 +240,12 @@ function vToday(off) {
   const nx = off === 0 && !cur ? sc.next : null;
   const hero = nx ? el('section', { class: 'hero' }, [el('div', { class: 'grow stack', style: { gap: '3px', minWidth: '200px' } }, [el('span', { class: 'lbl', text: (us.includes(nx) ? 'Up next' : 'Ahead of plan · next') + ' · ' + nx.mins + ' min · module ' + modLabel(nx.mid) }), el('b', { text: nx.title })]), el('a', { class: 'btn', href: nx.href, text: nx.cta + ' ›' })]) : null;
   shell(off === 0 ? 'Today' : 'Plan · ' + shortDate(k), 'Module ' + modLabel(m) + ' · ' + weekText(k), [
-    el('div', { class: 'stack', style: { gap: '4px' } }, [el('h1', { text: (hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + ', Raghavendra' }), el('span', { class: 'muted', text: (+S.settings.capWd || 60) + ' min on weekdays, ' + (+S.settings.capWe || 120) + ' on Saturday and Sunday (change in Settings). Coding practice runs on its own track.' })]),
+    el('div', { class: 'stack', style: { gap: '4px' } }, [el('h1', { text: (hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + ', Raghavendra' }), el('span', { class: 'muted hsub', text: (+S.settings.capWd || 60) + ' min on weekdays, ' + (+S.settings.capWe || 120) + ' on Saturday and Sunday (change in Settings). Coding practice runs on its own track.' })]),
     hero,
     el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [off === 0 ? coachCard() : null, modCard, codingTrack(off), desCard])]),
     el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'This week' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'minutes planned / budget · tap a day to see it' }), el('button', { class: 'btn sm', onclick: exportIcs, text: 'Add to calendar' })]), weekStrip(sc, k)])]);
 }
-function missedText(ks) { const n = ks.map(k => dayName(k) + (ks.length > 2 ? '' : ' ' + shortDate(k).slice(4))); return ks.length > 3 ? ks.length + ' days since ' + dayName(ks[0]) + ' ' + shortDate(ks[0]).slice(4) : n.length === 1 ? n[0] : n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1]; }
+function missedText(ks) { const n = ks.map(k => shortDate(k).slice(0, 3)); return ks.length > 3 ? ks.length + ' missed days' : n.length === 1 ? n[0] : n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1]; }
 function weekText(k) { return 'Week ' + weekOf(k); }
 function modLinks(m) {
   const pj = DATA.projects.find(p => p.mod === m), M = MOD[m] || {};
