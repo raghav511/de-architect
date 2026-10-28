@@ -34,7 +34,7 @@ async function T(name, fn, opt) {
     await p.reload(); await p.waitForSelector('.unit .t', { timeout: 30000 }); await p.waitForTimeout(400);
     const sc = await p.evaluate(() => { const s = schedule(); return { missed: s.missed.length, first: s.units.find(u => !isCC(u.mid)).title, today: (s.byDay[s.today] || []).map(u => isCC(u.mid)) }; });
     ok(sc.missed === 2, 'expected 2 missed days, got ' + sc.missed);
-    ok(/Catching up/.test(await text(p, '.behind')) && /2 days/.test(await text(p, '.behind')), 'no catching-up note on Today');
+    const note = await text(p, '.behind'); ok(/Catching up/.test(note) && /moved to today/.test(note) && note.length < 80, 'catching-up note missing or too long: ' + note);
     ok((await text(p, '.unit.cur .t')) === sc.first, 'Up next is not the program\'s first step');
     ok(sc.today.indexOf(true) === -1 || sc.today.indexOf(true) > sc.today.lastIndexOf(false), 'a Claude Code step sits above a main step');
     ok(/from (Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test((await p.$$eval('.item .s', a => a.map(x => x.innerText))).join(' ')), 'coding track did not catch up on the first unsolved problem');
@@ -415,6 +415,21 @@ async function T(name, fn, opt) {
     ok(!(await opened.locator('.goal').isVisible()), 'details did not fold again');
     const r = await p.$eval('.planhead .ring', e => e.getAttribute('aria-label')); ok(/% of the plan done/.test(r), 'progress ring missing a label');
     ok(await p.$('.plan .daynav [aria-label="Next day"]'), 'day arrows should sit inside the plan card');
+  });
+
+  await T('today on iPhone at 200% text: catching-up note leaves the Up next button on screen', async p => {
+    await go(p, '#/today', 900);
+    await p.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 3); S.start = iso(d); S.since = null; S.done = {}; save(); }); await p.waitForTimeout(400);
+    await p.reload(); await p.waitForSelector('.behind', { timeout: 30000 });
+    ok(!(await p.isVisible('.hsub')), 'the hour-budget line still shows on a phone');
+    const b = await p.$eval('.unit.cur .acts .btn.pri', e => { const r = e.getBoundingClientRect(); return { bottom: r.bottom, tab: document.querySelector('.tabbar').getBoundingClientRect().top }; });
+    ok(b.bottom <= b.tab, 'Up next button pushed behind the tab bar by the note: ' + JSON.stringify(b));
+  }, { viewport: { width: 390, height: 664 }, isMobile: true, hasTouch: true });
+
+  await T('today: the day chip says when the plan runs over the budget', async p => {
+    await go(p, '#/today', 900);
+    const r = await p.evaluate(() => { const sc = schedule(), d = new Date(); d.setHours(0, 0, 0, 0); const us = sc.byDay[sc.today] || []; return { plan: us.reduce((a, u) => a + u.mins, 0), cap: capOf(d), chip: [...document.querySelectorAll('.daynav .chip')].map(x => x.innerText).join() }; });
+    ok(r.plan <= r.cap ? !/over/.test(r.chip) : new RegExp((r.plan - r.cap) + ' min over').test(r.chip), 'chip does not match the plan: ' + JSON.stringify(r));
   });
 
   await T('today on iPhone: the Up next step and its button show without scrolling', async p => {

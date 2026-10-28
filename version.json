@@ -1,8 +1,10 @@
 {
-  "version": "1.7.11",
+  "version": "1.7.12",
   "date": "2026-10-28",
   "notes": [
-    "Progress: a tick or answer made just before closing the tab, reloading, or locking the phone is now saved straight away instead of being lost",
-    "Test: tick then reload immediately keeps the tick"
+    "Today: the catching-up note is one short line (Mon and Tue moved to today. Nothing was skipped.), so at large text the Up next button stays on screen",
+    "Today: the day chip says when today's plan runs over the budget (60-minute day \u00b7 5 min over)",
+    "Phones: the hour-budget line under the greeting is hidden; it is in the day chip and Settings",
+    "Tests: large-text iPhone note check, chip matches the plan, budget line hidden on phones"
   ]
 }
