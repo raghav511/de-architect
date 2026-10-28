@@ -1,12 +1,8 @@
 {
-  "version": "1.7.9",
+  "version": "1.7.10",
   "date": "2026-10-28",
   "notes": [
-    "Today: when earlier days had nothing done, a Catching up note says so and that nothing was skipped; the plan moves out by that many days",
-    "Today: the main path step comes before a Claude Code step on the same day, so the program's first step is Up next",
-    "Week strip: a missed day says 'Missed \u00b7 moved to today' instead of a dash",
-    "Coding track: today shows the earliest unsolved problem from this week first (marked 'from Mon')",
-    "Phones: the Up next button sits right under its title so it shows above the tab bar",
-    "Tests: missed-days journey; a 7th simulated user (Dev, returns after missed days on iPad) and P0/P1/P2 ratings in the persona run"
+    "Today: missed days count from the day you first opened the app (or restarted week 1), so a new user starting mid-week is not told they missed Monday and Tuesday",
+    "Test: a new user starting mid-week sees no catching-up note"
   ]
 }

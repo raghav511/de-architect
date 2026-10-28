@@ -30,7 +30,7 @@ async function T(name, fn, opt) {
 
   await T('today: two missed days carry forward, say so, and keep the first step on top', async p => {
     await go(p, '#/today');
-    await p.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 2); S.start = iso(d); S.done = {}; save(); });
+    await p.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 2); S.start = iso(d); S.since = null; S.done = {}; save(); }); await p.waitForTimeout(400);
     await p.reload(); await p.waitForSelector('.unit .t', { timeout: 30000 }); await p.waitForTimeout(400);
     const sc = await p.evaluate(() => { const s = schedule(); return { missed: s.missed.length, first: s.units.find(u => !isCC(u.mid)).title, today: (s.byDay[s.today] || []).map(u => isCC(u.mid)) }; });
     ok(sc.missed === 2, 'expected 2 missed days, got ' + sc.missed);
@@ -42,6 +42,15 @@ async function T(name, fn, opt) {
     ok(strip.every(t => !/—/.test(t) || !/0\//.test(t)) || strip.some(t => /Missed · moved to today/.test(t)) || new Date().getDay() <= 2, 'missed days in the week strip do not say where the work went');
     await p.evaluate(() => { S.done[schedule().units.find(u => !isCC(u.mid)).uid] = iso(new Date()); save(); }); await p.reload(); await p.waitForTimeout(800);
     ok(await p.$('.behind'), 'note should stay while earlier days are still empty');
+  });
+
+  await T('today: a new user who starts mid-week is not told they missed days', async p => {
+    await go(p, '#/today');
+    await p.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 2); S.start = iso(d); S.since = iso(new Date()); S.done = {}; save(); }); await p.waitForTimeout(400);
+    await p.reload(); await p.waitForSelector('.unit .t', { timeout: 30000 });
+    ok(!(await p.$('.behind')), 'a first-day user sees a catching-up note');
+    ok(await p.evaluate(() => schedule().missed.length === 0), 'missed days counted before the user began');
+    const fresh = await p.evaluate(() => !!JSON.parse(localStorage.getItem('keystone:v1')).since); ok(fresh, 'first run did not record the start day');
   });
 
   await T('today: tick a step updates progress, up next, sidebar and persists', async p => {
