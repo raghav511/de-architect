@@ -394,3 +394,34 @@ select.btn{-webkit-appearance:none;appearance:none;padding-right:32px;background
 .pcard .go{position:relative;z-index:1;align-self:flex-start;white-space:normal;text-align:left;line-height:1.3;padding-block:8px;min-height:44px}
 .phead{display:flex;gap:16px;align-items:center}.phead .tart{flex:none}
 @media (max-width:560px){.pgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.pcard .bd{padding:10px 11px 12px}.pcard .pt{font-size:14.5px}.pcard.cur .pt{font-size:17px}.phead .tart svg{width:64px;height:64px}}
+
+/* ---------- Profile (avatar, top right) ---------- */
+.avatar{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:var(--teal);color:#fff;font:700 18px/1 var(--display);text-decoration:none;flex:none;border:2px solid var(--card);box-shadow:0 0 0 1px var(--line2)}
+.avatar:hover{box-shadow:0 0 0 2px var(--teal-d)}
+.avatar[aria-current=page]{box-shadow:0 0 0 3px var(--teal-l)}
+.avatar.hasdot::after{top:0;right:0}
+.avatar.big{width:64px;height:64px;font-size:28px;border:0;box-shadow:none}
+.phero{gap:16px;align-items:center}
+.phero h1{margin:0}
+.profile .tri{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.pquick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.pquick .qa{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-height:96px;padding:14px;border-radius:var(--r);border:1px solid var(--line);background:var(--card);color:var(--ink);text-align:left;font:inherit;cursor:pointer}
+.pquick button.qa:hover{border-color:var(--teal)}
+.pquick .qa svg{color:var(--teal)}
+.pquick .qa .s{font-size:13px;color:var(--muted)}
+.pquick .qmode{cursor:default}
+.pquick .qmode .seg{margin-top:auto;width:100%}.pquick .qmode .seg button{flex:1}
+.profile .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ptabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.ptabs button{flex:none}
+@media (max-width:560px){.pquick{grid-template-columns:1fr 1fr}.pquick .qmode{grid-column:1/-1;min-height:0;flex-direction:row;align-items:center}.pquick .qmode .seg{margin:0 0 0 auto;width:auto}.profile .duo{grid-template-columns:1fr}.pquick .qa{min-height:84px}}
+/* accent colour: the teal tokens follow your pick, light and dark */
+:root[data-accent=blue]{--teal:var(--blue);--teal-d:var(--blue-d);--teal-l:var(--blue-l);--teal-xl:color-mix(in srgb,var(--blue-l) 45%,var(--card))}
+:root[data-accent=plum]{--teal:var(--plum);--teal-d:var(--plum-d);--teal-l:var(--plum-l);--teal-xl:color-mix(in srgb,var(--plum-l) 45%,var(--card))}
+.profile [role=tabpanel][hidden]{display:none}
+.seg button[aria-pressed=true]{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+a.avatar,a.avatar:visited,.avatar{color:var(--card)!important} /* card colour: white on teal in light mode, dark on bright teal in dark mode */
+@media (max-width:560px){.phero{padding:12px 14px}.avatar.big{width:48px;height:48px;font-size:21px}.phero h1{font-size:22px}}
+@media (max-width:560px){.phero{display:none}.pquick{gap:8px}.pquick .qa{min-height:0;flex-direction:row;align-items:center;gap:10px;padding:10px 12px}.pquick .qa .s{display:none}.pquick .qmode{padding:6px 6px 6px 12px}}
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]) .tabs button[aria-selected=true]{background:var(--teal);border-color:var(--teal);color:var(--card)}}
+:root[data-theme=dark] .tabs button[aria-selected=true]{background:var(--teal);border-color:var(--teal);color:var(--card)}
