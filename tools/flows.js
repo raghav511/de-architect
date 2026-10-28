@@ -53,6 +53,12 @@ async function T(name, fn, opt) {
     const fresh = await p.evaluate(() => !!JSON.parse(localStorage.getItem('keystone:v1')).since); ok(fresh, 'first run did not record the start day');
   });
 
+  await T('today: a tick right before closing the page is kept', async p => {
+    await go(p, '#/today'); await p.waitForSelector('.unit .check');
+    await p.click('.unit .check'); await p.reload(); await p.waitForSelector('.unit .t', { timeout: 30000 });
+    ok(await p.$('.unit.done'), 'the tick was lost when the page closed straight after it');
+  });
+
   await T('today: tick a step updates progress, up next, sidebar and persists', async p => {
     await go(p, '#/today');
     const first = await text(p, '.unit .t');
