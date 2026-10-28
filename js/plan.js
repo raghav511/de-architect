@@ -128,7 +128,7 @@ function schedule() {
   Object.values(byDay).forEach(a => a.sort((x, y) => isCC(x.mid) - isCC(y.mid)));
   /* days since the start with nothing ticked: their steps were not skipped, they moved to today and later */
   const missed = [];
-  for (const d = new Date((S.start || iso(t)) + 'T00:00:00'); d < t && missed.length < 400; d.setDate(d.getDate() + 1)) if (!(byDay[iso(d)] || []).some(u => u.isDone)) missed.push(iso(d));
+  for (const d = new Date([S.start, S.since].filter(Boolean).sort().pop() + 'T00:00:00' || t); d < t && missed.length < 400; d.setDate(d.getDate() + 1)) if (!(byDay[iso(d)] || []).some(u => u.isDone)) missed.push(iso(d));
   const span = {};
   units.forEach(u => { const s = span[u.mid] = span[u.mid] || { first: null, last: null, n: 0, done: 0, mins: 0 }; if (u.day !== '0000-00-00') { if (!s.first || u.day < s.first) s.first = u.day; if (!s.last || u.day > s.last) s.last = u.day; } s.n++; s.mins += u.mins; if (u.isDone) s.done++; });
   const next = units.find(u => !u.isDone);
@@ -276,7 +276,7 @@ const ART = {
 };
 function topicArt(x, size) { const t = trackOf(x); return el('span', { class: 'tart a-' + t, 'aria-hidden': 'true', html: '<svg viewBox="0 0 100 100" width="' + size + '" height="' + size + '">' + ART[t] + '</svg>' }); }
 const ROADMAP_TEXT = 'Setup and the diagnostic first, then the Python track (Python 1–6) woven between the AI modules (AI 1–3), then data modelling (Modelling 1–3), then the data engineering modules, with Systems 1 (distributed systems and storage internals) after DE 4, Platform 1 (Scala, the JVM, Kubernetes and Hadoop) after DE 7 and Leadership 1 (strategy, migrations, cost, influence) after DE 10. A module ends when its steps are done, not on a fixed week. After the last module, new Extra modules arrive every week: big-tech papers and problems, plus fresh questions on earlier topics.';
-function weekOneBtn() { return el('button', { class: 'btn sm', onclick: async () => { const v = await confirmBox('Restart the calendar?', 'Week 1 becomes this week. Your progress is kept; only the week numbers change.', [{ t: 'Make this week 1', cls: 'pri', v: 1 }, { t: 'Cancel', v: null }]); if (v) { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); S.start = iso(d); save(); route(); } }, text: 'Make this week 1' }); }
+function weekOneBtn() { return el('button', { class: 'btn sm', onclick: async () => { const v = await confirmBox('Restart the calendar?', 'Week 1 becomes this week. Your progress is kept; only the week numbers change.', [{ t: 'Make this week 1', cls: 'pri', v: 1 }, { t: 'Cancel', v: null }]); if (v) { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); S.start = iso(d); S.since = iso(new Date()); save(); route(); } }, text: 'Make this week 1' }); }
 /* ---------------- Path: picture cards for every module ---------------- */
 function vPathMap() {
   const sc = schedule(), cur = sc.cur, i = MODS.indexOf(cur), nx = sc.units.find(u => u.mid === cur && !u.isDone);

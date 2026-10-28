@@ -58,7 +58,7 @@ async function run(P) {
 
   await go('#/today', 2000);
   if (P.sync) await p.evaluate(u => { S.settings.syncUrl = u; save(); }, SYNC);
-  if (P.gap) await p.evaluate(n => { const d = new Date(); d.setDate(d.getDate() - n); S.start = iso(d); S.done = {}; save(); }, P.gap);
+  if (P.gap) await p.evaluate(n => { const d = new Date(); d.setDate(d.getDate() - n); S.start = iso(d); S.since = null; S.done = {}; save(); }, P.gap);
   await p.waitForTimeout(300);
 
   /* ---------- everyone: first look at Today ---------- */
