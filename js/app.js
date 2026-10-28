@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.7.6';
+const VERSION = '1.7.7';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -24,7 +24,7 @@ const I = {
   db: '<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/>', design: '<rect x="3" y="4" width="7" height="6" rx="1"/><rect x="14" y="14" width="7" height="6" rx="1"/><path d="M10 7h4v10"/>',
   quiz: '<path d="M9 6h11M9 12h11M9 18h11M4 6h1M4 12h1M4 18h1"/>', proj: '<path d="M3 7l9-4 9 4-9 4z"/><path d="M3 12l9 4 9-4M3 17l9 4 9-4"/>', prog: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', sync: '<path d="M20 11a8 8 0 00-14-5L4 8M4 13a8 8 0 0014 5l2-2M4 4v4h4M20 20v-4h-4"/>',
   update: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>', back: '<path d="M15 18l-6-6 6-6"/>', fwd: '<path d="M9 6l6 6-6 6"/>', dbl_l: '<path d="M18 6l-6 6 6 6M11 6l-6 6 6 6"/>', dbl_r: '<path d="M6 6l6 6-6 6M13 6l6 6-6 6"/>',
-  check: '<path d="M5 12l5 5 9-10" stroke="#fff" stroke-width="3"/>', spark: '<path d="M12 3l1.8 4.6L18 9.4l-4.2 1.8L12 16l-1.8-4.8L6 9.4l4.2-1.8z"/><path d="M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
+  x: '<path d="M18 6L6 18M6 6l12 12"/>', check: '<path d="M5 12l5 5 9-10" stroke="#fff" stroke-width="3"/>', spark: '<path d="M12 3l1.8 4.6L18 9.4l-4.2 1.8L12 16l-1.8-4.8L6 9.4l4.2-1.8z"/><path d="M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
   git: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 7v10M18 11c0 4-6 3-11 7"/>', news: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/>',
   term: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'
 };
@@ -762,9 +762,14 @@ async function vQuiz(m) {
     page.textContent = '';
     st.i = i; save(false);
     const answered = qs.filter((q, k) => st.a[k] !== undefined && st.a[k] !== '').length;
-    page.appendChild(el('div', { class: 'row wrap' }, [weekSel, el('span', { class: 'muted grow', text: answered + ' of ' + qs.length + ' answered' }),
-      el('button', { class: 'btn sm', onclick: async () => { const v = await confirmBox('Reset this quiz?', 'All answers for module ' + modLabel(m) + ' are cleared. Undo is available for 10 seconds.', [{ t: 'Reset and exit', cls: 'warn', v: 1 }, { t: 'Cancel', v: null }]); if (v) { const snap = JSON.stringify(st); S.quiz[w] = { a: {}, sub: false, i: 0 }; save(); location.hash = '#/today'; setTimeout(() => toast('Quiz reset', () => { S.quiz[w] = JSON.parse(snap); save(); }), 50); } }, text: 'Reset and exit' }),
-      el('button', { class: 'btn sm', onclick: async () => { const v = await confirmBox('Leave the quiz?', 'Your answers are kept. You can come back and finish later.', [{ t: 'Leave, keep answers', cls: 'pri', v: 1 }, { t: 'Stay', v: null }]); if (v) location.hash = '#/today'; }, text: 'Leave' })]));
+    const reset = el('button', { class: 'btn sm quiet-warn', onclick: async () => { const v = await confirmBox('Reset this quiz?', 'All answers for module ' + modLabel(m) + ' are cleared. Undo is available for 10 seconds.', [{ t: 'Reset and exit', cls: 'warn', v: 1 }, { t: 'Cancel', v: null }]); if (v) { const snap = JSON.stringify(st); S.quiz[w] = { a: {}, sub: false, i: 0 }; save(); location.hash = '#/today'; setTimeout(() => toast('Quiz reset', () => { S.quiz[w] = JSON.parse(snap); save(); }), 50); } }, text: 'Reset and exit' });
+    /* top: ✕ (Leave) and answered progress; Reset sits with the question numbers, away from the main buttons */
+    page.appendChild(el('div', { class: 'qtop' }, [
+      el('button', { class: 'btn icon sm', 'aria-label': 'Leave', onclick: async () => { const v = await confirmBox('Leave the quiz?', 'Your answers are kept. You can come back and finish later.', [{ t: 'Leave, keep answers', cls: 'pri', v: 1 }, { t: 'Stay', v: null }]); if (v) location.hash = '#/today'; } }, [svg(I.x, 18), el('span', { class: 'sr', text: 'Leave' })]),
+      el('div', { class: 'bar grow', role: 'progressbar', 'aria-label': 'Answered', 'aria-valuemin': '0', 'aria-valuemax': String(qs.length), 'aria-valuenow': String(answered) }, el('i', { style: { width: Math.round(100 * answered / qs.length) + '%' } })),
+      el('span', { class: 'muted qcount', text: answered + ' of ' + qs.length + ' answered' })]));
+    page.appendChild(el('div', { class: 'row' }, [weekSel]));
+    if (st.sub) page.appendChild(el('div', { class: 'row' }, [reset]));
     if (st.sub) {
       const score = qs.reduce((a, q, k) => a + grade(q, st.a[k]), 0), pct = Math.round(100 * score / qs.length);
       if (!st.best || pct > st.best) { st.best = pct; save(); }
@@ -792,8 +797,8 @@ async function vQuiz(m) {
     else if (q.TYPE === 'fill') { const inp = el('input', { type: 'text', value: st.a[i] || '', 'aria-label': 'Your answer', style: { minHeight: '46px', border: '1px solid var(--line2)', borderRadius: '10px', padding: '0 12px' } }); inp.addEventListener('input', () => { st.a[i] = inp.value; save(); }); card.appendChild(inp); }
     else { const ta = el('textarea', { class: 'code', style: { minHeight: '140px', border: '1px solid var(--line2)', borderRadius: '10px', fontFamily: 'var(--body)', fontSize: '16px' }, 'aria-label': 'Your answer' }); ta.value = (st.a[i] && st.a[i].t) || ''; ta.addEventListener('input', () => { st.a[i] = Object.assign({}, st.a[i] || {}, { t: ta.value }); save(); }); card.appendChild(ta);
       card.appendChild(el('div', { class: 'row wrap' }, [el('span', { class: 'muted', text: 'After you submit, Claude grades this answer (score, what to fix and a stronger answer) and you compare with the model answer.' })])); }
-    page.append(card, el('div', { class: 'row wrap' }, [el('button', { class: 'btn', disabled: i === 0 ? true : null, onclick: () => { i--; draw(); }, text: 'Previous' }), el('span', { class: 'grow' }), i < qs.length - 1 ? el('button', { class: 'btn pri', onclick: () => { i++; draw(); }, text: 'Save and next' }) : null,
-      el('button', { class: 'btn dark', onclick: async () => { const left = qs.length - answered; const v = await confirmBox('Submit the quiz?', left ? left + ' question' + (left > 1 ? 's are' : ' is') + ' unanswered. They count as wrong.' : 'All questions answered.', [{ t: 'Submit', cls: 'pri', v: 1 }, { t: 'Keep answering', v: null }]); if (v) { st.sub = true; if (aiOn()) qs.forEach((q, k) => { if (q.TYPE === 'short' && st.a[k] && (st.a[k].t || '').trim()) gradeNow('quiz:' + w + ':' + k, 'answer', { question: q.Q, model_answer: q.MODEL || q.ANS || '', answer: st.a[k].t }, st.a[k].t, q.Q); }); const qu = modUnits(m).find(u => u.kind === 'quiz'); if (qu && !S.done[qu.uid]) { S.done[qu.uid] = iso(new Date()); S.doneAt = S.doneAt || {}; S.doneAt[qu.uid] = Date.now(); } save(); draw(); window.scrollTo(0, 0); } }, text: 'Submit' })]), el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Questions' }), pal]));
+    page.append(card, el('div', { class: 'row qdock' }, [el('button', { class: 'btn', disabled: i === 0 ? true : null, onclick: () => { i--; draw(); }, text: 'Previous' }), el('span', { class: 'grow' }), i < qs.length - 1 ? el('button', { class: 'btn pri', onclick: () => { i++; draw(); }, text: 'Save and next' }) : null,
+      el('button', { class: 'btn dark', onclick: async () => { const left = qs.length - answered; const v = await confirmBox('Submit the quiz?', left ? left + ' question' + (left > 1 ? 's are' : ' is') + ' unanswered. They count as wrong.' : 'All questions answered.', [{ t: 'Submit', cls: 'pri', v: 1 }, { t: 'Keep answering', v: null }]); if (v) { st.sub = true; if (aiOn()) qs.forEach((q, k) => { if (q.TYPE === 'short' && st.a[k] && (st.a[k].t || '').trim()) gradeNow('quiz:' + w + ':' + k, 'answer', { question: q.Q, model_answer: q.MODEL || q.ANS || '', answer: st.a[k].t }, st.a[k].t, q.Q); }); const qu = modUnits(m).find(u => u.kind === 'quiz'); if (qu && !S.done[qu.uid]) { S.done[qu.uid] = iso(new Date()); S.doneAt = S.doneAt || {}; S.doneAt[qu.uid] = Date.now(); } save(); draw(); window.scrollTo(0, 0); } }, text: 'Submit' })]), el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Questions' }), pal, reset]));
   }
   draw();
 }

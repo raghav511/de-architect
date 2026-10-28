@@ -139,17 +139,29 @@ function toggleUnit(u) { S.undone = S.undone || {}; S.doneAt = S.doneAt || {}; i
   /* the screen re-renders: keep keyboard and screen-reader users on the step they just ticked */
   if (kb) { const b = document.querySelector('.check[data-uid="' + CSS.escape(u.uid) + '"]'); if (b) b.focus({ preventScroll: true }); } }
 
-/* one unit as a card: what, why, done when, where */
+/* one unit as a card: what, why, done when, where.
+   On Today (opts.fold) the first open step is expanded as "Up next"; the others fold to one row that opens in place. */
+const openUnits = new Set();
 function unitCard(u, opts) {
   opts = opts || {};
-  return el('div', { class: 'unit' + (u.isDone ? ' done' : '') }, [
+  const folded = opts.fold && !opts.cur && !openUnits.has(u.uid);
+  const card = el('div', { class: 'unit' + (u.isDone ? ' done' : '') + (opts.cur ? ' cur' : '') + (folded ? ' folded' : '') }, [
     el('button', { class: 'check', 'data-uid': u.uid, 'aria-pressed': String(!!u.isDone), 'aria-label': (u.isDone ? 'Mark not done: ' : 'Mark done: ') + u.title, onclick: () => toggleUnit(u) }, u.isDone ? svg(I.check, 16) : null),
     el('div', { class: 'grow stack', style: { gap: '5px', minWidth: 0 } }, [
+      opts.cur ? el('span', { class: 'upn', text: 'Up next' }) : null,
       el('div', { class: 'row wrap', style: { gap: '6px' } }, [kchip(u.kind), el('span', { class: 'chip ' + modColor(u.mid), style: { background: 'transparent', border: '1px solid currentColor' }, text: modLabel(u.mid) }), el('span', { class: 'mins', text: u.mins + ' min' }), opts.day ? el('span', { class: 'muted', style: { fontSize: '13px' }, text: opts.day }) : null]),
       el('span', { class: 't', text: u.title }),
       u.goal ? el('span', { class: 'goal', text: u.goal }) : null,
       u.done && !opts.compact ? el('span', { class: 'dw' }, [el('b', { text: 'Done when: ' }), u.done]) : null,
-      el('div', { class: 'row wrap', style: { gap: '8px', marginTop: '2px' } }, [el('a', { class: 'btn sm pri', href: u.href, text: u.cta })].concat(u.links.map(([t, h]) => el('a', { class: 'btn sm', href: h, text: t }))))])]);
+      el('div', { class: 'row wrap acts', style: { gap: '8px', marginTop: '2px' } }, [el('a', { class: 'btn sm pri', href: u.href, text: opts.cur ? u.cta + ' · ' + u.mins + ' min' : u.cta })].concat(u.links.map(([t, h]) => el('a', { class: 'btn sm', href: h, text: t }))))])]);
+  if (opts.fold && !opts.cur) {
+    const say = f => (f ? 'Show details: ' : 'Hide details: ') + u.title;
+    const tg = el('button', { class: 'unfold', 'aria-expanded': String(!folded), 'aria-label': say(folded), onclick: () => {
+      const f = card.classList.toggle('folded'); if (f) openUnits.delete(u.uid); else openUnits.add(u.uid);
+      tg.setAttribute('aria-expanded', String(!f)); tg.setAttribute('aria-label', say(f)); } }, svg(I.fwd, 18));
+    card.appendChild(tg);
+  }
+  return card;
 }
 function codingTrack(off) {
   const ci = dayIndex() + (off || 0), w = Math.floor(ci / 7) % 12 + 1, d = ci % 7;
@@ -190,18 +202,20 @@ function vToday(off) {
   const doneMins = us.filter(u => u.isDone).reduce((a, u) => a + u.mins, 0), planMins = us.reduce((a, u) => a + u.mins, 0);
   const m = (us.find(u => !isCC(u.mid)) || us[0] || {}).mid || sc.cur, M = MOD[m], sp = sc.span[m];
   const hr = new Date().getHours();
-  const nav = el('div', { class: 'row wrap', style: { gap: '8px' } }, [
+  const nav = el('div', { class: 'row wrap daynav', style: { gap: '8px' } }, [
     el('a', { class: 'btn icon sm', href: '#/today/' + (off - 1), 'aria-label': 'Previous day' }, svg(I.back, 18)),
     el('b', { style: { fontSize: '17px' }, text: (off === 0 ? 'Today · ' : off === 1 ? 'Tomorrow · ' : off === -1 ? 'Yesterday · ' : '') + dayName(k) + ' ' + shortDate(k).slice(4) }),
     el('a', { class: 'btn icon sm', href: '#/today/' + (off + 1), 'aria-label': 'Next day' }, svg(I.fwd, 18)),
     off ? el('a', { class: 'btn sm', href: '#/today', text: 'Back to today' }) : null,
     el('span', { class: 'grow' }),
     el('span', { class: 'chip ' + (cap > 60 ? 'c-arch' : 'c-core'), text: (cap >= 120 ? cap / 60 + '-hour' : cap + '-minute') + ' day' })]);
-  const plan = el('section', { class: 'card pad stack' }, [
-    el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: off === 0 ? 'Your plan for today' : 'Plan for ' + dayName(k) }), el('span', { class: 'muted', text: doneMins + ' of ' + planMins + ' min done' })]),
-    el('div', { class: 'bar' }, el('i', { style: { width: (planMins ? Math.round(100 * doneMins / planMins) : 0) + '%' } })),
-    el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Do these in order. Each card says what to do, how you know it is done, and opens the exact section. Anything you do not finish moves to the next free day automatically.' })]
-    .concat(us.length ? us.map(u => unitCard(u)) : [el('p', { style: { margin: 0 }, text: off < 0 ? 'Nothing was done on this day.' : 'Nothing planned. Everything is done.' })])
+  const pct = planMins ? Math.round(100 * doneMins / planMins) : 0, cur = off === 0 ? us.find(u => !u.isDone) : null;
+  const ring = el('span', { class: 'ring', role: 'img', 'aria-label': pct + '% of the plan done', html: '<svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="17" fill="none" stroke="var(--line)" stroke-width="5"/><circle cx="21" cy="21" r="17" fill="none" stroke="var(--teal)" stroke-width="5" stroke-linecap="round" stroke-dasharray="' + (pct * 1.068).toFixed(1) + ' 107" transform="rotate(-90 21 21)"/></svg>' });
+  const plan = el('section', { class: 'card pad stack plan' }, [
+    el('div', { class: 'row planhead' }, [ring, el('h2', { class: 'grow', text: off === 0 ? 'Your plan for today' : 'Plan for ' + dayName(k) }), el('span', { class: 'muted', text: doneMins + ' of ' + planMins + ' min done' })]),
+    nav,
+    el('span', { class: 'muted order', text: 'Do these in order. Each card says what to do, how you know it is done, and opens the exact section. Anything you do not finish moves to the next free day automatically.' })]
+    .concat(us.length ? us.map(u => unitCard(u, { fold: true, cur: u === cur })) : [el('p', { style: { margin: 0 }, text: off < 0 ? 'Nothing was done on this day.' : 'Nothing planned. Everything is done.' })])
     .concat(off === 0 && us.length && us.every(u => u.isDone) && sc.next ? [el('div', { class: 'hint' }, [el('b', { text: 'Done for today. ' }), 'Want to keep going? Next up: ' + sc.next.title + ' (planned ' + shortDate(sc.next.day) + '). ', el('a', { href: sc.next.href, text: 'Start it now' })])] : []));
   const D = DATA.design[m], du = sc.units.find(u => u.uid === m + ':design');
   const modCard = el('section', { class: 'card pad stack' }, [
@@ -213,12 +227,12 @@ function vToday(off) {
     el('div', { class: 'row wrap', style: { gap: '6px' } }, [el('span', { class: 'lbl grow', style: { color: 'var(--plum-d)' }, text: 'Design problem · module ' + modLabel(m) }), el('span', { class: 'chip c-arch', text: du ? (du.isDone ? 'done' : (du.day === sc.today ? 'today' : 'planned ' + shortDate(du.day))) + ' · 40 min' : '40 min' })]),
     el('b', { style: { fontSize: '17px' }, text: D.title }), el('span', { style: { fontSize: '14.5px' }, text: D.prompt }), el('span', { class: 'muted', style: { fontSize: '14px' } }, [el('b', { text: 'Hand in: ' }), D.deliverable]),
     el('a', { class: 'btn', href: '#/design/' + m, style: { alignSelf: 'flex-start' }, text: 'Open in the design studio' })]) : null;
-  const nx = off === 0 ? (us.find(u => !u.isDone) || sc.next) : null;
+  /* while today has an open step, the plan's Up next card is the call to action; the banner only offers work ahead of plan */
+  const nx = off === 0 && !cur ? sc.next : null;
   const hero = nx ? el('section', { class: 'hero' }, [el('div', { class: 'grow stack', style: { gap: '3px', minWidth: '200px' } }, [el('span', { class: 'lbl', text: (us.includes(nx) ? 'Up next' : 'Ahead of plan · next') + ' · ' + nx.mins + ' min · module ' + modLabel(nx.mid) }), el('b', { text: nx.title })]), el('a', { class: 'btn', href: nx.href, text: nx.cta + ' ›' })]) : null;
   shell(off === 0 ? 'Today' : 'Plan · ' + shortDate(k), 'Module ' + modLabel(m) + ' · ' + weekText(k), [
     el('div', { class: 'stack', style: { gap: '4px' } }, [el('h1', { text: (hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + ', Raghavendra' }), el('span', { class: 'muted', text: (+S.settings.capWd || 60) + ' min on weekdays, ' + (+S.settings.capWe || 120) + ' on Saturday and Sunday (change in Settings). Coding practice runs on its own track.' })]),
     hero,
-    nav,
     el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [off === 0 ? coachCard() : null, modCard, codingTrack(off), desCard])]),
     el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'This week' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'minutes planned / budget · tap a day to see it' }), el('button', { class: 'btn sm', onclick: exportIcs, text: 'Add to calendar' })]), weekStrip(sc, k)])]);
 }

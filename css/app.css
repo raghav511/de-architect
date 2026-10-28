@@ -344,3 +344,34 @@ select.btn{-webkit-appearance:none;appearance:none;padding-right:32px;background
 .hasdot{position:relative}.hasdot::after{content:"";position:absolute;top:6px;right:8px;width:9px;height:9px;border-radius:50%;background:var(--amber-b,#E08A1E);box-shadow:0 0 0 2px var(--card)}
 .toast{width:max-content}.toast span{flex:1 1 auto;min-width:0}.toast button{flex:none}
 @media (max-width:600px){.toast{width:calc(100vw - 32px)}}
+/* Today plan: progress ring in the header, Up next step expanded, later steps fold to a row */
+.planhead{gap:12px}.planhead .ring{display:flex;flex:none}.planhead .ring svg{width:36px;height:36px}
+.plan .order{font-size:14px}
+.unit.cur{border-left-color:var(--teal)!important;box-shadow:0 2px 10px rgba(18,32,47,.06)}
+.unit .upn{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
+.unit.cur .acts .btn{min-height:44px;font-size:15px}
+.unit .unfold{flex:none;align-self:flex-start;width:44px;height:44px;margin:-6px -6px -6px 0;border:0;background:none;color:var(--muted);border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;transform:rotate(90deg);transition:transform .15s}
+.unit .unfold:hover{background:var(--soft)}
+.unit.folded{align-items:center;padding-block:8px}.unit.folded:not(.done){border-left-color:var(--line2)}
+.unit.folded .unfold{transform:none;align-self:center}
+.unit.folded .goal,.unit.folded .dw,.unit.folded .acts{display:none}
+.unit.folded .t{font-weight:600;order:-1}
+@media (prefers-reduced-motion:reduce){.unit .unfold{transition:none}}
+/* phones: "0 of 60 min done" in the header already gives the day's length */
+@media (max-width:560px){.daynav>.chip{display:none}.daynav:has(.btn.sm:not(.icon)){flex-wrap:wrap!important}}
+@media (max-width:1023px){
+  #page>.stack:first-child h1{font-size:22px}
+  .unit.cur .goal{font-size:14px}.unit.cur .dw{font-size:13.5px}.plan{gap:10px}
+  #page:has(>.grid2>.plan){gap:12px}.unit.cur{padding-block:10px}.unit.cur>.grow{gap:3px!important}
+  .plan{padding:14px}.planhead h2{font-size:19px}.planhead .muted{font-size:14px}
+  #page>.stack:first-child .muted{font-size:14px;line-height:1.4}
+  .daynav{flex-wrap:nowrap!important;gap:6px!important}.daynav b{font-size:15px!important;white-space:nowrap}.daynav .btn.icon{width:40px;min-height:40px}
+  .plan .order{order:9;font-size:13px}
+  .unit.cur .acts{flex-wrap:nowrap}.unit.cur .acts .btn.pri{flex:1}
+}
+/* quiz: progress on top, main buttons pinned above the tab bar */
+.qtop{display:flex;align-items:center;gap:12px}.qtop .qcount{font-size:14px;white-space:nowrap}
+.qdock{position:sticky;bottom:0;z-index:20;background:var(--bg);padding:10px 0 12px;border-top:1px solid var(--line);flex-wrap:nowrap}
+.qdock .btn.pri{margin-left:auto}
+.btn.quiet-warn{border-color:transparent;background:none;color:var(--red-d);align-self:flex-start;padding:0 4px}
+@media (max-width:1023px){.qdock{bottom:calc(62px + env(safe-area-inset-bottom))}body:has(.qdock) .fab{bottom:calc(150px + env(safe-area-inset-bottom))}}
