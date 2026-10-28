@@ -49,7 +49,7 @@ async function run(P) {
   const p = await c.newPage();
   const notes = [], tasks = [], errs = [];
   p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => { errs.push('native dialog: ' + d.message()); d.dismiss(); });
-  const go = async (h, w) => { await p.goto(BASE + h); await p.waitForSelector('#page h1', { timeout: 30000 }).catch(() => {}); await p.waitForTimeout(w || 1200); }; /* a busy machine can take longer than the pause to start the app */
+  const go = async (h, w) => { await p.goto(BASE + h); await p.waitForSelector('h1', { timeout: 30000 }).catch(() => {}); await p.waitForTimeout(w || 1200); }; /* a busy machine can take longer than the pause to start the app */
   const shot = n => p.screenshot({ path: OUT + '/' + P.id + '_' + n + '.png', fullPage: false }).catch(() => {});
   const task = async (name, fn) => { const t0 = Date.now(); let ok = true, why = ''; try { const r = await fn(); if (r === false) { ok = false; why = 'could not complete'; } else if (typeof r === 'string') { ok = false; why = r; } } catch (e) { ok = false; why = short(e.message); } tasks.push({ name, ok, why, secs: Math.round((Date.now() - t0) / 100) / 10 }); if (!ok) await shot('fail_' + tasks.length); };
   const note = (where, kind, msg) => notes.push({ where, kind, msg });
@@ -263,7 +263,7 @@ async function run(P) {
       const f = await ax('Editor'); const tb = f.find(n => n.role === 'textbox');
       if (!tb || !tb.name) note('Code editor', 'a11y', 'code box has no accessible name');
       await p.locator('button', { hasText: /^Run/ }).first().click(); await p.waitForTimeout(300);
-      if (!/Running/.test(await p.evaluate(() => (document.querySelector('.out [role=status]') || {}).textContent || ''))) note('Code editor', 'a11y', 'nothing announced while the code runs');
+      if (!(await p.evaluate(() => ((document.querySelector('.out [role=status]') || {}).textContent || '').trim()))) note('Code editor', 'a11y', 'nothing announced while the code runs'); /* "Running…" or, when Python is warm and the run is instant, the result */
       let announced = false; for (let i = 0; i < 180 && !announced; i++) { await p.waitForTimeout(500); announced = await p.evaluate(() => /pass|failing|error/i.test((document.querySelector('.out [role=status]') || {}).textContent || '')); }
       if (!announced) note('Code editor', 'a11y', 'test results are not announced after Run');
       return true;
