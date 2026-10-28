@@ -1,8 +1,8 @@
 {
-  "version": "1.7.13",
+  "version": "1.7.14",
   "date": "2026-10-28",
   "notes": [
-    "Today: the instructions above the plan are one line (Do these in order. Anything unfinished moves to the next free day.)",
-    "Simulated users: each screen waits for the page heading, so a slow machine is not reported as a broken app; Today checks the Up next button is on screen and no false catching-up note"
+    "Simulated users: editor pages put their heading outside the main page area, so the harness now waits for any heading (it was waiting 30 s per visit)",
+    "Simulated users: the screen-reader run check accepts the Running message or, when Python is already warm, the result announcement"
   ]
 }
