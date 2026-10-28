@@ -1,8 +1,8 @@
 {
-  "version": "1.7.10",
+  "version": "1.7.11",
   "date": "2026-10-28",
   "notes": [
-    "Today: missed days count from the day you first opened the app (or restarted week 1), so a new user starting mid-week is not told they missed Monday and Tuesday",
-    "Test: a new user starting mid-week sees no catching-up note"
+    "Progress: a tick or answer made just before closing the tab, reloading, or locking the phone is now saved straight away instead of being lost",
+    "Test: tick then reload immediately keeps the tick"
   ]
 }

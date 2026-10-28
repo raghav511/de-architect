@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.7.10';
+const VERSION = '1.7.11';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -41,6 +41,9 @@ function load() {
   return Object.assign({ start: null, proj: {}, done: {}, doneAt: {}, undone: {}, code: {}, solved: {}, runs: {}, hints: {}, secs: {}, quiz: {}, iv: {}, tests: {}, settings: {}, layout: {}, rev: {}, mock: {}, grades: {}, updated: 0, week: null }, s);
 }
 let saveT = null;
+/* a change made just before the tab closes or the phone locks is written at once, not lost with the 150 ms timer */
+function flushSave() { if (!saveT) return; clearTimeout(saveT); saveT = null; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+addEventListener('pagehide', flushSave); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSave(); });
 function save(touch = true) {
   if (touch) S.updated = Date.now();
   clearTimeout(saveT);
