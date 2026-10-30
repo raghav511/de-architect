@@ -27,7 +27,12 @@ async function mockQuestions(k) {
   const curQ = shuffle(pool.filter(x => x.m === cur)).slice(0, Math.ceil(n / 2)), qs = curQ.concat(shuffle(pool.filter(x => !curQ.includes(x)))).slice(0, n);
   const D = DATA.design[cur];
   if (kind === 'sunday' && D) qs.splice(n - 1, 1, { q: '**Design round (10 minutes).** ' + D.prompt + ' Hand in: ' + D.deliverable, tag: 'design' });
-  return qs.map(x => ({ q: x.q, tag: x.tag, why: '', src: x.m ? 'interview set ' + modLabel(x.m) : 'design problem ' + modLabel(cur) }));
+  const fresh = qs.map(x => ({ q: x.q, tag: x.tag, why: '', m: x.m || cur, src: x.m ? 'interview set ' + modLabel(x.m) : 'design problem ' + modLabel(cur) }));
+  /* blank answers from the last mock on this module open today's mock; a different module's blanks are not mixed in */
+  const prev = Object.keys(S.mock || {}).filter(d => d < k).sort().reverse().map(d => [d, S.mock[d]]).find(([, x]) => x && x.mod === cur && !x.carriedTo);
+  if (prev) { const blanks = (prev[1].qs || []).filter((q, i) => !((prev[1].a || {})[i] || '').trim() && !/Design round/.test(q.q)).slice(0, n - 1).map(q => Object.assign({}, q, { carried: prev[0] }));
+    if (blanks.length) { prev[1].carriedTo = k; return blanks.concat(fresh.filter(f => !blanks.some(b => b.q === f.q))).slice(0, n); } }
+  return fresh;
 }
 
 /* apply a coach file that sync just brought in: weak problems become due today in the review queue */
@@ -63,13 +68,12 @@ function mockStatus(k) {
   return ['Not started', ''];
 }
 
-/* ---------------- Today: the coach card ---------------- */
-function coachCard() {
-  /* the daily mock and the coach's practice items are rows in Today's plan; this card keeps the coach's note */
+/* ---------------- Today: the coach's note, inside Interview practice ---------------- */
+function coachNote() {
   if (!aiOn()) return null;
   const c = coachData(), stale = coachStale(c), age = coachAgeDays(c);
-  return el('section', { class: 'card pad stack', style: { borderColor: '#D9C6E6' } }, [
-    el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Coach' }), el('span', { class: 'muted', style: { fontSize: '13px' }, text: c.generated_at ? 'last run ' + shortDate(c.generated_at.slice(0, 10)) : 'not run yet' })]),
+  return el('div', { class: 'coachnote stack', style: { gap: '8px' } }, [
+    el('div', { class: 'row wrap' }, [el('b', { class: 'grow', text: 'Your coach' }), el('span', { class: 'muted', style: { fontSize: '13px' }, text: c.generated_at ? 'last run ' + shortDate(c.generated_at.slice(0, 10)) : 'not run yet' })]),
     !S.settings.syncUrl ? el('div', { class: 'hint', style: { background: 'var(--amber-l)', borderColor: 'var(--amber-b)' } }, [el('b', { text: 'Sync is not set up. ' }), 'Your coach cannot see your work or grade your mock until it is. ', el('button', { class: 'btn sm', onclick: settings, text: 'Open settings' })]) : null,
     stale ? el('div', { class: 'hint', style: { background: 'var(--amber-l)', borderColor: 'var(--amber-b)' } }, [el('b', { text: 'This report is ' + age + ' day' + (age === 1 ? '' : 's') + ' old. ' }), 'The nightly coach has not reached this device since. Tap Sync progress; if it stays old, check that the Claude app was open on your Mac at midnight.']) : null,
     c.summary ? el('div', { style: { fontSize: '14.5px' }, html: mdi(c.summary) }) : el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Every night your coach reads your day (steps, quizzes, problems, hints, the mock), grades your mock answers, and writes targeted practice here. It needs Sync set up in Settings.' }),
@@ -101,7 +105,7 @@ async function vMock(k) {
     if (k !== today) { $('#page').textContent = ''; $('#page').appendChild(el('section', { class: 'card pad' }, [el('p', { style: { margin: 0 }, text: 'There was no mock interview on this day.' }), el('a', { href: '#/mock', text: 'Go to today\'s mock' })])); return; }
     const kind = mockKind(k);
     const qs = await mockQuestions(k);
-    m = S.mock[k] = { kind, mins: MOCK_LEN[kind][0], qs, a: {}, secs: 0, sub: false, t: Date.now(), src: qs[0] && qs[0].src === 'chosen by your coach' ? 'coach' : 'bank' };
+    m = S.mock[k] = { kind, mod: curMid(), mins: MOCK_LEN[kind][0], qs, a: {}, secs: 0, sub: false, t: Date.now(), src: qs[0] && qs[0].src === 'chosen by your coach' ? 'coach' : 'bank' };
     save();
   }
   const fb = (coachData().mock_feedback || {})[k];

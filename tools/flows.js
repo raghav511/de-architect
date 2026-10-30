@@ -87,7 +87,7 @@ async function T(name, fn, opt) {
     const note = await text(p, '.behind'); ok(/Catching up/.test(note) && /moved to today/.test(note) && note.length < 80, 'catching-up note missing or too long: ' + note);
     ok((await text(p, '.unit.cur .t')) === sc.first, 'Up next is not the program\'s first step');
     ok(sc.today.indexOf(true) === -1 || sc.today.indexOf(true) > sc.today.lastIndexOf(false), 'a Claude Code step sits above a main step');
-    ok(/from (Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test((await p.$$eval('.xit .s', a => a.map(x => x.innerText))).join(' ')), 'coding track did not catch up on the first unsolved problem');
+    ok(/from (Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test(await text(p, '#grp-coding')) || /more problems? wait/.test(await text(p, '#grp-coding')), 'coding track neither shows nor counts the unsolved problems from earlier days');
     const strip = await p.$$eval('.wkday.past', a => a.map(x => x.innerText));
     ok(strip.every(t => !/—/.test(t) || !/0\//.test(t)) || strip.some(t => /Missed · moved to today/.test(t)) || new Date().getDay() <= 2, 'missed days in the week strip do not say where the work went');
     await p.evaluate(() => { S.done[schedule().units.find(u => !isCC(u.mid)).uid] = iso(new Date()); save(); }); await p.reload(); await p.waitForTimeout(800);
@@ -133,7 +133,8 @@ async function T(name, fn, opt) {
 
   await T('today: finishing every step shows done-for-today and next up', async p => {
     await go(p, '#/today');
-    for (let i = 0; i < 16; i++) { const b = await p.$('.unit:not(.done) .check, .xit .check[aria-pressed=false]'); if (!b) break; await b.click(); await p.waitForTimeout(350); } /* the hour, the coding track and the mock */
+    await p.evaluate(() => { S.rq = S.rq || {}; (DATA.recent.items || []).forEach(q => { S.rq[q.id] = 1; }); save(); route(); }); await p.waitForTimeout(400); /* company questions are ticked on their own page */
+    for (let i = 0; i < 20; i++) { const b = await p.$('.unit:not(.done) .check, .xit .check[aria-pressed=false]'); if (!b) break; await b.click(); await p.waitForTimeout(350); } /* the hour, the coding track and the mock */
     const t = await text(p, '#page'); ok(/Done for today/.test(t), 'no done-for-today message');
     ok(/Ahead of plan/i.test(await text(p, '.hero')), 'hero should offer the next step ahead of plan');
   });
@@ -160,9 +161,9 @@ async function T(name, fn, opt) {
   await T('schedule: weekday budget is 60, weekend 120, settings change it', async p => {
     const mon = new Date(); mon.setDate(mon.getDate() + ((8 - mon.getDay()) % 7 || 7)); mon.setHours(8, 0, 0, 0);
     await p.clock.setFixedTime(mon); await go(p, '#/today', 900);
-    let m = (await text(p, '#page')).match(/Your hour\s*\d+ \/ (\d+) min/); ok(m && +m[1] <= 65, 'Monday plan over 60: ' + (m && m[1]));
+    let m = (await text(p, '#page')).match(/Reading and labs\s*\d+ \/ (\d+) min/); ok(m && +m[1] <= 65, 'Monday plan over 60: ' + (m && m[1]));
     await p.evaluate(() => { S.settings.capWd = 90; save(); route(); }); await p.waitForTimeout(500);
-    m = (await text(p, '#page')).match(/Your hour\s*\d+ \/ (\d+) min/); ok(m && +m[1] > 60 && +m[1] <= 95, 'budget 90 not applied: ' + (m && m[1]));
+    m = (await text(p, '#page')).match(/Reading and labs\s*\d+ \/ (\d+) min/); ok(m && +m[1] > 60 && +m[1] <= 95, 'budget 90 not applied: ' + (m && m[1]));
     ok(/90-minute day/.test(await text(p, '#page')), 'day chip not updated');
   });
 
@@ -629,12 +630,13 @@ async function T(name, fn, opt) {
   await T('today: the coding track and interview practice are rows in the plan, and the day is done only when they are', async p => {
     await go(p, '#/today', 1200); await p.waitForSelector('.plan .unit');
     const t = await text(p, '.plan');
-    ok(/Your hour/.test(t) && /Coding track/.test(t) && /Interview practice/.test(t) && /Daily mock interview|Sunday mock interview/.test(t), 'plan is missing a group: ' + t.slice(0, 300));
+    ok(/Reading and labs/.test(t) && /Coding track/.test(t) && /Interview practice/.test(t) && /Daily mock interview|Sunday mock interview/.test(t), 'plan is missing a group: ' + t.slice(0, 300));
     ok(await p.evaluate(() => document.querySelectorAll('.plan .xit').length >= 2), 'no coding or mock rows in the plan');
     ok(await p.evaluate(() => ![...document.querySelectorAll('.grid2 > .stack h2')].some(h => /Coding track/.test(h.textContent))), 'coding track is still a separate card');
     /* tick every hour step: not done for today while coding and the mock are open */
     await p.evaluate(() => { const sc = schedule(); (sc.byDay[sc.today] || []).forEach(u => { S.done[u.uid] = sc.today; }); save(); route(); }); await p.waitForTimeout(500);
     ok(!/Done for today/.test(await text(p, '.plan')), 'says done for today with coding and the mock open');
+    await p.evaluate(() => { S.rq = S.rq || {}; (DATA.recent.items || []).forEach(q => { S.rq[q.id] = 1; }); save(); route(); }); await p.waitForTimeout(400);
     const n = await p.$$eval('.plan .xit .check[aria-pressed=false]', b => b.length);
     for (let i = 0; i < n; i++) { await p.click('.plan .xit .check[aria-pressed=false]'); await p.waitForTimeout(250); }
     ok(/Done for today/.test(await text(p, '.plan')), 'not done for today after ticking every row');
@@ -663,18 +665,18 @@ async function T(name, fn, opt) {
       { id: 'rq-t2', mid: 's02', company: 'Google', level: 'L5', asked: today, found: today, TAG: 'sql', Q: 'Find the second highest salary per department.', A: 'DENSE_RANK over a department window, filter rank 2.', src: 'Test', url: 'https://example.com/b' }] };
     await p.route('**/data/recent.json*', r => r.fulfill({ contentType: 'application/json', body: JSON.stringify(R) }));
     await go(p, '#/today', 1500); await p.waitForSelector('.plan .xit');
-    ok(/2 new interview questions asked this week/.test(await text(p, '.plan')), 'no recent questions row on Today');
+    ok(/Uber: Design trip events/.test(await text(p, '.plan')) && /Google: Find the second/.test(await text(p, '.plan')), 'no recent question rows on Today');
     ok(/2 new interview questions from this week/.test(await text(p, '.whatsnew')), 'What is new does not mention them');
     await p.click('.whatsnew button:has-text("Got it")'); await p.waitForTimeout(500);
     ok(!(await p.$('.whatsnew')), 'Got it did not hide the note');
-    ok(/2 new interview questions/.test(await text(p, '.plan')), 'Got it finished the questions');
-    const row = p.locator('.plan .xit', { hasText: 'new interview questions' });
+    ok(/Uber: Design trip events/.test(await text(p, '.plan')), 'Got it finished the questions');
+    const row = p.locator('.plan .xit', { hasText: 'Uber: Design trip events' });
     await row.locator('.check').click(); await p.waitForTimeout(600);
     ok(/#\/recent$/.test(p.url()), 'the row ticked itself instead of opening the questions');
     ok(await p.$$eval('.rq', x => x.length) === 2, 'questions not listed');
     for (let i = 0; i < 2; i++) { await p.click('.rq .check[aria-pressed=false]'); await p.waitForTimeout(300); }
     await go(p, '#/today', 1000);
-    ok(!/new interview questions/.test(await text(p, '.plan')), 'row still shown after ticking every question');
+    ok(!/Uber: Design trip events|Google: Find the second/.test(await text(p, '.plan')), 'rows still shown after ticking every question');
     await go(p, '#/interview/s01', 1200); ok(/Asked recently at companies/.test(await text(p, '#page')) && /exactly-once counts/.test(await text(p, '#page')), 'module interview page does not show its recent question');
   });
 
@@ -703,6 +705,37 @@ async function T(name, fn, opt) {
     await p.evaluate(() => { S.start = iso(new Date()); save(); }); await go(p, '#/today/-1', 900);
     ok(/Your plan starts/.test(await text(p, '.plan')) && !/0 of 0 min/.test(await text(p, '.plan')), 'a day before the start does not say when the plan starts');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  await T('today: one Today box holds reading, quiz, coding, interview practice and coaching, with a summary on top and interview capped at its minutes', async p => {
+    await go(p, '#/today', 1200); await p.waitForSelector('.plan .daysum');
+    const t = await text(p, '.plan .daysum'); ok(/Reading/.test(t) && /Coding/.test(t) && /Interview/.test(t), 'summary row incomplete: ' + t);
+    ok(/^Today/.test(await text(p, '.plan h2')), 'the box is not called Today');
+    ok(await p.evaluate(() => !!document.querySelector('.plan #grp-coach .coachnote')), 'coaching is not inside Today');
+    const ivm = await p.evaluate(() => [...document.querySelectorAll('#grp-interview .xit .s, #grp-coach .xit .s')].reduce((a, x) => a + (+(x.textContent.match(/^(\d+) min/) || [0, 0])[1]), 0)); ok(ivm <= 45, 'interview and coaching take ' + ivm + ' min');
+    ok(await p.evaluate(() => ![...document.querySelectorAll('.grid2 > .stack > section h2')].some(h => /^Coach$|Coding track/.test(h.textContent))), 'a separate Coach or Coding card is still beside the plan');
+    await p.click('.dsum:has-text("Interview")'); await p.waitForTimeout(800);
+    ok(await p.evaluate(() => { const r = document.getElementById('grp-interview').getBoundingClientRect(); return r.top >= 0 && r.top < innerHeight; }), 'tapping Interview did not bring it into view');
+  });
+
+  await T('carry-over: an earlier week\'s unsolved problems wait for the weekend; a mock\'s blanks open the next mock only on the same module', async p => {
+    await go(p, '#/today', 1200); await p.waitForSelector('.plan');
+    const r = await p.evaluate(async () => {
+      const s = new Date(); s.setDate(s.getDate() - 10); S.start = iso(s); save();
+      const C = codingItems(0), wd = new Date().getDay(), weekend = wd === 0 || wd === 6;
+      const old = C.now.some(x => /^set /.test(x.from || ''));
+      /* a mock from yesterday on the current module with one blank */
+      const y = new Date(); y.setDate(y.getDate() - 1); const yk = iso(y), cur = curMid();
+      S.mock = { [yk]: { mod: cur, qs: [{ q: 'Carried question about grain' }, { q: 'Answered one' }], a: { 1: 'yes' }, sub: true } };
+      const qs = await mockQuestions(iso(new Date()));
+      const other = { [yk]: { mod: 'zz9', qs: [{ q: 'Other module blank' }], a: {}, sub: true } }; S.mock = other;
+      const qs2 = await mockQuestions(iso(new Date()));
+      return { old, weekend, catchup: C.catchup.length, carried: qs[0].q, carried2: qs2.some(q => q.q === 'Other module blank') };
+    });
+    ok(!r.old, 'an earlier week\'s problem was mixed into today\'s list');
+    ok(r.weekend || r.catchup === 0, 'weekday shows a weekend catch-up block');
+    ok(r.carried === 'Carried question about grain', 'the blank from the last mock did not open today\'s: ' + r.carried);
+    ok(!r.carried2, 'a blank from another module was carried');
+  });
 
   await T('terminal on iPhone: the page never scrolls sideways', async p => {
     await go(p, '#/terminal', 900);

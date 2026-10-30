@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.17.4';
+const VERSION = '1.18.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -867,7 +867,7 @@ function graderStatus() {
 }
 function syncLabel() { return S.syncing ? 'Syncing…' : S.lastSync && Date.now() - S.lastSync < 60000 ? 'Synced' : 'Sync progress'; }
 /* preferences that follow you across devices; the API key, sync URL, theme and notifications stay per device */
-const PREF_KEYS = ['capWd', 'capWe', 'studyTime', 'ai', 'coachVia', 'gradeModel', 'name'];
+const PREF_KEYS = ['capWd', 'capWe', 'codeWd', 'codeWe', 'ivWd', 'ivWe', 'studyTime', 'ai', 'coachVia', 'gradeModel', 'name'];
 /* Settings live on the Profile page (avatar, top right); settings() is kept for the buttons that say "Open settings" */
 function settings(focusId) { if (focusId === 'st_sync') profileTab = 'sync'; if (location.hash !== '#/profile') location.hash = '#/profile'; else route(); if (focusId) setTimeout(() => { const x = document.getElementById(focusId); if (x) x.focus(); }, 150); }
 function userName() { return (S.settings.name || '').trim() || 'Raghavendra'; }
@@ -878,7 +878,7 @@ function saveSettings(body) {
     if (su && !/^https:\/\/|^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(su)) { toast('That sync URL is not valid: it must start with https://. Settings were not saved.', null, 6000); return false; }
     if (su && /script\.google\.com/.test(su) && !/[?&]k=/.test(su)) setTimeout(() => toast('Saved. This sync URL has no ?k= key: anyone with the URL could read your progress.', null, 7000), 400);
     const st0 = g('st_start'); if (/^\d{4}-\d\d-\d\d$/.test(st0)) { const d = new Date(st0 + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); if (iso(d) !== S.start) S.since = iso(new Date()); S.start = iso(d); } S.settings.syncUrl = su; S.settings.aiKey = g('st_key'); S.settings.aiModel = g('st_model') || 'claude-haiku-5-5';
-    const wd = Math.round(+g('st_wd')), we = Math.round(+g('st_we')); S.settings.capWd = wd >= 15 && wd <= 600 ? wd : 60; S.settings.capWe = we >= 15 && we <= 720 ? we : 120; S.settings.studyTime = g('st_time') || '07:00'; S.settings.accent = g('st_accent') || 'teal'; S.settings.name = g('st_name'); applyTheme(); S.settings.ai = g('st_ai') !== 'off'; applyAi();
+    const wd = Math.round(+g('st_wd')), we = Math.round(+g('st_we')); S.settings.capWd = wd >= 15 && wd <= 600 ? wd : 60; S.settings.capWe = we >= 15 && we <= 720 ? we : 120; const nb = (id, lo, hi, def) => { const v = Math.round(+g(id)); return v >= lo && v <= hi ? v : def; }; S.settings.codeWd = nb('st_cwd', 0, 300, 50); S.settings.codeWe = nb('st_cwe', 0, 300, 80); S.settings.ivWd = nb('st_iwd', 15, 300, 30); S.settings.ivWe = nb('st_iwe', 15, 300, 45); S.settings.studyTime = g('st_time') || '07:00'; S.settings.accent = g('st_accent') || 'teal'; S.settings.name = g('st_name'); applyTheme(); S.settings.ai = g('st_ai') !== 'off'; applyAi();
     S.settings.coachVia = g('st_coach') || 'mac'; S.settings.gradeModel = g('st_grade') || 'auto'; S.settings.prefsAt = Date.now(); /* newest preferences win when devices sync */
     const nt = body.querySelector('#st_notify').checked; S.settings.notifyUpdates = nt;
     if (nt && window.Notification && Notification.permission === 'default') Notification.requestPermission().then(r => { if (r !== 'granted') { S.settings.notifyUpdates = false; save(false); toast('Notifications were not allowed, so update alerts stay in the app.', null, 6000); } });
@@ -905,7 +905,7 @@ function vProfile() {
     sync: [f('st_sync', 'Sync URL (Apps Script, ends in ?k=your key)', S.settings.syncUrl, 'url', 'https://script.google.com/macros/s/…/exec?k=…'), note('Your plan, minutes and AI choices sync across devices. Theme, keys and this URL stay on this device.'),
       el('label', { class: 'row', style: { gap: '10px', fontSize: '14.5px' } }, [el('input', { type: 'checkbox', id: 'st_notify', checked: S.settings.notifyUpdates ? 'checked' : null, style: { width: '22px', height: '22px' } }), 'Notify me when an app update is available'])],
     look: [sel('st_accent', 'Accent colour', S.settings.accent || 'teal', [['teal', 'Teal'], ['blue', 'Blue'], ['plum', 'Plum']]), f('st_name', 'Your name (used in the greeting)', S.settings.name || '', 'text', 'Raghavendra')],
-    plan: [f('st_start', 'Week 1 starts (pick any day in that week)', S.start, 'date'), el('div', { class: 'tri' }, [f('st_wd', 'Weekday minutes', S.settings.capWd || 60, 'number'), f('st_we', 'Weekend minutes', S.settings.capWe || 120, 'number'), f('st_time', 'Study time', S.settings.studyTime || '07:00', 'time')])],
+    plan: [f('st_start', 'Week 1 starts (pick any day in that week)', S.start, 'date'), el('div', { class: 'tri' }, [f('st_wd', 'Reading, weekday minutes', S.settings.capWd || 60, 'number'), f('st_we', 'Reading, weekend minutes', S.settings.capWe || 120, 'number'), f('st_time', 'Study time', S.settings.studyTime || '07:00', 'time')]), el('div', { class: 'tri' }, [f('st_cwd', 'Coding, weekday', S.settings.codeWd || 50, 'number'), f('st_cwe', 'Coding, weekend', S.settings.codeWe || 80, 'number')]), el('div', { class: 'tri' }, [f('st_iwd', 'Interview and coaching, weekday', S.settings.ivWd || 30, 'number'), f('st_iwe', 'Interview and coaching, weekend', S.settings.ivWe || 45, 'number')])],
     ai: [sel('st_ai', 'AI features', S.settings.ai === false ? 'off' : 'on', [['on', 'On: instant grading, practice runs and the Claude Code track'], ['off', 'Off: study without AI (self-check with model answers)']]),
       el('div', { class: 'duo' }, [sel('st_coach', 'Coach answers with', S.settings.coachVia || 'mac', [['mac', 'Claude Code on my Mac'], ['key', 'My API key'], ['hints', 'Hints only (no AI)']]), sel('st_grade', 'Grading model', S.settings.gradeModel || 'auto', [['auto', 'Automatic'], ['haiku', 'Haiku (cheapest)'], ['sonnet', 'Sonnet (most thorough)']])]),
       el('div', { class: 'duo' }, [f('st_key', 'API key (Anthropic, only on this device)', S.settings.aiKey, 'password', 'sk-ant-…'), f('st_model', 'Coach model', S.settings.aiModel || 'claude-haiku-5-5', 'text')]), graderStatus()],
