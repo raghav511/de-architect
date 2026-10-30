@@ -7,8 +7,9 @@ hours: 10
 
 @@tickets
 101 | learn | 2 | Chapter 1 and the readings | You can draw the skeleton from memory and say what each box does and what it stores. | chapter
-102 | build | 2.5 | Build the walking skeleton | `make up` starts the stack, and one DAG run answers "completed trips per city for this hour". | lab
-103 | incident | 0.75 | A rerun doubles every row | Running the same hour twice leaves the same row count, and `notes/what-broke.md` explains why. | lab
+102 | build | 1.25 | Build the walking skeleton, part 1: produce, consume, land | The three exercises pass in the editor: events keyed by trip, one hour consumed without duplicates, raw Parquet landed by hour. | py:1-3
+109 | build | 1.25 | Build the walking skeleton, part 2: query and the hourly DAG | Completed trips per city come straight from the lake, and the hourly DAG runs, gates empty hours and backfills. | py:4-5
+103 | incident | 0.75 | A rerun doubles every row | The rerun test of the landing exercise passes: the same hour written twice leaves the same row count. | py:3-3
 104 | ai | 1 | Your first agent: explain a failed task | For a deliberately broken run it names the cause and quotes the log line that proves it. | lab
 105 | practice | 1.25 | Warm-ups and the customer drill | Three SQL and three DSA warm-ups attempted, and the drill answered out loud. | practice
 106 | test | 0.5 | Quiz 1 | 80% or better. | quiz
@@ -297,7 +298,19 @@ Four details in that code are the difference between a demo and something you ca
 These tools only read. Every sprint adds one capability, and the first tool that can change anything arrives in sprint 6 with a human approval step in front of it.
 
 @@lab
-## Build: the walking skeleton (2.5 hours)
+## In the app: the walking skeleton without Docker (2.5 hours)
+
+The same five hops as the stack below, running in your browser on small, real versions of Kafka, S3 and Airflow (`minilake`): a broker with partitions, offsets and consumer groups; an object store with Parquet files read by DuckDB; and a DAG runner with data intervals and backfill.
+
+1. **Produce** trip events keyed by `trip_id`, so one trip's events stay in order in one partition.
+2. **Consume** one hour as a consumer group, drop duplicate deliveries, and commit offsets only after the work.
+3. **Land** raw Parquet under `dt=/hour=` so that a rerun replaces the hour instead of doubling it (this is the incident below).
+4. **Query** completed trips per city straight from the lake.
+5. **Orchestrate** an hourly DAG with a data-quality gate, and backfill three hours.
+
+**Done when** all five exercises pass (Path, module 1, the build steps). Then say out loud what happens to one event at each hop, and where it is stored.
+
+## Optional: on your own machine with Docker
 
 Paste this lab into a chat with Claude and ask it to **generate the DE 1 starter kit** into your projects folder: `docker-compose.yml` for Kafka and MinIO, a `Makefile`, the generator, and empty job and DAG files with the function signatures in place. You write the parts marked `TODO`.
 

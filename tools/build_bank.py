@@ -51,7 +51,7 @@ for i, s in enumerate(P):
         for rx, msg in s.get('need', []):
             if not re.search(rx, s['sol'], re.I): print('  RULE need misses sol', s['id'], rx); bad += 1
 for i, y in enumerate(Y):
-    key = y['m'][1:] if y['m'][0] in 'ps' else y['m']  # Python track and Setup keep their short ids (y011, y001); other modules use the full name (yd011)
+    key = y['m'][1:] if y['m'][0] == 'p' or y['m'] == 's00' else y['m']  # Python track and Setup keep their short ids (y011, y001); other modules use the full name (yd011, ys011)
     y['id'] = 'y%s%d' % (key, sum(1 for x in Y[:i] if x['m'] == y['m']) + 1)
     spec = json.dumps({'tests': y['tests']})
     r = json.loads(runtime.check_py(spec, y['sol']))
