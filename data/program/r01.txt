@@ -14,12 +14,13 @@ R105 | test | 0.5 | Quiz R1 | 80% or better. | quiz
 R106 | talk | 0.75 | Interview set R1: behavioural and hiring manager | 5 of 6 answered out loud with a real story each, and ticked. | interview
 
 @@readings
-- **The Staff Engineer's Path** (Tanya Reilly), chapters 1–3 (the big picture, strategy, influence). The best book on this role.
-- **Staff Engineer: Leadership Beyond the Management Track** (Will Larson), the parts on writing strategy and being "glue". Also at [staffeng.com](https://staffeng.com/guides/staff-archetypes/).
-- [Google SRE book: service level objectives](https://sre.google/sre-book/service-level-objectives/). SLIs, SLOs and error budgets, applied to datasets in this module.
-- [Martin Fowler: Strangler Fig application](https://martinfowler.com/bliki/StranglerFigApplication.html). The pattern behind incremental migrations.
-- [Michael Nygard: documenting architecture decisions](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions). The original ADR template, one page.
-- [Amazon Leadership Principles](https://www.amazon.jobs/content/en/our-workplace/leadership-principles). Even outside Amazon, most behavioural rounds probe the same traits.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: The staff engineer's path.** The role works on three things: the big picture (strategy and architecture across teams), execution of hard projects, and raising the level of others. Influence comes from writing, relationships and judgement, not from authority.
+- **Reading note: Staff engineer: strategy and glue work.** Write strategy by collecting design docs and decisions into a short document of what we do and why. Glue work (onboarding, reviews, unblocking) matters but must be visible and balanced with technical work, or it stalls a career.
+- **Reading note: Service level objectives for data.** Pick indicators users feel (freshness, completeness, correctness), set objectives (for example 99% of days the table is fresh by 07:00), and spend the error budget deliberately. Alert on burning the budget, not on every failure.
+- **Reading note: The strangler fig pattern.** Replace a legacy system piece by piece: route one slice of traffic or one table to the new system, verify, move the next, and retire the old one last. It avoids big-bang migrations.
+- **Reading note: Architecture decision records.** One short file per decision: context, decision, status and consequences. Records explain why the system is the way it is long after the people who chose it have moved on.
+- **Reading note: Leadership principles in behavioural rounds.** Most behavioural rounds probe ownership, bias for action, earning trust, diving deep and disagreeing then committing. Prepare one story per trait with situation, action and a measured result.
 
 @@chapter
 ## R1.1 What changes at staff and architect level

@@ -16,10 +16,11 @@ hours: 10
 1008 | talk | 1 | Interview set 10 and the mock | 14 of 18 questions ticked, and a mock score recorded. | interview
 
 @@readings
-- [Uber: From batch to streaming, accelerating data freshness in Uber's data lake](https://www.uber.com/us/en/blog/from-batch-to-streaming-accelerating-data-freshness-in-ubers-data-lake/). A real migration with the trade-offs written down.
-- [Uber: Operating Apache Pinot at Uber scale](https://www.uber.com/blog/operating-apache-pinot/). What a real-time analytics store is for, and what running one costs.
-- [Uber: "Orders Near You" and user-facing analytics on real-time geospatial data](https://www.uber.com/blog/orders-near-you/). A worked example of serving fresh aggregates to millions of users.
-- [Anthropic: Building Effective AI Agents](https://www.anthropic.com/engineering/building-effective-agents). Reread the section on workflows and orchestrator-workers before the AI lab.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: From batch to streaming for freshness.** Moving a lake from daily batch to streaming ingestion cut freshness from hours to minutes, at the cost of more small files, more compaction and harder operations. The trade-offs are written down: decide which tables truly need minutes.
+- **Reading note: Operating a real-time analytics store.** Stores such as Apache Pinot serve fresh aggregates with sub-second queries from streams and batch. The cost is operational: ingestion lag, segment sizes, indexes and capacity planning per query pattern.
+- **Reading note: User-facing analytics on fresh geospatial data.** Showing "orders near you" to millions of users means pre-aggregating by location cells, serving from a low-latency store, and accepting approximate answers. Design from the query and latency target backwards.
+- **Reading note: Workflows and orchestrator-workers.** An orchestrator model breaks a task into parts and hands them to worker calls, then combines the results. Use it when subtasks are not known in advance; prefer a fixed workflow when they are.
 
 @@chapter
 ## 10.1 What a design round tests

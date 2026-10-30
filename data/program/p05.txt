@@ -15,14 +15,15 @@ P506 | test | 0.5 | Quiz P5 | 80% or better. | quiz
 P507 | talk | 0.5 | Interview set P5 | 5 of 6 answered out loud and ticked. | interview
 
 @@readings
-- **Python Crash Course** (3rd ed.), chapter 10 (files and exceptions) and chapter 11 (testing your code with pytest).
-- **Python Distilled**, chapter 3 (program structure and control flow: exceptions, context managers) and chapter 8 (modules and packages).
-- **Fluent Python** (2nd ed.), chapter 18 (with, match and else blocks).
-- [Errors and exceptions tutorial](https://docs.python.org/3/tutorial/errors.html). Includes exception chaining and notes.
-- [contextlib](https://docs.python.org/3/library/contextlib.html). `contextmanager`, `suppress` and `ExitStack`.
-- [Logging how-to](https://docs.python.org/3/howto/logging.html). Read the basic tutorial and "Logging from multiple modules".
-- [pytest: get started](https://docs.pytest.org/en/stable/getting-started.html), then [parametrize](https://docs.pytest.org/en/stable/how-to/parametrize.html).
-- [Packaging Python projects](https://packaging.python.org/en/latest/tutorials/packaging-projects/). pyproject.toml and the src layout.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Files, exceptions and testing.** Open files with with so they close; catch specific exceptions, not everything; write small tests with pytest using plain assert.
+- **Reading note: Exceptions and context managers.** try, except, else and finally each have a job: else runs only when no exception happened, finally always runs. A context manager wraps setup and cleanup around a block.
+- **Reading note: with, match and else blocks.** with guarantees cleanup; match does structural pattern matching on shapes of data; else on loops runs when the loop did not break.
+- **Reading note: Exception chaining.** raise NewError(...) from err keeps the original cause in the traceback, so the real reason is not lost when you translate errors.
+- **Reading note: contextlib.** contextmanager turns a generator into a context manager, suppress ignores a named exception, ExitStack manages a dynamic number of context managers.
+- **Reading note: Logging.** Use logging.getLogger(__name__) per module, configure handlers once at the entry point, and log with levels. Never use print in pipelines.
+- **Reading note: pytest and parametrize.** Tests are functions starting with test_; fixtures provide setup; @pytest.mark.parametrize runs one test over many inputs.
+- **Reading note: Packaging.** pyproject.toml declares the project and its dependencies; the src layout keeps tests from importing an uninstalled copy by accident.
 
 @@chapter
 ## P5.1 Exceptions: catch narrowly, fail loudly

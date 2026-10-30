@@ -15,12 +15,13 @@ P406 | test | 0.5 | Quiz P4 | 80% or better. | quiz
 P407 | talk | 0.5 | Interview set P4 | 5 of 6 answered out loud and ticked. | interview
 
 @@readings
-- **Python Crash Course** (3rd ed.), chapter 9 (classes). The basics, quickly.
-- **Python Distilled**, chapter 7 (classes and object-oriented programming): attributes, properties, inheritance, `__slots__`, and why Python prefers duck typing.
-- **Fluent Python** (2nd ed.), chapter 5 (data class builders), chapter 11 (a Pythonic object) and chapter 13 (interfaces, protocols and ABCs).
-- [dataclasses](https://docs.python.org/3/library/dataclasses.html). `field`, `frozen`, `order` and `default_factory`.
-- [typing.Protocol](https://docs.python.org/3/library/typing.html#typing.Protocol). Structural typing: "anything with a check() method".
-- [Refactoring Guru: design patterns](https://refactoring.guru/design-patterns/catalog). Read Strategy, Factory Method, Observer and Adapter: the four you will use most in LLD rounds.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Classes.** A class bundles data and behaviour; __init__ sets attributes; methods take self. Keep classes small and focused.
+- **Reading note: Object-oriented Python.** Properties turn methods into computed attributes, inheritance shares behaviour, __slots__ saves memory for many small objects, and duck typing means "anything with the right methods works".
+- **Reading note: Data classes, Pythonic objects and protocols.** Data classes generate __init__, __repr__ and __eq__; frozen=True makes them immutable. Implement __repr__ and __eq__ for your own objects. Protocols and abstract base classes describe the interface a function expects.
+- **Reading note: dataclasses details.** field(default_factory=list) avoids shared mutable defaults; order=True adds comparisons; frozen=True blocks assignment.
+- **Reading note: typing.Protocol.** Structural typing: a class matches a protocol if it has the methods, without inheriting from it. Useful for plug-in checks and test doubles.
+- **Reading note: Design patterns for low-level design rounds.** Strategy swaps an algorithm behind one interface; Factory Method creates objects without naming their class; Observer notifies subscribers of changes; Adapter makes one interface look like another.
 
 @@chapter
 ## P4.1 When a class, when a dict, when a function

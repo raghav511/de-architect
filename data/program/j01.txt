@@ -14,12 +14,13 @@ J105 | test | 0.5 | Quiz J1 | 80% or better. | quiz
 J106 | talk | 0.5 | Interview set J1 | 5 of 6 answered out loud and ticked. | interview
 
 @@readings
-- [Scala for Python developers](https://docs.scala-lang.org/scala3/book/scala-for-python-devs.html). The official side-by-side guide. Read the sections on variables, functions, collections and pattern matching.
-- **Spark: The Definitive Guide**, chapters 11 (Datasets) and 15 (how Spark runs on a cluster). Read the Scala examples next to the Python ones.
-- [Spark: tuning, memory management](https://spark.apache.org/docs/latest/tuning.html#memory-management-overview). Unified memory, execution versus storage, and garbage collection tuning.
-- [Spark on Kubernetes](https://spark.apache.org/docs/latest/running-on-kubernetes.html). How the driver and executors become pods.
-- [Kubernetes: resource requests and limits](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/). The one Kubernetes page every data engineer should know.
-- [Kubernetes basics tutorial](https://kubernetes.io/docs/tutorials/kubernetes-basics/). An interactive half hour on pods, deployments and services.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Scala for Python developers.** val is a constant and var a variable; types are inferred; functions are values; collections (List, Map) are immutable by default with map, filter and fold; case classes are like frozen dataclasses; pattern matching replaces long if chains.
+- **Reading note: Datasets and how Spark runs on a cluster.** Datasets add compile-time types to DataFrames in Scala. The driver plans the job into stages split at shuffles; each stage runs tasks, one per partition, on executors. Python DataFrame code becomes the same plan as Scala.
+- **Reading note: Spark memory management.** Unified memory is shared by execution and storage; user memory and overhead sit outside it. Out-of-memory errors in containers often come from overhead (Python workers, off-heap), not the heap. Long garbage collection pauses mean too much data per task.
+- **Reading note: Spark on Kubernetes.** spark-submit asks the Kubernetes API to start the driver as a pod; the driver then creates executor pods and deletes them when the job ends. Images, service accounts and resource requests decide where and how they run.
+- **Reading note: Kubernetes resource requests and limits.** Requests reserve CPU and memory for scheduling; limits cap them. A container over its memory limit is killed (OOMKilled); over its CPU limit it is throttled. Set memory request equal to limit for Spark executors.
+- **Reading note: Kubernetes basics.** Pods run containers, deployments keep a number of pods running and roll out changes, services give pods a stable address. kubectl get, describe and logs are the commands you will use first.
 
 @@chapter
 ## J1.1 Why the JVM still matters to a Python data engineer

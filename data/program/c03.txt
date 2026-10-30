@@ -12,9 +12,10 @@ C303 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
 C304 | test | 0.33 | Quiz C3 | 80% or better. | quiz
 
 @@readings
-- [Manage costs effectively](https://docs.claude.com/en/docs/claude-code/costs). The official list of cost habits; read all of it.
-- [Claude docs: Prompt caching](https://docs.claude.com/en/docs/build-with-claude/prompt-caching). Why repeated context is cheaper, and what breaks the cache.
-- [Models overview](https://docs.claude.com/en/docs/about-claude/models/overview). Compare the price per million tokens for Haiku, Sonnet and Opus.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Managing cost.** Clear or compact the conversation between tasks, keep project instructions short, point at exact files instead of "look everywhere", and use smaller models for simple work.
+- **Reading note: Caching repeated context.** Stable content at the start of the prompt is cached and cheaper on later calls; changing it breaks the cache.
+- **Reading note: Model prices.** Smaller models cost a fraction of the largest per million tokens. Match the model to the task: quick edits and searches on a small one, hard design on a large one.
 
 @@chapter
 ## C3.1 What you actually pay for

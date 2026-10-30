@@ -12,9 +12,10 @@ C1203 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | c
 C1204 | test | 0.33 | Quiz C12 | 80% or better. | quiz
 
 @@readings
-- [Agent SDK overview](https://docs.claude.com/en/api/agent-sdk/overview). What the SDK gives you and how it relates to Claude Code.
-- [Agent SDK: Python reference](https://docs.claude.com/en/api/agent-sdk/python). query(), ClaudeAgentOptions, and custom tools.
-- [Anthropic: Building effective agents](https://www.anthropic.com/engineering/building-effective-agents). Re-read it now that you have built a few.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: The Agent SDK.** The same agent loop, tools and context handling as Claude Code, as a library, so you can build your own agents in Python or TypeScript.
+- **Reading note: The Python interface.** A query function streams messages; options set the system prompt, tools, permissions and working folder; custom tools are your own functions with schemas.
+- **Reading note: Building effective agents, again.** Re-read the patterns now that you have built several agents: prefer the simplest workflow that works, and add autonomy only with budgets, evals and approvals.
 
 @@chapter
 ## C12.1 Claude Code as a library

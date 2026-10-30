@@ -18,10 +18,11 @@ A109 | talk | 0.75 | Interview set A1 | 6 of 8 answered out loud and ticked. | i
 A110 | practice | 0.5 | Prompt drills | Five prompt rewrites done and compared with the model answers. | practice
 
 @@readings
-- [Anthropic: Building effective agents](https://www.anthropic.com/engineering/building-effective-agents). Read "workflows vs agents" and the five workflow patterns. It is the clearest short map of the field.
-- [Claude docs: Prompt engineering overview](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/overview). Skim the list, then read "Be clear and direct" and "Use XML tags".
-- [Claude docs: Prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching). Read the pricing table and "what invalidates the cache".
-- [Faros: Harness engineering](https://www.faros.ai/blog/harness-engineering). The five layers of a production harness, and why the term appeared in 2026.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Workflows versus agents.** Five workflow patterns cover most needs: prompt chaining, routing, parallelisation, orchestrator-workers and evaluator-optimiser. An agent is a loop where the model chooses tools until done; use it only when the path cannot be fixed in advance.
+- **Reading note: Prompts that work.** Be clear and direct: say the role, the task, the context, the constraints, the output format, and give examples. Separate parts with tags such as <context> so the model does not mix them up.
+- **Reading note: Prompt caching.** A repeated prefix (system prompt, tool list, long documents) can be cached, so later calls pay much less for it and start faster. Any change to the cached part, or its order, invalidates the cache, so put stable content first.
+- **Reading note: Harness engineering.** The harness is everything around the model: the loop, tools, context assembly, budgets and stop conditions, logging and traces, evals. Production quality comes mostly from the harness, which is why the term spread in 2026.
 
 @@chapter
 > **Before you start.** This module uses the Python from Python 1 and 2: dicts of functions (a tool registry), `*args`/`**kwargs`, closures and decorators (`@tool`, `@retry`), and JSON. If any lab code looks unfamiliar, the matching chapter section is one search away (⌘K or /). You do not need classes or async yet; AI 2 comes after Python 4 (classes) and AI 3 after Python 6 (concurrency).

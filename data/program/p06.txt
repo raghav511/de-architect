@@ -15,12 +15,12 @@ P606 | test | 0.5 | Quiz P6 | 80% or better. | quiz
 P607 | talk | 0.5 | Interview set P6 | 5 of 6 answered out loud and ticked. | interview
 
 @@readings
-- **Fluent Python** (2nd ed.), chapter 19 (concurrency models), chapter 20 (concurrent executors) and chapter 21 (asynchronous programming). The best treatment in print.
-- **Python Distilled**, the sections on threads and `concurrent.futures` in chapter 9.
-- [concurrent.futures](https://docs.python.org/3/library/concurrent.futures.html). One interface for thread and process pools.
-- [asyncio: coroutines and tasks](https://docs.python.org/3/library/asyncio-task.html). `gather`, `create_task`, timeouts and `TaskGroup`.
-- [Free-threaded CPython](https://docs.python.org/3/howto/free-threading-python.html). The optional no-GIL build from Python 3.13: what changes and what does not.
-- [The Python profilers](https://docs.python.org/3/library/profile.html). cProfile in five minutes.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Concurrency models.** Threads share memory and suit I/O-bound work; processes avoid the GIL and suit CPU-bound work; asyncio runs many I/O tasks on one thread by awaiting instead of blocking. Measure before choosing.
+- **Reading note: Threads and executors.** concurrent.futures gives one interface for thread and process pools: submit work, collect futures, handle exceptions per task.
+- **Reading note: asyncio coroutines and tasks.** await pauses a coroutine; create_task schedules one concurrently; gather waits for many; TaskGroup cancels the rest if one fails; wait_for adds a timeout.
+- **Reading note: Free-threaded Python.** Python 3.13 added an optional build without the global interpreter lock, so threads can run Python code in parallel. Extensions must support it; single-thread speed can be lower. Check before relying on it.
+- **Reading note: Profiling.** cProfile shows where time goes per function; profile first, then optimise the top entries.
 
 @@chapter
 ## P6.1 Waiting versus computing

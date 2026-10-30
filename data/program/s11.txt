@@ -17,11 +17,12 @@ mockloop: 2
 1108 | talk | 2 | Interview set 11 and mock loop 2 | 14 of 18 questions ticked, and all four loop rounds scored. | interview
 
 @@readings
-- [Aced: What is a forward deployed engineer?](https://www.aced.io/blog/what-is-a-forward-deployed-engineer). The role, who hires, and how it differs from solutions and software engineering.
-- [What the forward deployed engineer interview really tests](https://www.techinterview.org/post/3233477236/forward-deployed-engineer-interview/). The decomposition, learning, re-engineering and design rounds, with sample prompts.
-- [Scaler: Forward deployed engineer jobs in India and globally](https://www.scaler.com/topics/forward-deployed-jobs-in-india-global/). Which companies were hiring for these roles in India when it was written.
-- [Hello Interview: Meta's AI-enabled coding interview](https://www.hellointerview.com/blog/meta-ai-enabled-coding). The format and what is graded.
-- [DataVidhya: What changed in data engineering interviews in 2026](https://datavidhya.com/learn/de-interview-prep/the-2026-landscape/what-changed-in-2026/). Which companies allow AI in rounds and which ban it.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: What a forward deployed engineer is.** An engineer who works inside the customer's environment to make the product deliver, mixing software engineering, data work and consulting. Hired by companies selling complex platforms, including AI companies. Different from solutions engineering: you ship code in production.
+- **Reading note: What the forward deployed interview tests.** Decomposing a vague customer problem, learning a new domain fast, re-engineering a messy system, and designing under constraints. Practise thinking aloud, asking clarifying questions and stating trade-offs.
+- **Reading note: Who hires forward deployed engineers.** Hiring shifts quickly; at the time of writing, AI labs, data platforms and enterprise software companies hired for the role in India and abroad. Check current postings before you target companies.
+- **Reading note: AI-enabled coding interviews.** Some companies now allow an AI assistant during coding rounds and grade how you use it: breaking down the problem, checking the output, testing, and explaining. Practise with the assistant, not instead of thinking.
+- **Reading note: How data engineering interviews changed in 2026.** More companies include AI and LLM questions, some allow AI tools in rounds and others ban them, and system design leans toward streaming, lakehouse and AI data stacks. Ask the recruiter for the rules of each round.
 
 @@chapter
 ## 11.1 Why this sprint exists

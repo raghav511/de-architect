@@ -12,9 +12,10 @@ C203 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
 C204 | test | 0.33 | Quiz C2 | 80% or better. | quiz
 
 @@readings
-- [Claude docs: Prompt engineering overview](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/overview). Read "Be clear, direct and detailed".
-- [Anthropic: Claude Code best practices](https://www.anthropic.com/engineering/claude-code-best-practices). Read the sections on being specific and on giving Claude a target to verify against.
-- [Common workflows](https://docs.claude.com/en/docs/claude-code/common-workflows). Read "Fix bugs efficiently" and "Work with tests".
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Clear, direct prompts.** Say what to change, where, why, and how you will know it worked. Specific beats long.
+- **Reading note: Give it a target to verify against.** A failing test, an expected output or a screenshot lets the agent check its own work and iterate, instead of stopping at "looks right".
+- **Reading note: Fix bugs and work with tests.** Share the error and how to reproduce it; ask for a failing test first, then the fix, then run the suite.
 
 @@chapter
 ## C2.1 Why "fix the bug" is an expensive prompt

@@ -16,9 +16,10 @@ hours: 10
 208 | talk | 1 | Interview set 2 and the mock | 14 of 18 questions ticked, and a mock score recorded. | interview
 
 @@readings
-- [Iceberg table spec](https://iceberg.apache.org/spec/). Read the overview and the sections on snapshots, manifests and partitioning. It is the primary source for everything in section 2.5.
-- [Iceberg: Maintenance](https://iceberg.apache.org/docs/latest/maintenance/) and [Spark Procedures](https://iceberg.apache.org/docs/latest/spark-procedures/). The procedures you call in this sprint's incident.
-- [Trino blog: A gentle introduction to Iceberg](https://trino.io/blog/2021/05/03/a-gentle-introduction-to-iceberg.html). Explains what Hive tables could not do, from the query engine's side.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Iceberg table format: snapshots, manifests and partitioning.** An Iceberg table is metadata on top of data files: a metadata file points to the current snapshot; a snapshot lists manifest files; manifests list data files with column statistics. Commits swap the metadata pointer atomically, which gives isolation and time travel. Hidden partitioning (for example days(ts)) means queries filter on the column and still prune files.
+- **Reading note: Iceberg maintenance procedures.** Tables need housekeeping: expire old snapshots (so deleted files can go), remove orphan files, rewrite small files into larger ones (compaction), and rewrite manifests. In Spark they are stored procedures such as rewrite_data_files and expire_snapshots. Streaming writers make many small files, so schedule these.
+- **Reading note: Why Hive tables were not enough.** Hive tracked partitions as directories, so listing was slow, changing partitioning meant rewriting data, and two writers could corrupt a table. Table formats such as Iceberg track files, not directories, which gives atomic commits, schema and partition evolution, and fast planning from statistics.
 
 @@chapter
 ## 2.1 The only way to make a query fast

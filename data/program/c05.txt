@@ -12,10 +12,11 @@ C503 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
 C504 | test | 0.33 | Quiz C5 | 80% or better. | quiz
 
 @@readings
-- [Security](https://docs.claude.com/en/docs/claude-code/security). Claude Code's built-in protections and your responsibilities.
-- [Identity and access management: permissions](https://docs.claude.com/en/docs/claude-code/iam). Permission rules, modes and precedence.
-- [Settings](https://docs.claude.com/en/docs/claude-code/settings). Where settings live and which file wins.
-- [OWASP Top 10 for LLM applications](https://genai.owasp.org/llm-top-10/). Read LLM01 (prompt injection) and LLM06 (excessive agency).
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Built-in protections.** The agent asks before running commands or editing files unless you allow them, and works inside the project folder by default. You are still responsible for what you approve.
+- **Reading note: Permissions.** Rules allow, ask or deny tools and commands, with modes from cautious to autonomous. More specific rules and managed settings take precedence.
+- **Reading note: Settings files.** User settings apply everywhere, project settings are shared with the team, local settings are yours only; managed settings set by an organisation win.
+- **Reading note: Prompt injection and excessive agency.** Text the agent reads (web pages, files, tickets) can contain instructions; treat it as data. Give the agent only the permissions the task needs.
 
 @@chapter
 ## C5.1 The threat model

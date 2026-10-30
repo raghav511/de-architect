@@ -12,9 +12,10 @@ C1003 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | c
 C1004 | test | 0.33 | Quiz C10 | 80% or better. | quiz
 
 @@readings
-- [Connect Claude Code to tools via MCP](https://docs.claude.com/en/docs/claude-code/mcp). Adding servers, scopes, .mcp.json and /mcp.
-- [Model Context Protocol: introduction](https://modelcontextprotocol.io/introduction). The concepts: servers, tools, resources, prompts.
-- [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk). Read the FastMCP quickstart.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Connecting tools through MCP.** Add MCP servers per project or per user; the agent can then list and call their tools. Start with read-only servers for your data tools.
+- **Reading note: MCP concepts.** Servers expose tools, resources and prompts; clients discover and call them. Transports are standard input/output locally and HTTP remotely.
+- **Reading note: Writing a server in Python.** The Python SDK turns a decorated function with type hints into a tool with a schema. Module A4 builds the database version of this idea in the browser.
 
 @@chapter
 ## C10.1 What MCP is

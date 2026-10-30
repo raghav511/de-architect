@@ -12,9 +12,10 @@ C903 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
 C904 | test | 0.33 | Quiz C9 | 80% or better. | quiz
 
 @@readings
-- [Headless mode](https://docs.claude.com/en/docs/claude-code/headless). claude -p, output formats and multi-turn scripting.
-- [CLI reference](https://docs.claude.com/en/docs/claude-code/cli-reference). Every flag; skim, then search when needed.
-- [Claude Code GitHub Actions](https://docs.claude.com/en/docs/claude-code/github-actions). Running Claude in CI on issues and pull requests.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Headless mode.** Run the agent from scripts with a prompt flag and get text or JSON back, so it fits into schedules and pipelines.
+- **Reading note: CLI flags.** Flags set the model, permissions, output format, allowed tools and session to continue. Skim once, then look up what you need.
+- **Reading note: Running in CI.** A CI action can run the agent on issues and pull requests (review, fix, explain) with limited permissions and its own credentials.
 
 @@chapter
 ## C9.1 From chat to command
