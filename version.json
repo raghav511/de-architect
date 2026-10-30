@@ -1,10 +1,10 @@
 {
-  "version": "1.11.0",
+  "version": "1.11.1",
   "date": "2026-10-30",
   "notes": [
-    "Readings: all 148 outside links in 39 modules are replaced by short in-app reading notes that say what each source teaches (books, docs, papers and talks)",
-    "Lessons: the Kafka video links become an in-app list of the topics, covered by the chapter and the animated map",
-    "What is new in AI: sources are credited as plain text instead of sending you to another site; the A3 chapter's source links are plain text too",
-    "Test: no link out of the app on any module's readings or chapter, the news page or the video card"
+    "Readings: every note still teaches in the app; 140 notes now end with a small \u24d8 that opens the original article or official docs in a new tab (book notes have no link)",
+    "Lessons: each Kafka topic has a small \u25b6 that opens the free Confluent course video in a new tab",
+    "Accessibility: each source link says where it goes and that it opens a new tab",
+    "Test: outside links appear only as these small source links, open in a new tab and are labelled"
   ]
 }

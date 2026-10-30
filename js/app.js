@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.11.0';
+const VERSION = '1.11.1';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -9,7 +9,7 @@ function el(tag, attrs, kids) {
     if (v === null || v === undefined || v === false) continue;
     if (k === 'class') e.className = v;
     else if (k === 'text') e.textContent = v;
-    else if (k === 'html') e.innerHTML = v;
+    else if (k === 'html') { e.innerHTML = v; e.querySelectorAll('a[href^="http"]').forEach(a => { a.target = '_blank'; a.rel = 'noopener noreferrer'; if (a.textContent.trim() === 'ⓘ') { a.className = 'srcl'; a.setAttribute('aria-label', 'Original source on ' + a.hostname.replace(/^www\./, '') + ' (opens in a new tab)'); a.title = 'Read the original on ' + a.hostname.replace(/^www\./, ''); } }); } /* outside sources open in a new tab; the app stays where you are */
     else if (k.startsWith('on') && typeof v === 'function') e.addEventListener(k.slice(2), v);
     else if (k === 'style' && typeof v === 'object') Object.assign(e.style, v);
     else e.setAttribute(k, v === true ? '' : v);
@@ -233,7 +233,7 @@ function videoCard(w) {
   const v = VIDEOS[w];
   if (!v) return el('section', { class: 'card pad stack' }, [el('h3', { text: 'Video' }), el('p', { class: 'muted', style: { margin: 0 }, text: 'This week\'s videos come with the next content update. Use the readings and the animated map above for now.' })]);
   /* the topics stay; the outside videos do not: everything is covered by the chapter and the animated map in the app */
-  return el('section', { class: 'card pad stack' }, [el('h3', { text: 'Covered in this lesson' }), el('div', { class: 'list' }, v.map(([t]) => el('div', { class: 'item' }, [el('span', { class: 'grow t', text: '✓ ' + t }), el('span', { class: 's', text: 'chapter and map' })])))]);
+  return el('section', { class: 'card pad stack' }, [el('h3', { text: 'Covered in this lesson' }), el('div', { class: 'list' }, v.map(([t, u]) => el('div', { class: 'item' }, [el('span', { class: 'grow t', text: '✓ ' + t }), el('span', { class: 's', text: 'chapter and map' }), el('a', { class: 'srcl', href: u, target: '_blank', rel: 'noopener noreferrer', title: 'Watch the free video on developer.confluent.io', 'aria-label': 'Watch the free video: ' + t + ' (opens in a new tab)', text: '▶' })])))]);
 }
 /* Kafka lesson: step-through diagrams with ‹ › controls */
 function kafkaLesson() {

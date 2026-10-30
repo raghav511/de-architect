@@ -17,12 +17,12 @@ mockloop: 1
 608 | talk | 1.75 | Interview set 6 and mock loop 1 | 14 of 18 questions ticked, and all four loop rounds scored. | interview
 
 @@readings
-- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
-- **Reading note: Debezium for PostgreSQL.** Debezium reads the database write-ahead log through a logical replication slot and turns each insert, update and delete into an event with before and after images, the source position and an operation code. It starts with a consistent snapshot, then streams changes.
-- **Reading note: What log-based capture gives you.** Every change, including deletes, in commit order, with low latency and no extra load from polling queries. Compared with "updated_at" polling, you do not miss intermediate updates or hard deletes.
-- **Reading note: Incremental snapshots.** A large table can be re-read in chunks while streaming continues; Debezium interleaves snapshot chunks with live changes and resolves conflicts so the latest change wins. Useful for backfills and adding tables later.
-- **Reading note: Reading a change stream as a table.** Stream processors such as Flink SQL can interpret Debezium events as an updating table: inserts add rows, updates retract and replace, deletes retract. Joins and aggregates then stay correct as the source changes.
-- **Reading note: Modelling on top of change data.** Land raw change events, then build a current-state table (latest row per key, deletes removed) and, if needed, a history table. Deduplicate by key and source position, never by arrival time.
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
+- **Reading note: Debezium for PostgreSQL.** Debezium reads the database write-ahead log through a logical replication slot and turns each insert, update and delete into an event with before and after images, the source position and an operation code. It starts with a consistent snapshot, then streams changes. [ⓘ](https://debezium.io/documentation/reference/stable/connectors/postgresql.html)
+- **Reading note: What log-based capture gives you.** Every change, including deletes, in commit order, with low latency and no extra load from polling queries. Compared with "updated_at" polling, you do not miss intermediate updates or hard deletes. [ⓘ](https://debezium.io/documentation/reference/features.html)
+- **Reading note: Incremental snapshots.** A large table can be re-read in chunks while streaming continues; Debezium interleaves snapshot chunks with live changes and resolves conflicts so the latest change wins. Useful for backfills and adding tables later. [ⓘ](https://debezium.io/blog/2021/10/07/incremental-snapshots/)
+- **Reading note: Reading a change stream as a table.** Stream processors such as Flink SQL can interpret Debezium events as an updating table: inserts add rows, updates retract and replace, deletes retract. Joins and aggregates then stay correct as the source changes. [ⓘ](https://nightlies.apache.org/flink/flink-docs-master/docs/connectors/table/formats/debezium/)
+- **Reading note: Modelling on top of change data.** Land raw change events, then build a current-state table (latest row per key, deletes removed) and, if needed, a history table. Deduplicate by key and source position, never by arrival time. [ⓘ](https://docs.getdbt.com/best-practices/how-we-handle-cdc/1-intro)
 
 @@chapter
 ## 6.1 Why the two systems disagree

@@ -15,11 +15,11 @@ P306 | test | 0.5 | Quiz P3 | 80% or better. | quiz
 P307 | talk | 0.5 | Interview set P3 | 5 of 6 answered out loud and ticked. | interview
 
 @@readings
-- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
 - **Reading note: Generators.** A function with yield returns a generator that pauses after each value and resumes on the next call. yield from delegates to another iterable. Chaining generators builds a pipeline that processes one record at a time.
 - **Reading note: Iterators and the iteration protocol.** An iterable gives an iterator via iter(); an iterator gives values via next() until StopIteration. for loops, comprehensions and many built-ins use this protocol, which is why generators work everywhere.
-- **Reading note: itertools.** islice takes part of a stream, chain joins streams, groupby groups consecutive equal keys (sort first), accumulate gives running totals, batched cuts a stream into fixed-size chunks.
-- **Reading note: csv with streams.** csv.DictReader accepts any iterable of lines, so it composes with generators that read, filter or decompress files lazily.
+- **Reading note: itertools.** islice takes part of a stream, chain joins streams, groupby groups consecutive equal keys (sort first), accumulate gives running totals, batched cuts a stream into fixed-size chunks. [ⓘ](https://docs.python.org/3/library/itertools.html)
+- **Reading note: csv with streams.** csv.DictReader accepts any iterable of lines, so it composes with generators that read, filter or decompress files lazily. [ⓘ](https://docs.python.org/3/library/csv.html)
 - **Reading note: Generator pipelines for log processing.** Build log analysis as a chain of small generators: find files, open them, read lines, parse, filter, aggregate. Each stage is simple and testable, and memory stays constant however big the logs are.
 
 @@chapter

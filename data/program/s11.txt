@@ -17,12 +17,12 @@ mockloop: 2
 1108 | talk | 2 | Interview set 11 and mock loop 2 | 14 of 18 questions ticked, and all four loop rounds scored. | interview
 
 @@readings
-- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
-- **Reading note: What a forward deployed engineer is.** An engineer who works inside the customer's environment to make the product deliver, mixing software engineering, data work and consulting. Hired by companies selling complex platforms, including AI companies. Different from solutions engineering: you ship code in production.
-- **Reading note: What the forward deployed interview tests.** Decomposing a vague customer problem, learning a new domain fast, re-engineering a messy system, and designing under constraints. Practise thinking aloud, asking clarifying questions and stating trade-offs.
-- **Reading note: Who hires forward deployed engineers.** Hiring shifts quickly; at the time of writing, AI labs, data platforms and enterprise software companies hired for the role in India and abroad. Check current postings before you target companies.
-- **Reading note: AI-enabled coding interviews.** Some companies now allow an AI assistant during coding rounds and grade how you use it: breaking down the problem, checking the output, testing, and explaining. Practise with the assistant, not instead of thinking.
-- **Reading note: How data engineering interviews changed in 2026.** More companies include AI and LLM questions, some allow AI tools in rounds and others ban them, and system design leans toward streaming, lakehouse and AI data stacks. Ask the recruiter for the rules of each round.
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
+- **Reading note: What a forward deployed engineer is.** An engineer who works inside the customer's environment to make the product deliver, mixing software engineering, data work and consulting. Hired by companies selling complex platforms, including AI companies. Different from solutions engineering: you ship code in production. [ⓘ](https://www.aced.io/blog/what-is-a-forward-deployed-engineer)
+- **Reading note: What the forward deployed interview tests.** Decomposing a vague customer problem, learning a new domain fast, re-engineering a messy system, and designing under constraints. Practise thinking aloud, asking clarifying questions and stating trade-offs. [ⓘ](https://www.techinterview.org/post/3233477236/forward-deployed-engineer-interview/)
+- **Reading note: Who hires forward deployed engineers.** Hiring shifts quickly; at the time of writing, AI labs, data platforms and enterprise software companies hired for the role in India and abroad. Check current postings before you target companies. [ⓘ](https://www.scaler.com/topics/forward-deployed-jobs-in-india-global/)
+- **Reading note: AI-enabled coding interviews.** Some companies now allow an AI assistant during coding rounds and grade how you use it: breaking down the problem, checking the output, testing, and explaining. Practise with the assistant, not instead of thinking. [ⓘ](https://www.hellointerview.com/blog/meta-ai-enabled-coding)
+- **Reading note: How data engineering interviews changed in 2026.** More companies include AI and LLM questions, some allow AI tools in rounds and others ban them, and system design leans toward streaming, lakehouse and AI data stacks. Ask the recruiter for the rules of each round. [ⓘ](https://datavidhya.com/learn/de-interview-prep/the-2026-landscape/what-changed-in-2026/)
 
 @@chapter
 ## 11.1 Why this sprint exists

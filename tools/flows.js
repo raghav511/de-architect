@@ -548,19 +548,22 @@ async function T(name, fn, opt) {
     const first = await p.evaluate(() => schedule().units.find(u => !isCC(u.mid)).mid); ok(first === 's00', 'first non-Claude-Code step should be in Setup: ' + first);
   });
 
-  await T('self-contained: readings, chapters, videos and news never link out of the app', async p => {
+  await T('self-contained: notes stay in the app; outside sources are only small ⓘ links that open in a new tab', async p => {
     await go(p, '#/today', 1200);
     const mods = await p.evaluate(() => MODS_ALL.slice());
-    const out = [];
+    const bad = []; let src = 0;
     for (const m of mods) for (const tab of ['readings', 'chapter']) {
       await hash(p, '#/learn/' + m + '/' + tab, 250);
-      const n = await p.$$eval('#page a[href^="http"]', a => a.map(x => x.getAttribute('href')));
-      if (n.length) out.push(m + '/' + tab + ': ' + n[0]);
+      const a = await p.$$eval('#page a[href^="http"]', xs => xs.map(x => ({ c: x.className, t: x.target, r: x.rel, l: x.getAttribute('aria-label') || '' })));
+      a.forEach(x => { if (x.c !== 'srcl' || x.t !== '_blank' || !/noopener/.test(x.r) || !/new tab/.test(x.l)) bad.push(m + '/' + tab); else src++; });
     }
-    await hash(p, '#/news', 500); if (await p.$('#page a[href^="http"]')) out.push('news');
-    await hash(p, '#/learn/s01/chapter', 500); if (await p.$('#page a[href*="confluent"]')) out.push('videos');
-    ok(!out.length, 'links out of the app: ' + out.slice(0, 5).join(' | '));
-    ok(/Reading note:/.test(await (async () => { await hash(p, '#/learn/d01/readings', 500); return text(p, '#page'); })()), 'reading notes not shown');
+    ok(!bad.length, 'links out that are not small source links: ' + [...new Set(bad)].slice(0, 5).join(', '));
+    ok(src >= 130, 'expected the source links on the reading notes, found ' + src);
+    await hash(p, '#/learn/d01/readings', 500); const t = await text(p, '#page');
+    ok(/Reading note: Raft in two minutes\. .*ⓘ/.test(t.replace(/\n/g, ' ')) && !/Reading note: Storage and retrieval \(DDIA ch\. 3\)\.[^\n]*ⓘ/.test(t), 'Raft note lacks its link, or a book note got one');
+    await hash(p, '#/news', 500); ok(!(await p.$('#page a[href^="http"]')), 'news links out');
+    await hash(p, '#/learn/s01/readings', 500); const v = await p.$$eval('a.srcl[href*="developer.confluent.io"]', xs => xs.length);
+    ok(v >= 4, 'video topics have no small watch links: ' + v);
   });
 
   await T('AI data stack: A4 and A5 labs run in the browser and tick their Path steps', async p => {

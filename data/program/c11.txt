@@ -12,10 +12,10 @@ C1103 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | c
 C1104 | test | 0.33 | Quiz C11 | 80% or better. | quiz
 
 @@readings
-- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
-- **Reading note: Subagents.** A subagent is a separate agent with its own instructions, tools and model, to which the main agent delegates a focused task, keeping the main context clean.
-- **Reading note: Parallel sessions with worktrees.** Git worktrees give each session its own working folder and branch, so several agents can work at once without editing the same files.
-- **Reading note: When multi-agent pays off.** Parallel agents help for broad, independent subtasks such as research; they cost many more tokens and add coordination problems for tightly linked work.
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
+- **Reading note: Subagents.** A subagent is a separate agent with its own instructions, tools and model, to which the main agent delegates a focused task, keeping the main context clean. [ⓘ](https://docs.claude.com/en/docs/claude-code/sub-agents)
+- **Reading note: Parallel sessions with worktrees.** Git worktrees give each session its own working folder and branch, so several agents can work at once without editing the same files. [ⓘ](https://docs.claude.com/en/docs/claude-code/common-workflows)
+- **Reading note: When multi-agent pays off.** Parallel agents help for broad, independent subtasks such as research; they cost many more tokens and add coordination problems for tightly linked work. [ⓘ](https://www.anthropic.com/engineering/multi-agent-research-system)
 
 @@chapter
 ## C11.1 What a subagent is

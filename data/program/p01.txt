@@ -15,12 +15,12 @@ P106 | test | 0.5 | Quiz P1 | 80% or better. | quiz
 P107 | talk | 0.5 | Interview set P1 | 5 of 6 answered out loud and ticked. | interview
 
 @@readings
-- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
-- **Reading note: Variables, lists, tuples and dictionaries.** Lists are ordered and changeable; tuples are ordered and fixed (use them for records and dict keys); dicts map keys to values; sets hold unique items. Do the exercises in this module rather than re-reading basics you already know.
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
+- **Reading note: Variables, lists, tuples and dictionaries.** Lists are ordered and changeable; tuples are ordered and fixed (use them for records and dict keys); dicts map keys to values; sets hold unique items. Do the exercises in this module rather than re-reading basics you already know. [ⓘ](https://docs.python.org/3/tutorial/datastructures.html)
 - **Reading note: Objects, identity and references.** A name points to an object; assignment copies the reference, not the object. is compares identity, == compares value. Mutable objects shared between names change for both, which is the source of the default-argument bug.
 - **Reading note: How dicts and sets work.** Both are hash tables: the key's hash picks a slot, so lookup, insert and delete are O(1) on average. Keys must be hashable (immutable). Dicts keep insertion order since Python 3.7.
-- **Reading note: Time complexity you must know.** list append and index O(1), insert or delete at the front O(n), x in list O(n); dict and set lookup O(1); sorting O(n log n); deque appends and pops at both ends O(1). Interviewers expect you to say these without thinking.
-- **Reading note: collections: Counter, defaultdict, deque.** Counter counts items and gives most_common; defaultdict supplies a default for missing keys (list, int); deque is a double-ended queue for sliding windows and BFS.
+- **Reading note: Time complexity you must know.** list append and index O(1), insert or delete at the front O(n), x in list O(n); dict and set lookup O(1); sorting O(n log n); deque appends and pops at both ends O(1). Interviewers expect you to say these without thinking. [ⓘ](https://wiki.python.org/moin/TimeComplexity)
+- **Reading note: collections: Counter, defaultdict, deque.** Counter counts items and gives most_common; defaultdict supplies a default for missing keys (list, int); deque is a double-ended queue for sliding windows and BFS. [ⓘ](https://docs.python.org/3/library/collections.html)
 
 @@chapter
 ## P1.1 How this track works
