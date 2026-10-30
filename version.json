@@ -1,7 +1,9 @@
 {
-  "version": "1.17.1",
+  "version": "1.17.2",
   "date": "2026-10-30",
   "notes": [
-    "Behind the scenes: the weekly refresh that adds recent interview questions and AI news now runs from the app's own repository."
+    "21 new interview questions asked this week at Uber, JPMorgan Chase, EY, Microsoft, PayPal, Genpact, Expedia, Infosys and Flipkart.",
+    "What is new: 5 items on Spark real-time streaming, serverless cost controls, Iceberg time travel, Snowflake indexes and AI document parsing.",
+    "Module 5 (Real time): the Spark, Flink and Kafka Streams section now covers Spark's new millisecond mode."
   ]
 }
