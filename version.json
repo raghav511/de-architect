@@ -1,9 +1,9 @@
 {
-  "version": "1.17.3",
+  "version": "1.17.4",
   "date": "2026-10-30",
   "notes": [
-    "On iPhone the coach button no longer covers buttons: pages leave room for it, and it is hidden during a quiz.",
-    "The quiz's Submit button stays quiet until the last question (it still asks before submitting with blanks).",
-    "The coach box uses the full width, coding practice sets fold with this week's set open, days before your start say when the plan begins, and buttons are easier to tap."
+    "21 new interview questions asked this week at Uber, JPMorgan Chase, EY, Microsoft, PayPal, Genpact, Expedia, Infosys and Flipkart.",
+    "What is new: 5 items on Spark real-time streaming, serverless cost controls, Iceberg time travel, Snowflake indexes and AI document parsing.",
+    "Module 5 (Real time): the Spark, Flink and Kafka Streams section now covers Spark's new millisecond mode."
   ]
 }
