@@ -351,6 +351,14 @@ async function T(name, fn, opt) {
     ok(Object.keys((await state(p)).done).some(k => k.endsWith(':git')), 'git lesson not saved');
   });
 
+  await T('navigating while the app is still loading does not break any screen', async p => {
+    await p.route('**/data/program/**', async r => { await new Promise(x => setTimeout(x, 1500)); r.continue(); }); /* a slow network */
+    await p.goto(BASE + '#/today');
+    for (const h of ['#/git/1', '#/projects', '#/path', '#/path/s00']) { await p.evaluate(x => { location.hash = x; }, h); await p.waitForTimeout(150); }
+    await p.waitForSelector('h1', { timeout: 60000 }); await p.waitForTimeout(800);
+    ok(/path\/s00/.test(await p.evaluate(() => location.hash)) && !/Something went wrong/.test(await text(p, '.top')), 'the screen you ended up on did not draw: ' + await text(p, '.top'));
+  });
+
   await T('search closes when you go to another screen', async p => {
     await go(p, '#/today', 900);
     await p.click('[aria-label=Search]'); await p.waitForSelector('.scrim [role=dialog]');

@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.15.2';
+const VERSION = '1.15.3';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -1115,7 +1115,8 @@ function hintText(ctx, plain) {
 function applyTheme() { const t = S.settings.theme, a = S.settings.accent, r = document.documentElement; if (t === 'light' || t === 'dark') r.dataset.theme = t; else delete r.dataset.theme; if (a === 'blue' || a === 'plum') r.dataset.accent = a; else delete r.dataset.accent; }
 applyTheme();
 let navCount = 0;
-window.addEventListener('hashchange', () => { navCount++; document.querySelectorAll('.scrim').forEach(x => x.remove()); route(); }); /* search, menus and dialogs belong to the screen you left */
+let booted = false; /* screens need the program data: a tap while it loads waits for the first draw, which shows wherever you ended up */
+window.addEventListener('hashchange', () => { if (!booted) return; navCount++; document.querySelectorAll('.scrim').forEach(x => x.remove()); route(); }); /* search, menus and dialogs belong to the screen you left */
 /* a tab left open overnight shows the new day's plan when you come back */
 let lastDay = iso(new Date());
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && iso(new Date()) !== lastDay) { lastDay = iso(new Date()); if (!/^#\/(dsa|sql|spark|test)\//.test(location.hash)) route(); } });
@@ -1123,6 +1124,7 @@ window.addEventListener('keydown', e => { if (e.key === '`' && (e.ctrlKey || e.m
 (async () => {
   try { await loadData(); } catch (e) { $('#root').innerHTML = '<div style="padding:24px">Could not load the question bank. Check your connection and reload.</div>'; return; }
   try { reconcileContent(); } catch (e) { console.error(e); } /* an update never blocks the app */
+  booted = true;
   route();
   checkVersion(true);
   setInterval(() => checkVersion(), 30 * 6e4);
