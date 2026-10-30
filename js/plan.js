@@ -66,7 +66,7 @@ function modUnits(m) {
     if (ex) {
       /* Python and SQL exercises run in the browser editor; the step ticks itself when all of them pass */
       const k = ex[1], xs = DATA[k].filter(x => x.m === m).slice(+ex[2] - 1, +ex[3]), nx = xs.find(x => !S.solved[x.id]) || xs[0];
-      add({ uid: m + ':' + t.id, kind: 'build', mins: Math.min(60, mins), title: t.title, goal: 'Exercises: ' + xs.map(x => x.t).join(' · ') + '. Each one runs real tests in your browser.', done: t.done, href: nx ? '#/' + k + '/' + nx.id : '#/practice/' + (k === 'py' ? 'py' : 'model'), cta: 'Code', auto: () => xs.length > 0 && xs.every(x => S.solved[x.id]) });
+      add({ uid: m + ':' + t.id, src: xs.map(x => x.p + JSON.stringify(x.tests || '')).join('|'), kind: 'build', mins: Math.min(60, mins), title: t.title, goal: 'Exercises: ' + xs.map(x => x.t).join(' · ') + '. Each one runs real tests in your browser.', done: t.done, href: nx ? '#/' + k + '/' + nx.id : '#/practice/' + (k === 'py' ? 'py' : 'model'), cta: 'Code', auto: () => xs.length > 0 && xs.every(x => S.solved[x.id]) });
       return;
     }
     if (t.tab.startsWith('chapter')) {
@@ -74,14 +74,14 @@ function modUnits(m) {
       let ranges;
       if (r) ranges = [[+r[1], +r[2]]];
       else { const p = Math.min(Math.max(1, Math.ceil(mins / 45)), nH); ranges = []; for (let k = 0; k < p; k++) ranges.push([Math.floor(k * nH / p), Math.floor((k + 1) * nH / p) - 1]); }
-      ranges.forEach((rg, k) => add({ uid: m + ':' + t.id + (ranges.length > 1 ? '.' + (k + 1) : ''), kind: 'learn', mins: Math.round(mins / ranges.length), title: ranges.length > 1 ? 'Chapter ' + (isS(m) ? +m.slice(1) + ' ' : '') + 'part ' + (k + 1) + ' of ' + ranges.length : t.title, goal: 'Read: ' + M.ch.slice(rg[0], rg[1] + 1).join(' · '), done: t.done, href: '#/learn/' + m + '/chapter/' + rg[0] + '-' + rg[1], cta: 'Read' }));
+      ranges.forEach((rg, k) => add({ uid: m + ':' + t.id + (ranges.length > 1 ? '.' + (k + 1) : ''), src: sliceH2(DATA.sprints[m].raw.chapter, rg[0], rg[1]), kind: 'learn', mins: Math.round(mins / ranges.length), title: ranges.length > 1 ? 'Chapter ' + (isS(m) ? +m.slice(1) + ' ' : '') + 'part ' + (k + 1) + ' of ' + ranges.length : t.title, goal: 'Read: ' + M.ch.slice(rg[0], rg[1] + 1).join(' · '), done: t.done, href: '#/learn/' + m + '/chapter/' + rg[0] + '-' + rg[1], cta: 'Read' }));
     } else if (t.tab === 'lab') {
       const k = bestH2(M.lab, t.title), n = Math.max(1, Math.ceil(mins / 60));
-      for (let i = 0; i < n; i++) add({ uid: m + ':' + t.id + (n > 1 ? '.' + (i + 1) : ''), kind: t.type === 'ai' ? 'ai' : t.type === 'incident' ? 'incident' : 'build', mins: Math.round(mins / n), title: t.title + (n > 1 ? ' · session ' + (i + 1) + ' of ' + n : ''), goal: (k >= 0 ? 'Lab: ' + M.lab[k] + '. ' : '') + (n > 1 ? (i === 0 ? 'Read the whole lab first, then start the steps.' : 'Pick up where your notes say you stopped.') : 'Follow the lab steps in order.'), done: n > 1 && i < n - 1 ? 'You stop at a working checkpoint and write one line in notes/progress.md saying where you are.' : t.done, href: '#/learn/' + m + '/lab' + (k >= 0 ? '/' + k + '-' + k : ''), cta: 'Open lab', links: pj && pj.env === 'ai' ? [['Project and environment', '#/project/' + pj.id]] : [] });
+      for (let i = 0; i < n; i++) add({ uid: m + ':' + t.id + (n > 1 ? '.' + (i + 1) : ''), src: k >= 0 ? sliceH2(DATA.sprints[m].raw.lab, k, k) : '', kind: t.type === 'ai' ? 'ai' : t.type === 'incident' ? 'incident' : 'build', mins: Math.round(mins / n), title: t.title + (n > 1 ? ' · session ' + (i + 1) + ' of ' + n : ''), goal: (k >= 0 ? 'Lab: ' + M.lab[k] + '. ' : '') + (n > 1 ? (i === 0 ? 'Read the whole lab first, then start the steps.' : 'Pick up where your notes say you stopped.') : 'Follow the lab steps in order.'), done: n > 1 && i < n - 1 ? 'You stop at a working checkpoint and write one line in notes/progress.md saying where you are.' : t.done, href: '#/learn/' + m + '/lab' + (k >= 0 ? '/' + k + '-' + k : ''), cta: 'Open lab', links: pj && pj.env === 'ai' ? [['Project and environment', '#/project/' + pj.id]] : [] });
     } else if (t.tab === 'practice') add({ uid: m + ':' + t.id, kind: 'practice', mins: Math.min(mins, 30), title: t.title, goal: (M.pr.length ? 'Warm-ups: ' + M.pr.join(' · ') + '. ' : '') + (mins > 30 ? 'The SQL and DSA warm-ups also count toward the coding track, so only the drill sits in this hour.' : ''), done: t.done, href: '#/learn/' + m + '/practice', cta: 'Practise' });
-    else if (t.tab === 'quiz') add({ uid: m + ':' + t.id, kind: 'quiz', mins: Math.max(20, mins), title: t.title, goal: 'Multiple choice, fill in the blank and short answers on this module. No notes.', done: t.done, href: '#/quiz/' + m, cta: 'Start', auto: () => S.quiz[qk(m)] && S.quiz[qk(m)].sub });
+    else if (t.tab === 'quiz') add({ uid: m + ':' + t.id, src: DATA.sprints[m].raw.quiz || '', kind: 'quiz', mins: Math.max(20, mins), title: t.title, goal: 'Multiple choice, fill in the blank and short answers on this module. No notes.', done: t.done, href: '#/quiz/' + m, cta: 'Start', auto: () => S.quiz[qk(m)] && S.quiz[qk(m)].sub });
     else if (t.tab === 'mock') { const n = Math.max(1, Math.ceil(mins / 60)); for (let i = 0; i < n; i++) add({ uid: m + ':' + t.id + '.' + (i + 1), kind: 'talk', mins: Math.round(mins / n), title: t.title + ' · session ' + (i + 1) + ' of ' + n, goal: 'One full mock loop under time, then score it with the rubric and write one repair action.', done: i === n - 1 ? t.done : 'One loop done and scored, with a repair action written down.', href: '#/interview/' + m + '/mock', cta: 'Open mock' }); }
-    else if (t.tab === 'interview') add({ uid: m + ':' + t.id, kind: 'talk', mins: Math.min(60, mins), title: t.title, goal: 'Answer each question out loud first, then open the model answer and tick the ones you nailed.', done: t.done, href: '#/interview/' + m, cta: 'Practise' });
+    else if (t.tab === 'interview') add({ uid: m + ':' + t.id, src: DATA.sprints[m].raw.interview || '', kind: 'talk', mins: Math.min(60, mins), title: t.title, goal: 'Answer each question out loud first, then open the model answer and tick the ones you nailed.', done: t.done, href: '#/interview/' + m, cta: 'Practise' });
     else add({ uid: m + ':' + t.id, kind: 'learn', mins: Math.min(60, mins), title: t.title, goal: '', done: t.done, href: '#/learn/' + m + '/chapter', cta: 'Open' });
   });
   const lastLearn = U.map(u => u.kind).lastIndexOf('learn');
@@ -107,6 +107,7 @@ function schedule() {
   const byDay = {}, used = {};
   const put = (k, u) => { (byDay[k] = byDay[k] || []).push(u); used[k] = (used[k] || 0) + u.mins; u.day = k; };
   units.forEach(u => { const d = doneDate(u); u.isDone = !!d; if (d) put(d, u); });
+  if (S.cv) units.forEach(u => { if (u.isDone && !S.cv.units[u.uid] && tracked(u)) S.cv.units[u.uid] = unitHash(u); }); /* remember which version you finished */
   const cur = new Date(t), q = units.filter(u => !u.isDone && !isCC(u.mid)), cq = units.filter(u => !u.isDone && isCC(u.mid)); let guard = 0;
   const ccDay = {}; units.forEach(u => { if (u.isDone && isCC(u.mid) && u.day) ccDay[u.day] = (ccDay[u.day] || 0) + 1; });
   /* Claude Code pace: enough steps a week to finish around when the main path does (1 to 3 a week) */
@@ -154,6 +155,7 @@ function unitCard(u, opts) {
     el('button', { class: 'check', 'data-uid': u.uid, 'aria-pressed': String(!!u.isDone), 'aria-label': (u.isDone ? 'Mark not done: ' : 'Mark done: ') + u.title, onclick: () => toggleUnit(u) }, u.isDone ? svg(I.check, 16) : null),
     el('div', { class: 'grow stack', style: { gap: '5px', minWidth: 0 } }, [
       opts.cur ? el('span', { class: 'upn', text: 'Up next' }) : null,
+      !u.isDone && wasDone(u.uid) ? el('span', { class: 'chip c-ai', title: 'You finished an earlier version of this step on ' + shortDate(wasDone(u.uid)) + '. It has changed.', text: 'Updated · finished before ' + shortDate(wasDone(u.uid)).slice(4) }) : isNewUnit(u) ? el('span', { class: 'chip c-dsa', text: 'New' }) : null,
       el('div', { class: 'row wrap', style: { gap: '6px' } }, [kchip(u.kind), el('span', { class: 'chip ' + modColor(u.mid), style: { background: 'transparent', border: '1px solid currentColor' }, text: modLabel(u.mid) }), el('span', { class: 'mins', text: u.mins + ' min' }), opts.day ? el('span', { class: 'muted', style: { fontSize: '13px' }, text: opts.day }) : null]),
       el('span', { class: 't', text: u.title }),
       u.goal ? el('span', { class: 'goal', text: u.goal }) : null,
@@ -197,7 +199,7 @@ function weekStrip(sc, k0) {
     const k = iso(d), us = sc.byDay[k] || [], off = Math.round((d - t) / 864e5), mins = us.reduce((a, u) => a + u.mins, 0);
     return el('a', { class: 'wkday' + (k === sc.today ? ' today' : '') + (k === k0 ? ' sel' : '') + (off < 0 ? ' past' : ''), href: '#/today/' + off, 'aria-label': dayName(k) + ' ' + shortDate(k) }, [
       el('div', { class: 'row' }, [el('b', { class: 'grow', text: DN[(d.getDay() + 6) % 7].slice(0, 3) + ' ' + d.getDate() }), el('span', { class: 's', text: mins + '/' + capOf(d) })]),
-      el('div', { class: 'stack', style: { gap: '3px' } }, us.length ? us.map(u => el('span', { class: 'wu' + (u.isDone ? ' ok' : ''), title: u.title, text: (u.isDone ? '✓ ' : '') + (KIND[u.kind] || [u.kind])[0] + ' · ' + u.title })) : [el('span', { class: 's', text: off < 0 ? (sc.missed.includes(k) ? 'Missed · moved to today' : '—') : 'free' })])]);
+      el('div', { class: 'stack', style: { gap: '3px' } }, us.length ? us.map(u => el('span', { class: 'wu' + (u.isDone ? ' ok' : ''), title: u.title, text: (u.isDone ? '✓ ' : '') + (KIND[u.kind] || [u.kind])[0] + ' · ' + u.title })) : [el('span', { class: 's', text: off < 0 ? (sc.missed.includes(k) ? 'Missed · moved to today' : 'Before you began') : 'free' })])]);
   }));
 }
 
@@ -242,6 +244,7 @@ function vToday(off) {
   shell(off === 0 ? 'Today' : 'Plan · ' + shortDate(k), 'Module ' + modLabel(m) + ' · ' + weekText(k), [
     el('div', { class: 'stack', style: { gap: '4px' } }, [el('h1', { text: (hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + ', ' + userName() }), el('span', { class: 'muted hsub', text: (+S.settings.capWd || 60) + ' min on weekdays, ' + (+S.settings.capWe || 120) + ' on Saturday and Sunday (change in Settings). Coding practice runs on its own track.' })]),
     hero,
+    off === 0 ? whatsNewCard() : null,
     el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [off === 0 ? coachCard() : null, modCard, codingTrack(off), desCard])]),
     el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'This week' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'minutes planned / budget · tap a day to see it' }), el('button', { class: 'btn sm', onclick: exportIcs, text: 'Add to calendar' })]), weekStrip(sc, k)])]);
 }
@@ -285,7 +288,7 @@ function vPathMap() {
     return el('div', { class: 'pcard' + (isCur ? ' cur' : '') + (fin ? ' fin' : ''), 'data-mid': x }, [
       el('div', { class: 'band a-' + trackOf(x) }, topicArt(x, isCur ? 96 : 64)),
       el('div', { class: 'bd' }, [
-        el('div', { class: 'row', style: { gap: '6px' } }, [el('span', { class: 'chip ' + modColor(x), text: modLabel(x) }), fin ? el('span', { class: 'tag', text: '✓ Done' }) : isCur ? el('span', { class: 'tag', text: 'You are here' }) : null]),
+        el('div', { class: 'row', style: { gap: '6px' } }, [el('span', { class: 'chip ' + modColor(x), text: modLabel(x) }), fin ? el('span', { class: 'tag', text: '✓ Done' }) : isNewMod(x) ? el('span', { class: 'tag tnew', text: 'New' }) : modUpdated(x) ? el('span', { class: 'tag tupd', text: 'Updated' }) : isCur ? el('span', { class: 'tag', text: 'You are here' }) : null]),
         el('a', { class: 'pt', href: '#/path/' + x, text: modTitle(x) }),
         el('div', { class: 'bar', role: 'img', 'aria-label': s.done + ' of ' + s.n + ' steps done' }, el('i', { style: { width: pct + '%' } })),
         el('span', { class: 's', text: s.done + '/' + s.n + ' steps · ' + weeksText(s.n ? s : null) }),
@@ -491,4 +494,78 @@ function programCard() {
     el('div', { class: 'bar' }, el('i', { style: { width: Math.round(100 * dm / Math.max(1, mins)) + '%' } })),
     el('span', { class: 'lbl', text: 'Last 12 weeks · minutes studied per day' }), el('div', { class: 'heat', 'aria-label': 'Study activity, last 12 weeks' }, cells),
     el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Columns are weeks, rows are Monday to Sunday. Darker means more planned minutes ticked; the lightest shade also marks days with only coding practice, a quiz or a mock.' })]);
+}
+
+/* ---------------- content updates: new steps appear, changed steps you finished come back, nothing you did is deleted ----------------
+   Every step, exercise and quiz has a fingerprint of its content. The fingerprint of the version you finished is stored in S.cv.
+   When an update changes something you finished, the step goes back to not done, your old completion moves to S.archive,
+   and a "What's new" note on Today lists it with every new module and step. */
+const RECENT_MODS = ['a04', 'a05']; /* added in 1.9.0: shown as new to anyone who had progress before this tracker existed */
+function fnv(t) { let h = 0x811c9dc5; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
+function tracked(u) { return u.kind !== 'news' && u.kind !== 'cc' && u.kind !== 'project'; } /* news changes weekly by design; graded and project work keeps its own record */
+function unitHash(u) { return fnv(u.title + '|' + (u.src != null ? u.src : u.goal + '|' + u.done)); }
+function exHash(x) { return fnv((x.p || '') + '|' + JSON.stringify(x.tests || x.sol || '')); }
+function wasDone(uid) { const a = S.archive && S.archive.done[uid]; return a ? (typeof a.at === 'string' ? a.at : iso(new Date(a.when || Date.now()))) : null; }
+function openUpdates() { return (S.updates || []).filter(x => !x.read); }
+function isNewUnit(u) { return openUpdates().some(x => x.items.some(i => i.uid === u.uid || (i.kind === 'module' && i.mid === u.mid))); }
+function isNewMod(m) { return openUpdates().some(x => x.items.some(i => i.kind === 'module' && i.mid === m)); }
+function modUpdated(m) { return openUpdates().some(x => x.items.some(i => i.mid === m && i.kind !== 'module')); }
+function reconcileContent() {
+  const units = [].concat(...MODS_ALL.map(modUnits)), had = Object.keys(S.done || {}).length + Object.keys(S.solved || {}).length > 0;
+  S.archive = S.archive || { done: {}, solved: {}, quiz: {} };
+  if (!S.cv) {
+    /* first run with the tracker: what you finished so far is the starting point, so nothing is flagged by mistake */
+    S.cv = { units: {}, ex: {}, known: {} };
+    units.forEach(u => { if (doneDate(u) && tracked(u)) S.cv.units[u.uid] = unitHash(u); if (!had || !RECENT_MODS.includes(u.mid)) S.cv.known[u.uid] = 1; });
+    Object.keys(S.solved || {}).forEach(id => { const x = findQ(id); if (x) S.cv.ex[id] = exHash(x); });
+    if (!had) { save(false); return []; }
+  }
+  const cv = S.cv, items = [], today = iso(new Date());
+  /* 1. new steps: a whole new module, or new steps inside a module you know */
+  const fresh = units.filter(u => !cv.known[u.uid]), byMod = {};
+  fresh.forEach(u => (byMod[u.mid] = byMod[u.mid] || []).push(u));
+  Object.entries(byMod).forEach(([m, us]) => {
+    const all = units.filter(u => u.mid === m).every(u => !cv.known[u.uid]);
+    if (all) items.push({ kind: 'module', mid: m, title: 'New module ' + modLabel(m) + ': ' + modTitle(m), href: '#/path/' + m });
+    else us.forEach(u => items.push({ kind: 'new', mid: m, uid: u.uid, title: 'New step in ' + modLabel(m) + ': ' + u.title, href: u.href }));
+  });
+  /* 2. steps you finished whose content changed: back to not done, the old completion kept in the archive */
+  units.forEach(u => {
+    const h = cv.units[u.uid]; if (!h || !tracked(u)) return;
+    const now = unitHash(u); if (now === h) return;
+    delete cv.units[u.uid];
+    if (!doneDate(u) && !S.done[u.uid]) return;
+    S.archive.done[u.uid] = { at: S.done[u.uid] || today, h, when: Date.now() };
+    delete S.done[u.uid];
+    if (u.kind === 'quiz' && S.quiz[qk(u.mid)]) { S.archive.quiz[qk(u.mid)] = S.quiz[qk(u.mid)]; delete S.quiz[qk(u.mid)]; } /* your answers and score are kept, a fresh attempt starts */
+    items.push({ kind: 'updated', mid: u.mid, uid: u.uid, title: 'Updated in ' + modLabel(u.mid) + ': ' + u.title, href: u.href });
+  });
+  /* 3. exercises you solved whose prompt or tests changed: unsolved again, your code stays in the editor */
+  Object.keys(S.solved || {}).forEach(id => {
+    const x = findQ(id), h = cv.ex[id]; if (!x) return;
+    if (!h) { cv.ex[id] = exHash(x); return; }
+    if (exHash(x) === h) return;
+    S.archive.solved[id] = { h, when: Date.now() }; delete S.solved[id]; delete cv.ex[id];
+    items.push({ kind: 'exercise', mid: x.m || '', id, title: 'Exercise changed: ' + x.t, href: '#/' + kindOf(id) + '/' + id });
+  });
+  units.forEach(u => { cv.known[u.uid] = 1; });
+  if (items.length) { S.updates = [{ at: Date.now(), ver: VERSION, items, read: false }].concat(S.updates || []).slice(0, 10); }
+  save(false);
+  return items;
+}
+function whatsNewCard() {
+  const ups = openUpdates(); if (!ups.length) return null;
+  const items = [].concat(...ups.map(x => x.items)), mods = items.filter(i => i.kind === 'module'), back = items.filter(i => i.kind === 'updated' || i.kind === 'exercise'), adds = items.filter(i => i.kind === 'new');
+  const say = [mods.length && mods.length + ' new module' + (mods.length > 1 ? 's' : ''), adds.length && adds.length + ' new step' + (adds.length > 1 ? 's' : ''), back.length && back.length + ' updated step' + (back.length > 1 ? 's' : '') + ' to look at again'].filter(Boolean).join(' · ');
+  const row = i => el('a', { class: 'item', href: i.href }, [el('span', { class: 'chip ' + (i.kind === 'module' || i.kind === 'new' ? 'c-dsa' : 'c-ai'), text: i.kind === 'module' || i.kind === 'new' ? 'New' : 'Updated' }), el('span', { class: 'grow t', text: i.title.replace(/^(New module |New step in |Updated in |Exercise changed: )/, '') }), el('span', { class: 's', text: 'Open ›' })]);
+  const shown = mods.concat(back, adds), more = shown.length - 6;
+  /* one line on Today so the plan stays on the first screen; the list opens in place */
+  const body = el('div', { class: 'stack', id: 'wn_list', hidden: 'hidden', style: { gap: '8px' } }, [
+    el('span', { class: 'muted', style: { fontSize: '14px' }, text: back.length ? 'Nothing you did is lost: steps you had finished that changed are marked Updated, and your earlier work is kept.' : 'They are added to your plan; nothing you did changes.' }),
+    el('div', { class: 'list' }, shown.slice(0, 6).map(row)),
+    more > 0 ? el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'and ' + more + ' more, tagged New or Updated on the Path.' }) : null]);
+  const see = el('button', { class: 'btn sm', 'aria-expanded': 'false', 'aria-controls': 'wn_list', onclick: () => { body.hidden = !body.hidden; see.setAttribute('aria-expanded', String(!body.hidden)); see.textContent = body.hidden ? 'See' : 'Hide'; }, text: 'See' });
+  return el('section', { class: 'card stack whatsnew', role: 'status' }, [
+    el('div', { class: 'row', style: { gap: '8px' } }, [el('span', { class: 'grow' }, [el('b', { text: 'What is new: ' }), say]), see, el('button', { class: 'btn sm', onclick: () => { (S.updates || []).forEach(x => { x.read = true; }); save(); route(); }, text: 'Got it' })]),
+    body]);
 }

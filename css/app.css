@@ -425,3 +425,9 @@ a.avatar,a.avatar:visited,.avatar{color:var(--card)!important} /* card colour: w
 @media (max-width:560px){.phero{display:none}.pquick{gap:8px}.pquick .qa{min-height:0;flex-direction:row;align-items:center;gap:10px;padding:10px 12px}.pquick .qa .s{display:none}.pquick .qmode{padding:6px 6px 6px 12px}}
 @media (prefers-color-scheme: dark){:root:not([data-theme=light]) .tabs button[aria-selected=true]{background:var(--teal);border-color:var(--teal);color:var(--card)}}
 :root[data-theme=dark] .tabs button[aria-selected=true]{background:var(--teal);border-color:var(--teal);color:var(--card)}
+/* content updates */
+.whatsnew{border-color:var(--teal-l)}
+.pcard .tag.tnew{background:var(--teal-l);color:var(--teal-d)}
+.pcard .tag.tupd{background:var(--amber-l);color:var(--amber-d)}
+.whatsnew{padding:10px 12px;gap:10px}
+.whatsnew [hidden]{display:none}

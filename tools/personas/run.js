@@ -396,7 +396,7 @@ async function run(P) {
     });
     await task('check the week strip for the missed days', async () => {
       const t = await p.$$eval('.wkday.past', a => a.map(x => x.innerText));
-      if (t.some(x => /—/.test(x))) note('Today week strip', 'clarity', 'a missed day shows only a dash');
+      if (t.some(x => /—/.test(x) || (!/Missed|Before you began|✓/.test(x) && /0\//.test(x)))) note('Today week strip', 'clarity', 'a past day does not say what happened to it');
       return true;
     });
     await task('catch up on a skipped DSA problem first', async () => {

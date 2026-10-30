@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.9.0';
+const VERSION = '1.10.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -457,7 +457,7 @@ function vWork(kind, id, mode) {
       S.runs[qid] = runs() + 1;
       S.seen = S.seen || {}; S.seen[qid] = Date.now(); /* when you last worked on it, for the nightly coach */
       if (r.pass) {
-        const first = !S.solved[qid]; S.solved[qid] = 1;
+        const first = !S.solved[qid]; S.solved[qid] = 1; if (S.cv) S.cv.ex[qid] = exHash(findQ(qid)); /* the version you solved */
         if (review) {
           const lapsed = nh() > H.length; revPut(qid, lapsed ? 0 : rv.box + 1); review = false;
           const nr = S.rev[qid];
@@ -1120,6 +1120,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 window.addEventListener('keydown', e => { if (e.key === '`' && (e.ctrlKey || e.metaKey)) { const b = Array.from(document.querySelectorAll('.otab')).find(x => x.textContent === 'Terminal'); if (b) { e.preventDefault(); b.click(); } } });
 (async () => {
   try { await loadData(); } catch (e) { $('#root').innerHTML = '<div style="padding:24px">Could not load the question bank. Check your connection and reload.</div>'; return; }
+  try { reconcileContent(); } catch (e) { console.error(e); } /* an update never blocks the app */
   route();
   checkVersion(true);
   setInterval(() => checkVersion(), 30 * 6e4);
