@@ -346,7 +346,7 @@ async function T(name, fn, opt) {
 
   await T('git: lesson commands and mark done', async p => {
     await go(p, '#/git/5', 700);
-    ok(/\$L setup 5/.test(await text(p, '#page')), 'setup command missing');
+    ok(await p.$('a[href="#/terminal/git/5"]:has-text("Practise in the terminal")') && !/codespaces/i.test(await p.evaluate(() => document.querySelector('#page').innerHTML)), 'in-app terminal button missing, or the lesson still sends you to Codespaces');
     await p.click('button:has-text("Mark this lesson done")'); await p.waitForTimeout(300);
     ok(Object.keys((await state(p)).done).some(k => k.endsWith(':git')), 'git lesson not saved');
   });
