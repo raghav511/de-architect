@@ -1,9 +1,11 @@
 {
-  "version": "1.15.1",
+  "version": "1.15.2",
   "date": "2026-10-30",
   "notes": [
-    "Search, menus and dialogs close when you move to another screen instead of staying on top of it",
-    "If a screen fails to load (often a dropped connection), there is now a Reload button; your progress is saved",
-    "Test: search closes on navigation"
+    "Terminal: fixed a bug where the terminal could end up off screen after the page redrew (for example after the update check), so typing did nothing",
+    "Terminal: start-up shows its progress in the terminal (downloading files, seconds elapsed); anything you type before the prompt is kept and run once Linux is ready",
+    "Terminal: the files the Git labs need download in parallel, with retries, while Linux boots, so a slow download no longer stalls git",
+    "Check my fix and Set up wait for Linux (they are disabled until it is ready), clear any half-typed command first, and a Restart the terminal button appears if Linux takes longer than 3 minutes",
+    "Tests: typing before Linux is ready, and Check with a half-typed line"
   ]
 }

@@ -55,6 +55,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.15.2: terminal fixes from the user's report (could not type, Check hung): the terminal attaches to the box on screen after a redraw; start-up progress shows in the terminal; typing before the prompt is kept; the 34 files a lab run reads (`vm/sys/warm.json`, recorded from a real run) download in parallel with retries during boot; Check clears a half-typed line; a Restart button after 3 minutes.
 - 1.15.1: search and dialogs close when you change screen; the error page has a Reload button (from the screen-map crawl).
 - 1.15.0: module 6's CDC lab in the browser (change events by LSN, reconciliation, hourly drift, propose-approve-execute).
 - 1.14.0: module 5's streaming lab in the browser (watermark windows, exactly-once after a crash, dead-letter queue, schema compatibility); the phone terminal no longer scrolls sideways; the size budget counts only the app's own files.
@@ -70,4 +71,5 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 - More in-app system labs: modules 2 (Iceberg tables), 3 (Spark under load), 7 (cloud) and 8 (Delta and Snowflake), where they still assume Docker or a cloud account.
 - iPhone Safari pass with mobile-mcp (separate session): blocked by machine load; avoid running Playwright while it retries.
+- Merging: `main` requires one approving review; Claude cannot remove it or bypass it (the auto-mode safety check blocks both), so PRs need the user's merge until the rule is removed in GitHub settings.
 - Then: project environments and the Claude Code track inside the app (agent lab using the user's API key).

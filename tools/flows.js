@@ -588,6 +588,22 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => [...document.querySelectorAll('.termside .ok')].length === 3), 'expected three ✓ lines');
   });
 
+  await T('terminal: shows start-up progress, keeps what you type before Linux is ready, Check waits instead of hanging', async p => {
+    await go(p, '#/terminal', 900);
+    await p.waitForSelector('.xthold .xterm', { timeout: 60000 });
+    await p.waitForTimeout(2500);
+    ok(await p.evaluate(() => /Starting Linux/.test(Array.from({ length: VM.term.buffer.active.length }, (_, i) => VM.term.buffer.active.getLine(i).translateToString(true)).join(' '))), 'no start-up message in the terminal');
+    await p.click('.xthold'); await p.keyboard.type('echo typed-$((40+2))'); await p.keyboard.press('Enter');
+    await p.waitForFunction(() => VM.ready, null, { timeout: 300000 });
+    await p.waitForFunction(() => /typed-42/.test(VM.log), null, { timeout: 60000 });
+    await go(p, '#/terminal/git/1', 900);
+    await p.waitForFunction(() => /Lab 1 is ready/.test(document.querySelector('.termside [role=status]').textContent), null, { timeout: 180000 });
+    await p.click('.xthold'); await p.keyboard.type('git sta'); /* half-typed, then Check */
+    await p.click('button:has-text("Check my fix")');
+    await p.waitForFunction(() => /passed|Not yet|did not/.test(document.querySelector('.termside [role=status]').textContent), null, { timeout: 120000 });
+    ok(/Not yet/.test(await text(p, '.termside [role=status]')), 'Check did not finish with half-typed text on the line: ' + await text(p, '.termside [role=status]'));
+  });
+
   await T('terminal on iPhone: the page never scrolls sideways', async p => {
     await go(p, '#/terminal', 900);
     await p.waitForSelector('.xthold', { timeout: 30000 }); await p.waitForTimeout(4000);
