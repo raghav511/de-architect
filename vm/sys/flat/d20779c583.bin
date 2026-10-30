@@ -1,0 +1,12 @@
+[user]
+	name = Learner
+	email = learner@data-architect.local
+[init]
+	defaultBranch = main
+[core]
+	pager = cat
+	editor = vi
+[advice]
+	detachedHead = true
+[color]
+	ui = auto

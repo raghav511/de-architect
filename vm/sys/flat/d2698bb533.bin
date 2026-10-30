@@ -1,0 +1,8 @@
+#!/bin/sh
+# Data Architect terminal: one shell on the serial line, restarted if you exit
+mkdir -p /dev/pts /tmp /run; mount -t devpts devpts /dev/pts 2>/dev/null; mount -t tmpfs tmpfs /tmp; mount -t tmpfs tmpfs /run
+hostname data-architect
+export HOME=/root TERM=xterm-256color LANG=C.UTF-8 PAGER=cat GIT_PAGER=cat EDITOR=vi
+cd /root
+echo "DA-READY"
+while true; do setsid -c /bin/bash -l </dev/ttyS0 >/dev/ttyS0 2>&1; echo; echo "(new shell)"; done

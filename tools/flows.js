@@ -566,6 +566,21 @@ async function T(name, fn, opt) {
     ok(v >= 4, 'video topics have no small watch links: ' + v);
   });
 
+  await T('terminal: a real Linux boots in the app; Git lab 1 sets up, a fix typed in the shell passes Check, the step ticks', async p => {
+    await go(p, '#/git/1', 900);
+    await p.click('a:has-text("Practise in the terminal")');
+    await p.waitForFunction(() => VM.ready, null, { timeout: 240000 });
+    await p.waitForFunction(() => /Lab 1 is ready/.test(document.querySelector('.termside [role=status]').textContent), null, { timeout: 120000 });
+    ok(await p.evaluate(() => /TASK: the last commit message/.test(VM.term.buffer.active ? Array.from({ length: VM.term.buffer.active.length }, (_, i) => (VM.term.buffer.active.getLine(i) || { translateToString: () => '' }).translateToString()).join('\n') : '')), 'the lab task is not shown in the terminal');
+    await p.click('.xthold'); await p.keyboard.type('git add dag.py && git commit -q --amend -m "add pipeline and dag"'); await p.keyboard.press('Enter');
+    await p.waitForTimeout(3000);
+    await p.click('button:has-text("Check my fix")');
+    await p.waitForFunction(() => /passed|Not yet|did not/.test(document.querySelector('.termside [role=status]').textContent), null, { timeout: 120000 });
+    ok(/passed/.test(await text(p, '.termside [role=status]')), 'check: ' + await text(p, '.termside'));
+    ok(await p.evaluate(() => !!S.gitlab[1] && schedule().units.find(u => u.kind === 'git' && /^Git 1:/.test(u.title)).isDone), 'Git step not ticked');
+    ok(await p.evaluate(() => [...document.querySelectorAll('.termside .ok')].length === 3), 'expected three ✓ lines');
+  });
+
   await T('AI data stack: A4 and A5 labs run in the browser and tick their Path steps', async p => {
     await go(p, '#/path/a04', 900);
     ok(/LLMs meet the warehouse/.test(await text(p, '#page')) && /Guard the SQL/.test(await text(p, '#page')), 'A4 module or its lab steps missing');

@@ -88,7 +88,7 @@ function modUnits(m) {
   const learn = U.filter(u => u.kind === 'learn'); if (learn.length) learn[learn.length - 1].links.push(['Readings', '#/learn/' + m + '/readings']);
   if (isCC(m)) return U; /* no Git, news or design steps inside the Claude Code track */
   const g = DATA.git.length ? DATA.git[MODS.indexOf(m) % DATA.git.length] : null;
-  if (g) U.splice(lastLearn + 1, 0, { mid: m, uid: m + ':git', kind: 'git', mins: 20, title: 'Git ' + g.n + ': ' + g.title, goal: g.why.replace(/`/g, ''), done: 'bash labs/git/gitlab.sh check ' + g.n + ' prints PASS for every line.', href: '#/git/' + g.n, cta: 'Open', links: [] });
+  if (g) U.splice(lastLearn + 1, 0, { mid: m, uid: m + ':git', kind: 'git', mins: 20, title: 'Git ' + g.n + ': ' + g.title, goal: g.why.replace(/`/g, ''), done: 'Check my fix in the in-app terminal passes every line.', href: '#/git/' + g.n, cta: 'Open', links: [['Terminal', '#/terminal/git/' + g.n]], auto: () => !!(S.gitlab || {})[g.n] });
   const D = DATA.design[m], qi = U.findIndex(u => u.kind === 'quiz'), at = qi < 0 ? U.length : qi;
   const extra = [];
   if (D) extra.push({ mid: m, uid: m + ':design', kind: 'design', mins: 40, title: 'Design problem: ' + D.title, goal: D.prompt, done: D.deliverable, href: '#/design/' + m, cta: 'Design', links: [] });
@@ -379,10 +379,9 @@ function vGit(n) {
       el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Lesson ' + g.n + ' of ' + G.length + (u ? ' · module ' + modLabel(u.mid) + ' · 20 min' : '') }), el('h1', { style: { fontSize: '26px' }, text: g.title }), el('div', { html: mdi(g.why) })]),
       el('section', { class: 'card pad stack' }, [el('h3', { text: 'The commands' }), el('pre', { class: 'schema', style: { whiteSpace: 'pre-wrap' }, text: g.commands })]),
       el('section', { class: 'card pad stack', style: { borderColor: '#BFE3D6' } }, [el('h3', { text: 'Practise on a real broken repo' }),
-        el('span', { style: { fontSize: '14.5px' }, text: 'The lab script builds a small repository with the problem already in it, prints your task, and checks your fix. Run it in any Codespace of this repo (iPad, iPhone or Mac) or in a clone on your MacBook.' }),
-        el('pre', { class: 'schema', style: { whiteSpace: 'pre-wrap' }, text: 'L=$PWD/labs/git/gitlab.sh     # run this line in the repo folder\nbash $L setup ' + g.n + '    # builds ~/git-labs/' + nn + ' and prints the task\ncd ~/git-labs/' + nn + (g.n === 11 ? '/me' : '') + '\n# … fix it with the commands above …\nbash $L check ' + g.n + '    # PASS / FAIL per check' }),
-        el('div', { class: 'row wrap' }, [el('a', { class: 'btn pri', href: 'https://codespaces.new/raghav511/de-architect?devcontainer_path=.devcontainer/ai/devcontainer.json', target: '_blank', rel: 'noopener', text: 'Open a Codespace (2-core is enough)' }), u ? el('button', { class: 'btn', onclick: () => toggleUnit(u), text: u.isDone ? 'Mark not done' : 'Mark this lesson done' }) : null]),
-        el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'In a Codespace the terminal already starts in the repo folder (/workspaces/de-architect). On a Mac, clone first: git clone https://github.com/raghav511/de-architect && cd de-architect' })]),
+        el('span', { style: { fontSize: '14.5px' }, text: 'A real Linux with git runs inside this app. The lab builds a small repository with the problem already in it, prints your task, and checks your fix. Nothing to install, on Mac, iPad or iPhone.' }),
+        el('div', { class: 'row wrap' }, [el('a', { class: 'btn pri', href: '#/terminal/git/' + g.n, text: (S.gitlab || {})[g.n] ? 'Open the lab again (passed)' : 'Practise in the terminal' })]),
+        el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'The first start downloads about 10 MB and takes a few seconds; after that it also works offline.' })]),
       el('section', { class: 'card pad stack' }, [el('h3', { text: 'The mistake people make' }), el('div', { html: mdi(g.mistake) }), el('h3', { text: 'Interview question' }), el('div', { html: mdi(g.interview) })])]),
     el('section', { class: 'card pad stack' }, [el('h3', { text: 'All Git lessons' }), list])])], { back: '#/today' });
 }
