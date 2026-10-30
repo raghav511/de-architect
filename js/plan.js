@@ -380,7 +380,7 @@ function vGit(n) {
       el('section', { class: 'card pad stack' }, [el('h3', { text: 'The commands' }), el('pre', { class: 'schema', style: { whiteSpace: 'pre-wrap' }, text: g.commands })]),
       el('section', { class: 'card pad stack', style: { borderColor: '#BFE3D6' } }, [el('h3', { text: 'Practise on a real broken repo' }),
         el('span', { style: { fontSize: '14.5px' }, text: 'A real Linux with git runs inside this app. The lab builds a small repository with the problem already in it, prints your task, and checks your fix. Nothing to install, on Mac, iPad or iPhone.' }),
-        el('div', { class: 'row wrap' }, [el('a', { class: 'btn pri', href: '#/terminal/git/' + g.n, text: (S.gitlab || {})[g.n] ? 'Open the lab again (passed)' : 'Practise in the terminal' })]),
+        el('div', { class: 'row wrap' }, [el('a', { class: 'btn pri', href: '#/terminal/git/' + g.n, text: (S.gitlab || {})[g.n] ? 'Open the lab again (passed)' : 'Practise in the terminal' }), u ? el('button', { class: 'btn', onclick: () => toggleUnit(u), text: u.isDone ? 'Mark not done' : 'Mark this lesson done' }) : null]),
         el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'The first start downloads about 10 MB and takes a few seconds; after that it also works offline.' })]),
       el('section', { class: 'card pad stack' }, [el('h3', { text: 'The mistake people make' }), el('div', { html: mdi(g.mistake) }), el('h3', { text: 'Interview question' }), el('div', { html: mdi(g.interview) })])]),
     el('section', { class: 'card pad stack' }, [el('h3', { text: 'All Git lessons' }), list])])], { back: '#/today' });
