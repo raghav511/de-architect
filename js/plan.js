@@ -157,7 +157,7 @@ function unitCard(u, opts) {
     el('div', { class: 'grow stack', style: { gap: '5px', minWidth: 0 } }, [
       opts.cur ? el('span', { class: 'upn', text: 'Up next' }) : null,
       !u.isDone && wasDone(u.uid) ? el('span', { class: 'chip c-ai', title: 'You finished an earlier version of this step on ' + shortDate(wasDone(u.uid)) + '. It has changed.', text: 'Updated · finished before ' + shortDate(wasDone(u.uid)).slice(4) }) : isNewUnit(u) ? el('span', { class: 'chip c-dsa', text: 'New' }) : null,
-      el('div', { class: 'row wrap', style: { gap: '6px' } }, [kchip(u.kind), el('span', { class: 'chip ' + modColor(u.mid), style: { background: 'transparent', border: '1px solid currentColor' }, text: modLabel(u.mid) }), el('span', { class: 'mins', text: u.mins + ' min' }), opts.day ? el('span', { class: 'muted', style: { fontSize: '13px' }, text: opts.day }) : null]),
+      el('div', { class: 'row wrap', style: { gap: '6px' } }, [kchip(u.kind), opts.from ? el('span', { class: 'chip c-ai', text: 'from ' + opts.from }) : null, el('span', { class: 'chip ' + modColor(u.mid), style: { background: 'transparent', border: '1px solid currentColor' }, text: modLabel(u.mid) }), el('span', { class: 'mins', text: u.mins + ' min' }), opts.day ? el('span', { class: 'muted', style: { fontSize: '13px' }, text: opts.day }) : null]),
       el('span', { class: 't', text: u.title }),
       u.goal ? el('span', { class: 'goal', text: u.goal }) : null,
       u.done && !opts.compact ? el('span', { class: 'dw' }, [el('b', { text: 'Done when: ' }), u.done]) : null,
@@ -173,42 +173,57 @@ function unitCard(u, opts) {
 }
 /* the rest of the day, shown inside Today's plan so nothing sits outside it: the coding track and interview practice.
    Each row ticks itself (problem solved, mock submitted); a manual tick is kept per day in S.xdone. */
+/* the day's other two groups. Each has its own minutes (Profile › Plan), so carried work never makes the day longer.
+   Newest work comes first; leftovers from earlier this week follow; whatever doesn't fit, and anything from an earlier
+   week's set, waits for the weekend's catch-up minutes instead of mixing into the new week's theme. */
+function budgets(d) { const we = d.getDay() === 0 || d.getDay() === 6, n = (v, x) => +v > 0 ? +v : x; return { code: we ? n(S.settings.codeWe, 80) : n(S.settings.codeWd, 50), iv: we ? n(S.settings.ivWe, 45) : n(S.settings.ivWd, 30) }; }
+const SQMAP = [0, null, 1, 2, 3, 4, null], SPMAP = [null, 0, 1, 2, 3, null, 4];
+function dayProblems(ci) {
+  const w = Math.floor(ci / 7) % 12 + 1, d = ci % 7, out = [];
+  const x = byWeek(DATA.dsa, w)[d], q = SQMAP[d] == null ? null : byWeek(DATA.sql, w)[SQMAP[d]], p = SPMAP[d] == null ? null : byWeek(DATA.spark, w)[SPMAP[d]];
+  if (x) out.push({ id: x.id, chip: 'dsa', t: x.t, sub: 'DSA · ' + WEEKS[w - 1][4] + ' · ' + x.lv, mins: 20, href: '#/dsa/' + x.id, auto: !!S.solved[x.id] });
+  if (q) out.push({ id: q.id, chip: 'sql', t: q.t, sub: 'SQL · ' + (q.k === 'O' ? 'optimize' : 'write') + ' · ' + q.lv, mins: 15, href: '#/sql/' + q.id, auto: !!S.solved[q.id] });
+  if (p) out.push({ id: p.id, chip: 'spark', t: p.t, sub: 'PySpark · ' + (p.k === 'O' ? 'optimize' : 'write') + ' · ' + p.lv, mins: 15, href: '#/spark/' + p.id, auto: !!S.solved[p.id] });
+  return out;
+}
+/* take items in order until the minutes run out; finished items always show */
+function fill(list, cap) { let used = 0; const now = [], later = []; list.forEach(x => { if (x.auto || used + x.mins <= cap) { now.push(x); used += x.mins; } else later.push(x); }); return [now, later, used]; }
 function codingItems(off) {
-  const ci = dayIndex() + (off || 0), w = Math.floor(ci / 7) % 12 + 1, d = ci % 7;
-  const ds = byWeek(DATA.dsa, w), qs = byWeek(DATA.sql, w), ps = byWeek(DATA.spark, w);
-  const SQ = [0, null, 1, 2, 3, 4, null], SP = [null, 0, 1, 2, 3, null, 4];
-  const items = [];
-  const due = off ? [] : revDue();
-  due.slice(0, 3).forEach(x => items.push({ id: 'rev:' + x.id, chip: kindOf(x.id), t: x.t, sub: 'Review · ' + revText(S.rev[x.id]), mins: 10, href: '#/' + kindOf(x.id) + '/' + x.id + '/review', auto: false }));
-  /* today (not a day you browse to) catches up: the earliest unsolved problem from this week's earlier days comes first */
-  const pick = (list, map) => { let j = d; if (!off) for (let i = 0; i < d; i++) { const x = list[map ? map[i] : i]; if ((map ? map[i] != null : true) && x && !S.solved[x.id]) { j = i; break; } } const x = list[map ? map[j] : j]; return (map ? map[j] != null : true) && x ? [x, j < d ? ' · from ' + DN[j].slice(0, 3) : ''] : [null, '']; };
-  const [dx, dl] = pick(ds), [qx, ql] = pick(qs, SQ), [px, pl] = pick(ps, SP);
-  if (dx) items.push({ id: dx.id, chip: 'dsa', t: dx.t, sub: 'DSA · ' + WEEKS[w - 1][4] + ' · ' + dx.lv + dl, mins: 20, href: '#/dsa/' + dx.id, auto: !!S.solved[dx.id] });
-  if (qx) items.push({ id: qx.id, chip: 'sql', t: qx.t, sub: 'SQL · ' + (qx.k === 'O' ? 'optimize' : 'write') + ' · ' + qx.lv + ql, mins: 15, href: '#/sql/' + qx.id, auto: !!S.solved[qx.id] });
-  if (px) items.push({ id: px.id, chip: 'spark', t: px.t, sub: 'PySpark · ' + (px.k === 'O' ? 'optimize' : 'write') + ' · ' + px.lv + pl, mins: 15, href: '#/spark/' + px.id, auto: !!S.solved[px.id] });
-  return items;
+  const ci = dayIndex() + (off || 0), d = ci % 7, day = new Date(); day.setHours(0, 0, 0, 0); day.setDate(day.getDate() + (off || 0));
+  const cap = budgets(day).code, weekend = day.getDay() === 0 || day.getDay() === 6;
+  const today = dayProblems(ci);
+  if (off) return { now: fill(today, cap)[0], catchup: [], later: [] }; /* other days show their own planned problems */
+  const reviews = revDue().slice(0, 3).map(x => ({ id: 'rev:' + x.id, chip: kindOf(x.id), t: x.t, sub: 'Review · ' + revText(S.rev[x.id]), mins: 10, href: '#/' + kindOf(x.id) + '/' + x.id + '/review', auto: false }));
+  const carried = []; for (let i = d - 1; i >= 0; i--) dayProblems(ci - d + i).forEach(x => { if (!x.auto) carried.push(Object.assign(x, { from: DN[i].slice(0, 3) })); }); /* this week's earlier days, newest first */
+  const [now, laterWeek, used] = fill(reviews.concat(today, carried), cap); /* reviews due today, then today's set, then this week's leftovers */
+  /* earlier sets of this 12-week cycle: only on weekends, in their own block */
+  const older = []; for (let c = ci - d - 1; c >= Math.max(0, ci - d - 7 * 11) && c >= ci - (ci % 84); c--) dayProblems(c).forEach(x => { if (!x.auto) older.push(Object.assign(x, { from: 'set ' + (Math.floor(c / 7) % 12 + 1) })); });
+  const [catchup, laterOld] = weekend ? fill(older, Math.max(0, cap - used)) : [[], older];
+  return { now, catchup, later: laterWeek.concat(laterOld), olderWaiting: weekend ? laterOld.length : older.length };
 }
 function interviewItems(off, k) {
+  const day = new Date(k + 'T00:00:00'), cap = budgets(day).iv, cur = curMid();
   const [mins, nq] = MOCK_LEN[mockKind(k)], mk = (S.mock || {})[k];
-  const items = [{ id: 'mock', chip: 'test', t: (mockKind(k) === 'sunday' ? 'Sunday mock interview' : 'Daily mock interview') + ' · ' + nq + ' questions', sub: aiOn() ? 'Answer as you would out loud; your coach grades it tonight.' : 'Answer out loud or in writing, then compare with the model answers.', mins, href: '#/mock/' + k, auto: !!(mk && mk.sub) }];
-  const rq = recentOpen(); /* new questions stay on Today until you tick each one yourself */
-  if (!off && rq.length) items.push({ id: 'recent', chip: 'talk', t: rq.length + ' new interview question' + (rq.length > 1 ? 's' : '') + ' asked this week', sub: [...new Set(rq.map(q => q.company))].slice(0, 4).join(', ') + ' · tick each one when you can answer it', mins: Math.min(30, 5 * rq.length), href: '#/recent', auto: false, lock: true });
-  if (!off && aiOn()) { const c = coachData(); (c.focus || []).slice(0, 4).forEach((f, i) => items.push({ id: 'coach' + i + ':' + (c.generated_at || ''), chip: 'ai', t: f.title, sub: 'From your coach' + (f.why ? ' · ' + f.why : ''), mins: +f.mins || 10, href: /^#\//.test(f.href || '') ? f.href : '#/coach', auto: focusDone(f, c) })); }
-  return items;
+  const mock = { id: 'mock', chip: 'test', t: (mockKind(k) === 'sunday' ? 'Sunday mock interview' : 'Daily mock interview') + ' · ' + nq + ' questions', sub: 'Unanswered questions from your last mock on this module come first. ' + (aiOn() ? 'Your coach grades it tonight.' : 'Compare with the model answers.'), mins, href: '#/mock/' + k, auto: !!(mk && mk.sub) };
+  const coach = []; if (!off && aiOn()) { const c = coachData(); (c.focus || []).forEach((f, i) => coach.push({ id: 'coach' + i + ':' + (c.generated_at || ''), chip: 'ai', t: f.title, sub: 'From your coach' + (f.why ? ' · ' + f.why : ''), mins: Math.min(15, +f.mins || 10), href: /^#\//.test(f.href || '') ? f.href : '#/coach', auto: focusDone(f, c) })); }
+  /* company questions: this module's first, newest first; each ticked on its own page */
+  const rq = off ? [] : recentOpen().sort((a, b) => (b.mid === cur) - (a.mid === cur) || (b.found || '').localeCompare(a.found || '')).map(q => ({ id: 'rq:' + q.id, chip: q.TAG || 'talk', t: q.company + ': ' + q.Q.replace(/\*\*/g, '').slice(0, 90) + (q.Q.length > 90 ? '…' : ''), sub: 'Asked this week' + (q.mid === cur ? ' · this module' : ''), mins: 5, href: '#/recent', auto: false, lock: true }));
+  const [now, later] = fill([mock].concat(coach.filter(x => !x.auto), coach.filter(x => x.auto), rq), cap);
+  return { iv: now.filter(x => x.id === 'mock' || x.id.startsWith('rq:')), coach: now.filter(x => x.id.startsWith('coach')), later, laterQ: later.filter(x => x.id.startsWith('rq:')).length, laterC: later.filter(x => x.id.startsWith('coach')).length };
 }
 function xDone(k, x) { return x.auto || !!((S.xdone || {})[k] || {})[x.id]; }
-function xGroup(k, title, note, items) {
+function xGroup(k, title, note, items, id, extra, foot) {
   const mins = items.reduce((a, x) => a + x.mins, 0), dm = items.filter(x => xDone(k, x)).reduce((a, x) => a + x.mins, 0);
-  return el('div', { class: 'xgroup stack', style: { gap: '8px' } }, [
-    el('div', { class: 'row wrap xghead' }, [el('h3', { class: 'grow', text: title }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: dm + ' / ' + mins + ' min' })]),
-    note ? el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: note }) : null]
+  return el('div', { class: 'xgroup stack', id, style: { gap: '8px' } }, [
+    title ? el('div', { class: 'row wrap xghead' }, [el('h3', { class: 'grow', text: title }), items.length ? el('span', { class: 'muted', style: { fontSize: '14px' }, text: dm + ' / ' + mins + ' min' }) : null]) : null,
+    note ? el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: note }) : null, extra || null]
     .concat(items.map(x => { const dn = xDone(k, x); return el('div', { class: 'xit' + (dn ? ' done' : '') }, [
       el('button', { class: 'check', 'aria-pressed': String(dn), 'aria-label': (dn ? 'Mark not done: ' : 'Mark done: ') + x.t, onclick: () => {
         if (x.auto) { toast('This one ticks itself when you solve or submit it.'); return; }
-        if (x.lock) { toast('Open it and tick each question when you can answer it. This row turns green when all are done.'); location.hash = x.href; return; }
+        if (x.lock) { toast('Tick this question on its page when you can answer it out loud.'); location.hash = x.href; return; }
         const m = (S.xdone = S.xdone || {})[k] = S.xdone[k] || {}; if (m[x.id]) delete m[x.id]; else m[x.id] = 1; save(); route(); } }, dn ? svg(I.check, 16) : null),
-      el('a', { class: 'grow xlink', href: x.href }, [el('span', { class: 'row wrap', style: { gap: '6px' } }, [chip(x.chip), el('span', { class: 't', text: x.t })]), el('span', { class: 's', text: x.mins + ' min · ' + x.sub })]),
-      el('a', { class: 'btn sm', href: x.href, text: dn ? 'Open' : 'Start' })]); })));
+      el('a', { class: 'grow xlink', href: x.href }, [el('span', { class: 'row wrap', style: { gap: '6px' } }, [chip(x.chip), x.from ? el('span', { class: 'chip c-ai', text: 'from ' + x.from }) : null, el('span', { class: 't', text: x.t })]), el('span', { class: 's', text: x.mins + ' min · ' + x.sub })]),
+      el('a', { class: 'btn sm', href: x.href, text: dn ? 'Open' : 'Start' })]); }), foot ? [foot] : []));
 }
 function weekStrip(sc, k0) {
   const d0 = new Date(k0 + 'T00:00:00'); d0.setDate(d0.getDate() - ((d0.getDay() + 6) % 7));
@@ -229,10 +244,14 @@ function vToday(off) {
   const sc = schedule();
   const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + off);
   const k = iso(d), cap = capOf(d), us = sc.byDay[k] || [];
-  const pre = k < S.start, xc = pre ? [] : codingItems(off), xi = pre ? [] : interviewItems(off, k), xs = xc.concat(xi);
+  const pre = k < S.start, C = pre ? { now: [], catchup: [], later: [] } : codingItems(off), V = pre ? { iv: [], coach: [], later: [] } : interviewItems(off, k);
+  const xc = C.now.concat(C.catchup), xs = xc.concat(V.iv, V.coach);
+  /* remember the day a step was first planned, so a step carried to a later day says where it came from */
+  if (off === 0 && !pre) { S.planned = S.planned || {}; let ch = 0; us.forEach(u => { if (!u.isDone && !S.planned[u.uid]) { S.planned[u.uid] = k; ch = 1; } }); if (ch) save(false); }
+  const fromOf = u => { const p = (S.planned || {})[u.uid]; return p && p < k && !u.isDone ? shortDate(p).slice(0, 3) : ''; };
   const hourDone = us.filter(u => u.isDone).reduce((a, u) => a + u.mins, 0), hourMins = us.reduce((a, u) => a + u.mins, 0);
   const doneMins = hourDone + xs.filter(x => xDone(k, x)).reduce((a, x) => a + x.mins, 0), planMins = hourMins + xs.reduce((a, x) => a + x.mins, 0);
-  const m = (us.find(u => !isCC(u.mid)) || us[0] || {}).mid || sc.cur, M = MOD[m], sp = sc.span[m];
+  const m = (us.slice().reverse().find(u => !isCC(u.mid)) || us[0] || {}).mid || sc.cur, M = MOD[m], sp = sc.span[m];
   const hr = new Date().getHours();
   const nav = el('div', { class: 'row wrap daynav', style: { gap: '8px' } }, [
     el('a', { class: 'btn icon sm', href: '#/today/' + (off - 1), 'aria-label': 'Previous day' }, svg(I.back, 18)),
@@ -243,16 +262,33 @@ function vToday(off) {
     el('span', { class: 'chip ' + (cap > 60 ? 'c-arch' : 'c-core'), text: (cap >= 120 ? cap / 60 + '-hour' : cap + '-minute') + ' day' + (hourMins > cap ? ' · ' + (hourMins - cap) + ' min over' : '') })]);
   const pct = planMins ? Math.round(100 * doneMins / planMins) : 0, cur = off === 0 ? us.find(u => !u.isDone) : null;
   const ring = el('span', { class: 'ring', role: 'img', 'aria-label': pct + '% of the plan done', html: '<svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="17" fill="none" stroke="var(--line)" stroke-width="5"/><circle cx="21" cy="21" r="17" fill="none" stroke="var(--teal)" stroke-width="5" stroke-linecap="round" stroke-dasharray="' + (pct * 1.068).toFixed(1) + ' 107" transform="rotate(-90 21 21)"/></svg>' });
+  /* Reading and labs: program order, so an unfinished earlier module comes first in its own block (later reading builds on it) */
+  const reading = us.filter(u => u.kind !== 'quiz'), quiz = us.filter(u => u.kind === 'quiz');
+  const mods = [...new Set(reading.filter(u => !isCC(u.mid)).map(u => u.mid))], oldMod = mods.length > 1 ? mods[0] : null;
+  const card = u => unitCard(u, { fold: true, cur: u === cur, from: fromOf(u) });
+  const sec = (id, title, sub, kids) => el('div', { class: 'xgroup stack tsec', id, style: { gap: '8px' } }, [el('div', { class: 'row wrap xghead' }, [el('h3', { class: 'grow', text: title }), sub ? el('span', { class: 'muted', style: { fontSize: '14px' }, text: sub }) : null])].concat(kids));
+  const mm = xs => xs.filter(u => u.isDone).reduce((a, u) => a + u.mins, 0) + ' / ' + xs.reduce((a, u) => a + u.mins, 0) + ' min';
+  const readSec = pre ? null : sec('grp-hour', 'Reading and labs', mm(reading) + (quiz.length ? '' : ' of your ' + cap), (oldMod ? [el('span', { class: 'lbl', style: { color: 'var(--amber-d)' }, text: 'Finish ' + modLabel(oldMod) + ' first · later reading builds on it' })].concat(reading.filter(u => u.mid === oldMod).map(card), [el('span', { class: 'lbl', text: modLabel(mods[1]) + ' · ' + modTitle(mods[1]) })], reading.filter(u => u.mid !== oldMod).map(card)) : reading.map(card)).concat(reading.length ? [] : [el('p', { class: 'muted', style: { margin: 0 }, text: off < 0 ? 'Nothing was done on this day.' : 'No reading planned for this day.' })]));
+  const quizSec = quiz.length ? sec('grp-quiz', 'Quiz', mm(quiz) + ' · part of your ' + cap + ' minutes', quiz.map(card)) : null;
+  const ivB = budgets(d).iv, codeB = budgets(d).code;
+  const codeSec = pre || !xc.length ? null : xGroup(k, 'Coding track', '', C.now, 'grp-coding', el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'Reviews due today, then today\'s set, then anything left from earlier this week. ' + codeB + ' minutes a day.' }),
+    C.catchup.length || C.later.length ? el('div', { class: 'stack', style: { gap: '8px' } }, [C.catchup.length ? el('span', { class: 'lbl', style: { color: 'var(--amber-d)' }, text: 'Weekend catch-up · earlier sets' }) : null].concat(C.catchup.length ? [xGroup(k, '', '', C.catchup)] : [], [C.later.length ? el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: C.later.length + ' more problem' + (C.later.length > 1 ? 's' : '') + ' wait' + (C.later.length > 1 ? '' : 's') + (C.olderWaiting ? ' (' + C.olderWaiting + ' from earlier sets, kept for the weekend)' : '') + '. ' }) : null])) : null);
+  const ivSec = pre || !V.iv.length ? null : xGroup(k, 'Interview practice', '', V.iv, 'grp-interview', el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'Interview practice and coaching share ' + ivB + ' minutes: the mock first, then your coach\'s items, then this week\'s company questions.' }),
+    V.laterQ ? el('a', { href: '#/recent', style: { fontWeight: 600, fontSize: '14px' }, text: V.laterQ + ' more company question' + (V.laterQ > 1 ? 's' : '') + ' in the queue ›' }) : null);
+  const cn = off === 0 ? coachNote() : null;
+  const coachSec = pre || (!V.coach.length && !cn) ? null : (V.coach.length ? xGroup(k, 'Coaching', '', V.coach, 'grp-coach', cn, V.laterC ? el('a', { href: '#/coach', style: { fontWeight: 600, fontSize: '14px' }, text: V.laterC + ' more coach item' + (V.laterC > 1 ? 's' : '') + ' tomorrow ›' }) : null) : sec('grp-coach', 'Coaching', '', [cn]));
+  const allDone = us.every(u => u.isDone) && xs.every(x => xDone(k, x));
   const plan = el('section', { class: 'card pad stack plan' }, [
-    el('div', { class: 'row planhead' }, [ring, el('h2', { class: 'grow', text: off === 0 ? 'Your plan for today' : k < S.start ? 'Before your plan starts' : 'Plan for ' + dayName(k) }), k < S.start ? null : el('span', { class: 'muted', text: doneMins + ' of ' + planMins + ' min done' })]),
+    el('div', { class: 'row planhead' }, [ring, el('h2', { class: 'grow', text: off === 0 ? 'Today' : pre ? 'Before your plan starts' : dayName(k) }), pre ? null : el('span', { class: 'muted', text: doneMins + ' of ' + planMins + ' min done' })]),
     nav,
+    pre ? null : el('div', { class: 'row wrap daysum', role: 'group', 'aria-label': 'This day in parts' }, [['grp-hour', 'Reading', us.map(u => [u.mins, u.isDone])], ['grp-coding', 'Coding', xc.map(x => [x.mins, xDone(k, x)])], ['grp-interview', 'Interview', V.iv.concat(V.coach).map(x => [x.mins, xDone(k, x)])]].filter(g => g[2].length).map(([id, n, xs]) => {
+      const tot = xs.reduce((a, x) => a + x[0], 0), dn = xs.filter(x => x[1]).reduce((a, x) => a + x[0], 0), all = xs.every(x => x[1]);
+      return el('button', { class: 'dsum' + (all ? ' done' : ''), 'aria-label': n + ': ' + dn + ' of ' + tot + ' minutes done' + (all ? ', finished' : '') + '. Show it', onclick: () => { const t = document.getElementById(id); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }, [all ? svg(I.check, 14) : null, el('b', { text: n }), el('span', { text: dn + '/' + tot + ' min' })]); })),
     off === 0 && sc.missed.length ? el('div', { class: 'hint behind', role: 'status' }, [el('b', { text: 'Catching up · ' }), missedText(sc.missed) + ' moved to today. Nothing was skipped.']) : null,
-    pre ? null : el('div', { class: 'row wrap xghead' }, [el('h3', { class: 'grow', text: 'Your hour' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: hourDone + ' / ' + hourMins + ' min' })]),
-    pre ? null : el('span', { class: 'muted order', text: 'Do these in order. Anything unfinished moves to the next free day.' })]
-    .concat(us.length ? us.map(u => unitCard(u, { fold: true, cur: u === cur })) : [el('p', { style: { margin: 0 }, text: k < S.start ? 'Your plan starts ' + shortDate(S.start) + '.' : off < 0 ? 'Nothing was done on this day.' : 'Nothing planned. Everything is done.' })])
-    .concat([xc.length ? xGroup(k, 'Coding track', 'One DSA problem a day plus SQL and PySpark. Problems you struggled with come back for review after 3, 7 and 21 days.', xc) : null, xi.length ? xGroup(k, 'Interview practice', '', xi) : null])
-    .concat(off === 0 ? [el('div', { class: 'row wrap', style: { gap: '14px', fontSize: '14px' } }, [revDue().length > 3 ? el('a', { href: '#/practice/review', style: { fontWeight: 600 }, text: (revDue().length - 3) + ' more reviews due ›' }) : null, el('a', { href: '#/practice/tests', style: { fontWeight: 600 }, text: 'Timed coding tests ›' })])] : [])
-    .concat(off === 0 && us.every(u => u.isDone) && xs.every(x => xDone(k, x)) && sc.next ? [el('div', { class: 'hint' }, [el('b', { text: 'Done for today. ' }), 'Want to keep going? Next up: ' + sc.next.title + ' (planned ' + shortDate(sc.next.day) + '). ', el('a', { href: sc.next.href, text: 'Start it now' })])] : []));
+    pre ? el('p', { style: { margin: 0 }, text: 'Your plan starts ' + shortDate(S.start) + '.' }) : null,
+    readSec, quizSec, codeSec, ivSec, coachSec,
+    off === 0 && !pre ? el('div', { class: 'row wrap', style: { gap: '14px', fontSize: '14px' } }, [revDue().length > 3 ? el('a', { href: '#/practice/review', style: { fontWeight: 600 }, text: (revDue().length - 3) + ' more reviews due ›' }) : null, el('a', { href: '#/practice/tests', style: { fontWeight: 600 }, text: 'Timed coding tests ›' })]) : null,
+    off === 0 && allDone && sc.next ? el('div', { class: 'hint' }, [el('b', { text: 'Done for today. ' }), 'Want to keep going? Next up: ' + sc.next.title + ' (planned ' + shortDate(sc.next.day) + '). ', el('a', { href: sc.next.href, text: 'Start it now' })]) : null]);
   const D = DATA.design[m], du = sc.units.find(u => u.uid === m + ':design');
   const modCard = el('section', { class: 'card pad stack' }, [
     el('div', { class: 'row wrap', style: { gap: '6px' } }, [el('span', { class: 'chip ' + modColor(m), text: 'Module ' + modLabel(m) }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: weeksText(sp) })]),
@@ -267,10 +303,10 @@ function vToday(off) {
   const nx = off === 0 && !cur ? sc.next : null;
   const hero = nx ? el('section', { class: 'hero' }, [el('div', { class: 'grow stack', style: { gap: '3px', minWidth: '200px' } }, [el('span', { class: 'lbl', text: (us.includes(nx) ? 'Up next' : 'Ahead of plan · next') + ' · ' + nx.mins + ' min · module ' + modLabel(nx.mid) }), el('b', { text: nx.title })]), el('a', { class: 'btn', href: nx.href, text: nx.cta + ' ›' })]) : null;
   shell(off === 0 ? 'Today' : 'Plan · ' + shortDate(k), 'Module ' + modLabel(m) + ' · ' + weekText(k), [
-    el('div', { class: 'stack', style: { gap: '4px' } }, [el('h1', { text: (hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + ', ' + userName() }), el('span', { class: 'muted hsub', text: (+S.settings.capWd || 60) + ' min on weekdays, ' + (+S.settings.capWe || 120) + ' on Saturday and Sunday for your hour (change in Settings); coding and interview practice are listed with it.' })]),
+    el('div', { class: 'stack', style: { gap: '4px' } }, [el('h1', { text: (hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + ', ' + userName() }), el('span', { class: 'muted hsub', text: (+S.settings.capWd || 60) + ' min on weekdays, ' + (+S.settings.capWe || 120) + ' on Saturday and Sunday for reading, plus coding and interview time; everything for the day is in the Today box below (change the minutes in Profile › Plan).' })]),
     hero,
     off === 0 ? whatsNewCard() : null,
-    el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [off === 0 ? coachCard() : null, modCard, desCard])]),
+    el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [modCard, desCard])]),
     el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'This week' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'minutes planned / budget · tap a day to see it' }), el('button', { class: 'btn sm', onclick: exportIcs, text: 'Add to calendar' })]), weekStrip(sc, k)])]);
 }
 function missedText(ks) { const n = ks.map(k => shortDate(k).slice(0, 3)); return ks.length > 3 ? ks.length + ' missed days' : n.length === 1 ? n[0] : n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1]; }

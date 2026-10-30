@@ -48,7 +48,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Key mechanisms
 
-- **Today:** one plan in three groups: Your hour (scheduled units), Coding track (`codingItems`) and Interview practice (`interviewItems`: daily mock, coach focus items). Extras tick themselves when solved or submitted, or by hand in `S.xdone[date]`; "Done for today" needs all three.
+- **Today:** one box called Today with sections Reading and labs, Quiz, Coding track, Interview practice and Coaching, plus a summary row. Each group has its own daily minutes (`budgets()`: reading `capWd/capWe` 60/120, coding `codeWd/codeWe` 50/80, interview and coaching `ivWd/ivWe` 30/45, all in Profile › Plan), filled by `fill()`, so carried work never lengthens a day. Reading keeps program order; an unfinished earlier module shows first in its own "Finish … first" block; a step carried from an earlier day is tagged "from Mon" (`S.planned`). Coding: reviews due, today's set, then this week's leftovers; an earlier week's unsolved problems wait for the weekend catch-up block (`codingItems`). Interview: the mock (its blanks carry into the next mock only on the same module, `mockQuestions`), coach items, then company questions with this module's first (`interviewItems`). Manual ticks live in `S.xdone[date]`; company questions tick on `#/recent`.
 - **Weekly refresh:** `tools/refresh/ROUTINE.md` (run by the scheduled task `data-architect-weekly-refresh` in `~/.data-architect/refresh-repo`; companies in `tools/refresh/companies.txt`; ships with `tools/refresh/ship.sh`).
 - **Recent interview questions:** `data/recent.json` (items: id, mid, company, level, asked, found, TAG, Q, A, src, url), written by the weekly scheduled task `data-architect-weekly-refresh` (also refreshes `data/news.json` and module content). Shown at `#/recent`, on the module's interview page, as one Today row (until every new one is ticked in `S.rq`) and in What is new. They are part of the interview step's fingerprint, so a finished interview step goes back to not done when its module gets new questions. Got it on What is new only hides the note; nothing is ever marked done for the learner.
 - **Module tabs:** a tab is finished when `S.tabs[m:tab]` is set (with the text's hash; a changed tab is not finished) ("Done, next") or all plan steps that open it are ticked (`tabDone`); `#/learn/m` opens the first unfinished tab.
@@ -59,6 +59,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.18.0: rolling daily plan: one Today box with five sections and per-group minutes; interview and coaching capped at 30/45 min; leftovers carry within their group, an older week's never mixes into a new week's list.
 - 1.17.4: weekly refresh 2026-10-30 (from PR #31, which was blocked by the review rule): 21 interview questions, 5 news items; module 5 section 5.7 notes Spark Real-Time Mode (GA on Declarative Pipelines).
 - 1.17.3: iPhone fixes from the screen atlas: coach button hidden on quizzes and room for it at the page end, Submit quiet until the last question, coach box full width, practice sets fold, days before the start say when the plan starts, 44px header and tabs, no ⌘↵ hint on touch, mental map words no longer break.
 - 1.17.2: tests read the coding track and minutes from the plan groups on Today.
