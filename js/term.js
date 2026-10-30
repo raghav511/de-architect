@@ -19,6 +19,10 @@ async function vmStart() {
   VM.box = el('div', { class: 'xtbox' }); VM.term.open(VM.box);
   VM.term.onData(d => { if (VM.ready) VM.emu.serial0_send(d); });
   const S9 = 'vm/sys/';
+  /* Safari: v86 starts its timer worker from a blob URL and revokes the URL at once; WebKit loads workers later, so the
+     worker never starts and the CPU never runs. Delay revocations while the emulator starts. */
+  const revoke = URL.revokeObjectURL; URL.revokeObjectURL = u => setTimeout(() => revoke.call(URL, u), 10000);
+  setTimeout(() => { URL.revokeObjectURL = revoke; }, 30000);
   VM.emu = new V86({
     wasm_path: 'vm/v86.wasm?' + VMV, bios: { url: S9 + 'seabios.bin?' + VMV }, vga_bios: { url: S9 + 'vgabios.bin?' + VMV },
     bzimage: { url: S9 + 'bzimage.bin?' + VMV }, initrd: { url: S9 + 'initrd.img?' + VMV },
@@ -27,14 +31,14 @@ async function vmStart() {
     memory_size: 192 * 1024 * 1024, autostart: true, disable_keyboard: true, disable_mouse: true, disable_speaker: true });
   let mb = 0;
   VM.emu.add_listener('download-progress', e => { if (e.total && /bzimage|initrd|v86/.test(e.file_name || '')) { const m = Math.round(e.loaded / 1e6); if (m !== mb) { mb = m; vmSay('Starting Linux… downloading (' + m + ' MB)'); } } });
-  VM.emu.add_listener('emulator-ready', () => vmSay('Starting Linux… booting'));
+  VM.emu.add_listener('emulator-ready', () => vmSay('Starting Linux… booting (up to a minute on a phone)'));
   /* boot messages stay hidden; the terminal shows from the first prompt */
   let pend = [];
   const flush = () => { if (pend.length) { VM.term.write(new Uint8Array(pend)); pend = []; } };
   VM.emu.add_listener('serial0-output-byte', b => {
     const c = String.fromCharCode(b);
     VM.log = (VM.log + c).slice(-40000);
-    if (!VM.ready) { if (/DA-READY[\s\S]*\$ $/.test(VM.log)) { VM.ready = true; pend.push(...Array.from(VM.log.slice(VM.log.lastIndexOf('\n') + 1), ch => ch.charCodeAt(0))); requestAnimationFrame(flush); VM.log = ''; vmSay(''); setTimeout(vmFitNow, 50); } return; } /* ready at bash's first prompt, which is then shown */
+    if (!VM.ready) { if (/DA-READY[\s\S]*\$ $/.test(VM.log)) { VM.ready = true; pend.push(...Array.from(VM.log.slice(VM.log.lastIndexOf('\n') + 1), ch => ch.charCodeAt(0))); requestAnimationFrame(flush); VM.log = ''; if (/^Starting/.test(VM.status)) vmSay(''); setTimeout(vmFitNow, 50); } return; } /* ready at bash's first prompt, which is then shown */
     pend.push(b); if (pend.length === 1) requestAnimationFrame(flush);
   });
 }
@@ -54,28 +58,31 @@ function vmWhenReady(ms) { return new Promise((res, rej) => { const t0 = Date.no
 
 function vTerminal(kind, n) {
   const G = DATA.git || [], g = kind === 'git' ? G.find(x => x.n === +n) : null, nn = g ? String(g.n).padStart(2, '0') : '';
-  const status = el('span', { class: 'muted', role: 'status', style: { fontSize: '14px' }, text: VM.status || (VM.ready ? '' : 'Starting Linux…') });
+  const status = el('span', { class: 'muted', role: 'status', style: { fontSize: '14px' }, text: VM.status || (VM.ready ? '' : 'Starting Linux… the first start takes a few seconds on a computer and up to a minute on a phone') });
   VM.onStatus = t => { status.textContent = t; };
   const holder = el('div', { class: 'xthold', 'aria-label': 'Terminal' });
   const key = (label, seq, aria) => el('button', { class: 'btn sm', 'aria-label': aria || label, onclick: () => { if (VM.ready) { VM.emu.serial0_send(seq); VM.term.focus(); } }, text: label });
   const keys = el('div', { class: 'row wrap xtkeys', style: { gap: '6px' } }, [key('Tab', '\t'), key('Ctrl-C', '\x03', 'Control C: stop the command'), key('Esc', '\x1b', 'Escape'), key('↑', '\x1b[A', 'Previous command'), key('↓', '\x1b[B', 'Next command'), key('←', '\x1b[D', 'Left'), key('→', '\x1b[C', 'Right'), key('Clear', 'clear\n', 'Clear the screen')]);
   const done = g && (S.gitlab || {})[g.n];
   const result = el('div', { class: 'stack', style: { gap: '4px' } });
+  /* status and results live with the terminal, so a re-render of the page shows them again */
+  const paintResult = () => { result.textContent = ''; (VM.result || []).forEach(l => result.appendChild(el('span', { class: /^PASS/.test(l) ? 'ok' : 'bad', text: (/^PASS/.test(l) ? '✓ ' : '✗ ') + l.replace(/^(PASS|FAIL)\s+/, '') }))); };
+  if (g && VM.lab === g.n) paintResult();
   const setup = async () => {
-    status.textContent = 'Setting up lab ' + g.n + '…';
-    try { await vmWhenReady(); await vmRun('lab ' + g.n, '\\[lab ' + g.n + ' ready: \\d+\\]', 60000); status.textContent = 'Lab ' + g.n + ' is ready. The task is printed in the terminal.'; VM.term.focus(); }
-    catch (e) { status.textContent = 'Setup did not finish: ' + e.message; }
+    vmSay('Setting up lab ' + g.n + '…');
+    try { await vmWhenReady(); await vmRun('lab ' + g.n, '\\[lab ' + g.n + ' ready: \\d+\\]', 60000); vmSay('Lab ' + g.n + ' is ready. The task is printed in the terminal.'); VM.term.focus(); }
+    catch (e) { vmSay('Setup did not finish: ' + e.message); }
   };
   const check = async () => {
-    status.textContent = 'Checking your fix…'; result.textContent = '';
+    vmSay('Checking your fix…'); VM.result = []; paintResult();
     try {
       await vmWhenReady();
       const r = await vmRun('labcheck ' + g.n, '\\[check ' + g.n + ': (\\d+)\\]', 60000);
       const lines = r.out.split('\n').map(l => l.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').replace(/\r/g, '').trim()).filter(l => /^(PASS|FAIL)\s/.test(l)); /* drop colour and line-control codes */
-      lines.forEach(l => result.appendChild(el('span', { class: /^PASS/.test(l) ? 'ok' : 'bad', text: (/^PASS/.test(l) ? '✓ ' : '✗ ') + l.replace(/^(PASS|FAIL)\s+/, '') })));
-      if (r.m[1] === '0') { S.gitlab = S.gitlab || {}; S.gitlab[g.n] = iso(new Date()); save(); status.textContent = 'Lab ' + g.n + ' passed. The Git step on your plan is ticked.'; toast('Git lab ' + g.n + ' passed'); }
-      else status.textContent = 'Not yet: fix the lines marked ✗ and check again.';
-    } catch (e) { status.textContent = 'Check did not finish: ' + e.message; }
+      VM.result = lines; paintResult();
+      if (r.m[1] === '0') { S.gitlab = S.gitlab || {}; S.gitlab[g.n] = iso(new Date()); save(); vmSay('Lab ' + g.n + ' passed. The Git step on your plan is ticked.'); toast('Git lab ' + g.n + ' passed'); }
+      else vmSay('Not yet: fix the lines marked ✗ and check again.');
+    } catch (e) { vmSay('Check did not finish: ' + e.message); }
   };
   const side = g ? el('section', { class: 'card pad stack termside' }, [
     el('span', { class: 'lbl', text: 'Git lab ' + g.n + ' of ' + G.length + (done ? ' · passed ' + shortDate(done) : '') }),
@@ -89,5 +96,5 @@ function vTerminal(kind, n) {
   vmStart().then(() => { if (VM.box) { holder.appendChild(VM.box); setTimeout(vmFitNow, 30); } });
   if (VM.box) { holder.appendChild(VM.box); setTimeout(vmFitNow, 30); }
   const onR = () => { clearTimeout(VM.rt); VM.rt = setTimeout(vmFitNow, 250); }; addEventListener('resize', onR); cleanup.push(() => removeEventListener('resize', onR));
-  if (g && VM.lab !== g.n) { VM.lab = g.n; setup(); } /* opening a lab sets it up once per app start */
+  if (g && VM.lab !== g.n) { VM.lab = g.n; VM.result = []; setup(); } /* opening a lab sets it up once per app start */
 }

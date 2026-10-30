@@ -157,6 +157,13 @@ async function run(P) {
       await p.locator('[role=dialog] button', { hasText: 'Submit' }).first().tap(); await p.waitForTimeout(1500); await shot('mock_submitted');
       return (await p.evaluate(() => Object.values(S.mock || {}).some(m => m.sub))) || 'mock not submitted';
     });
+    await task('open a Git lab in the in-app terminal on the phone', async () => {
+      await go('#/git/3', 900); await p.locator('a', { hasText: 'Practise in the terminal' }).tap();
+      await p.waitForFunction(() => typeof VM !== 'undefined' && VM.ready, null, { timeout: 300000 });
+      await p.waitForFunction(() => /Lab 3 is ready|did not/.test((document.querySelector('.termside [role=status]') || {}).textContent || ''), null, { timeout: 180000 });
+      await probe(p, P, 'Terminal (phone)', notes); await shot('terminal');
+      return /Lab 3 is ready/.test(await p.textContent('.termside [role=status]')) || 'lab did not set up: ' + await p.textContent('.termside [role=status]');
+    });
     await task('lose signal in a tunnel and keep studying', async () => {
       await go('#/today', 1500); await go('#/path', 1500); await c.setOffline(true);
       await p.reload().catch(() => {}); await p.waitForTimeout(2500);
