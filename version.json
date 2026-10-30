@@ -1,8 +1,9 @@
 {
-  "version": "1.15.3",
+  "version": "1.16.0",
   "date": "2026-10-30",
   "notes": [
-    "On a slow network or a busy device, tapping links while 'Loading Data Architect' is showing could draw a screen before its data and show an error; the app now waits and then opens the screen you chose",
-    "Test: navigating through four screens on a slow network while the app loads"
+    "Today now lists everything for the day in one plan: your hour, the coding track (DSA, SQL, PySpark and reviews) and interview practice (the daily mock and your coach's items). Done for today shows only when all of it is ticked.",
+    "Module pages: a finished tab turns green with a tick. Tap Done, next to finish a tab and move on; opening a module takes you to the first tab you have not finished.",
+    "Terminal: a big Enter key in the key row, and tapping on the line you are typing moves the cursor there."
   ]
 }

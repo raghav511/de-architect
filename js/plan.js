@@ -170,25 +170,41 @@ function unitCard(u, opts) {
   }
   return card;
 }
-function codingTrack(off) {
+/* the rest of the day, shown inside Today's plan so nothing sits outside it: the coding track and interview practice.
+   Each row ticks itself (problem solved, mock submitted); a manual tick is kept per day in S.xdone. */
+function codingItems(off) {
   const ci = dayIndex() + (off || 0), w = Math.floor(ci / 7) % 12 + 1, d = ci % 7;
   const ds = byWeek(DATA.dsa, w), qs = byWeek(DATA.sql, w), ps = byWeek(DATA.spark, w);
   const SQ = [0, null, 1, 2, 3, 4, null], SP = [null, 0, 1, 2, 3, null, 4];
   const items = [];
   const due = off ? [] : revDue();
-  due.slice(0, 3).forEach(x => items.push([kindOf(x.id), x, 'review', '#/' + kindOf(x.id) + '/' + x.id + '/review', 'Review · ' + revText(S.rev[x.id])]));
+  due.slice(0, 3).forEach(x => items.push({ id: 'rev:' + x.id, chip: kindOf(x.id), t: x.t, sub: 'Review · ' + revText(S.rev[x.id]), mins: 10, href: '#/' + kindOf(x.id) + '/' + x.id + '/review', auto: false }));
   /* today (not a day you browse to) catches up: the earliest unsolved problem from this week's earlier days comes first */
   const pick = (list, map) => { let j = d; if (!off) for (let i = 0; i < d; i++) { const x = list[map ? map[i] : i]; if ((map ? map[i] != null : true) && x && !S.solved[x.id]) { j = i; break; } } const x = list[map ? map[j] : j]; return (map ? map[j] != null : true) && x ? [x, j < d ? ' · from ' + DN[j].slice(0, 3) : ''] : [null, '']; };
   const [dx, dl] = pick(ds), [qx, ql] = pick(qs, SQ), [px, pl] = pick(ps, SP);
-  if (dx) items.push(['dsa', dx, '20 min', '#/dsa/' + dx.id, 'DSA · ' + WEEKS[w - 1][4] + ' · ' + dx.lv + dl]);
-  if (qx) items.push(['sql', qx, '15 min', '#/sql/' + qx.id, 'SQL · ' + (qx.k === 'O' ? 'optimize' : 'write') + ' · ' + qx.lv + ql]);
-  if (px) items.push(['spark', px, '15 min', '#/spark/' + px.id, 'PySpark · ' + (px.k === 'O' ? 'optimize' : 'write') + ' · ' + px.lv + pl]);
-  return el('section', { class: 'card pad stack', style: { borderColor: '#BFE3D6' } }, [
-    el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Coding track' }), el('span', { class: 'chip c-dsa', text: 'separate from the hour' })]),
-    el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'One DSA problem a day plus SQL and PySpark, on their own time. Problems you struggled with come back here for review after 3, 7 and 21 days.' }),
-    el('div', { class: 'list' }, items.map(([k, x, mins, href, sub]) => el('a', { class: 'item', href }, [chip(k), el('span', { class: 'grow' }, [el('span', { class: 't', text: x.t }), el('br'), el('span', { class: 's', text: mins === 'review' ? sub : mins + ' · ' + sub })]), mins === 'review' ? el('span', { class: 's', text: 'Review ›' }) : S.solved[x.id] ? el('span', { class: 'ok', text: '✓' }) : el('span', { class: 's', text: 'Open ›' })]))),
-    due.length > 3 ? el('a', { href: '#/practice/review', style: { fontWeight: 600, fontSize: '14px' }, text: (due.length - 3) + ' more reviews due ›' }) : null,
-    el('a', { href: '#/practice/tests', style: { fontWeight: 600, fontSize: '14px' }, text: 'Timed coding tests (60 min, one per module, any day you like) ›' })]);
+  if (dx) items.push({ id: dx.id, chip: 'dsa', t: dx.t, sub: 'DSA · ' + WEEKS[w - 1][4] + ' · ' + dx.lv + dl, mins: 20, href: '#/dsa/' + dx.id, auto: !!S.solved[dx.id] });
+  if (qx) items.push({ id: qx.id, chip: 'sql', t: qx.t, sub: 'SQL · ' + (qx.k === 'O' ? 'optimize' : 'write') + ' · ' + qx.lv + ql, mins: 15, href: '#/sql/' + qx.id, auto: !!S.solved[qx.id] });
+  if (px) items.push({ id: px.id, chip: 'spark', t: px.t, sub: 'PySpark · ' + (px.k === 'O' ? 'optimize' : 'write') + ' · ' + px.lv + pl, mins: 15, href: '#/spark/' + px.id, auto: !!S.solved[px.id] });
+  return items;
+}
+function interviewItems(off, k) {
+  const [mins, nq] = MOCK_LEN[mockKind(k)], mk = (S.mock || {})[k];
+  const items = [{ id: 'mock', chip: 'test', t: (mockKind(k) === 'sunday' ? 'Sunday mock interview' : 'Daily mock interview') + ' · ' + nq + ' questions', sub: aiOn() ? 'Answer as you would out loud; your coach grades it tonight.' : 'Answer out loud or in writing, then compare with the model answers.', mins, href: '#/mock/' + k, auto: !!(mk && mk.sub) }];
+  if (!off && aiOn()) { const c = coachData(); (c.focus || []).slice(0, 4).forEach((f, i) => items.push({ id: 'coach' + i + ':' + (c.generated_at || ''), chip: 'ai', t: f.title, sub: 'From your coach' + (f.why ? ' · ' + f.why : ''), mins: +f.mins || 10, href: /^#\//.test(f.href || '') ? f.href : '#/coach', auto: focusDone(f, c) })); }
+  return items;
+}
+function xDone(k, x) { return x.auto || !!((S.xdone || {})[k] || {})[x.id]; }
+function xGroup(k, title, note, items) {
+  const mins = items.reduce((a, x) => a + x.mins, 0), dm = items.filter(x => xDone(k, x)).reduce((a, x) => a + x.mins, 0);
+  return el('div', { class: 'xgroup stack', style: { gap: '8px' } }, [
+    el('div', { class: 'row wrap xghead' }, [el('h3', { class: 'grow', text: title }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: dm + ' / ' + mins + ' min' })]),
+    note ? el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: note }) : null]
+    .concat(items.map(x => { const dn = xDone(k, x); return el('div', { class: 'xit' + (dn ? ' done' : '') }, [
+      el('button', { class: 'check', 'aria-pressed': String(dn), 'aria-label': (dn ? 'Mark not done: ' : 'Mark done: ') + x.t, onclick: () => {
+        if (x.auto) { toast('This one ticks itself when you solve or submit it.'); return; }
+        const m = (S.xdone = S.xdone || {})[k] = S.xdone[k] || {}; if (m[x.id]) delete m[x.id]; else m[x.id] = 1; save(); route(); } }, dn ? svg(I.check, 16) : null),
+      el('a', { class: 'grow xlink', href: x.href }, [el('span', { class: 'row wrap', style: { gap: '6px' } }, [chip(x.chip), el('span', { class: 't', text: x.t })]), el('span', { class: 's', text: x.mins + ' min · ' + x.sub })]),
+      el('a', { class: 'btn sm', href: x.href, text: dn ? 'Open' : 'Start' })]); })));
 }
 function weekStrip(sc, k0) {
   const d0 = new Date(k0 + 'T00:00:00'); d0.setDate(d0.getDate() - ((d0.getDay() + 6) % 7));
@@ -209,7 +225,9 @@ function vToday(off) {
   const sc = schedule();
   const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + off);
   const k = iso(d), cap = capOf(d), us = sc.byDay[k] || [];
-  const doneMins = us.filter(u => u.isDone).reduce((a, u) => a + u.mins, 0), planMins = us.reduce((a, u) => a + u.mins, 0);
+  const xc = codingItems(off), xi = interviewItems(off, k), xs = xc.concat(xi);
+  const hourDone = us.filter(u => u.isDone).reduce((a, u) => a + u.mins, 0), hourMins = us.reduce((a, u) => a + u.mins, 0);
+  const doneMins = hourDone + xs.filter(x => xDone(k, x)).reduce((a, x) => a + x.mins, 0), planMins = hourMins + xs.reduce((a, x) => a + x.mins, 0);
   const m = (us.find(u => !isCC(u.mid)) || us[0] || {}).mid || sc.cur, M = MOD[m], sp = sc.span[m];
   const hr = new Date().getHours();
   const nav = el('div', { class: 'row wrap daynav', style: { gap: '8px' } }, [
@@ -218,16 +236,19 @@ function vToday(off) {
     el('a', { class: 'btn icon sm', href: '#/today/' + (off + 1), 'aria-label': 'Next day' }, svg(I.fwd, 18)),
     off ? el('a', { class: 'btn sm', href: '#/today', text: 'Back to today' }) : null,
     el('span', { class: 'grow' }),
-    el('span', { class: 'chip ' + (cap > 60 ? 'c-arch' : 'c-core'), text: (cap >= 120 ? cap / 60 + '-hour' : cap + '-minute') + ' day' + (planMins > cap ? ' · ' + (planMins - cap) + ' min over' : '') })]);
+    el('span', { class: 'chip ' + (cap > 60 ? 'c-arch' : 'c-core'), text: (cap >= 120 ? cap / 60 + '-hour' : cap + '-minute') + ' day' + (hourMins > cap ? ' · ' + (hourMins - cap) + ' min over' : '') })]);
   const pct = planMins ? Math.round(100 * doneMins / planMins) : 0, cur = off === 0 ? us.find(u => !u.isDone) : null;
   const ring = el('span', { class: 'ring', role: 'img', 'aria-label': pct + '% of the plan done', html: '<svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="17" fill="none" stroke="var(--line)" stroke-width="5"/><circle cx="21" cy="21" r="17" fill="none" stroke="var(--teal)" stroke-width="5" stroke-linecap="round" stroke-dasharray="' + (pct * 1.068).toFixed(1) + ' 107" transform="rotate(-90 21 21)"/></svg>' });
   const plan = el('section', { class: 'card pad stack plan' }, [
     el('div', { class: 'row planhead' }, [ring, el('h2', { class: 'grow', text: off === 0 ? 'Your plan for today' : 'Plan for ' + dayName(k) }), el('span', { class: 'muted', text: doneMins + ' of ' + planMins + ' min done' })]),
     nav,
     off === 0 && sc.missed.length ? el('div', { class: 'hint behind', role: 'status' }, [el('b', { text: 'Catching up · ' }), missedText(sc.missed) + ' moved to today. Nothing was skipped.']) : null,
+    el('div', { class: 'row wrap xghead' }, [el('h3', { class: 'grow', text: 'Your hour' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: hourDone + ' / ' + hourMins + ' min' })]),
     el('span', { class: 'muted order', text: 'Do these in order. Anything unfinished moves to the next free day.' })]
     .concat(us.length ? us.map(u => unitCard(u, { fold: true, cur: u === cur })) : [el('p', { style: { margin: 0 }, text: off < 0 ? 'Nothing was done on this day.' : 'Nothing planned. Everything is done.' })])
-    .concat(off === 0 && us.length && us.every(u => u.isDone) && sc.next ? [el('div', { class: 'hint' }, [el('b', { text: 'Done for today. ' }), 'Want to keep going? Next up: ' + sc.next.title + ' (planned ' + shortDate(sc.next.day) + '). ', el('a', { href: sc.next.href, text: 'Start it now' })])] : []));
+    .concat([xc.length ? xGroup(k, 'Coding track', 'One DSA problem a day plus SQL and PySpark. Problems you struggled with come back for review after 3, 7 and 21 days.', xc) : null, xGroup(k, 'Interview practice', '', xi)])
+    .concat(off === 0 ? [el('div', { class: 'row wrap', style: { gap: '14px', fontSize: '14px' } }, [revDue().length > 3 ? el('a', { href: '#/practice/review', style: { fontWeight: 600 }, text: (revDue().length - 3) + ' more reviews due ›' }) : null, el('a', { href: '#/practice/tests', style: { fontWeight: 600 }, text: 'Timed coding tests ›' })])] : [])
+    .concat(off === 0 && us.every(u => u.isDone) && xs.every(x => xDone(k, x)) && sc.next ? [el('div', { class: 'hint' }, [el('b', { text: 'Done for today. ' }), 'Want to keep going? Next up: ' + sc.next.title + ' (planned ' + shortDate(sc.next.day) + '). ', el('a', { href: sc.next.href, text: 'Start it now' })])] : []));
   const D = DATA.design[m], du = sc.units.find(u => u.uid === m + ':design');
   const modCard = el('section', { class: 'card pad stack' }, [
     el('div', { class: 'row wrap', style: { gap: '6px' } }, [el('span', { class: 'chip ' + modColor(m), text: 'Module ' + modLabel(m) }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: weeksText(sp) })]),
@@ -242,10 +263,10 @@ function vToday(off) {
   const nx = off === 0 && !cur ? sc.next : null;
   const hero = nx ? el('section', { class: 'hero' }, [el('div', { class: 'grow stack', style: { gap: '3px', minWidth: '200px' } }, [el('span', { class: 'lbl', text: (us.includes(nx) ? 'Up next' : 'Ahead of plan · next') + ' · ' + nx.mins + ' min · module ' + modLabel(nx.mid) }), el('b', { text: nx.title })]), el('a', { class: 'btn', href: nx.href, text: nx.cta + ' ›' })]) : null;
   shell(off === 0 ? 'Today' : 'Plan · ' + shortDate(k), 'Module ' + modLabel(m) + ' · ' + weekText(k), [
-    el('div', { class: 'stack', style: { gap: '4px' } }, [el('h1', { text: (hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + ', ' + userName() }), el('span', { class: 'muted hsub', text: (+S.settings.capWd || 60) + ' min on weekdays, ' + (+S.settings.capWe || 120) + ' on Saturday and Sunday (change in Settings). Coding practice runs on its own track.' })]),
+    el('div', { class: 'stack', style: { gap: '4px' } }, [el('h1', { text: (hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + ', ' + userName() }), el('span', { class: 'muted hsub', text: (+S.settings.capWd || 60) + ' min on weekdays, ' + (+S.settings.capWe || 120) + ' on Saturday and Sunday for your hour (change in Settings); coding and interview practice are listed with it.' })]),
     hero,
     off === 0 ? whatsNewCard() : null,
-    el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [off === 0 ? coachCard() : null, modCard, codingTrack(off), desCard])]),
+    el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [off === 0 ? coachCard() : null, modCard, desCard])]),
     el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'This week' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'minutes planned / budget · tap a day to see it' }), el('button', { class: 'btn sm', onclick: exportIcs, text: 'Add to calendar' })]), weekStrip(sc, k)])]);
 }
 function missedText(ks) { const n = ks.map(k => shortDate(k).slice(0, 3)); return ks.length > 3 ? ks.length + ' missed days' : n.length === 1 ? n[0] : n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1]; }
@@ -253,7 +274,7 @@ function weekText(k) { return 'Week ' + weekOf(k); }
 function modLinks(m) {
   const pj = DATA.projects.find(p => p.mod === m), M = MOD[m] || {};
   const R = (DATA.sprints[m] || {}).raw || {}, has = k => (R[k] || '').trim().length > 0;
-  const L = [['Chapter', '#/learn/' + m + '/chapter'], has('readings') && ['Readings', '#/learn/' + m + '/readings'], has('lab') && ['Labs', '#/learn/' + m + '/lab'], has('practice') && ['Warm-ups', '#/learn/' + m + '/practice'], has('quiz') && ['Quiz', '#/quiz/' + m], has('interview') && ['Interview', '#/interview/' + m], has('mock') && ['Mock', '#/interview/' + m + '/mock']].filter(Boolean);
+  const L = [['Read', '#/learn/' + m], has('readings') && ['Readings', '#/learn/' + m + '/readings'], has('lab') && ['Labs', '#/learn/' + m + '/lab'], has('practice') && ['Warm-ups', '#/learn/' + m + '/practice'], has('quiz') && ['Quiz', '#/quiz/' + m], has('interview') && ['Interview', '#/interview/' + m], has('mock') && ['Mock', '#/interview/' + m + '/mock']].filter(Boolean);
   const g = !isCC(m) && DATA.git.length ? DATA.git[MODS.indexOf(m) % DATA.git.length] : null; if (g) L.push(['Git ' + g.n, '#/git/' + g.n]);
   if (DATA.design[m]) L.push(['Design', '#/design/' + m]);
   if (pj) L.push(['Project', '#/project/' + pj.id]);
@@ -329,10 +350,16 @@ function vPath(m) {
 }
 
 /* ---------------- Learn ---------------- */
+/* a module tab is finished when you tapped "Done, next" on it, or when every plan step that opens it is ticked */
+const TABS2 = [['chapter', 'Chapter'], ['readings', 'Readings'], ['lab', 'Labs'], ['practice', 'Warm-ups']];
+function tabUnits(m, tab, sc) { return (sc || schedule()).units.filter(u => u.mid === m && (u.href === '#/learn/' + m + '/' + tab || u.href.startsWith('#/learn/' + m + '/' + tab + '/'))); }
+function tabDone(m, tab, sc) { if ((S.tabs || {})[m + ':' + tab]) return true; const us = tabUnits(m, tab, sc); return us.length > 0 && us.every(u => u.isDone); }
 async function vLearn(m, tab, range) {
   m = MOD[midOf(m)] ? midOf(m) : curMid();
-  const TABS2 = [['chapter', 'Chapter'], ['readings', 'Readings'], ['lab', 'Labs'], ['practice', 'Warm-ups']];
-  const tabs = el('div', { class: 'tabs', role: 'tablist' }, TABS2.map(([k, n]) => el('button', { role: 'tab', 'aria-selected': String(k === tab), onclick: () => { location.hash = '#/learn/' + m + '/' + k; }, text: n })));
+  const sc = schedule();
+  /* opened without a tab (the module's Read link): land on the first tab you have not finished */
+  if (!TABS2.some(t => t[0] === tab)) tab = (TABS2.find(t => !tabDone(m, t[0], sc)) || TABS2[0])[0];
+  const tabs = el('div', { class: 'tabs', role: 'tablist' }, TABS2.map(([k, n]) => { const dn = tabDone(m, k, sc); return el('button', { role: 'tab', class: dn ? 'tdone' : null, 'aria-selected': String(k === tab), 'aria-label': n + (dn ? ', finished' : ''), onclick: () => { location.hash = '#/learn/' + m + '/' + k; } }, [dn ? svg(I.check, 14) : null, n]); }));
   const sel = el('select', { class: 'btn sm', 'aria-label': 'Module', onchange: e => { location.hash = '#/learn/' + e.target.value + '/' + tab; } }, MODS.map(x => el('option', { value: x, selected: x === m ? 'selected' : null, text: modLabel(x) + ' · ' + modTitle(x) })));
   const body = el('div', { class: 'stack' });
   shell(modTitle(m), 'Module ' + modLabel(m) + ' · ' + (TABS2.find(t => t[0] === tab) || ['', 'Chapter'])[1], [el('div', { class: 'row wrap' }, [sel, tabs]), body], { back: '#/today' });
@@ -355,8 +382,17 @@ async function vLearn(m, tab, range) {
   /* Claude Code modules: try prompts for real from any page of the lesson */
   if (isCC(m) && (tab === 'chapter' || tab === 'lab')) body.appendChild(runBox({ key: m + '_' + tab, title: tab === 'lab' ? 'Practise here: run a prompt in Claude Code' : 'Try what you just read', claudeMd: true, placeholder: 'For example: Find where amounts are parsed and explain what goes wrong for EU files. Answer in 5 lines.' }));
   if (isCC(m) && tab === 'lab' && (s.tasks || []).length) body.appendChild(el('a', { class: 'btn pri', style: { alignSelf: 'flex-start' }, href: '#/cc/' + m + '/1', text: 'Take the test: ' + s.tasks.length + ' graded tasks' }));
-  const nextTab = { chapter: 'readings', readings: 'lab', lab: 'practice' }[tab];
-  body.appendChild(el('div', { class: 'row wrap' }, [el('a', { class: 'btn', href: '#/today', text: 'Back to today\'s plan' }), nextTab ? el('a', { class: 'btn', href: '#/learn/' + m + '/' + nextTab, text: 'Next: ' + TABS2.find(t => t[0] === nextTab)[1] }) : el('a', { class: 'btn', href: '#/quiz/' + m, text: 'Next: Quiz' })]));
+  const nextTab = { chapter: 'readings', readings: 'lab', lab: 'practice' }[tab], nextName = nextTab ? TABS2.find(t => t[0] === nextTab)[1] : 'Quiz', nextHref = nextTab ? '#/learn/' + m + '/' + nextTab : '#/quiz/' + m;
+  const finished = tabDone(m, tab, sc);
+  /* "Done, next" marks this tab finished (and today's reading step for this part), then opens the next tab */
+  const finish = () => {
+    S.tabs = S.tabs || {}; S.tabs[m + ':' + tab] = iso(new Date());
+    const u = rg ? sc.units.find(x => x.href === '#/learn/' + m + '/' + tab + '/' + range) : null;
+    if (u && !u.isDone) { S.done[u.uid] = iso(new Date()); (S.doneAt = S.doneAt || {})[u.uid] = Date.now(); if (S.undone) delete S.undone[u.uid]; }
+    save(); location.hash = nextHref;
+  };
+  body.appendChild(el('div', { class: 'row wrap' }, [finished ? el('a', { class: 'btn pri', href: nextHref, text: 'Next: ' + nextName }) : el('button', { class: 'btn pri', onclick: finish, text: 'Done, next: ' + nextName }), el('a', { class: 'btn', href: '#/today', text: 'Back to today\'s plan' }),
+    finished && (S.tabs || {})[m + ':' + tab] ? el('button', { class: 'btn', onclick: () => { delete S.tabs[m + ':' + tab]; save(); route(); }, text: 'Mark not finished' }) : null]));
 }
 const AMAPS = { d01: ['Storage engine', 'Replication', 'Partitioning', 'Transactions', 'Consensus'], j01: ['Scala', 'Spark API', 'JVM memory', 'Kubernetes', 'Paved path'], r01: ['Strategy', 'Design doc', 'Migration', 'Cost', 'Influence'], m01: ['Process', 'Grain', 'Dimensions', 'History (SCD)', 'Cumulative'], m02: ['Event', 'Grain', 'Fact type', 'Dedupe', 'Reduced'], m03: ['Raw', 'Cleaned', 'Business', 'Serving', 'Semantic'], p01: ['Objects', 'Lists', 'Dicts and sets', 'Big-O', 'collections'], p02: ['Arguments', 'Closures', 'Comprehensions', 'Sort keys', 'Decorators'], p03: ['Iterable', 'Generator', 'Pipeline', 'itertools', 'Batches'], p04: ['Class', 'dataclass', 'Property', 'Protocol', 'Design'], p05: ['Exceptions', 'with', 'Logging', 'pytest', 'Package'], p06: ['I/O or CPU', 'Threads', 'Processes', 'asyncio', 'Measure'], a01: ['Task', 'Model', 'Tools', 'Trace', 'Answer'], a02: ['Task', 'Agent', 'Grader', 'Fix', 'Lesson'], a03: ['Alert', 'MCP tools', 'Agent', 'Approval', 'Report'], a04: ['Question', 'Context layer', 'Guarded SQL', 'Read-only tools', 'Eval'], a05: ['Documents', 'Chunks', 'Vectors', 'Fresh index', 'Recall'], s00: ['Laptop', 'Docker', 'Python', 'Repo', 'Diagnostic'] };
 function weekMap(m) {

@@ -65,20 +65,14 @@ function mockStatus(k) {
 
 /* ---------------- Today: the coach card ---------------- */
 function coachCard() {
-  const c0 = iso(new Date()), [m0, n0] = MOCK_LEN[mockKind(c0)];
-  /* AI features off: no nightly coach and no Sync nag, just the daily mock as self-practice */
-  if (!aiOn()) return el('section', { class: 'card pad stack' }, [el('h2', { text: 'Daily mock interview' }),
-    el('div', { class: 'row wrap' }, [el('span', { class: 'grow', style: { fontSize: '14.5px' }, text: m0 + ' min · ' + n0 + ' questions. Answer out loud or in writing, then compare with the interview sets\' model answers. Separate from the hour.' }), el('a', { class: 'btn sm pri', href: '#/mock/' + c0, text: S.mock && S.mock[c0] ? 'Open' : 'Start' })])]);
-  const c = coachData(), today = iso(new Date()), kind = mockKind(today), [mins, nq] = MOCK_LEN[kind], [st, cls] = mockStatus(today);
-  const focus = (c.focus || []).slice(0, 4), stale = coachStale(c), age = coachAgeDays(c);
+  /* the daily mock and the coach's practice items are rows in Today's plan; this card keeps the coach's note */
+  if (!aiOn()) return null;
+  const c = coachData(), stale = coachStale(c), age = coachAgeDays(c);
   return el('section', { class: 'card pad stack', style: { borderColor: '#D9C6E6' } }, [
     el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Coach' }), el('span', { class: 'muted', style: { fontSize: '13px' }, text: c.generated_at ? 'last run ' + shortDate(c.generated_at.slice(0, 10)) : 'not run yet' })]),
     !S.settings.syncUrl ? el('div', { class: 'hint', style: { background: 'var(--amber-l)', borderColor: 'var(--amber-b)' } }, [el('b', { text: 'Sync is not set up. ' }), 'Your coach cannot see your work or grade your mock until it is. ', el('button', { class: 'btn sm', onclick: settings, text: 'Open settings' })]) : null,
     stale ? el('div', { class: 'hint', style: { background: 'var(--amber-l)', borderColor: 'var(--amber-b)' } }, [el('b', { text: 'This report is ' + age + ' day' + (age === 1 ? '' : 's') + ' old. ' }), 'The nightly coach has not reached this device since. Tap Sync progress; if it stays old, check that the Claude app was open on your Mac at midnight.']) : null,
-    el('div', { class: 'item', style: { cursor: 'default' } }, [el('span', { class: 'grow' }, [el('span', { class: 't', text: (kind === 'sunday' ? 'Sunday mock interview' : 'Daily mock interview') + ' · ' + mins + ' min · ' + nq + ' questions' }), el('br'), el('span', { class: 's', text: 'Separate from the hour. Answer as you would out loud; your coach grades it tonight.' })]),
-      cls ? el('span', { class: 'badge ' + cls, text: st }) : null, el('a', { class: 'btn sm pri', href: '#/mock/' + today, text: st === 'Not started' ? 'Start' : 'Open' })]),
     c.summary ? el('div', { style: { fontSize: '14.5px' }, html: mdi(c.summary) }) : el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Every night your coach reads your day (steps, quizzes, problems, hints, the mock), grades your mock answers, and writes targeted practice here. It needs Sync set up in Settings.' }),
-    focus.length ? el('div', { class: 'list', style: stale ? { opacity: 0.7 } : {} }, focus.map(f => el('a', { class: 'item', href: /^#\//.test(f.href || '') ? f.href : '#/coach' }, [el('span', { class: 'grow' }, [el('span', { class: 't', text: f.title }), el('br'), el('span', { class: 's', text: (f.mins ? f.mins + ' min · ' : '') + (f.why || '') })]), focusDone(f, c) ? el('span', { class: 'ok', text: '✓ done' }) : el('span', { class: 's', text: 'Open ›' })]))) : null,
     c.generated_at ? el('a', { href: '#/coach', style: { fontWeight: 600, fontSize: '14px' }, text: 'Full coach report ›' }) : null]);
 }
 
