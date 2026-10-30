@@ -31,6 +31,48 @@ async function T(name, fn, opt) {
 (async () => {
   browser = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
 
+  /* ---- content updates: nothing you did is lost, changes are announced ---- */
+  const seed = async (p, fn) => { await p.evaluate(fn); await p.evaluate(() => { saveT && clearTimeout(saveT); saveT = null; localStorage.setItem('keystone:v1', JSON.stringify(S)); }); await p.reload(); await p.waitForSelector('h1', { timeout: 30000 }); await p.waitForTimeout(500); };
+  await T('updates: a new user sees no what-is-new note', async p => {
+    await go(p, '#/today', 1200);
+    ok(!(await p.$('.whatsnew')) && await p.evaluate(() => !!S.cv && Object.keys(S.cv.known).length > 100), 'new user saw a note, or no starting point was recorded');
+  });
+  await T('updates: an existing user upgrading is told about the new AI data stack modules, nothing else', async p => {
+    await go(p, '#/today', 1200);
+    await seed(p, () => { delete S.cv; S.updates = []; S.done['s00:S001'] = iso(new Date()); });
+    const t = await text(p, '.whatsnew'); await p.click('.whatsnew button:has-text("See")'); const t2 = await text(p, '.whatsnew');
+    ok(/2 new modules/.test(t) && /LLMs meet the warehouse/.test(t2) && !/Updated/.test(t2), 'note: ' + t2.replace(/\s+/g, ' ').slice(0, 400));
+    ok(await p.evaluate(() => !!S.done['s00:S001']), 'progress lost on upgrade');
+    await go(p, '#/path', 900); ok(await p.$('.pcard[data-mid=a04] .tag.tnew'), 'A4 not tagged New on the Path');
+    await go(p, '#/today', 900); await p.click('.whatsnew button:has-text("Got it")'); await p.reload(); await p.waitForSelector('h1'); await p.waitForTimeout(500);
+    ok(!(await p.$('.whatsnew')), 'Got it did not clear the note');
+  });
+  await T('updates on iPhone: the what-is-new line leaves the Up next button on the first screen', async p => {
+    await go(p, '#/today', 1200);
+    await seed(p, () => { delete S.cv; S.updates = []; S.done['s00:S001'] = iso(new Date()); });
+    await p.waitForSelector('.whatsnew');
+    const b = await p.$eval('.unit.cur .acts .btn.pri', e => [e.getBoundingClientRect().bottom, document.querySelector('.tabbar').getBoundingClientRect().top]);
+    ok(b[0] <= b[1], 'the note pushes Up next below the tab bar: ' + b);
+  }, { viewport: { width: 390, height: 664 }, isMobile: true, hasTouch: true });
+  await T('updates: a finished step whose content changed comes back as Updated; the old completion is kept', async p => {
+    await go(p, '#/today', 1200);
+    const uid = await p.evaluate(() => schedule().units.find(u => u.mid === 's00' && u.kind === 'learn').uid);
+    await seed(p, () => { const u = schedule().units.find(x => x.mid === 's00' && x.kind === 'learn'); S.done[u.uid] = '2026-10-26'; S.cv.units[u.uid] = 'older-version'; });
+    const r = await p.evaluate(id => [!!S.done[id], S.archive.done[id] && S.archive.done[id].at], uid);
+    ok(!r[0] && r[1] === '2026-10-26', 'step not reopened or old completion lost: ' + JSON.stringify(r));
+    ok(/1 updated step to look at again/.test(await text(p, '.whatsnew')), 'no Updated notice: ' + await text(p, '.whatsnew'));
+    ok(/Updated · finished before/.test(await text(p, '#page')), 'the step card does not say it was updated');
+    await p.evaluate(id => { const u = schedule().units.find(x => x.uid === id); toggleUnit(u); }, uid); await p.waitForTimeout(300);
+    ok(await p.evaluate(id => !!S.done[id] && S.cv.units[id] === unitHash(schedule().units.find(x => x.uid === id)), uid), 'finishing it again did not record the new version');
+  });
+  await T('updates: a changed exercise and a changed quiz reopen; code and the old score are kept', async p => {
+    await go(p, '#/today', 1200);
+    await seed(p, () => { S.solved.y001 = 1; S.code = S.code || {}; S.code.y001 = 'my code'; S.cv.ex.y001 = 'older'; S.quiz.a01 = { a: { 0: 'A' }, sub: true, i: 0, best: 90, last: 90 }; const q = schedule().units.find(u => u.mid === 'a01' && u.kind === 'quiz'); S.cv.units[q.uid] = 'older'; });
+    const r = await p.evaluate(() => [!!S.solved.y001, !!S.archive.solved.y001, S.code.y001, !!S.quiz.a01, S.archive.quiz.a01 && S.archive.quiz.a01.best]);
+    ok(!r[0] && r[1] && r[2] === 'my code' && !r[3] && r[4] === 90, 'exercise or quiz not reopened safely: ' + JSON.stringify(r));
+    await p.click('.whatsnew button:has-text("See")'); const t = await text(p, '.whatsnew'); ok(/Count trips per city/.test(t) && /Quiz/.test(t), 'note does not list both: ' + t.slice(0, 200));
+  });
+
   await T('today: two missed days carry forward, say so, and keep the first step on top', async p => {
     await go(p, '#/today');
     await p.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 2); S.start = iso(d); S.since = null; S.done = {}; save(); }); await p.waitForTimeout(400);
