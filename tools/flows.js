@@ -87,7 +87,7 @@ async function T(name, fn, opt) {
     const note = await text(p, '.behind'); ok(/Catching up/.test(note) && /moved to today/.test(note) && note.length < 80, 'catching-up note missing or too long: ' + note);
     ok((await text(p, '.unit.cur .t')) === sc.first, 'Up next is not the program\'s first step');
     ok(sc.today.indexOf(true) === -1 || sc.today.indexOf(true) > sc.today.lastIndexOf(false), 'a Claude Code step sits above a main step');
-    ok(/from (Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test((await p.$$eval('.item .s', a => a.map(x => x.innerText))).join(' ')), 'coding track did not catch up on the first unsolved problem');
+    ok(/from (Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test((await p.$$eval('.xit .s', a => a.map(x => x.innerText))).join(' ')), 'coding track did not catch up on the first unsolved problem');
     const strip = await p.$$eval('.wkday.past', a => a.map(x => x.innerText));
     ok(strip.every(t => !/—/.test(t) || !/0\//.test(t)) || strip.some(t => /Missed · moved to today/.test(t)) || new Date().getDay() <= 2, 'missed days in the week strip do not say where the work went');
     await p.evaluate(() => { S.done[schedule().units.find(u => !isCC(u.mid)).uid] = iso(new Date()); save(); }); await p.reload(); await p.waitForTimeout(800);
@@ -133,7 +133,7 @@ async function T(name, fn, opt) {
 
   await T('today: finishing every step shows done-for-today and next up', async p => {
     await go(p, '#/today');
-    for (let i = 0; i < 8; i++) { const b = await p.$('.unit:not(.done) .check'); if (!b) break; await b.click(); await p.waitForTimeout(350); }
+    for (let i = 0; i < 16; i++) { const b = await p.$('.unit:not(.done) .check, .xit .check[aria-pressed=false]'); if (!b) break; await b.click(); await p.waitForTimeout(350); } /* the hour, the coding track and the mock */
     const t = await text(p, '#page'); ok(/Done for today/.test(t), 'no done-for-today message');
     ok(/Ahead of plan/i.test(await text(p, '.hero')), 'hero should offer the next step ahead of plan');
   });
@@ -160,9 +160,9 @@ async function T(name, fn, opt) {
   await T('schedule: weekday budget is 60, weekend 120, settings change it', async p => {
     const mon = new Date(); mon.setDate(mon.getDate() + ((8 - mon.getDay()) % 7 || 7)); mon.setHours(8, 0, 0, 0);
     await p.clock.setFixedTime(mon); await go(p, '#/today', 900);
-    let m = (await text(p, '#page')).match(/of (\d+) min done/); ok(m && +m[1] <= 65, 'Monday plan over 60: ' + (m && m[1]));
+    let m = (await text(p, '#page')).match(/Your hour\s*\d+ \/ (\d+) min/); ok(m && +m[1] <= 65, 'Monday plan over 60: ' + (m && m[1]));
     await p.evaluate(() => { S.settings.capWd = 90; save(); route(); }); await p.waitForTimeout(500);
-    m = (await text(p, '#page')).match(/of (\d+) min done/); ok(m && +m[1] > 60 && +m[1] <= 95, 'budget 90 not applied: ' + (m && m[1]));
+    m = (await text(p, '#page')).match(/Your hour\s*\d+ \/ (\d+) min/); ok(m && +m[1] > 60 && +m[1] <= 95, 'budget 90 not applied: ' + (m && m[1]));
     ok(/90-minute day/.test(await text(p, '#page')), 'day chip not updated');
   });
 
@@ -754,7 +754,7 @@ async function T(name, fn, opt) {
     let s = await state(p); ok(s.rev && s.rev.y011 && s.rev.y011.box === 0, 'not queued after opening the solution: ' + JSON.stringify(s.rev));
     await p.evaluate(() => { S.rev.y011.due = iso(new Date()); save(); });
     await hash(p, '#/today', 600);
-    ok(/Review ›/.test(await text(p, '#page')), 'due review not on the coding card');
+    ok(/Review ·/.test(await text(p, '.plan')), 'due review not in the coding track on Today');
     ok(/Review \(1 due\)/.test(await (async () => { await hash(p, '#/practice/review', 500); return text(p, '.tabs'); })()), 'practice tab has no due count');
     await hash(p, '#/py/y011/review', 700);
     const code = await p.inputValue('textarea.code');
