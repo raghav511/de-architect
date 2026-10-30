@@ -17,6 +17,8 @@ async function vmStart() {
     theme: dark ? { background: '#0F1720', foreground: '#E6EDF3' } : { background: '#14212B', foreground: '#E9EEF2' } });
   VM.fit = new FitAddon.FitAddon(); VM.term.loadAddon(VM.fit);
   VM.box = el('div', { class: 'xtbox' }); VM.term.open(VM.box);
+  VM.box.addEventListener('pointerdown', e => { VM.pd = [e.clientX, e.clientY]; });
+  VM.box.addEventListener('pointerup', e => vmTapMove(e));
   VM.term.onData(d => { if (VM.ready) VM.emu.serial0_send(d); else VM.queue += d; }); /* what you type while Linux starts is sent once the prompt is up */
   const t0 = Date.now();
   VM.term.write('\x1b[2mStarting Linux in your browser. The first start downloads about 12 MB and can take up to a minute.\x1b[0m\r\n');
@@ -60,6 +62,19 @@ async function vmWarm(S9) {
 /* the page can be redrawn while Linux starts (an update check, a sync): always put the terminal in the box on screen now */
 function vmAttach() { const h = document.querySelector('.xthold'); if (h && VM.box && VM.box.parentNode !== h) { h.appendChild(VM.box); setTimeout(vmFitNow, 30); } }
 /* typed while Linux started: send it once the prompt is up, after a lab's setup if one is running */
+/* tap or click on the line you are typing: move the cursor there with arrow keys (bash ignores moves past either end) */
+function vmTapMove(e) {
+  const T = VM.term, p = VM.pd; VM.pd = null;
+  if (!VM.ready || VM.labBusy || !p || Math.abs(e.clientX - p[0]) > 6 || Math.abs(e.clientY - p[1]) > 6 || T.hasSelection()) return;
+  const sc = VM.box.querySelector('.xterm-screen'); if (!sc) return;
+  const r = sc.getBoundingClientRect(), b = T.buffer.active;
+  if (b.viewportY !== b.baseY) return; /* scrolled back into history: leave the cursor alone */
+  const col = Math.floor((e.clientX - r.left) / (r.width / T.cols)), row = Math.floor((e.clientY - r.top) / (r.height / T.rows));
+  if (col < 0 || row < 0 || col >= T.cols || row >= T.rows || Math.abs(row - b.cursorY) > 4) return;
+  const d = (row - b.cursorY) * T.cols + (col - b.cursorX);
+  if (d) VM.emu.serial0_send((d > 0 ? '\x1b[C' : '\x1b[D').repeat(Math.min(Math.abs(d), 400)));
+  T.focus();
+}
 function vmFlushQueue() { if (VM.ready && VM.queue && !VM.labBusy) { VM.emu.serial0_send(VM.queue); VM.queue = ''; } }
 function vmRestart() { try { VM.emu.destroy(); } catch (e) { } clearInterval(VM.tick); clearTimeout(VM.dog); Object.assign(VM, { emu: null, term: null, fit: null, box: null, ready: false, log: '', base: 0, queue: '', stuck: false, lab: null }); route(); }
 /* tell the shell the real window size when it changes, so lines wrap where you see them */
@@ -82,7 +97,8 @@ function vTerminal(kind, n) {
   VM.onStatus = t => { status.textContent = t; };
   const holder = el('div', { class: 'xthold', 'aria-label': 'Terminal' });
   const key = (label, seq, aria) => el('button', { class: 'btn sm', 'aria-label': aria || label, onclick: () => { if (VM.ready) { VM.emu.serial0_send(seq); VM.term.focus(); } }, text: label });
-  const keys = el('div', { class: 'row wrap xtkeys', style: { gap: '6px' } }, [key('Tab', '\t'), key('Ctrl-C', '\x03', 'Control C: stop the command'), key('Esc', '\x1b', 'Escape'), key('↑', '\x1b[A', 'Previous command'), key('↓', '\x1b[B', 'Next command'), key('←', '\x1b[D', 'Left'), key('→', '\x1b[C', 'Right'), key('Clear', 'clear\n', 'Clear the screen')]);
+  const enter = key('Enter ⏎', '\r', 'Enter: run the line'); enter.classList.add('pri', 'xtenter');
+  const keys = el('div', { class: 'row wrap xtkeys', style: { gap: '6px' } }, [enter, key('Tab', '\t'), key('Ctrl-C', '\x03', 'Control C: stop the command'), key('Esc', '\x1b', 'Escape'), key('↑', '\x1b[A', 'Previous command'), key('↓', '\x1b[B', 'Next command'), key('←', '\x1b[D', 'Left'), key('→', '\x1b[C', 'Right'), key('Clear', 'clear\n', 'Clear the screen')]);
   const done = g && (S.gitlab || {})[g.n];
   const result = el('div', { class: 'stack', style: { gap: '4px' } });
   /* status and results live with the terminal, so a re-render of the page shows them again */

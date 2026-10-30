@@ -612,6 +612,50 @@ async function T(name, fn, opt) {
     ok(/Not yet/.test(await text(p, '.termside [role=status]')), 'Check did not finish with half-typed text on the line: ' + await text(p, '.termside [role=status]'));
   });
 
+  await T('terminal: tapping on the typed line moves the cursor there, and the Enter key runs it', async p => {
+    await go(p, '#/terminal', 900);
+    await p.waitForFunction(() => VM.ready, null, { timeout: 300000 }); await p.waitForTimeout(800);
+    await p.click('.xthold'); await p.keyboard.type('echo bcdef'); await p.waitForTimeout(800);
+    /* tap on the "b": 5 cells left of the cursor */
+    const pt = await p.evaluate(() => { const T = VM.term, b = T.buffer.active, r = VM.box.querySelector('.xterm-screen').getBoundingClientRect(), w = r.width / T.cols, h = r.height / T.rows; return [r.left + (b.cursorX - 5 + 0.5) * w, r.top + (b.cursorY + 0.5) * h]; });
+    await p.mouse.click(pt[0], pt[1]); await p.waitForTimeout(600);
+    await p.keyboard.type('XA'); await p.waitForTimeout(400);
+    ok(await p.isVisible('.xtkeys button:has-text("Enter")'), 'no Enter key in the terminal');
+    await p.click('.xtkeys button:has-text("Enter")');
+    await p.waitForFunction(() => /XAbcdef\r?\n/.test(VM.log), null, { timeout: 30000 }).catch(() => {});
+    ok(await p.evaluate(() => /\nXAbcdef\r?\n/.test(VM.log.replace(/\r/g, '\n'))), 'tap did not move the cursor or Enter did not run: ' + await p.evaluate(() => JSON.stringify(VM.log.slice(-200))));
+  });
+
+  await T('today: the coding track and interview practice are rows in the plan, and the day is done only when they are', async p => {
+    await go(p, '#/today', 1200); await p.waitForSelector('.plan .unit');
+    const t = await text(p, '.plan');
+    ok(/Your hour/.test(t) && /Coding track/.test(t) && /Interview practice/.test(t) && /Daily mock interview|Sunday mock interview/.test(t), 'plan is missing a group: ' + t.slice(0, 300));
+    ok(await p.evaluate(() => document.querySelectorAll('.plan .xit').length >= 2), 'no coding or mock rows in the plan');
+    ok(await p.evaluate(() => ![...document.querySelectorAll('.grid2 > .stack h2')].some(h => /Coding track/.test(h.textContent))), 'coding track is still a separate card');
+    /* tick every hour step: not done for today while coding and the mock are open */
+    await p.evaluate(() => { const sc = schedule(); (sc.byDay[sc.today] || []).forEach(u => { S.done[u.uid] = sc.today; }); save(); route(); }); await p.waitForTimeout(500);
+    ok(!/Done for today/.test(await text(p, '.plan')), 'says done for today with coding and the mock open');
+    const n = await p.$$eval('.plan .xit .check[aria-pressed=false]', b => b.length);
+    for (let i = 0; i < n; i++) { await p.click('.plan .xit .check[aria-pressed=false]'); await p.waitForTimeout(250); }
+    ok(/Done for today/.test(await text(p, '.plan')), 'not done for today after ticking every row');
+    ok(await p.evaluate(() => Object.keys((S.xdone || {})[iso(new Date())] || {}).length >= 2), 'manual ticks not saved');
+    await go(p, '#/today/1', 900); ok(/Coding track/.test(await text(p, '.plan')), 'tomorrow has no coding track');
+  });
+
+  await T('learn: a finished tab turns green, Done next ticks today\'s part, and the module opens on the first unfinished tab', async p => {
+    await go(p, '#/learn/s01/chapter', 900);
+    ok(!(await p.$('.tabs button.tdone')), 'a tab is green before anything is done');
+    await p.click('button:has-text("Done, next: Readings")'); await p.waitForTimeout(700);
+    ok(/\/readings$/.test(p.url()), 'did not move to Readings: ' + p.url());
+    ok(await p.evaluate(() => document.querySelector('.tabs button.tdone') && /Chapter/.test(document.querySelector('.tabs button.tdone').textContent)), 'Chapter tab is not green');
+    await go(p, '#/learn/s01', 900);
+    ok(await p.evaluate(() => /Readings/.test(document.querySelector('.tabs [aria-selected=true]').textContent)), 'module did not open on Readings');
+    await go(p, '#/learn/s02/chapter/0-1', 900);
+    const uid = await p.evaluate(() => (schedule().units.find(u => u.href === '#/learn/s02/chapter/0-1') || {}).uid);
+    await p.click('button:has-text("Done, next")'); await p.waitForTimeout(600);
+    ok(!uid || (await state(p)).done[uid], 'today\'s chapter part was not ticked');
+  });
+
   await T('terminal on iPhone: the page never scrolls sideways', async p => {
     await go(p, '#/terminal', 900);
     await p.waitForSelector('.xthold', { timeout: 30000 }); await p.waitForTimeout(4000);

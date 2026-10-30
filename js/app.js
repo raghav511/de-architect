@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.15.3';
+const VERSION = '1.16.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -208,7 +208,7 @@ function route() {
   try {
     if (r === 'today') vToday(p[1]);
     else if (r === 'path') vPath(p[1]);
-    else if (r === 'learn') vLearn(p[1] === '0' ? '' : p[1], p[2] || 'chapter', p[3]);
+    else if (r === 'learn') vLearn(p[1] === '0' ? '' : p[1], p[2] || '', p[3]);
     else if (r === 'git') vGit(p[1]);
     else if (r === 'news') vNews();
     else if (r === 'dsa' || r === 'sql' || r === 'spark' || r === 'py') vWork(r, p[1], p[2]);

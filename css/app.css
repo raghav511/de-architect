@@ -42,6 +42,8 @@ code{font-size:.9em;background:#EEF1EA;padding:1px 5px;border-radius:4px}
 .tabs{display:flex;gap:6px;flex-wrap:wrap}
 .tabs button{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line2);background:var(--card);font-weight:600;cursor:pointer}
 .tabs button[aria-selected=true]{background:var(--navy);border-color:var(--navy);color:#fff}
+.tabs button.tdone{display:inline-flex;align-items:center;gap:5px;background:var(--teal-l);border-color:#7CC7B0;color:var(--teal-d)}
+.tabs button.tdone[aria-selected=true]{background:var(--teal);border-color:var(--teal);color:#fff}
 
 /* shell */
 .app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}
@@ -224,6 +226,11 @@ textarea.code{flex:1;width:100%;border:0;resize:none;padding:14px 16px;font:14px
 .unit:nth-child(3n){border-left-color:var(--amber-b,#E08A1E)}.unit:nth-child(3n+1){border-left-color:var(--plum,#7A3E9D)}
 .unit.done{background:var(--teal-xl);border-color:#BFE3D6;border-left-color:var(--teal)}
 .unit .check{flex:none;margin-top:2px}
+.xgroup{margin-top:10px;padding-top:14px;border-top:1px solid var(--line)}
+.xit{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card)}
+.xit.done{background:var(--teal-xl);border-color:#BFE3D6}.xit.done .check{background:var(--teal);border-color:var(--teal);color:#fff}.xit.done .t{text-decoration:line-through;text-decoration-color:#9CC9BA}
+.xit .xlink{display:flex;flex-direction:column;gap:3px;text-decoration:none;color:var(--ink);min-width:0}
+.xit .t{font-weight:700;font-size:15.5px;line-height:1.3}.xit .s{font-size:13.5px;color:var(--muted)}
 .unit.done .check{background:var(--teal);border-color:var(--teal)}
 .unit .t{font-weight:700;font-size:16.5px;line-height:1.3}
 .unit .goal{font-size:14.5px;line-height:1.45}
@@ -445,4 +452,5 @@ a.srcl:hover{background:var(--teal-l)}
 @media (max-width:860px){.termgrid{grid-template-columns:1fr}.termside{order:2}.xthold{height:52vh}}
 /* the terminal draws at 80 columns before it fits its box: never let that widen the page on a phone */
 .termgrid>*{min-width:0}
+.xtkeys .xtenter{min-width:96px;font-size:15px}
 .termcard,.xthold{min-width:0;max-width:100%;overflow:hidden}
