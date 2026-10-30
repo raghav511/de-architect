@@ -620,7 +620,7 @@ async function T(name, fn, opt) {
 
   await T('system labs: modules 1, 5 and 6 run in the browser (Kafka, S3, Airflow, streaming, CDC) and tick their steps', async p => {
     await go(p, '#/path/s01', 900);
-    const sols = await p.evaluate(() => DATA.py.filter(x => x.m === 's01' || x.m === 's05').map(x => [x.id, x.sol]));
+    const sols = await p.evaluate(() => DATA.py.filter(x => x.m === 's01' || x.m === 's05' || x.m === 's06').map(x => [x.id, x.sol]));
     ok(sols.length === 13, 'expected 13 module 1, 5 and 6 exercises, got ' + sols.length);
     for (const [id, sol] of sols) {
       await hash(p, '#/py/' + id, 600);
