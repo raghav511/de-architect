@@ -55,6 +55,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.15.0: module 6's CDC lab in the browser (change events by LSN, reconciliation, hourly drift, propose-approve-execute).
 - 1.14.0: module 5's streaming lab in the browser (watermark windows, exactly-once after a crash, dead-letter queue, schema compatibility); the phone terminal no longer scrolls sideways; the size budget counts only the app's own files.
 - 1.13.0: module 1's walking-skeleton lab runs in the browser on `py/minilake.py` (Kafka-, S3- and Airflow-style); five exercises replace the Docker lab, which stays as optional; the rerun incident is the landing exercise's rerun test.
 - 1.12.0: in-app terminal with real bash and git; Git labs run inside the app, all 16 pass; works in Safari.
@@ -66,5 +67,6 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Next
 
-- More in-app system labs on `py/minilake.py`: CDC (module 6: change events to current state, deletes, incremental snapshots), then modules 2, 7 and 8 where they still assume Docker or a cloud account.
+- More in-app system labs: modules 2 (Iceberg tables), 3 (Spark under load), 7 (cloud) and 8 (Delta and Snowflake), where they still assume Docker or a cloud account.
+- iPhone Safari pass with mobile-mcp (separate session): blocked by machine load; avoid running Playwright while it retries.
 - Then: project environments and the Claude Code track inside the app (agent lab using the user's API key).
