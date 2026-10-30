@@ -33,6 +33,11 @@ async function T(name, fn, opt) {
 
   /* ---- content updates: nothing you did is lost, changes are announced ---- */
   const seed = async (p, fn) => { await p.evaluate(fn); await p.evaluate(() => { saveT && clearTimeout(saveT); saveT = null; localStorage.setItem('keystone:v1', JSON.stringify(S)); }); await p.reload(); await p.waitForSelector('h1', { timeout: 30000 }); await p.waitForTimeout(500); };
+  await T('updates: damaged tracker data from a sync is repaired; Today opens and progress stays', async p => {
+    await go(p, '#/today', 1200);
+    await seed(p, () => { S.cv = 'garbage'; S.archive = 7; S.updates = 'x'; S.done['s00:S001'] = '2026-10-26'; });
+    ok(/Your plan for today/.test(await text(p, '#page')) && await p.evaluate(() => S.done['s00:S001'] === '2026-10-26' && Array.isArray(S.updates) && typeof S.cv === 'object'), 'Today did not open or progress was touched');
+  });
   await T('updates: a new user sees no what-is-new note', async p => {
     await go(p, '#/today', 1200);
     ok(!(await p.$('.whatsnew')) && await p.evaluate(() => !!S.cv && Object.keys(S.cv.known).length > 100), 'new user saw a note, or no starting point was recorded');

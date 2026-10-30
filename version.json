@@ -1,12 +1,8 @@
 {
-  "version": "1.10.0",
+  "version": "1.10.1",
   "date": "2026-10-30",
   "notes": [
-    "Updates: every step, exercise and quiz has a fingerprint; the app remembers which version you finished",
-    "Updates: new modules and steps join your plan; a step you finished whose content changed goes back to not done, tagged Updated, with your earlier completion, quiz score and code kept in an archive",
-    "Today: a one-line 'What is new' note (See for the list, Got it to clear); Path cards tagged New or Updated",
-    "First run on an existing install records your progress as the starting point, and announces the new AI data stack modules (A4, A5)",
-    "Week strip: days before you began say so instead of a dash",
-    "Tests: new user, upgrade, changed step, changed exercise and quiz, iPhone layout; simulated users check past days are labelled"
+    "Fix: if synced or restored data has damaged update-tracker fields, the app repairs them at start-up and opens normally; your progress is never touched",
+    "Test: damaged tracker data from a sync"
   ]
 }
