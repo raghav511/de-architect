@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.15.0';
+const VERSION = '1.15.1';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -226,7 +226,7 @@ function route() {
     else if (r === 'project') vProject(p[1]);
     else if (r === 'cc') vCC(p[1], p[2]);
     else vToday();
-  } catch (e) { console.error(e); shell('Something went wrong', '', [el('div', { class: 'card pad' }, [el('p', { text: String(e.message || e) }), el('a', { class: 'btn', href: '#/today', text: 'Back to Today' })])]); }
+  } catch (e) { console.error(e); shell('Something went wrong', '', [el('div', { class: 'card pad stack' }, [el('p', { style: { margin: 0 }, text: String(e.message || e) }), el('span', { class: 'muted', text: 'Often a dropped connection. Reloading usually fixes it; your progress is saved.' }), el('div', { class: 'row wrap', style: { gap: '8px' } }, [el('button', { class: 'btn pri', onclick: () => location.reload(), text: 'Reload' }), el('a', { class: 'btn', href: '#/today', text: 'Back to Today' })])])]); }
 }
 
 const VIDEOS = { 1: [['Kafka 101: events and logs', 'https://developer.confluent.io/courses/apache-kafka/events/'], ['Topics', 'https://developer.confluent.io/courses/apache-kafka/topics/'], ['Partitions', 'https://developer.confluent.io/courses/apache-kafka/partitions/'], ['Consumers and groups', 'https://developer.confluent.io/courses/apache-kafka/consumers/']], 5: [['Kafka 101: producers', 'https://developer.confluent.io/courses/apache-kafka/producers/'], ['Stream processing', 'https://developer.confluent.io/courses/apache-kafka/stream-processing/']], 6: [['Kafka Connect', 'https://developer.confluent.io/courses/apache-kafka/kafka-connect/']] };
@@ -1115,7 +1115,7 @@ function hintText(ctx, plain) {
 function applyTheme() { const t = S.settings.theme, a = S.settings.accent, r = document.documentElement; if (t === 'light' || t === 'dark') r.dataset.theme = t; else delete r.dataset.theme; if (a === 'blue' || a === 'plum') r.dataset.accent = a; else delete r.dataset.accent; }
 applyTheme();
 let navCount = 0;
-window.addEventListener('hashchange', () => { navCount++; route(); });
+window.addEventListener('hashchange', () => { navCount++; document.querySelectorAll('.scrim').forEach(x => x.remove()); route(); }); /* search, menus and dialogs belong to the screen you left */
 /* a tab left open overnight shows the new day's plan when you come back */
 let lastDay = iso(new Date());
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && iso(new Date()) !== lastDay) { lastDay = iso(new Date()); if (!/^#\/(dsa|sql|spark|test)\//.test(location.hash)) route(); } });

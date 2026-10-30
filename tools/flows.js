@@ -351,6 +351,13 @@ async function T(name, fn, opt) {
     ok(Object.keys((await state(p)).done).some(k => k.endsWith(':git')), 'git lesson not saved');
   });
 
+  await T('search closes when you go to another screen', async p => {
+    await go(p, '#/today', 900);
+    await p.click('[aria-label=Search]'); await p.waitForSelector('.scrim [role=dialog]');
+    await hash(p, '#/path', 600);
+    ok(!(await p.$('.scrim')), 'the search panel stayed open on the new screen');
+  });
+
   await T('search: keyboard open, type, arrows, enter navigates, escape closes', async p => {
     await go(p, '#/today');
     await p.keyboard.press('/'); await p.keyboard.type('two sum'); await p.waitForTimeout(200);
