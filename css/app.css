@@ -459,3 +459,6 @@ a.srcl:hover{background:var(--teal-l)}
 .termcard,.xthold{min-width:0;max-width:100%;overflow:hidden}
 @media (pointer:coarse){.kbd{display:none}}
 .pset>summary{list-style:none;cursor:pointer}.pset>summary::-webkit-details-marker{display:none}.pset>summary h3:after{content:' ›';color:var(--muted)}.pset[open]>summary h3:after{content:' ⌄'}
+.plan{container-type:inline-size}
+@container (max-width:600px){.daysum,.daynav>.chip{display:none}} /* a narrow Today column (phone, iPad beside the module card): the section headings carry the minutes, and Up next stays on the first screen */
+@media (max-width:560px){.tsec,.plan .xgroup{padding-top:8px}}

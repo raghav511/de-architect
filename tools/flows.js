@@ -36,7 +36,7 @@ async function T(name, fn, opt) {
   await T('updates: damaged tracker data from a sync is repaired; Today opens and progress stays', async p => {
     await go(p, '#/today', 1200);
     await seed(p, () => { S.cv = 'garbage'; S.archive = 7; S.updates = 'x'; S.done['s00:S001'] = '2026-10-26'; });
-    ok(/Your plan for today/.test(await text(p, '#page')) && await p.evaluate(() => S.done['s00:S001'] === '2026-10-26' && Array.isArray(S.updates) && typeof S.cv === 'object'), 'Today did not open or progress was touched');
+    ok(/Reading and labs/.test(await text(p, '#page')) && await p.evaluate(() => S.done['s00:S001'] === '2026-10-26' && Array.isArray(S.updates) && typeof S.cv === 'object'), 'Today did not open or progress was touched');
   });
   await T('updates: a new user sees no what-is-new note', async p => {
     await go(p, '#/today', 1200);
@@ -417,7 +417,7 @@ async function T(name, fn, opt) {
   await T('storage blocked: app still renders', async p => {
     await p.addInitScript(() => { Object.defineProperty(window, 'localStorage', { get() { throw new Error('blocked'); } }); });
     await go(p, '#/today', 1000);
-    ok(/Your plan for today/.test(await text(p, '#page')), 'app did not render without storage');
+    ok(/Reading and labs/.test(await text(p, '#page')), 'app did not render without storage');
   });
 
   await T('keyboard: dialogs trap focus start and Escape closes; focus visible', async p => {
@@ -665,6 +665,7 @@ async function T(name, fn, opt) {
       { id: 'rq-t2', mid: 's02', company: 'Google', level: 'L5', asked: today, found: today, TAG: 'sql', Q: 'Find the second highest salary per department.', A: 'DENSE_RANK over a department window, filter rank 2.', src: 'Test', url: 'https://example.com/b' }] };
     await p.route('**/data/recent.json*', r => r.fulfill({ contentType: 'application/json', body: JSON.stringify(R) }));
     await go(p, '#/today', 1500); await p.waitForSelector('.plan .xit');
+    await p.evaluate(() => { S.rqSeen = ''; save(); route(); }); await p.waitForTimeout(400); /* an existing learner; a new one starts without the notice */
     ok(/Uber: Design trip events/.test(await text(p, '.plan')) && /Google: Find the second/.test(await text(p, '.plan')), 'no recent question rows on Today');
     ok(/2 new interview questions from this week/.test(await text(p, '.whatsnew')), 'What is new does not mention them');
     await p.click('.whatsnew button:has-text("Got it")'); await p.waitForTimeout(500);
