@@ -797,7 +797,7 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => S.settings.ai === true && MODS.some(isCC)), 'turning AI back on did not restore the track');
   });
   await T('persona: step ticks are at least 44px on touch screens', async p => {
-    await go(p, '#/today', 1200);
+    await go(p, '#/today', 600); await p.waitForSelector('.unit .check', { timeout: 30000 });
     const sz = await p.evaluate(() => { const b = document.querySelector('.unit .check').getBoundingClientRect(); return Math.min(b.width, b.height); });
     ok(sz >= 44, 'tick is ' + sz + 'px');
   }, { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
