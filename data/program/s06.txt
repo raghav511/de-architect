@@ -8,9 +8,9 @@ mockloop: 1
 
 @@tickets
 601 | learn | 1.75 | Chapter 6 and the readings | You can explain how a row change in Postgres becomes a row in the lake, and name four ways it can go wrong. | chapter
-602 | build | 2.25 | Change data capture into Iceberg | An insert, an update and a delete in Postgres each appear correctly in the lake table within a minute. | lab
-603 | incident | 0.75 | The database and the warehouse disagree | The reconciliation DAG finds the drift you planted, and the cause is fixed and written up. | lab
-604 | ai | 1 | A fix the agent proposes and a person approves | The agent drafts a repair, posts it to Slack with the affected row count, and nothing runs until you approve. | lab
+602 | build | 1 | Change data capture into a current-state table | The exercise passes in the editor: inserts, updates and deletes applied by LSN, late and duplicate events ignored, a replay changes nothing. | py:1-1
+603 | incident | 0.75 | The database and the warehouse disagree | Both exercises pass: drift classified by key, and the hours where the two sides disagree found from counts and sums. | py:2-3
+604 | ai | 0.75 | A fix the agent proposes and a person approves | The exercise passes: a fix runs only after a named person approves it, and only once. | py:4-4
 605 | practice | 1 | Warm-ups and the customer drill | Three SQL and three DSA warm-ups attempted, and the drill answered out loud. | practice
 606 | test | 0.5 | Quiz 6 | 80% or better. | quiz
 607 | test | 1 | Coding test 6 | Attempted inside the 60-minute timer. | coding
@@ -205,7 +205,17 @@ The agent's tool list contains `propose_fix` and does not contain `execute_appro
 Decide which actions need approval by asking whether the action can be undone. Reading is free. Restarting an idempotent task is low risk. Changing or deleting data needs a person. This is the same reasoning as "retry transient errors, alert on the rest" from sprint 1, applied to an agent.
 
 @@lab
-## Build: change data capture into Iceberg (2.25 hours)
+## In the app: change data capture without Postgres or Kafka (2.5 hours)
+
+1. **Change events to a current-state table:** apply Debezium-style events (`op`, `before`, `after`, `source.lsn`) by log position; late and duplicate events are ignored, deletes win, and a replay changes nothing.
+2. **Reconcile row by row:** keys missing in the target, extra in the target, or different.
+3. **Find the drift:** counts and sums per hour on both sides, to flag the hours worth checking row by row (the incident).
+4. **Propose, approve, execute:** the agent's repair waits for a named person and runs once (the AI lab's control, without Slack).
+
+**Done when** all four pass (Path, module 6). Then explain how a row change in Postgres becomes a row in the lake, and name four ways it can go wrong.
+
+## Optional: on your own machine with Postgres, Debezium and Iceberg
+
 
 Paste this lab into a chat with Claude and ask it to **generate the DE 6 starter kit**. The starter kit adds Postgres with logical decoding enabled, Kafka Connect with the Debezium connector, a seed script that creates and mutates orders, and Flink for the comparison step.
 

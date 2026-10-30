@@ -1,10 +1,9 @@
 {
-  "version": "1.14.0",
+  "version": "1.15.0",
   "date": "2026-10-30",
   "notes": [
-    "Module 5: streaming is practised in your browser: demand per minute and zone with a watermark, exactly-once counts after a crash, a poison message sent to the dead-letter queue, and schema evolution that accepts a safe change and rejects a rename",
-    "The cluster version (Kafka, Spark, Iceberg) stays as an optional lab",
-    "Phones: the Terminal page no longer scrolls sideways",
-    "Tests: modules 1 and 5 exercises solved in the browser tick their steps; the terminal fits an iPhone screen"
+    "Module 6: change data capture is practised in your browser: Debezium-style change events applied by log position (late and duplicate events ignored, deletes win, replays change nothing), row-level reconciliation, hourly drift detection, and a fix that runs only after a person approves it",
+    "The Postgres, Debezium and Iceberg version stays as an optional lab; the Slack approval flow is replaced by an in-app check of the same control",
+    "Tests: the browser journey covers modules 1, 5 and 6"
   ]
 }
