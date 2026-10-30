@@ -5,7 +5,7 @@ A single-user interview-prep PWA for a senior data engineer (Raghavendra). Stati
 ## How we work
 
 - **Ship first, check after.** Build the feature with its own tests, open a PR, merge it at once, then run the long checks in the background (7 simulated users, accessibility, journeys, red team, speed, offline) and ship a fix for anything they find. Never hold a merge for the full suite.
-- **Merge PRs yourself; never wait for the user.** If GitHub blocks a merge (a required review on `main`), do not bypass it with `--admin` or change branch protection: tell the user and keep working on the next thing.
+- **Merge PRs yourself; never wait for the user.** `ship.sh` merges each PR. If GitHub ever blocks a merge again (a required review on `main`), do not bypass it with `--admin` or change branch protection (the safety check blocks both): tell the user and keep working.
 - **Decide and continue.** If the user has not answered in 10–15 minutes, pick the recommended option and keep going.
 - **The user's feedback mid-task comes first:** do it, ship it, then return to the plan.
 - **Fewest taps:** one task per screen, the main action visible without scrolling on a phone, nested tabs instead of long pages, autosave instead of Save buttons.
@@ -71,5 +71,4 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 - More in-app system labs: modules 2 (Iceberg tables), 3 (Spark under load), 7 (cloud) and 8 (Delta and Snowflake), where they still assume Docker or a cloud account.
 - iPhone Safari pass with mobile-mcp (separate session): blocked by machine load; avoid running Playwright while it retries.
-- Merging: `main` requires one approving review; Claude cannot remove it or bypass it (the auto-mode safety check blocks both), so PRs need the user's merge until the rule is removed in GitHub settings.
 - Then: project environments and the Claude Code track inside the app (agent lab using the user's API key).
