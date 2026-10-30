@@ -59,6 +59,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.17.3: iPhone fixes from the screen atlas: coach button hidden on quizzes and room for it at the page end, Submit quiet until the last question, coach box full width, practice sets fold, days before the start say when the plan starts, 44px header and tabs, no ⌘↵ hint on touch, mental map words no longer break.
 - 1.17.2: tests read the coding track and minutes from the plan groups on Today.
 - 1.17.0: weekly recent interview questions (`#/recent`, Today row, module interview pages); updated content is never counted as done until the learner does it, including module tabs.
 - 1.16.0: everything for the day is in Today's plan (coding track and interview practice joined the hour); finished module tabs turn green and the module opens on the next one; the terminal has an Enter key and tapping the typed line moves the cursor.

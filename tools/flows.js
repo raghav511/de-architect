@@ -690,6 +690,20 @@ async function T(name, fn, opt) {
     ok(!(await p.$('.tabs button.tdone')), 'a tab finished on old text is still green');
    }, { serviceWorkers: 'block' });
 
+  await T('screen atlas (iPhone): coach button off quizzes, quiet Submit at question 1, wide coach box, folded practice sets, plan start, 44px header', async p => {
+    await go(p, '#/quiz/a01', 1200); await p.waitForSelector('.qdock');
+    ok(await p.evaluate(() => getComputedStyle(document.querySelector('.fab')).display === 'none'), 'coach button covers the quiz dock');
+    ok(await p.evaluate(() => !document.querySelector('.qdock .btn.dark')), 'Submit is the loudest button at question 1');
+    ok(await p.evaluate(() => Math.max(...[...document.querySelectorAll('.qdock .btn')].map(x => x.getBoundingClientRect().right)) <= innerWidth), 'quiz dock buttons run off the screen');
+    await go(p, '#/today', 900); await p.click('.fab'); await p.waitForTimeout(300);
+    ok(await p.evaluate(() => document.querySelector('.coach input').getBoundingClientRect().width > 280), 'coach text box is too narrow');
+    ok(await p.evaluate(() => [...document.querySelectorAll('.top .btn')].every(x => { const r = x.getBoundingClientRect(); return r.width >= 44 && r.height >= 44; })), 'header buttons under 44px');
+    await go(p, '#/practice', 900); ok(await p.evaluate(() => document.documentElement.scrollHeight < 5000), 'practice list is still very long');
+    await go(p, '#/dsa/d011', 900); ok(await p.evaluate(() => getComputedStyle(document.querySelector('.topbtns')).display === 'none'), 'editor header still crowded');
+    await p.evaluate(() => { S.start = iso(new Date()); save(); }); await go(p, '#/today/-1', 900);
+    ok(/Your plan starts/.test(await text(p, '.plan')) && !/0 of 0 min/.test(await text(p, '.plan')), 'a day before the start does not say when the plan starts');
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
   await T('terminal on iPhone: the page never scrolls sideways', async p => {
     await go(p, '#/terminal', 900);
     await p.waitForSelector('.xthold', { timeout: 30000 }); await p.waitForTimeout(4000);
