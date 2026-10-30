@@ -177,6 +177,8 @@ Backward is the usual default, because it lets a consumer replay old messages wi
 | Runs as | A Spark application | A Flink cluster | A library inside your own service |
 | Best fit | Teams already on Spark; batch and stream sharing code; lakehouse sinks | Low latency, complex event-time logic, very large state | Kafka-to-Kafka processing inside a microservice |
 
+Spark is closing the gap: Databricks' Real-Time Mode (generally available for Spark Declarative Pipelines since October 2026) runs all stages at once and passes rows on as soon as they are produced, for latencies in milliseconds instead of a micro-batch every few seconds. Choose it when a sub-second number changes a decision; otherwise micro-batches are cheaper and simpler.
+
 For Meridian's demand counts, seconds are fine and the team already runs Spark. You will use Flink SQL next sprint, where change data capture is its natural home.
 
 Two architecture names complete the vocabulary. **Lambda** runs a batch pipeline and a streaming pipeline side by side and merges their results, which means writing the logic twice. **Kappa** uses one streaming pipeline and replays the log when logic changes. A lakehouse with streaming writes into table formats is close to kappa.
