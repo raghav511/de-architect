@@ -1,10 +1,10 @@
 {
-  "version": "1.13.0",
+  "version": "1.14.0",
   "date": "2026-10-30",
   "notes": [
-    "Module 1: the walking skeleton is built in your browser on small, real versions of Kafka (partitions, offsets, consumer groups), S3 (Parquet by hour, read with DuckDB) and Airflow (data intervals, a quality gate, backfill): five exercises with tests",
-    "Module 1: the 'rerun doubles every row' incident is now a test you make pass; the Docker version stays as an optional lab",
-    "CLAUDE.md: running notes on how this app is built, tested and shipped",
-    "Tests: the five exercises solved in the browser editor tick module 1's steps"
+    "Module 5: streaming is practised in your browser: demand per minute and zone with a watermark, exactly-once counts after a crash, a poison message sent to the dead-letter queue, and schema evolution that accepts a safe change and rejects a rename",
+    "The cluster version (Kafka, Spark, Iceberg) stays as an optional lab",
+    "Phones: the Terminal page no longer scrolls sideways",
+    "Tests: modules 1 and 5 exercises solved in the browser tick their steps; the terminal fits an iPhone screen"
   ]
 }

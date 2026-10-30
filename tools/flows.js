@@ -581,10 +581,16 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => [...document.querySelectorAll('.termside .ok')].length === 3), 'expected three ✓ lines');
   });
 
-  await T('system labs: module 1 walking skeleton runs in the browser (Kafka, S3, Airflow style) and ticks its steps', async p => {
+  await T('terminal on iPhone: the page never scrolls sideways', async p => {
+    await go(p, '#/terminal', 900);
+    await p.waitForSelector('.xthold', { timeout: 30000 }); await p.waitForTimeout(4000);
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'scrolls sideways by ' + await p.evaluate(() => document.documentElement.scrollWidth - innerWidth) + 'px');
+  }, { viewport: { width: 390, height: 664 }, isMobile: true, hasTouch: true });
+
+  await T('system labs: modules 1 and 5 run in the browser (Kafka, S3, Airflow, streaming) and tick their steps', async p => {
     await go(p, '#/path/s01', 900);
-    const sols = await p.evaluate(() => DATA.py.filter(x => x.m === 's01').map(x => [x.id, x.sol]));
-    ok(sols.length === 5, 'expected 5 module 1 exercises, got ' + sols.length);
+    const sols = await p.evaluate(() => DATA.py.filter(x => x.m === 's01' || x.m === 's05').map(x => [x.id, x.sol]));
+    ok(sols.length === 9, 'expected 9 module 1 and 5 exercises, got ' + sols.length);
     for (const [id, sol] of sols) {
       await hash(p, '#/py/' + id, 600);
       await p.fill('textarea.code', sol);
@@ -592,7 +598,7 @@ async function T(name, fn, opt) {
       await p.waitForFunction(() => { const v = document.querySelector('.verdict'); return v && v.style.display !== 'none' && /pass|Error/.test(v.textContent); }, null, { timeout: 120000 });
       ok((await text(p, '.verdict')) === 'All checks pass', id + ' did not pass in the browser: ' + await text(p, '.out .body'));
     }
-    const left = await p.evaluate(() => schedule().units.filter(u => u.mid === 's01' && /walking skeleton|rerun/i.test(u.title) && !u.isDone).map(u => u.title));
+    const left = await p.evaluate(() => schedule().units.filter(u => (u.mid === 's01' || u.mid === 's05') && (u.kind === 'build' || u.kind === 'incident') && /walking skeleton|rerun|streaming|poison|schema evolution/i.test(u.title) && !u.isDone).map(u => u.title));
     ok(!left.length, 'steps not ticked: ' + left.join(', '));
     await go(p, '#/learn/s01/lab', 900); ok(/without Docker/.test(await text(p, '#page')), 'lab page does not lead with the in-app lab');
   });
