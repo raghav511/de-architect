@@ -59,7 +59,8 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
-- 1.17.2: weekly refresh 2026-10-30: 21 interview questions, 5 news items; module 5 section 5.7 notes Spark Real-Time Mode (GA on Declarative Pipelines).
+- 1.17.3: weekly refresh 2026-10-30: 21 interview questions, 5 news items; module 5 section 5.7 notes Spark Real-Time Mode (GA on Declarative Pipelines).
+- 1.17.2: tests read the coding track and minutes from the plan groups on Today.
 - 1.17.0: weekly recent interview questions (`#/recent`, Today row, module interview pages); updated content is never counted as done until the learner does it, including module tabs.
 - 1.16.0: everything for the day is in Today's plan (coding track and interview practice joined the hour); finished module tabs turn green and the module opens on the next one; the terminal has an Enter key and tapping the typed line moves the cursor.
 - 1.15.3: taps while the app is still loading no longer draw screens without their data (from the Pitcher crawl).

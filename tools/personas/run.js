@@ -407,7 +407,7 @@ async function run(P) {
       return true;
     });
     await task('catch up on a skipped DSA problem first', async () => {
-      const s = await p.$$eval('.item .s', a => a.map(x => x.innerText).join(' | '));
+      const s = await p.$$eval('.xit .s', a => a.map(x => x.innerText).join(' | '));
       return /from (Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test(s) || new Date().getDay() === 1 || 'coding track jumped past unsolved problems: ' + s.slice(0, 120);
     });
     await task('do the first step by touch and see the plan move', async () => {
