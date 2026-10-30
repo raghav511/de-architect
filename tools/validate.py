@@ -169,6 +169,20 @@ if '--no-run' not in sys.argv:
     except ImportError as e:
         warn('runtime not importable, skipped coding runs:', e)
 
+# recent interview questions from the weekly research task
+rec = json.load(open('data/recent.json'))
+TAGS = {'py', 'dsa', 'core', 'arch', 'ai', 'git', 'cloud', 'streaming', 'modeling', 'design', 'behavioral', 'sql', 'spark'}
+ids = set()
+for q in rec.get('items', []):
+    for k in ('id', 'company', 'Q', 'A', 'found', 'TAG', 'url'):
+        if not q.get(k): err('recent question', q.get('id'), 'missing', k)
+    if q.get('id') in ids: err('recent question id repeated', q.get('id'))
+    ids.add(q.get('id'))
+    if q.get('mid') and q['mid'] not in mods: err('recent question', q.get('id'), 'unknown module', q['mid'])
+    if q.get('TAG') and q['TAG'] not in TAGS: err('recent question', q.get('id'), 'unknown TAG', q['TAG'])
+    if q.get('url') and not q['url'].startswith('https://'): err('recent question', q.get('id'), 'url must be https')
+    if not re.match(r'^\d{4}-\d\d-\d\d$', q.get('found') or ''): err('recent question', q.get('id'), 'found must be YYYY-MM-DD')
+
 swsrc = open('sw.js').read()
 listed = set(re.findall(r"'([a-z]\d\d)'", swsrc[swsrc.index('const PROGRAM'):swsrc.index(';', swsrc.index('const PROGRAM'))]))
 for f in glob.glob('data/program/*.txt'):

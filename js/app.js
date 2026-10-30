@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.16.0';
+const VERSION = '1.17.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -165,7 +165,7 @@ function chipFor(k) { return { py: ['Python', 'c-py'], dsa: ['DSA', 'c-dsa'], co
 function chip(k) { const c = chipFor(k); return el('span', { class: 'chip ' + c[1], text: c[0] }); }
 
 /* ---------------- shell ---------------- */
-const NAV = [['#/today', 'Today', 'today'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/git', 'Git lessons', 'git'], ['#/terminal', 'Terminal', 'code'], ['#/news', 'What is new in AI', 'news'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/mock', 'Mock interview', 'quiz'], ['#/coach', 'Coach', 'spark'], ['#/progress', 'Progress', 'prog']];
+const NAV = [['#/today', 'Today', 'today'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/git', 'Git lessons', 'git'], ['#/terminal', 'Terminal', 'code'], ['#/news', 'What is new in AI', 'news'], ['#/recent', 'Asked this week', 'quiz'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/mock', 'Mock interview', 'quiz'], ['#/coach', 'Coach', 'spark'], ['#/progress', 'Progress', 'prog']];
 const TABS = [['#/today', 'Today', 'today'], ['#/path', 'Path', 'path'], ['#/practice', 'Coding', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'Design', 'design']];
 function shell(title, eyebrow, body, opts) {
   opts = opts || {};
@@ -211,6 +211,7 @@ function route() {
     else if (r === 'learn') vLearn(p[1] === '0' ? '' : p[1], p[2] || '', p[3]);
     else if (r === 'git') vGit(p[1]);
     else if (r === 'news') vNews();
+    else if (r === 'recent') vRecent();
     else if (r === 'dsa' || r === 'sql' || r === 'spark' || r === 'py') vWork(r, p[1], p[2]);
     else if (r === 'test') vWork('test', midOf(p[1]) + '/' + p[2]);
     else if (r === 'practice') vPractice(p[1] || 'all');
@@ -828,7 +829,8 @@ async function vInterview(m, focus) {
     const show = el('button', { class: 'btn sm', 'aria-expanded': 'false', onclick: () => { const o = ans.style.display === 'none'; ans.style.display = o ? 'block' : 'none'; show.textContent = o ? 'Hide model answer' : 'Show model answer'; show.setAttribute('aria-expanded', String(o)); } }, 'Show model answer');
     page.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row', style: { alignItems: 'flex-start' } }, [tick, el('div', { class: 'grow stack', style: { gap: '4px' } }, [el('b', { style: { fontSize: '16.5px' }, html: mdi(q.Q) }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: [q.TAG ? chipFor(q.TAG)[0] : '', q.SRC].filter(Boolean).join(' · ') })])]), prac, show, ans]));
   });
-  if (!s.interview.length) page.appendChild(el('section', { class: 'card pad' }, [el('p', { style: { margin: 0 }, text: 'This module has no interview set. ' }), el('a', { href: '#/path/' + m, text: 'Back to the module' })]));
+  const rqs = recentFor(m); if (rqs.length) { page.appendChild(el('h2', { text: 'Asked recently at companies' })); rqs.forEach(q => page.appendChild(rqCard(q))); }
+  if (!s.interview.length && !rqs.length) page.appendChild(el('section', { class: 'card pad' }, [el('p', { style: { margin: 0 }, text: 'This module has no interview set. ' }), el('a', { href: '#/path/' + m, text: 'Back to the module' })]));
   if (s.raw.mock) { const mk = el('section', { class: 'card pad', id: 'mock' }, [el('h2', { text: 'Mock interview' }), mdEl(s.raw.mock)]); page.appendChild(mk); if (focus === 'mock') setTimeout(() => mk.scrollIntoView({ block: 'start' }), 50); }
 }
 
