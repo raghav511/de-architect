@@ -548,6 +548,21 @@ async function T(name, fn, opt) {
     const first = await p.evaluate(() => schedule().units.find(u => !isCC(u.mid)).mid); ok(first === 's00', 'first non-Claude-Code step should be in Setup: ' + first);
   });
 
+  await T('self-contained: readings, chapters, videos and news never link out of the app', async p => {
+    await go(p, '#/today', 1200);
+    const mods = await p.evaluate(() => MODS_ALL.slice());
+    const out = [];
+    for (const m of mods) for (const tab of ['readings', 'chapter']) {
+      await hash(p, '#/learn/' + m + '/' + tab, 250);
+      const n = await p.$$eval('#page a[href^="http"]', a => a.map(x => x.getAttribute('href')));
+      if (n.length) out.push(m + '/' + tab + ': ' + n[0]);
+    }
+    await hash(p, '#/news', 500); if (await p.$('#page a[href^="http"]')) out.push('news');
+    await hash(p, '#/learn/s01/chapter', 500); if (await p.$('#page a[href*="confluent"]')) out.push('videos');
+    ok(!out.length, 'links out of the app: ' + out.slice(0, 5).join(' | '));
+    ok(/Reading note:/.test(await (async () => { await hash(p, '#/learn/d01/readings', 500); return text(p, '#page'); })()), 'reading notes not shown');
+  });
+
   await T('AI data stack: A4 and A5 labs run in the browser and tick their Path steps', async p => {
     await go(p, '#/path/a04', 900);
     ok(/LLMs meet the warehouse/.test(await text(p, '#page')) && /Guard the SQL/.test(await text(p, '#page')), 'A4 module or its lab steps missing');

@@ -18,10 +18,11 @@ A209 | talk | 0.75 | Interview set A2 | 6 of 8 answered out loud and ticked. | i
 A210 | practice | 0.5 | Grader design drills | Graders chosen for five tasks and compared with the model answers. | practice
 
 @@readings
-- [Anthropic: Demystifying evals for AI agents](https://www.anthropic.com/engineering). Search the engineering blog for the evals post; read the sections on graders and transcripts.
-- [Reflexion (Shinn et al., 2023)](https://arxiv.org/abs/2303.11366). The paper behind "learn from your own failures in words". Read the abstract and figure 1.
-- [DSPy](https://dspy.ai/). Prompts as programs that are optimised against a metric. Read "Optimizers" overview.
-- [OWASP Top 10 for LLM applications](https://genai.owasp.org/llm-top-10/). Read prompt injection and excessive agency.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Evals for agents.** Define success first with an eval set; prefer code graders (run and compare), then rubric judges calibrated on human labels; read transcripts; run several trials per case because outputs vary.
+- **Reading note: Reflexion: learning from failures in words.** An agent that writes a short lesson after each failure and reads it next time improves on retries, without changing the model. It works because the lesson carries new information from the failure.
+- **Reading note: Prompts as programs.** Frameworks such as DSPy treat prompts as parameters optimised against a metric on training examples. Always check held-out accuracy, or you overfit the eval.
+- **Reading note: Risks for LLM applications.** Prompt injection (instructions hidden in input or retrieved data) and excessive agency (tools that can do too much) are the two risks that matter most for agents. Defend with narrow tools, least privilege and approval for side effects.
 
 @@chapter
 ## A2.1 Evals first

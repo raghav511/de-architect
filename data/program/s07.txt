@@ -16,10 +16,11 @@ hours: 10
 708 | talk | 1 | Interview set 7 and the mock | 14 of 18 questions ticked, and a mock score recorded. | interview
 
 @@readings
-- [AWS: Serverless data analytics pipeline reference architecture](https://aws.amazon.com/blogs/big-data/aws-serverless-data-analytics-pipeline-reference-architecture/). The layers of a lake on AWS and which service sits in each.
-- [AWS: Best practices to optimize data access performance from Amazon EMR and AWS Glue to Amazon S3](https://aws.amazon.com/blogs/big-data/best-practices-to-optimize-data-access-performance-from-amazon-emr-and-aws-glue-to-amazon-s3/). How prefixes, file sizes and request rates interact.
-- [Terraform: Create infrastructure](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/aws-create). The init, plan and apply cycle on AWS.
-- [Model Context Protocol: Build an MCP server](https://modelcontextprotocol.io/docs/develop/build-server) and [Architecture overview](https://modelcontextprotocol.io/docs/concepts/architecture). The server you write in this sprint's AI lab.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: A serverless analytics pipeline on AWS.** Layers: ingestion (Kinesis, DMS, file drops), storage in S3 zones (raw, cleaned, curated), a catalogue (Glue), processing (Glue jobs, EMR, Lambda), consumption (Athena, Redshift, QuickSight), and security and governance across all of them (IAM, Lake Formation, KMS).
+- **Reading note: S3 performance from EMR and Glue.** S3 scales request rates per prefix, so spread hot data across prefixes. Many tiny files cost more in requests and listing than they save; aim for files of roughly 128 MB to 1 GB in columnar formats, and prune with partitions and statistics.
+- **Reading note: Terraform: init, plan, apply.** init downloads providers, plan shows the difference between code and the real infrastructure, apply makes the change and records it in state. Keep state remote and locked, and review the plan like a code review.
+- **Reading note: Building an MCP server.** A server describes tools (name, input schema, description) and runs them when the client calls. Clients connect over standard input/output locally or HTTP remotely. You write the server in this sprint's AI lab; module A4 covers database servers in depth.
 
 @@chapter
 ## 7.1 What moves and what stays the same

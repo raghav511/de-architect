@@ -12,9 +12,10 @@ C803 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
 C804 | test | 0.33 | Quiz C8 | 80% or better. | quiz
 
 @@readings
-- [Hooks reference](https://docs.claude.com/en/docs/claude-code/hooks). Events, input JSON, exit codes and JSON output.
-- [Get started with hooks](https://docs.claude.com/en/docs/claude-code/hooks-guide). A worked example.
-- [Security](https://docs.claude.com/en/docs/claude-code/security). Hooks run with your permissions; review them like code.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Hooks.** Hooks run your commands at fixed points (before a tool runs, after a file is edited, when a session stops). They receive JSON on input and can block an action with an exit code or JSON reply.
+- **Reading note: A first hook.** A common start: run the formatter after every edit, or block edits to protected paths.
+- **Reading note: Hooks run as you.** Hooks execute with your permissions, so review them like code and keep them in version control.
 
 @@chapter
 ## C8.1 Why hooks

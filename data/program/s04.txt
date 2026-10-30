@@ -16,10 +16,11 @@ hours: 10
 408 | talk | 1 | Interview set 4 and the mock | 14 of 18 questions ticked, and a mock score recorded. | interview
 
 @@readings
-- [Kimball Dimensional Modeling Techniques](https://www.kimballgroup.com/wp-content/uploads/2013/08/2013.09-Kimball-Dimensional-Modeling-Techniques11.pdf). The reference list of every technique named in this chapter. Read the first ten pages, then use it as a glossary.
-- [Kimball: Type 2, Add New Row](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/type-2/). One page on the most-asked modeling topic.
-- [dbt: How we structure our dbt projects](https://docs.getdbt.com/best-practices/how-we-structure/1-guide-overview). The staging, intermediate and marts layout you will follow.
-- [dbt: Add snapshots to your DAG](https://docs.getdbt.com/docs/build/snapshots). How dbt builds a Type 2 history for you.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Kimball dimensional modelling techniques.** Design in four steps: pick the business process, declare the grain (one row per what), choose dimensions, then the facts. Know the vocabulary: conformed, role-playing, junk and degenerate dimensions; additive, semi-additive and non-additive facts; bridge tables; and the slowly changing dimension types.
+- **Reading note: Slowly changing dimension type 2.** Type 2 keeps history by adding a new row when an attribute changes, with valid_from, valid_to and a current flag, and a surrogate key per version. Facts join to the version that was true when the event happened. It is the most-asked modelling topic.
+- **Reading note: Structuring a dbt project.** Three layers: staging models (one per source table, renamed and typed, no joins), intermediate models (reusable joins and logic), and marts (facts and dimensions for one business area). Models reference each other with ref(), which gives dbt the dependency graph.
+- **Reading note: dbt snapshots.** A snapshot records how a mutable source row changes over time, producing a Type 2 table with dbt_valid_from and dbt_valid_to. The timestamp strategy uses an updated_at column; the check strategy compares listed columns. Run it on a schedule before the models that use it.
 
 @@chapter
 ## 4.1 The problem is a definition

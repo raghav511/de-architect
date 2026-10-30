@@ -1,8 +1,10 @@
 {
-  "version": "1.10.1",
+  "version": "1.11.0",
   "date": "2026-10-30",
   "notes": [
-    "Fix: if synced or restored data has damaged update-tracker fields, the app repairs them at start-up and opens normally; your progress is never touched",
-    "Test: damaged tracker data from a sync"
+    "Readings: all 148 outside links in 39 modules are replaced by short in-app reading notes that say what each source teaches (books, docs, papers and talks)",
+    "Lessons: the Kafka video links become an in-app list of the topics, covered by the chapter and the animated map",
+    "What is new in AI: sources are credited as plain text instead of sending you to another site; the A3 chapter's source links are plain text too",
+    "Test: no link out of the app on any module's readings or chapter, the news page or the video card"
   ]
 }

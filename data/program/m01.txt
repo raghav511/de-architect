@@ -15,12 +15,13 @@ M106 | test | 0.5 | Quiz M1 | 80% or better. | quiz
 M107 | talk | 0.5 | Interview set M1 | 5 of 6 answered out loud and ticked. | interview
 
 @@readings
-- **The Data Warehouse Toolkit** (Kimball and Ross, 3rd ed.), chapters 1–3 and 5: the four-step design process, star schemas, and slowly changing dimension types. The reference every interviewer has read.
-- **Fundamentals of Data Engineering** (Reis and Housley), chapter 8 (queries, modelling and transformation): Inmon, Kimball, Data Vault and wide tables side by side.
-- **Designing Data-Intensive Applications**, chapter 2 (data models): relational, document and graph models, and when each fits.
-- [Kimball Group: dimensional modelling techniques](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/). One page per technique: role-playing, junk, bridge, every SCD type.
-- [DataExpert.io free bootcamp](https://learn.dataexpert.io/program/free-community-boot-camp/details): the dimensional data modelling week (cumulative tables, complex types, SCDs, graph modelling). Watch the lectures alongside this module.
-- [DuckDB: list functions](https://duckdb.org/docs/sql/functions/list.html) and [recursive CTEs](https://duckdb.org/docs/sql/query_syntax/with.html#recursive-ctes), for the exercises.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: The data warehouse toolkit: process, star schemas and SCDs.** Design follows four steps: business process, grain, dimensions, facts. A star schema keeps one fact table in the middle with denormalised dimensions around it, which is easy to query and fast. Slowly changing dimensions decide how history is kept: overwrite (type 1), new row (type 2), new column (type 3).
+- **Reading note: Modelling approaches side by side.** Inmon builds a normalised enterprise warehouse first, Kimball builds dimensional marts by process, Data Vault separates keys, relationships and history for auditability, and wide tables trade storage for simple queries. Pick per layer and use, not by religion.
+- **Reading note: Data models (DDIA ch. 2).** Relational models suit many-to-many relationships and joins; document models suit self-contained records read whole; graph models suit highly connected data. Schema-on-write versus schema-on-read is a trade-off between safety and flexibility.
+- **Reading note: Dimensional techniques in one place.** Role-playing dimensions (one date dimension used as order date and ship date), junk dimensions (flags grouped together), bridge tables (many-to-many), mini-dimensions for fast-changing attributes, and every SCD type from 0 to 7.
+- **Reading note: Cumulative tables and complex types.** A cumulative table carries history forward each day by joining yesterday's state with today's activity, often storing arrays of recent activity. It makes "active in the last 30 days" a cheap lookup instead of a scan.
+- **Reading note: List functions and recursive CTEs in DuckDB.** list_agg, unnest, list_contains and list slicing work on arrays in SQL. A recursive CTE has a base case and a step that references itself; use it for hierarchies and graphs, with a depth limit.
 
 @@chapter
 ## M1.1 Why model at all

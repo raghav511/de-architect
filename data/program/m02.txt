@@ -15,11 +15,12 @@ M206 | test | 0.5 | Quiz M2 | 80% or better. | quiz
 M207 | talk | 0.5 | Interview set M2 | 5 of 6 answered out loud and ticked. | interview
 
 @@readings
-- **The Data Warehouse Toolkit**, chapters 2 (fact table techniques), 4 (inventory: the three fact types side by side) and 6 (order management: accumulating snapshots).
-- **Designing Data-Intensive Applications**, chapter 11 (stream processing): event sourcing and why an immutable log of events is the source of truth.
-- [Kimball Group: fact table techniques](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/) (the "Fact Table Core Concepts" section).
-- [Martin Fowler: Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html). Current state as a fold over immutable events.
-- [DataExpert.io free bootcamp](https://learn.dataexpert.io/program/free-community-boot-camp/details): the fact data modelling week (deduplication, date lists, reduced facts and minimising shuffle).
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Fact table techniques.** Three fact types: transaction facts (one row per event), periodic snapshots (one row per period, such as daily balance), and accumulating snapshots (one row per process instance updated as milestones happen). Declare the grain first; facts must be true at that grain.
+- **Reading note: Event sourcing and the immutable log (DDIA ch. 11).** Store every event, never overwrite; current state is derived by replaying events. It gives auditability and the ability to rebuild any view, at the cost of compaction and replay time.
+- **Reading note: Fact table core concepts.** Additive facts sum across all dimensions; semi-additive (balances) sum across some; non-additive (ratios) never sum, so store their parts. Factless fact tables record that something happened, such as attendance.
+- **Reading note: Current state as a fold over events.** Each event updates state in order; replaying the same events always gives the same state. Snapshots of state speed up replay.
+- **Reading note: Reduced facts and deduplication.** Deduplicate events by a natural key and source position before aggregating. Reduced facts store per-entity arrays (for example daily counts for a month) to answer long-range questions without scanning raw events, and to minimise shuffles.
 
 @@chapter
 ## M2.1 What a fact is

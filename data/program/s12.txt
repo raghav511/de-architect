@@ -16,9 +16,10 @@ mockloop: 3
 1207 | test | 1 | Final coding test | Attempted inside the timer. | coding
 
 @@readings
-- Your own `notes/what-broke.md`, all twelve sprints of it. Read it end to end once. It is your behavioral material and your evidence.
-- The Progress page (readiness by round). Sort rounds by score and read your lowest two sprints' quizzes again.
-- [DataVidhya: What changed in data engineering interviews in 2026](https://datavidhya.com/learn/de-interview-prep/the-2026-landscape/what-changed-in-2026/). Re-read the section on AI rules by company before each recruiter call.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Your own what-broke notes.** Read all twelve sprints of your notes end to end once. They are your behavioural stories and your evidence: what broke, how you found it, what you changed.
+- **Reading note: Your readiness by round.** On the Progress page, sort interview rounds by score and redo the quizzes of your two weakest modules.
+- **Reading note: AI rules by company.** Before each recruiter call, ask whether AI tools are allowed in each round, and practise in that mode.
 
 @@chapter
 ## 12.1 What this sprint is for

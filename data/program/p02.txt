@@ -15,12 +15,13 @@ P206 | test | 0.5 | Quiz P2 | 80% or better. | quiz
 P207 | talk | 0.5 | Interview set P2 | 5 of 6 answered out loud and ticked. | interview
 
 @@readings
-- **Python Crash Course** (3rd ed.), chapter 8 (functions). Quick review of arguments and return values.
-- **Python Distilled**, chapter 5 (functions): default arguments, `*args` and `**kwargs`, scoping, closures, decorators. The best concise treatment.
-- **Fluent Python** (2nd ed.), chapter 7 (functions as first-class objects) and chapter 9 (decorators and closures).
-- [Sorting how-to](https://docs.python.org/3/howto/sorting.html). Key functions, stability, and sorting by several fields.
-- [functools](https://docs.python.org/3/library/functools.html). Read `wraps`, `partial` and `lru_cache`.
-- [Functional programming how-to](https://docs.python.org/3/howto/functional.html). Comprehensions, generators and higher-order functions in one place.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Functions and arguments.** Positional and keyword arguments, defaults, *args for extra positional values and **kwargs for extra keyword values. Never use a mutable default; use None and create the list inside.
+- **Reading note: Scope, closures and decorators.** Names resolve local, enclosing, global, built-in. A closure is an inner function that remembers variables of the outer one. A decorator takes a function and returns a wrapped one; use functools.wraps to keep its name and docstring.
+- **Reading note: Functions as first-class objects.** Functions can be stored, passed and returned, which enables callbacks, strategy objects and key functions for sorting.
+- **Reading note: Sorting.** sorted returns a new list; list.sort sorts in place. A key function decides the order; sorting is stable, so sort by the secondary key first or use a tuple key such as (-fare, id).
+- **Reading note: functools.** wraps keeps metadata in decorators, partial fixes some arguments of a function, lru_cache memoises results of pure functions.
+- **Reading note: Comprehensions and generators.** List, dict and set comprehensions build collections in one expression; generator expressions do the same lazily, one item at a time, which keeps memory flat for large inputs.
 
 @@chapter
 ## P2.1 Functions are values

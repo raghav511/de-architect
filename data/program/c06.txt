@@ -12,9 +12,10 @@ C603 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
 C604 | test | 0.33 | Quiz C6 | 80% or better. | quiz
 
 @@readings
-- [Data usage](https://docs.claude.com/en/docs/claude-code/data-usage). What Claude Code sends, retention, and training settings by account type.
-- [Monitoring and telemetry settings](https://docs.claude.com/en/docs/claude-code/settings). Read the environment variables section (telemetry and non-essential traffic).
-- [ICO: guide to anonymisation and pseudonymisation](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/data-sharing/anonymisation/). Why hashing is pseudonymisation, not anonymisation.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: What data is sent.** The code and text the agent reads to do a task are sent to the model provider; retention and training depend on your account type and settings. Know your company's policy before using it on customer data.
+- **Reading note: Telemetry settings.** Environment variables control usage telemetry and non-essential network traffic; set them in managed settings for a team.
+- **Reading note: Anonymisation and pseudonymisation.** Hashing an email is pseudonymisation, not anonymisation: anyone with the list of emails can hash and match them. Real anonymisation removes the ability to re-identify.
 
 @@chapter
 ## C6.1 What leaves your machine

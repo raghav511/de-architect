@@ -12,9 +12,10 @@ C403 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
 C404 | test | 0.33 | Quiz C4 | 80% or better. | quiz
 
 @@readings
-- [Common workflows: fix bugs efficiently](https://docs.claude.com/en/docs/claude-code/common-workflows). The short official version of this lesson.
-- [Anthropic: Claude Code best practices](https://www.anthropic.com/engineering/claude-code-best-practices). Read "Write tests, commit; code, iterate, commit".
-- [Julia Evans: debugging zine](https://wizardzines.com/zines/debugging-guide/). A human debugging mindset; it applies unchanged with an agent.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Fixing bugs efficiently.** Reproduce first, share the exact error, let the agent find the cause, then require a test that fails before the fix and passes after.
+- **Reading note: Test, commit, iterate.** Write or update tests, commit a known-good state, then let the agent iterate; you can always return to the last commit.
+- **Reading note: A debugging mindset.** Reproduce, shrink the case, form one hypothesis, test it, and read the actual output. It works the same with an agent: insist on evidence, not guesses.
 
 @@chapter
 ## C4.1 Why agents misdebug

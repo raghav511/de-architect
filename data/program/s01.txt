@@ -16,10 +16,11 @@ hours: 10
 108 | talk | 1 | Interview set 1 and the mock | 14 of 18 questions ticked, and a mock score recorded. | interview
 
 @@readings
-- [Kafka documentation: Design](https://kafka.apache.org/43/design/design/). Read the sections on the log, producers and consumers. Skip replication for now; it returns in sprint 5.
-- [Airflow: Architecture Overview](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/overview.html) and [Dag Runs](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dag-run.html). The second explains data intervals, which interviewers ask about.
-- [Anthropic: Building Effective AI Agents](https://www.anthropic.com/engineering/building-effective-agents). The clearest short account of when you need an agent and when a single call is enough.
-- [Claude docs: Build a tool-using agent](https://platform.claude.com/docs/en/agents-and-tools/tool-use/build-a-tool-using-agent). The loop you write in this sprint's AI lab.
+- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **Reading note: Kafka design: the log, producers and consumers.** A topic is split into partitions; each partition is an append-only log where every message gets an increasing offset. Producers choose the partition (by key, so one trip always lands in the same partition and stays ordered). Consumers in a group share partitions, at most one consumer per partition, and remember progress by committing offsets. Replication comes back in module 5.
+- **Reading note: Airflow architecture and DAG runs.** The scheduler reads DAG files, creates DAG runs and queues tasks; workers run them; the metadata database holds every state. Each run covers a data interval: the run for 09:00 to 10:00 starts after 10:00 and processes that hour. Interviewers ask this because backfills and reruns only work if tasks use the interval, never "now".
+- **Reading note: When you need an agent, and when one call is enough.** Start with a single model call; add a fixed workflow (chain, router, parallel steps) when the task has known steps; use an agent, a loop where the model picks tools until done, only when the steps cannot be known in advance. Agents cost more and fail in more ways, so they need budgets, stop conditions and traces.
+- **Reading note: The tool-using agent loop.** Send the task and the tool descriptions; if the reply asks for a tool, run it in your code and send the result back; repeat until the model answers. Your code, not the model, runs tools, checks arguments and decides when to stop. This is the loop you build in the AI lab.
 
 @@chapter
 ## 1.1 Why you build everything first, badly

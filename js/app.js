@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.10.1';
+const VERSION = '1.11.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -232,7 +232,8 @@ const VIDEOS = { 1: [['Kafka 101: events and logs', 'https://developer.confluent
 function videoCard(w) {
   const v = VIDEOS[w];
   if (!v) return el('section', { class: 'card pad stack' }, [el('h3', { text: 'Video' }), el('p', { class: 'muted', style: { margin: 0 }, text: 'This week\'s videos come with the next content update. Use the readings and the animated map above for now.' })]);
-  return el('section', { class: 'card pad stack' }, [el('h3', { text: 'Watch (free Confluent course, opens in a new tab)' }), el('div', { class: 'list' }, v.map(([t, u]) => el('a', { class: 'item', href: u, target: '_blank', rel: 'noopener' }, [el('span', { class: 'grow t', text: '▶ ' + t }), el('span', { class: 's', text: 'confluent.io' })])))]);
+  /* the topics stay; the outside videos do not: everything is covered by the chapter and the animated map in the app */
+  return el('section', { class: 'card pad stack' }, [el('h3', { text: 'Covered in this lesson' }), el('div', { class: 'list' }, v.map(([t]) => el('div', { class: 'item' }, [el('span', { class: 'grow t', text: '✓ ' + t }), el('span', { class: 's', text: 'chapter and map' })])))]);
 }
 /* Kafka lesson: step-through diagrams with ‹ › controls */
 function kafkaLesson() {
