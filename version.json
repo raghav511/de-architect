@@ -1,7 +1,9 @@
 {
-  "version": "1.17.2",
+  "version": "1.17.3",
   "date": "2026-10-30",
   "notes": [
-    "Behind the scenes: checks updated for the coding track and interview practice now being part of Today's plan."
+    "On iPhone the coach button no longer covers buttons: pages leave room for it, and it is hidden during a quiz.",
+    "The quiz's Submit button stays quiet until the last question (it still asks before submitting with blanks).",
+    "The coach box uses the full width, coding practice sets fold with this week's set open, days before your start say when the plan begins, and buttons are easier to tap."
   ]
 }

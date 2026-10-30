@@ -229,7 +229,7 @@ function vToday(off) {
   const sc = schedule();
   const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + off);
   const k = iso(d), cap = capOf(d), us = sc.byDay[k] || [];
-  const xc = codingItems(off), xi = interviewItems(off, k), xs = xc.concat(xi);
+  const pre = k < S.start, xc = pre ? [] : codingItems(off), xi = pre ? [] : interviewItems(off, k), xs = xc.concat(xi);
   const hourDone = us.filter(u => u.isDone).reduce((a, u) => a + u.mins, 0), hourMins = us.reduce((a, u) => a + u.mins, 0);
   const doneMins = hourDone + xs.filter(x => xDone(k, x)).reduce((a, x) => a + x.mins, 0), planMins = hourMins + xs.reduce((a, x) => a + x.mins, 0);
   const m = (us.find(u => !isCC(u.mid)) || us[0] || {}).mid || sc.cur, M = MOD[m], sp = sc.span[m];
@@ -244,13 +244,13 @@ function vToday(off) {
   const pct = planMins ? Math.round(100 * doneMins / planMins) : 0, cur = off === 0 ? us.find(u => !u.isDone) : null;
   const ring = el('span', { class: 'ring', role: 'img', 'aria-label': pct + '% of the plan done', html: '<svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="17" fill="none" stroke="var(--line)" stroke-width="5"/><circle cx="21" cy="21" r="17" fill="none" stroke="var(--teal)" stroke-width="5" stroke-linecap="round" stroke-dasharray="' + (pct * 1.068).toFixed(1) + ' 107" transform="rotate(-90 21 21)"/></svg>' });
   const plan = el('section', { class: 'card pad stack plan' }, [
-    el('div', { class: 'row planhead' }, [ring, el('h2', { class: 'grow', text: off === 0 ? 'Your plan for today' : 'Plan for ' + dayName(k) }), el('span', { class: 'muted', text: doneMins + ' of ' + planMins + ' min done' })]),
+    el('div', { class: 'row planhead' }, [ring, el('h2', { class: 'grow', text: off === 0 ? 'Your plan for today' : k < S.start ? 'Before your plan starts' : 'Plan for ' + dayName(k) }), k < S.start ? null : el('span', { class: 'muted', text: doneMins + ' of ' + planMins + ' min done' })]),
     nav,
     off === 0 && sc.missed.length ? el('div', { class: 'hint behind', role: 'status' }, [el('b', { text: 'Catching up · ' }), missedText(sc.missed) + ' moved to today. Nothing was skipped.']) : null,
-    el('div', { class: 'row wrap xghead' }, [el('h3', { class: 'grow', text: 'Your hour' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: hourDone + ' / ' + hourMins + ' min' })]),
-    el('span', { class: 'muted order', text: 'Do these in order. Anything unfinished moves to the next free day.' })]
-    .concat(us.length ? us.map(u => unitCard(u, { fold: true, cur: u === cur })) : [el('p', { style: { margin: 0 }, text: off < 0 ? 'Nothing was done on this day.' : 'Nothing planned. Everything is done.' })])
-    .concat([xc.length ? xGroup(k, 'Coding track', 'One DSA problem a day plus SQL and PySpark. Problems you struggled with come back for review after 3, 7 and 21 days.', xc) : null, xGroup(k, 'Interview practice', '', xi)])
+    pre ? null : el('div', { class: 'row wrap xghead' }, [el('h3', { class: 'grow', text: 'Your hour' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: hourDone + ' / ' + hourMins + ' min' })]),
+    pre ? null : el('span', { class: 'muted order', text: 'Do these in order. Anything unfinished moves to the next free day.' })]
+    .concat(us.length ? us.map(u => unitCard(u, { fold: true, cur: u === cur })) : [el('p', { style: { margin: 0 }, text: k < S.start ? 'Your plan starts ' + shortDate(S.start) + '.' : off < 0 ? 'Nothing was done on this day.' : 'Nothing planned. Everything is done.' })])
+    .concat([xc.length ? xGroup(k, 'Coding track', 'One DSA problem a day plus SQL and PySpark. Problems you struggled with come back for review after 3, 7 and 21 days.', xc) : null, xi.length ? xGroup(k, 'Interview practice', '', xi) : null])
     .concat(off === 0 ? [el('div', { class: 'row wrap', style: { gap: '14px', fontSize: '14px' } }, [revDue().length > 3 ? el('a', { href: '#/practice/review', style: { fontWeight: 600 }, text: (revDue().length - 3) + ' more reviews due ›' }) : null, el('a', { href: '#/practice/tests', style: { fontWeight: 600 }, text: 'Timed coding tests ›' })])] : [])
     .concat(off === 0 && us.every(u => u.isDone) && xs.every(x => xDone(k, x)) && sc.next ? [el('div', { class: 'hint' }, [el('b', { text: 'Done for today. ' }), 'Want to keep going? Next up: ' + sc.next.title + ' (planned ' + shortDate(sc.next.day) + '). ', el('a', { href: sc.next.href, text: 'Start it now' })])] : []));
   const D = DATA.design[m], du = sc.units.find(u => u.uid === m + ':design');

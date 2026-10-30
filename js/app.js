@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.17.2';
+const VERSION = '1.17.3';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -175,13 +175,13 @@ function shell(title, eyebrow, body, opts) {
   const side = el('nav', { class: 'side', 'aria-label': 'Main' }, [el('a', { class: 'brand', href: '#/today' }, [logo(), 'Data Architect'])].concat(nav, [el('a', { class: 'week', href: '#/path/' + wk, style: { color: 'inherit', textDecoration: 'none' } }, [el('span', { class: 'lbl', style: { color: '#9FB0BF' }, text: 'Module ' + modLabel(wk) + ' · week ' + weekOf(sc.today) }), el('b', { style: { color: '#fff' }, text: modTitle(wk) }), el('div', { class: 'bar' }, el('i', { style: { width: (tall ? Math.round(100 * tdone / tall) : 0) + '%' } })), el('span', { style: { fontSize: '13px' }, text: 'Today: ' + tdone + ' of ' + tall + ' min done' })])]));
   const inTabs = TABS.some(x => x[0].split('/')[1] === route);
   const more = el('button', { class: 'tabmore' + (hasUpdate() ? ' hasdot' : ''), 'aria-label': 'More sections' + (hasUpdate() ? ' (update available)' : ''), 'aria-current': inTabs ? null : 'page', onclick: () => {
-    const sc2 = el('div', { class: 'scrim sheetwrap', onclick: e => { if (e.target === sc2) sc2.remove(); } }, [el('div', { class: 'sheet', role: 'dialog', 'aria-label': 'All sections' }, [el('div', { class: 'row' }, [el('b', { class: 'grow', style: { fontSize: '18px' }, text: 'All sections' }), el('button', { class: 'btn icon sm', 'aria-label': 'Close', onclick: () => sc2.remove(), text: '×' })]),
+    const sc2 = el('div', { class: 'scrim sheetwrap', onclick: e => { if (e.target === sc2) sc2.remove(); } }, [el('div', { class: 'sheet', role: 'dialog', 'aria-label': 'All sections' }, [el('div', { class: 'row' }, [el('h2', { class: 'grow', style: { fontSize: '18px' }, text: 'All sections' }), el('button', { class: 'btn icon sm', 'aria-label': 'Close', onclick: () => sc2.remove(), text: '×' })]),
       el('div', { class: 'sheetgrid' }, NAV.map(([h, t, ic]) => { const href = h.replace('/0', '/' + wk); return el('a', { href, onclick: () => sc2.remove(), 'aria-current': href.split('/')[1] === route ? 'page' : null }, [svg(I[ic], 22), t]); }).concat([el('button', { onclick: () => { sc2.remove(); doSync(); } }, [svg(I.sync, 22), syncLabel()]), el('a', { href: '#/profile', class: hasUpdate() ? 'hasdot' : '', onclick: () => sc2.remove(), 'aria-current': route === 'profile' ? 'page' : null }, [svg(I.gear, 22), hasUpdate() ? 'Profile · Update to ' + S.newVersion : 'Profile and settings'])]))])]);
     document.body.appendChild(sc2);
     const k = e => { if (e.key === 'Escape') { sc2.remove(); document.removeEventListener('keydown', k); } }; document.addEventListener('keydown', k);
   } }, [svg('<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>', 22), 'More']);
   const tabbar = el('nav', { class: 'tabbar', 'aria-label': 'Main' }, TABS.map(([h, t, ic]) => el('a', { href: h, 'aria-current': h.split('/')[1] === route ? 'page' : null }, [svg(I[ic], 22), t])).concat([more]));
-  const top = el('header', { class: 'top' }, [
+  const top = el('header', { class: 'top' + (opts.extra ? ' hasextra' : '') }, [
     opts.back ? el('a', { class: 'btn icon', href: opts.back, 'aria-label': 'Back', onclick: e => { if (navCount > 0) { e.preventDefault(); history.back(); } } }, svg(I.back)) : null,
     el('div', { class: 'title' }, [eyebrow ? el('span', { class: 'lbl', text: eyebrow }) : null, el('b', { text: title })]),
     opts.extra || null,
@@ -697,7 +697,9 @@ async function vPractice(f) {
     if (f === 'all' || f === 'sql' || f === 'opt') items = items.concat(byWeek(DATA.sql, w).filter(x => f !== 'opt' || x.k === 'O').map(x => ['sql', x]));
     if (f === 'all' || f === 'spark' || f === 'opt') items = items.concat(byWeek(DATA.spark, w).filter(x => f !== 'opt' || x.k === 'O').map(x => ['spark', x]));
     const solved = items.filter(([, x]) => S.solved[x.id]).length;
-    body.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('h3', { class: 'grow', text: 'Set ' + w + ' · ' + WEEKS[w - 1][4] }), el('span', { class: 'muted', text: solved + ' / ' + items.length })]),
+    if (!items.length) continue;
+    const curSet = Math.floor(dayIndex() / 7) % 12 + 1;
+    body.appendChild(el('details', { class: 'card pad stack pset', open: w === curSet || f === 'opt' ? 'open' : null }, [el('summary', { class: 'row' }, [el('h3', { class: 'grow', text: 'Set ' + w + ' · ' + WEEKS[w - 1][4] + (w === curSet ? ' · this week' : '') }), el('span', { class: 'muted', text: solved + ' / ' + items.length })]),
       el('div', { class: 'list' }, items.map(([k, x]) => el('a', { class: 'item', href: '#/' + k + '/' + x.id }, [chip(k), el('span', { class: 'grow' }, [el('span', { class: 't', text: x.t }), el('br'), el('span', { class: 's', text: (x.k ? (x.k === 'O' ? 'Optimize · ' : 'Write · ') : '') + x.lv })]), S.solved[x.id] ? el('span', { class: 'ok', text: '✓' }) : null])))]));
   }
 }
@@ -803,7 +805,7 @@ async function vQuiz(m) {
     else { const ta = el('textarea', { class: 'code', style: { minHeight: '140px', border: '1px solid var(--line2)', borderRadius: '10px', fontFamily: 'var(--body)', fontSize: '16px' }, 'aria-label': 'Your answer' }); ta.value = (st.a[i] && st.a[i].t) || ''; ta.addEventListener('input', () => { st.a[i] = Object.assign({}, st.a[i] || {}, { t: ta.value }); save(); }); card.appendChild(ta);
       card.appendChild(el('div', { class: 'row wrap' }, [el('span', { class: 'muted', text: 'After you submit, Claude grades this answer (score, what to fix and a stronger answer) and you compare with the model answer.' })])); }
     page.append(card, el('div', { class: 'row qdock' }, [el('button', { class: 'btn', disabled: i === 0 ? true : null, onclick: () => { i--; draw(); }, text: 'Previous' }), el('span', { class: 'grow' }), i < qs.length - 1 ? el('button', { class: 'btn pri', onclick: () => { i++; draw(); }, text: 'Save and next' }) : null,
-      el('button', { class: 'btn dark', onclick: async () => { const left = qs.length - answered; const v = await confirmBox('Submit the quiz?', left ? left + ' question' + (left > 1 ? 's are' : ' is') + ' unanswered. They count as wrong.' : 'All questions answered.', [{ t: 'Submit', cls: 'pri', v: 1 }, { t: 'Keep answering', v: null }]); if (v) { st.sub = true; if (aiOn()) qs.forEach((q, k) => { if (q.TYPE === 'short' && st.a[k] && (st.a[k].t || '').trim()) gradeNow('quiz:' + w + ':' + k, 'answer', { question: q.Q, model_answer: q.MODEL || q.ANS || '', answer: st.a[k].t }, st.a[k].t, q.Q); }); const qu = modUnits(m).find(u => u.kind === 'quiz'); if (qu && !S.done[qu.uid]) { S.done[qu.uid] = iso(new Date()); S.doneAt = S.doneAt || {}; S.doneAt[qu.uid] = Date.now(); } save(); draw(); window.scrollTo(0, 0); } }, text: 'Submit' })]), el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Questions' }), pal, reset]));
+      el('button', { class: 'btn' + (i === qs.length - 1 || answered === qs.length ? ' dark' : ''), onclick: async () => { const left = qs.length - answered; const v = await confirmBox('Submit the quiz?', left ? left + ' question' + (left > 1 ? 's are' : ' is') + ' unanswered. They count as wrong.' : 'All questions answered.', [{ t: 'Submit', cls: 'pri', v: 1 }, { t: 'Keep answering', v: null }]); if (v) { st.sub = true; if (aiOn()) qs.forEach((q, k) => { if (q.TYPE === 'short' && st.a[k] && (st.a[k].t || '').trim()) gradeNow('quiz:' + w + ':' + k, 'answer', { question: q.Q, model_answer: q.MODEL || q.ANS || '', answer: st.a[k].t }, st.a[k].t, q.Q); }); const qu = modUnits(m).find(u => u.kind === 'quiz'); if (qu && !S.done[qu.uid]) { S.done[qu.uid] = iso(new Date()); S.doneAt = S.doneAt || {}; S.doneAt[qu.uid] = Date.now(); } save(); draw(); window.scrollTo(0, 0); } }, text: 'Submit' })]), el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Questions' }), pal, reset]));
   }
   draw();
 }
@@ -1047,8 +1049,8 @@ function coachFab() {
   } }, svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>', 18));
   const file = el('input', { type: 'file', accept: 'image/*', capture: 'environment', style: { display: 'none' }, onchange: e => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => send(inp.value || 'Explain this image', rd.result); rd.readAsDataURL(f); } });
   const cam = el('label', { class: 'btn icon', 'aria-label': 'Photo', title: 'Photo' }, [svg('<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>', 18), file]);
-  const panel = el('div', { class: 'coach', role: 'dialog', 'aria-label': 'Ask the coach', style: { display: coachOpen ? 'flex' : 'none' } }, [el('div', { class: 'row' }, [el('b', { class: 'grow', text: 'Ask the coach' }), el('button', { class: 'btn icon sm', 'aria-label': 'Close', onclick: () => toggle(false) }, '×')]),
-    el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'It sees this page and answers through Claude Code on your Mac (or your API key, if set in Settings): hints and questions before answers. Type or speak; photos need an API key.' }), msgs, el('div', { class: 'row' }, [inp, mic, cam, el('button', { class: 'btn pri', onclick: () => send(inp.value), text: 'Send' })])]);
+  const panel = el('div', { class: 'coach', role: 'dialog', 'aria-label': 'Ask the coach', style: { display: coachOpen ? 'flex' : 'none' } }, [el('div', { class: 'row' }, [el('h2', { class: 'grow', style: { fontSize: '18px' }, text: 'Ask the coach' }), el('button', { class: 'btn icon sm', 'aria-label': 'Close', onclick: () => toggle(false) }, '×')]),
+    el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'It sees this page and answers through Claude Code on your Mac (or your API key, if set in Settings): hints and questions before answers. Type or speak; photos need an API key.' }), msgs, el('div', { class: 'stack', style: { gap: '8px' } }, [inp, el('div', { class: 'row' }, [mic, cam, el('span', { class: 'grow' }), el('button', { class: 'btn pri', onclick: () => send(inp.value), text: 'Send' })])])]);
   const fab = el('button', { class: 'fab', 'aria-label': 'Ask the coach', 'aria-expanded': String(coachOpen), onclick: () => toggle(!coachOpen) }, svg(I.spark, 24));
   function toggle(v) { coachOpen = v; panel.style.display = v ? 'flex' : 'none'; fab.setAttribute('aria-expanded', String(v)); if (v) setTimeout(() => inp.focus(), 30); }
   wrap.append(panel, fab);
