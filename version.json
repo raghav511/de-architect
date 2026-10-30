@@ -1,11 +1,8 @@
 {
-  "version": "1.15.2",
+  "version": "1.15.3",
   "date": "2026-10-30",
   "notes": [
-    "Terminal: fixed a bug where the terminal could end up off screen after the page redrew (for example after the update check), so typing did nothing",
-    "Terminal: start-up shows its progress in the terminal (downloading files, seconds elapsed); anything you type before the prompt is kept and run once Linux is ready",
-    "Terminal: the files the Git labs need download in parallel, with retries, while Linux boots, so a slow download no longer stalls git",
-    "Check my fix and Set up wait for Linux (they are disabled until it is ready), clear any half-typed command first, and a Restart the terminal button appears if Linux takes longer than 3 minutes",
-    "Tests: typing before Linux is ready, and Check with a half-typed line"
+    "On a slow network or a busy device, tapping links while 'Loading Data Architect' is showing could draw a screen before its data and show an error; the app now waits and then opens the screen you chose",
+    "Test: navigating through four screens on a slow network while the app loads"
   ]
 }

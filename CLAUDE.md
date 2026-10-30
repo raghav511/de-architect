@@ -55,6 +55,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.15.3: taps while the app is still loading no longer draw screens without their data (from the Pitcher crawl).
 - 1.15.2: terminal fixes from the user's report (could not type, Check hung): the terminal attaches to the box on screen after a redraw; start-up progress shows in the terminal; typing before the prompt is kept; the 34 files a lab run reads (`vm/sys/warm.json`, recorded from a real run) download in parallel with retries during boot; Check clears a half-typed line; a Restart button after 3 minutes.
 - 1.15.1: search and dialogs close when you change screen; the error page has a Reload button (from the screen-map crawl).
 - 1.15.0: module 6's CDC lab in the browser (change events by LSN, reconciliation, hourly drift, propose-approve-execute).
