@@ -9,7 +9,7 @@ self.addEventListener('message', e => { if (e.data === 'skip') self.skipWaiting(
 /* tapping the update notification opens (or focuses) the app */
 self.addEventListener('notificationclick', e => { e.notification.close(); e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(ws => { const w = ws.find(x => 'focus' in x); return w ? w.focus() : self.clients.openWindow((e.notification.data && e.notification.data.url) || './'); })); });
 /* the Python runtime and libraries come from a CDN at fixed versions: keep them once fetched, so coding works offline */
-const RUNTIME = 'data-architect-runtime-v1', VMCACHE = 'data-architect-vm2';
+const RUNTIME = 'data-architect-runtime-v1', VMCACHE = 'data-architect-vm3';
 self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
   if (e.request.method === 'GET' && u.hostname === 'cdn.jsdelivr.net' && /\/(pyodide\/v[\d.]+|npm\/marked@[\d.]+)\//.test(u.pathname)) {

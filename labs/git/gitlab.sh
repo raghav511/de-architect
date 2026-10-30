@@ -58,7 +58,8 @@ setup() {
      echo "TASK: put ONLY the 'fix: null check' commit onto the 'release' branch (not 'new feature')." ;;
   9) g init -q; c sum.py "def total(xs): return sum(xs)" "c1"; for i in 2 3 4 5 6; do echo "# change $i" >> sum.py; g commit -qam "c$i"; done
      sed -i.bak 's/return sum(xs)/return sum(xs) + 1/' sum.py; rm -f sum.py.bak; g commit -qam "c7 refactor"; for i in 8 9 10; do echo "# change $i" >> sum.py; g commit -qam "c$i"; done
-     printf '#!/bin/sh\npython3 -c "exec(open(\\"sum.py\\").read()); assert total([1,2])==3"\n' > ../09-test.sh; chmod +x ../09-test.sh
+     if command -v python3 >/dev/null; then printf '#!/bin/sh\npython3 -c "exec(open(\\"sum.py\\").read()); assert total([1,2])==3"\n' > ../09-test.sh
+     else printf '#!/bin/sh\n! grep -q "sum(xs) + 1" sum.py\n' > ../09-test.sh; fi; chmod +x ../09-test.sh  # the in-app Linux has no Python
      echo "TASK: total() is wrong now. Use 'git bisect' with the test script ../09-test.sh to find the first bad commit. Write its message into ../09-answer.txt (e.g. 'c4')." ;;
   10) g init -q; c a.txt a "a"; c b.txt b "b"; g checkout -q HEAD~1; c work.txt "detached work" "work on detached head"
      echo "TASK: you committed while in detached HEAD. Save that commit on a new branch called 'rescue' and switch back to main." ;;
@@ -76,10 +77,12 @@ setup() {
   15) g init -q; c app.py "ok" "init"
      echo "TASK: add a pre-commit hook (.git/hooks/pre-commit) that blocks any commit containing 'sk-live-'. Prove it: a commit with a file containing sk-live-999 must fail." ;;
   16) g init -q; c README.md "project" "init"
-     echo "TASK: practise the pull-request flow on YOUR GitHub repo: branch 'feat/readme', change README.md, push, and open a PR with 'gh pr create --fill'. Write the PR URL into $d/pr.txt." ;;
+     if [ -n "$DA_APP" ]; then g init -q --bare ../16-github.git; g remote add origin ../16-github.git; g push -q origin main
+       echo "TASK: practise the pull-request flow against 'origin' (a stand-in for GitHub in this app): branch 'feat/readme', change README.md, commit, push the branch with -u, then write 'PR: feat/readme -> main' into $d/pr.txt."
+     else echo "TASK: practise the pull-request flow on YOUR GitHub repo: branch 'feat/readme', change README.md, push, and open a PR with 'gh pr create --fill'. Write the PR URL into $d/pr.txt."; fi ;;
   *) echo "unknown lab $n"; exit 1 ;;
   esac
-  echo; echo "Lab $n · ${TITLES[$n]}"; echo "Repo: $d"; echo "When done: bash labs/git/gitlab.sh check $n"
+  echo; echo "Lab $n · ${TITLES[$n]}"; echo "Repo: $d"; if [ -n "$DA_APP" ]; then echo "When done: press Check my fix (or type: labcheck $n)"; else echo "When done: bash labs/git/gitlab.sh check $n"; fi
 }
 check() {
   cd "$d" 2>/dev/null || { echo "run setup $n first"; exit 1; }
@@ -119,7 +122,10 @@ check() {
      ! git worktree list | grep -c >/dev/null 14-hotfix && ok "worktree removed" || no "worktree still listed" ;;
   15) [ -x .git/hooks/pre-commit ] && ok "hook installed" || no "no executable .git/hooks/pre-commit"
      echo "sk-live-999" > leak.txt; git add leak.txt; if git -c user.name=t -c user.email=t@t commit -qm leak 2>/dev/null; then no "commit with a secret was allowed"; git reset -q --hard HEAD~1; else ok "secret blocked"; git reset -q leak.txt; fi; rm -f leak.txt ;;
-  16) grep -q "github.com/.*/pull/" pr.txt 2>/dev/null && ok "PR URL recorded" || no "write the PR URL into pr.txt" ;;
+  16) if [ -n "$DA_APP" ]; then git --git-dir=../16-github.git rev-parse -q --verify feat/readme >/dev/null && ok "branch pushed" || no "push feat/readme to origin"
+       [ "$(git --git-dir=../16-github.git rev-parse feat/readme 2>/dev/null)" != "$(git --git-dir=../16-github.git rev-parse main)" ] && ok "branch has your change" || no "commit your README change on feat/readme"
+       grep -q "feat/readme" pr.txt 2>/dev/null && ok "PR recorded" || no "write 'PR: feat/readme -> main' into pr.txt"
+     else grep -q "github.com/.*/pull/" pr.txt 2>/dev/null && ok "PR URL recorded" || no "write the PR URL into pr.txt"; fi ;;
   esac
   [ $FAILED = 0 ] && echo "Lab $n complete." || exit 1
 }

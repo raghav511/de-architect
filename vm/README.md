@@ -23,6 +23,7 @@ cp ../../labs/git/gitlab.sh rootfs/usr/local/bin/gitlab
 python3 build_boot.py       # start scripts, git settings, initrd
 python3 pack_fs.py rootfs served --exclude /lib/modules --exclude /boot --exclude /usr/share/zoneinfo --exclude /usr/share/man --exclude /usr/share/doc
 node boot_test.mjs          # boots headless and runs git (needs npm i v86)
+node labs_test.mjs          # sets up, fixes and checks all 16 Git labs inside the guest
 ```
 
 Copy `out/bzimage.bin`, `out/initrd.img`, `served/fs.json` and `served/flat/` into `vm/sys/`, then bump `VMV` in `js/term.js` so browsers fetch the new files.

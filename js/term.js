@@ -1,7 +1,7 @@
 /* In-app terminal: a small Alpine Linux (bash, git, busybox) running in your browser on the v86 emulator.
    Nothing to install and no server: the kernel boots in the page, files load from vm/sys/ only when first read,
    and the Linux keeps running while you move around the app. Built by tools/vm/ (see vm/README.md). */
-const VMV = 'vm2'; /* bump when vm/sys is rebuilt, so cached copies are replaced */
+const VMV = 'vm3'; /* bump when vm/sys is rebuilt, so cached copies are replaced */
 const VM = { emu: null, term: null, fit: null, box: null, ready: false, log: '', status: '', onStatus: null, gate: '' };
 function loadJs(src) { return new Promise((res, rej) => { if (document.querySelector('script[src="' + src + '"]')) return res(); const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('could not load ' + src)); document.head.appendChild(s); }); }
 function vmSay(t) { VM.status = t; if (VM.onStatus) VM.onStatus(t); }

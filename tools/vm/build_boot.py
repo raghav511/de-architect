@@ -24,7 +24,7 @@ echo "DA-READY"
 while true; do setsid -c /bin/bash -l </dev/ttyS0 >/dev/ttyS0 2>&1; echo; echo "(new shell)"; done
 '''
 
-PROFILE = r'''export HISTCONTROL=ignorespace
+PROFILE = r'''export HISTCONTROL=ignorespace DA_APP=1
 lab() { gitlab setup "$1" && cd ~/git-labs/$(printf %02d "$1") && { [ -d me ] && cd me; true; }; echo "[lab $1 ready: $?]"; }
 labcheck() { (cd ~/git-labs/$(printf %02d "$1") && gitlab check "$1"); echo "[check $1: $?]"; }
 export PS1='\[\e[1;32m\]learner\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]$ '

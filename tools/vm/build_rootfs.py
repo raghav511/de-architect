@@ -4,7 +4,7 @@ Usage: python3 build_rootfs.py   (writes pkgs/*.apk and rootfs/)"""
 import tarfile, io, os, re, sys, urllib.request, shutil
 
 REL, ARCH = 'v3.20', 'x86'
-WANT = ['alpine-baselayout', 'alpine-baselayout-data', 'busybox', 'busybox-static', 'musl', 'bash', 'git', 'less', 'ncurses-terminfo-base', 'linux-virt', 'tzdata']
+WANT = ['alpine-baselayout', 'alpine-baselayout-data', 'busybox', 'busybox-static', 'musl', 'bash', 'git', 'git-init-template', 'less', 'ncurses-terminfo-base', 'linux-virt', 'tzdata']
 SKIP_DEPS = {'linux-firmware-any', 'mkinitfs', 'busybox-binsh', 'alpine-keys', 'apk-tools', 'ca-certificates-bundle', 'perl', 'git-perl'}
 
 def index(repo):
