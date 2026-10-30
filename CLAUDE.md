@@ -55,8 +55,9 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
-- 1.13.0 (PR stacked on #18): module 1's walking-skeleton lab runs in the browser on `py/minilake.py` (Kafka-, S3- and Airflow-style); five exercises replace the Docker lab, which stays as optional; the rerun incident is the landing exercise's rerun test.
-- 1.12.0 (PR #18, waiting for merge): in-app terminal with real bash and git; Git labs run inside the app, all 16 pass; works in Safari.
+- 1.14.0: module 5's streaming lab in the browser (watermark windows, exactly-once after a crash, dead-letter queue, schema compatibility); the phone terminal no longer scrolls sideways; the size budget counts only the app's own files.
+- 1.13.0: module 1's walking-skeleton lab runs in the browser on `py/minilake.py` (Kafka-, S3- and Airflow-style); five exercises replace the Docker lab, which stays as optional; the rerun incident is the landing exercise's rerun test.
+- 1.12.0: in-app terminal with real bash and git; Git labs run inside the app, all 16 pass; works in Safari.
 - 1.11.1: ⓘ source links on 140 reading notes, ▶ links on the Kafka topics.
 - 1.11.0: in-app reading notes replace the 148 outside reading links.
 - 1.10.x: update tracker and the What is new note; repair of damaged tracker data.
@@ -65,5 +66,5 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Next
 
-- More in-app system labs on `py/minilake.py`: streaming (module 5: windows, watermarks, exactly-once) and CDC (module 6: change events to current state), then modules 2, 7 and 8 where they still assume Docker or a cloud account.
+- More in-app system labs on `py/minilake.py`: CDC (module 6: change events to current state, deletes, incremental snapshots), then modules 2, 7 and 8 where they still assume Docker or a cloud account.
 - Then: project environments and the Claude Code track inside the app (agent lab using the user's API key).

@@ -443,3 +443,6 @@ a.srcl:hover{background:var(--teal-l)}
 .xtkeys .btn{background:#22323F;color:#E9EEF2;border-color:#33485A;min-width:44px}
 .termside .ok{color:var(--teal-d);font-weight:600}.termside .bad{color:var(--red-d,#B42318);font-weight:600}
 @media (max-width:860px){.termgrid{grid-template-columns:1fr}.termside{order:2}.xthold{height:52vh}}
+/* the terminal draws at 80 columns before it fits its box: never let that widen the page on a phone */
+.termgrid>*{min-width:0}
+.termcard,.xthold{min-width:0;max-width:100%;overflow:hidden}

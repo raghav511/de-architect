@@ -7,8 +7,9 @@ hours: 10
 
 @@tickets
 501 | learn | 2 | Chapter 5 and the readings | You can draw one message's path from producer to committed offset, and say exactly what a watermark decides. | chapter
-502 | build | 2.5 | Trip demand per zone, streaming | Kafka to Structured Streaming to Iceberg, updated within 30 seconds; killing and restarting the job adds no duplicates. | lab
-503 | incident | 0.75 | A poison message and rising lag | A dead-letter topic catches the bad record, lag returns to zero, and a replay runbook exists. | lab
+502 | build | 1.25 | Trip demand per zone, streaming: windows and a crash test | The two exercises pass in the editor: demand per minute and zone with a watermark, and exactly-once counts after a crash. | py:1-2
+509 | build | 0.5 | Schema evolution: accept the safe change, reject the rename | The compatibility check passes its tests in the editor. | py:4-4
+503 | incident | 0.75 | A poison message and rising lag | The dead-letter exercise passes: a bad record goes to the DLQ with its partition and offset, and the stream continues. | py:3-3
 504 | ai | 1 | Retrieval over your runbooks | 8 of 10 test questions retrieve the right section, and every answer cites its source. | lab
 505 | practice | 1.25 | Warm-ups and the customer drill | Three SQL and three DSA warm-ups attempted, and the drill answered out loud. | practice
 506 | test | 0.5 | Quiz 5 | 80% or better. | quiz
@@ -216,7 +217,19 @@ Three engineering points separate working retrieval from a demo.
 - **Retrieval or a tool?** Use retrieval for knowledge written in prose: runbooks, past incidents, definitions. Use a tool for live facts: current lag, today's row count. Asking retrieval for a live number returns yesterday's document.
 
 @@lab
-## Build: trip demand per zone, streaming (2.5 hours)
+## In the app: streaming without a cluster (2 hours)
+
+Four exercises on the in-browser broker (`minilake`) cover what the cluster lab below proves, and what interviews ask:
+
+1. **Demand per minute and zone with a watermark:** late events are dropped and counted, duplicates are dropped by `event_id`.
+2. **Exactly-once after a crash:** the sink stores its offsets with its counts, so a restart after a crash before the commit does not double-count (the kill -9 test).
+3. **A poison message:** a record that cannot be parsed goes to the dead-letter queue with its partition and offset, and the stream continues (the incident).
+4. **Schema evolution:** a new optional field with a default is accepted; a rename is rejected.
+
+**Done when** all four pass (Path, module 5). Then explain out loud what the watermark decides and why the offsets must be written together with the results.
+
+## Optional: on your own machine with Kafka, Spark and Iceberg
+
 
 Paste this lab into a chat with Claude and ask it to **generate the DE 5 starter kit**. The starter kit adds a schema registry to the compose file, an Avro version of the generator, and a streaming job skeleton.
 
