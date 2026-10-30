@@ -32,8 +32,9 @@ function sliceH2(text, a, b) {
 function parseTickets(t) { return (t || '').split('\n').map(l => l.split('|').map(x => x.trim())).filter(p => p.length >= 6 && p[0]).map(p => ({ id: p[0], type: p[1], h: +p[2] || 0.5, title: p[3], done: p[4], tab: p[5] })); }
 async function loadModules() {
   const opt = u => fetch(u).then(r => r.ok ? r.json() : null).catch(() => null);
-  const [ext, design, git, news] = await Promise.all([opt('data/extensions.json'), opt('data/design.json'), opt('data/git.json'), opt('data/news.json')]);
+  const [ext, design, git, news, recent] = await Promise.all([opt('data/extensions.json'), opt('data/design.json'), opt('data/git.json'), opt('data/news.json'), opt('data/recent.json')]);
   DATA.design = design || {}; DATA.git = git || []; DATA.news = news || { items: [] };
+  DATA.recent = recent && Array.isArray(recent.items) ? recent : { items: [] };
   MODS = BASE_MODS.concat(CC_MODS, ((ext && ext.modules) || []).filter(m => /^x\d\d$/.test(m)));
   await Promise.all(MODS.map(m => sprint(m).catch(() => null)));
   MODS = MODS.filter(m => DATA.sprints[m]); MODS_ALL = MODS.slice(); applyAi();
@@ -81,7 +82,7 @@ function modUnits(m) {
     } else if (t.tab === 'practice') add({ uid: m + ':' + t.id, kind: 'practice', mins: Math.min(mins, 30), title: t.title, goal: (M.pr.length ? 'Warm-ups: ' + M.pr.join(' · ') + '. ' : '') + (mins > 30 ? 'The SQL and DSA warm-ups also count toward the coding track, so only the drill sits in this hour.' : ''), done: t.done, href: '#/learn/' + m + '/practice', cta: 'Practise' });
     else if (t.tab === 'quiz') add({ uid: m + ':' + t.id, src: DATA.sprints[m].raw.quiz || '', kind: 'quiz', mins: Math.max(20, mins), title: t.title, goal: 'Multiple choice, fill in the blank and short answers on this module. No notes.', done: t.done, href: '#/quiz/' + m, cta: 'Start', auto: () => S.quiz[qk(m)] && S.quiz[qk(m)].sub });
     else if (t.tab === 'mock') { const n = Math.max(1, Math.ceil(mins / 60)); for (let i = 0; i < n; i++) add({ uid: m + ':' + t.id + '.' + (i + 1), kind: 'talk', mins: Math.round(mins / n), title: t.title + ' · session ' + (i + 1) + ' of ' + n, goal: 'One full mock loop under time, then score it with the rubric and write one repair action.', done: i === n - 1 ? t.done : 'One loop done and scored, with a repair action written down.', href: '#/interview/' + m + '/mock', cta: 'Open mock' }); }
-    else if (t.tab === 'interview') add({ uid: m + ':' + t.id, src: DATA.sprints[m].raw.interview || '', kind: 'talk', mins: Math.min(60, mins), title: t.title, goal: 'Answer each question out loud first, then open the model answer and tick the ones you nailed.', done: t.done, href: '#/interview/' + m, cta: 'Practise' });
+    else if (t.tab === 'interview') add({ uid: m + ':' + t.id, src: (DATA.sprints[m].raw.interview || '') + recentFor(m).map(q => '|' + q.id).join(''), kind: 'talk', mins: Math.min(60, mins), title: t.title, goal: 'Answer each question out loud first, then open the model answer and tick the ones you nailed.', done: t.done, href: '#/interview/' + m, cta: 'Practise' });
     else add({ uid: m + ':' + t.id, kind: 'learn', mins: Math.min(60, mins), title: t.title, goal: '', done: t.done, href: '#/learn/' + m + '/chapter', cta: 'Open' });
   });
   const lastLearn = U.map(u => u.kind).lastIndexOf('learn');
@@ -190,6 +191,8 @@ function codingItems(off) {
 function interviewItems(off, k) {
   const [mins, nq] = MOCK_LEN[mockKind(k)], mk = (S.mock || {})[k];
   const items = [{ id: 'mock', chip: 'test', t: (mockKind(k) === 'sunday' ? 'Sunday mock interview' : 'Daily mock interview') + ' · ' + nq + ' questions', sub: aiOn() ? 'Answer as you would out loud; your coach grades it tonight.' : 'Answer out loud or in writing, then compare with the model answers.', mins, href: '#/mock/' + k, auto: !!(mk && mk.sub) }];
+  const rq = recentOpen(); /* new questions stay on Today until you tick each one yourself */
+  if (!off && rq.length) items.push({ id: 'recent', chip: 'talk', t: rq.length + ' new interview question' + (rq.length > 1 ? 's' : '') + ' asked this week', sub: [...new Set(rq.map(q => q.company))].slice(0, 4).join(', ') + ' · tick each one when you can answer it', mins: Math.min(30, 5 * rq.length), href: '#/recent', auto: false, lock: true });
   if (!off && aiOn()) { const c = coachData(); (c.focus || []).slice(0, 4).forEach((f, i) => items.push({ id: 'coach' + i + ':' + (c.generated_at || ''), chip: 'ai', t: f.title, sub: 'From your coach' + (f.why ? ' · ' + f.why : ''), mins: +f.mins || 10, href: /^#\//.test(f.href || '') ? f.href : '#/coach', auto: focusDone(f, c) })); }
   return items;
 }
@@ -202,6 +205,7 @@ function xGroup(k, title, note, items) {
     .concat(items.map(x => { const dn = xDone(k, x); return el('div', { class: 'xit' + (dn ? ' done' : '') }, [
       el('button', { class: 'check', 'aria-pressed': String(dn), 'aria-label': (dn ? 'Mark not done: ' : 'Mark done: ') + x.t, onclick: () => {
         if (x.auto) { toast('This one ticks itself when you solve or submit it.'); return; }
+        if (x.lock) { toast('Open it and tick each question when you can answer it. This row turns green when all are done.'); location.hash = x.href; return; }
         const m = (S.xdone = S.xdone || {})[k] = S.xdone[k] || {}; if (m[x.id]) delete m[x.id]; else m[x.id] = 1; save(); route(); } }, dn ? svg(I.check, 16) : null),
       el('a', { class: 'grow xlink', href: x.href }, [el('span', { class: 'row wrap', style: { gap: '6px' } }, [chip(x.chip), el('span', { class: 't', text: x.t })]), el('span', { class: 's', text: x.mins + ' min · ' + x.sub })]),
       el('a', { class: 'btn sm', href: x.href, text: dn ? 'Open' : 'Start' })]); })));
@@ -353,7 +357,9 @@ function vPath(m) {
 /* a module tab is finished when you tapped "Done, next" on it, or when every plan step that opens it is ticked */
 const TABS2 = [['chapter', 'Chapter'], ['readings', 'Readings'], ['lab', 'Labs'], ['practice', 'Warm-ups']];
 function tabUnits(m, tab, sc) { return (sc || schedule()).units.filter(u => u.mid === m && (u.href === '#/learn/' + m + '/' + tab || u.href.startsWith('#/learn/' + m + '/' + tab + '/'))); }
-function tabDone(m, tab, sc) { if ((S.tabs || {})[m + ':' + tab]) return true; const us = tabUnits(m, tab, sc); return us.length > 0 && us.every(u => u.isDone); }
+function tabHash(m, tab) { const R = (DATA.sprints[m] || {}).raw || {}; return fnv(R[tab === 'lab' ? 'lab' : tab] || ''); }
+/* a tab you finished whose text changed since is not finished any more */
+function tabDone(m, tab, sc) { const f = (S.tabs || {})[m + ':' + tab]; if (f && (!f.h || f.h === tabHash(m, tab))) return true; const us = tabUnits(m, tab, sc); return us.length > 0 && us.every(u => u.isDone); }
 async function vLearn(m, tab, range) {
   m = MOD[midOf(m)] ? midOf(m) : curMid();
   const sc = schedule();
@@ -386,13 +392,13 @@ async function vLearn(m, tab, range) {
   const finished = tabDone(m, tab, sc);
   /* "Done, next" marks this tab finished (and today's reading step for this part), then opens the next tab */
   const finish = () => {
-    S.tabs = S.tabs || {}; S.tabs[m + ':' + tab] = iso(new Date());
+    S.tabs = S.tabs || {}; S.tabs[m + ':' + tab] = { at: iso(new Date()), h: tabHash(m, tab) };
     const u = rg ? sc.units.find(x => x.href === '#/learn/' + m + '/' + tab + '/' + range) : null;
     if (u && !u.isDone) { S.done[u.uid] = iso(new Date()); (S.doneAt = S.doneAt || {})[u.uid] = Date.now(); if (S.undone) delete S.undone[u.uid]; }
     save(); location.hash = nextHref;
   };
   body.appendChild(el('div', { class: 'row wrap' }, [finished ? el('a', { class: 'btn pri', href: nextHref, text: 'Next: ' + nextName }) : el('button', { class: 'btn pri', onclick: finish, text: 'Done, next: ' + nextName }), el('a', { class: 'btn', href: '#/today', text: 'Back to today\'s plan' }),
-    finished && (S.tabs || {})[m + ':' + tab] ? el('button', { class: 'btn', onclick: () => { delete S.tabs[m + ':' + tab]; save(); route(); }, text: 'Mark not finished' }) : null]));
+    finished && (S.tabs || {})[m + ':' + tab] && tabDone(m, tab, { units: [] }) ? el('button', { class: 'btn', onclick: () => { delete S.tabs[m + ':' + tab]; save(); route(); }, text: 'Mark not finished' }) : null]));
 }
 const AMAPS = { d01: ['Storage engine', 'Replication', 'Partitioning', 'Transactions', 'Consensus'], j01: ['Scala', 'Spark API', 'JVM memory', 'Kubernetes', 'Paved path'], r01: ['Strategy', 'Design doc', 'Migration', 'Cost', 'Influence'], m01: ['Process', 'Grain', 'Dimensions', 'History (SCD)', 'Cumulative'], m02: ['Event', 'Grain', 'Fact type', 'Dedupe', 'Reduced'], m03: ['Raw', 'Cleaned', 'Business', 'Serving', 'Semantic'], p01: ['Objects', 'Lists', 'Dicts and sets', 'Big-O', 'collections'], p02: ['Arguments', 'Closures', 'Comprehensions', 'Sort keys', 'Decorators'], p03: ['Iterable', 'Generator', 'Pipeline', 'itertools', 'Batches'], p04: ['Class', 'dataclass', 'Property', 'Protocol', 'Design'], p05: ['Exceptions', 'with', 'Logging', 'pytest', 'Package'], p06: ['I/O or CPU', 'Threads', 'Processes', 'asyncio', 'Measure'], a01: ['Task', 'Model', 'Tools', 'Trace', 'Answer'], a02: ['Task', 'Agent', 'Grader', 'Fix', 'Lesson'], a03: ['Alert', 'MCP tools', 'Agent', 'Approval', 'Report'], a04: ['Question', 'Context layer', 'Guarded SQL', 'Read-only tools', 'Eval'], a05: ['Documents', 'Chunks', 'Vectors', 'Fresh index', 'Recall'], s00: ['Laptop', 'Docker', 'Python', 'Repo', 'Diagnostic'] };
 function weekMap(m) {
@@ -431,6 +437,28 @@ function vNews() {
     newsAge() > 10 ? el('div', { class: 'hint', style: { background: 'var(--amber-l)', borderColor: 'var(--amber-b)' } }, [el('b', { text: 'These items are ' + newsAge() + ' days old. ' }), 'The weekly refresh has not run since; treat "new" with care and check the sources.']) : null, /* trust fix 22 */
     el('section', { class: 'card pad stack' }, [el('p', { style: { margin: 0 }, text: N.note || '' }), u ? el('button', { class: 'btn', style: { alignSelf: 'flex-start' }, onclick: () => toggleUnit(u), text: u.isDone ? 'Mark not done' : 'Mark this week\'s reading done' }) : null]),
     el('div', { class: 'stack' }, N.items.map(x => el('section', { class: 'card pad stack' }, [el('b', { style: { fontSize: '18px' }, text: x.title }), el('span', { text: x.summary }), el('span', {}, [el('b', { style: { color: 'var(--plum-d)' }, text: 'Why it matters: ' }), x.why]), x.try ? el('span', {}, [el('b', { style: { color: 'var(--teal-d)' }, text: 'Test it yourself: ' }), x.try]) : null, x.url || x.source ? el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'Source: ' + (x.source || new URL(x.url).hostname) }) : null /* credit the source without sending you out of the app */])))], { back: '#/today' });
+}
+
+/* ---------------- Recent interview questions (weekly research task) ---------------- */
+function recentFor(m) { return ((DATA.recent || {}).items || []).filter(q => q && q.mid === m); }
+function recentOpen() { const cut = iso(new Date(Date.now() - 14 * 864e5)); return ((DATA.recent || {}).items || []).filter(q => q && q.found >= cut && !(S.rq || {})[q.id]); }
+function rqCard(q) {
+  const ans = mdEl(q.A || ''); ans.hidden = true;
+  const dn = !!(S.rq || {})[q.id];
+  const tick = el('button', { class: 'check', 'aria-pressed': String(dn), 'aria-label': (dn ? 'Not ready yet: ' : 'I can answer this: ') + q.Q, style: dn ? { background: 'var(--teal)', borderColor: 'var(--teal)', color: '#fff' } : {}, onclick: () => { S.rq = S.rq || {}; if (S.rq[q.id]) delete S.rq[q.id]; else S.rq[q.id] = iso(new Date()); save(); route(); } }, dn ? svg(I.check, 16) : null);
+  const show = el('button', { class: 'btn sm', 'aria-expanded': 'false', onclick: () => { ans.hidden = !ans.hidden; show.setAttribute('aria-expanded', String(!ans.hidden)); show.textContent = ans.hidden ? 'Show model answer' : 'Hide model answer'; } }, 'Show model answer');
+  const fresh = !dn && q.found >= iso(new Date(Date.now() - 14 * 864e5));
+  return el('section', { class: 'card pad stack rq' }, [el('div', { class: 'row', style: { alignItems: 'flex-start' } }, [tick, el('div', { class: 'grow stack', style: { gap: '4px' } }, [
+    el('div', { class: 'row wrap', style: { gap: '6px' } }, [fresh ? el('span', { class: 'chip c-dsa', text: 'New' }) : null, q.TAG ? chip(q.TAG) : null, el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: [q.company, q.level, q.asked ? 'asked ' + shortDate(q.asked) : ''].filter(Boolean).join(' · ') }),
+      /^https:\/\//.test(q.url || '') ? el('a', { href: q.url, target: '_blank', rel: 'noopener', 'aria-label': 'Where this was reported: ' + (q.src || 'source'), title: q.src || 'Source', text: 'ⓘ' }) : null]),
+    el('b', { style: { fontSize: '16.5px' }, html: mdi(q.Q) })])]), el('div', { class: 'row wrap' }, [show, q.mid && MOD[q.mid] ? el('a', { class: 'btn sm', href: '#/learn/' + q.mid, text: 'Module ' + modLabel(q.mid) }) : null]), ans]);
+}
+function vRecent() {
+  const R = DATA.recent || { items: [] }, qs = (R.items || []).slice().sort((a, b) => (b.found || '').localeCompare(a.found || '') || (a.company || '').localeCompare(b.company || ''));
+  const open = recentOpen().length;
+  shell('Asked this week', R.updated ? 'Updated ' + shortDate(R.updated) + ' · refreshed weekly' : 'Refreshed weekly', [
+    el('section', { class: 'card pad stack' }, [el('p', { style: { margin: 0 }, text: R.note || '' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: open ? open + ' new to work through. Tick a question only when you can answer it out loud; your plan keeps showing them until then.' : 'Nothing new to work through.' })]),
+    qs.length ? el('div', { class: 'stack' }, qs.map(rqCard)) : el('section', { class: 'card pad' }, [el('p', { style: { margin: 0 }, text: 'No questions yet. The weekly research task adds them here.' })])], { back: '#/today' });
 }
 
 /* ---------------- Search (⌘K or /) ---------------- */
@@ -599,18 +627,18 @@ function reconcileContent() {
   return items;
 }
 function whatsNewCard() {
-  const ups = openUpdates(); if (!ups.length) return null;
+  const ups = openUpdates(), rq = recentOpen(), seenRq = (S.rqSeen || '') >= ((DATA.recent || {}).updated || ''); if (!ups.length && (!rq.length || seenRq)) return null;
   const items = [].concat(...ups.map(x => x.items)), mods = items.filter(i => i.kind === 'module'), back = items.filter(i => i.kind === 'updated' || i.kind === 'exercise'), adds = items.filter(i => i.kind === 'new');
-  const say = [mods.length && mods.length + ' new module' + (mods.length > 1 ? 's' : ''), adds.length && adds.length + ' new step' + (adds.length > 1 ? 's' : ''), back.length && back.length + ' updated step' + (back.length > 1 ? 's' : '') + ' to look at again'].filter(Boolean).join(' · ');
+  const say = [mods.length && mods.length + ' new module' + (mods.length > 1 ? 's' : ''), adds.length && adds.length + ' new step' + (adds.length > 1 ? 's' : ''), back.length && back.length + ' updated step' + (back.length > 1 ? 's' : '') + ' to look at again', rq.length && !seenRq && rq.length + ' new interview question' + (rq.length > 1 ? 's' : '') + ' from this week'].filter(Boolean).join(' · ');
   const row = i => el('a', { class: 'item', href: i.href }, [el('span', { class: 'chip ' + (i.kind === 'module' || i.kind === 'new' ? 'c-dsa' : 'c-ai'), text: i.kind === 'module' || i.kind === 'new' ? 'New' : 'Updated' }), el('span', { class: 'grow t', text: i.title.replace(/^(New module |New step in |Updated in |Exercise changed: )/, '') }), el('span', { class: 's', text: 'Open ›' })]);
-  const shown = mods.concat(back, adds), more = shown.length - 6;
+  const shown = (rq.length && !seenRq ? [{ kind: 'new', title: rq.length + ' interview questions asked this week (' + [...new Set(rq.map(q => q.company))].slice(0, 5).join(', ') + ')', href: '#/recent' }] : []).concat(mods, back, adds), more = shown.length - 6;
   /* one line on Today so the plan stays on the first screen; the list opens in place */
   const body = el('div', { class: 'stack', id: 'wn_list', hidden: 'hidden', style: { gap: '8px' } }, [
-    el('span', { class: 'muted', style: { fontSize: '14px' }, text: back.length ? 'Nothing you did is lost: steps you had finished that changed are marked Updated, and your earlier work is kept.' : 'They are added to your plan; nothing you did changes.' }),
+    el('span', { class: 'muted', style: { fontSize: '14px' }, text: (back.length ? 'Nothing you did is lost: steps you had finished that changed are marked Updated, and your earlier work is kept. ' : 'They are added to your plan. ') + 'Got it only hides this note: new and updated parts stay not done until you open them and finish or tick them yourself.' }),
     el('div', { class: 'list' }, shown.slice(0, 6).map(row)),
     more > 0 ? el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'and ' + more + ' more, tagged New or Updated on the Path.' }) : null]);
   const see = el('button', { class: 'btn sm', 'aria-expanded': 'false', 'aria-controls': 'wn_list', onclick: () => { body.hidden = !body.hidden; see.setAttribute('aria-expanded', String(!body.hidden)); see.textContent = body.hidden ? 'See' : 'Hide'; }, text: 'See' });
   return el('section', { class: 'card stack whatsnew', role: 'status' }, [
-    el('div', { class: 'row', style: { gap: '8px' } }, [el('span', { class: 'grow' }, [el('b', { text: 'What is new: ' }), say]), see, el('button', { class: 'btn sm', onclick: () => { (S.updates || []).forEach(x => { x.read = true; }); save(); route(); }, text: 'Got it' })]),
+    el('div', { class: 'row', style: { gap: '8px' } }, [el('span', { class: 'grow' }, [el('b', { text: 'What is new: ' }), say]), see, el('button', { class: 'btn sm', onclick: () => { (S.updates || []).forEach(x => { x.read = true; }); S.rqSeen = (DATA.recent || {}).updated || ''; save(); route(); }, text: 'Got it' })]),
     body]);
 }

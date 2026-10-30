@@ -1,9 +1,8 @@
 {
-  "version": "1.16.0",
+  "version": "1.17.0",
   "date": "2026-10-30",
   "notes": [
-    "Today now lists everything for the day in one plan: your hour, the coding track (DSA, SQL, PySpark and reviews) and interview practice (the daily mock and your coach's items). Done for today shows only when all of it is ticked.",
-    "Module pages: a finished tab turns green with a tick. Tap Done, next to finish a tab and move on; opening a module takes you to the first tab you have not finished.",
-    "Terminal: a big Enter key in the key row, and tapping on the line you are typing moves the cursor there."
+    "New page Asked this week: interview questions reported in the last week at the companies you are preparing for, each with a model answer and a link to where it was reported. New ones also appear on the module's interview page and as a row in Today's interview practice.",
+    "Updates never mark anything done for you: Got it only hides the What is new note. New questions stay on Today until you tick each one, a finished interview step goes back to not done when its module gets new questions, and a finished tab whose text changed is no longer green."
   ]
 }

@@ -656,6 +656,40 @@ async function T(name, fn, opt) {
     ok(!uid || (await state(p)).done[uid], 'today\'s chapter part was not ticked');
   });
 
+  await T('recent questions: new ones show on Today and What is new, Got it does not finish them, each is ticked by hand', async p => {
+    const today = new Date().toISOString().slice(0, 10);
+    const R = { updated: today, note: 'test', items: [
+      { id: 'rq-t1', mid: 's01', company: 'Uber', level: 'Senior', asked: today, found: today, TAG: 'streaming', Q: 'Design trip events ingestion with exactly-once counts.', A: 'Use a log with keys by trip id, idempotent sink, checkpoints.', src: 'Test', url: 'https://example.com/a' },
+      { id: 'rq-t2', mid: 's02', company: 'Google', level: 'L5', asked: today, found: today, TAG: 'sql', Q: 'Find the second highest salary per department.', A: 'DENSE_RANK over a department window, filter rank 2.', src: 'Test', url: 'https://example.com/b' }] };
+    await p.route('**/data/recent.json*', r => r.fulfill({ contentType: 'application/json', body: JSON.stringify(R) }));
+    await go(p, '#/today', 1500); await p.waitForSelector('.plan .xit');
+    ok(/2 new interview questions asked this week/.test(await text(p, '.plan')), 'no recent questions row on Today');
+    ok(/2 new interview questions from this week/.test(await text(p, '.whatsnew')), 'What is new does not mention them');
+    await p.click('.whatsnew button:has-text("Got it")'); await p.waitForTimeout(500);
+    ok(!(await p.$('.whatsnew')), 'Got it did not hide the note');
+    ok(/2 new interview questions/.test(await text(p, '.plan')), 'Got it finished the questions');
+    const row = p.locator('.plan .xit', { hasText: 'new interview questions' });
+    await row.locator('.check').click(); await p.waitForTimeout(600);
+    ok(/#\/recent$/.test(p.url()), 'the row ticked itself instead of opening the questions');
+    ok(await p.$$eval('.rq', x => x.length) === 2, 'questions not listed');
+    for (let i = 0; i < 2; i++) { await p.click('.rq .check[aria-pressed=false]'); await p.waitForTimeout(300); }
+    await go(p, '#/today', 1000);
+    ok(!/new interview questions/.test(await text(p, '.plan')), 'row still shown after ticking every question');
+    await go(p, '#/interview/s01', 1200); ok(/Asked recently at companies/.test(await text(p, '#page')) && /exactly-once counts/.test(await text(p, '#page')), 'module interview page does not show its recent question');
+  });
+
+  await T('updates: a finished interview step and a finished tab go back to not done when their content changes', async p => {
+    await go(p, '#/today', 1200);
+    const uid = await p.evaluate(() => { const u = schedule().units.find(x => x.mid === 's01' && x.href === '#/interview/s01'); S.done[u.uid] = iso(new Date()); S.cv.units[u.uid] = unitHash(u); S.tabs = { 's01:chapter': { at: iso(new Date()), h: 'old' } }; saveT && clearTimeout(saveT); localStorage.setItem('keystone:v1', JSON.stringify(S)); return u.uid; });
+    const today = new Date().toISOString().slice(0, 10);
+    await p.route('**/data/recent.json*', r => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ updated: today, items: [{ id: 'rq-t3', mid: 's01', company: 'Microsoft', found: today, TAG: 'core', Q: 'q', A: 'a', url: 'https://example.com/c' }] }) }));
+    await p.reload(); await p.waitForSelector('h1'); await p.waitForTimeout(1200);
+    ok(!(await state(p)).done[uid], 'the interview step stayed done after new questions were added');
+    ok(await p.evaluate(u => !!S.archive.done[u], uid), 'old completion not archived');
+    await go(p, '#/learn/s01/chapter', 900);
+    ok(!(await p.$('.tabs button.tdone')), 'a tab finished on old text is still green');
+   }, { serviceWorkers: 'block' });
+
   await T('terminal on iPhone: the page never scrolls sideways', async p => {
     await go(p, '#/terminal', 900);
     await p.waitForSelector('.xthold', { timeout: 30000 }); await p.waitForTimeout(4000);

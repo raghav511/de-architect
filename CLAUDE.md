@@ -49,7 +49,8 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 ## Key mechanisms
 
 - **Today:** one plan in three groups: Your hour (scheduled units), Coding track (`codingItems`) and Interview practice (`interviewItems`: daily mock, coach focus items). Extras tick themselves when solved or submitted, or by hand in `S.xdone[date]`; "Done for today" needs all three.
-- **Module tabs:** a tab is finished when `S.tabs[m:tab]` is set ("Done, next") or all plan steps that open it are ticked (`tabDone`); `#/learn/m` opens the first unfinished tab.
+- **Recent interview questions:** `data/recent.json` (items: id, mid, company, level, asked, found, TAG, Q, A, src, url), written by the weekly scheduled task `data-architect-weekly-refresh` (also refreshes `data/news.json` and module content). Shown at `#/recent`, on the module's interview page, as one Today row (until every new one is ticked in `S.rq`) and in What is new. They are part of the interview step's fingerprint, so a finished interview step goes back to not done when its module gets new questions. Got it on What is new only hides the note; nothing is ever marked done for the learner.
+- **Module tabs:** a tab is finished when `S.tabs[m:tab]` is set (with the text's hash; a changed tab is not finished) ("Done, next") or all plan steps that open it are ticked (`tabDone`); `#/learn/m` opens the first unfinished tab.
 - **Scheduler:** units are packed day by day from today; nothing is skipped. Days since `S.since` (first use or "Make this week 1") with nothing done count as missed and show a "Catching up" note. Main-path steps come before Claude Code steps on the same day.
 - **Update tracker:** each step, exercise and quiz has a content fingerprint (`S.cv`). When content you finished changes, the step goes back to not done with an "Updated" tag, and the old completion, score and code move to `S.archive`. New modules and steps are listed in the one-line "What is new" note on Today. `repairTracker()` fixes damaged tracker data.
 - **Saving:** `save()` writes after 150 ms and flushes on pagehide or hidden; `saveT` is reset after each write.
@@ -57,6 +58,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.17.0: weekly recent interview questions (`#/recent`, Today row, module interview pages); updated content is never counted as done until the learner does it, including module tabs.
 - 1.16.0: everything for the day is in Today's plan (coding track and interview practice joined the hour); finished module tabs turn green and the module opens on the next one; the terminal has an Enter key and tapping the typed line moves the cursor.
 - 1.15.3: taps while the app is still loading no longer draw screens without their data (from the Pitcher crawl).
 - 1.15.2: terminal fixes from the user's report (could not type, Check hung): the terminal attaches to the box on screen after a redraw; start-up progress shows in the terminal; typing before the prompt is kept; the 34 files a lab run reads (`vm/sys/warm.json`, recorded from a real run) download in parallel with retries during boot; Check clears a half-typed line; a Restart button after 3 minutes.
