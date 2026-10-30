@@ -346,7 +346,7 @@ async function T(name, fn, opt) {
 
   await T('git: lesson commands and mark done', async p => {
     await go(p, '#/git/5', 700);
-    ok(/\$L setup 5/.test(await text(p, '#page')), 'setup command missing');
+    ok(await p.$('a[href="#/terminal/git/5"]:has-text("Practise in the terminal")') && !/codespaces/i.test(await p.evaluate(() => document.querySelector('#page').innerHTML)), 'in-app terminal button missing, or the lesson still sends you to Codespaces');
     await p.click('button:has-text("Mark this lesson done")'); await p.waitForTimeout(300);
     ok(Object.keys((await state(p)).done).some(k => k.endsWith(':git')), 'git lesson not saved');
   });
@@ -564,6 +564,21 @@ async function T(name, fn, opt) {
     await hash(p, '#/news', 500); ok(!(await p.$('#page a[href^="http"]')), 'news links out');
     await hash(p, '#/learn/s01/readings', 500); const v = await p.$$eval('a.srcl[href*="developer.confluent.io"]', xs => xs.length);
     ok(v >= 4, 'video topics have no small watch links: ' + v);
+  });
+
+  await T('terminal: a real Linux boots in the app; Git lab 1 sets up, a fix typed in the shell passes Check, the step ticks', async p => {
+    await go(p, '#/git/1', 900);
+    await p.click('a:has-text("Practise in the terminal")');
+    await p.waitForFunction(() => VM.ready, null, { timeout: 240000 });
+    await p.waitForFunction(() => /Lab 1 is ready/.test(document.querySelector('.termside [role=status]').textContent), null, { timeout: 120000 });
+    ok(await p.evaluate(() => /TASK: the last commit message/.test(VM.term.buffer.active ? Array.from({ length: VM.term.buffer.active.length }, (_, i) => (VM.term.buffer.active.getLine(i) || { translateToString: () => '' }).translateToString()).join('\n') : '')), 'the lab task is not shown in the terminal');
+    await p.click('.xthold'); await p.keyboard.type('git add dag.py && git commit -q --amend -m "add pipeline and dag"'); await p.keyboard.press('Enter');
+    await p.waitForTimeout(3000);
+    await p.click('button:has-text("Check my fix")');
+    await p.waitForFunction(() => /passed|Not yet|did not/.test(document.querySelector('.termside [role=status]').textContent), null, { timeout: 120000 });
+    ok(/passed/.test(await text(p, '.termside [role=status]')), 'check: ' + await text(p, '.termside'));
+    ok(await p.evaluate(() => !!S.gitlab[1] && schedule().units.find(u => u.kind === 'git' && /^Git 1:/.test(u.title)).isDone), 'Git step not ticked');
+    ok(await p.evaluate(() => [...document.querySelectorAll('.termside .ok')].length === 3), 'expected three ✓ lines');
   });
 
   await T('AI data stack: A4 and A5 labs run in the browser and tick their Path steps', async p => {
