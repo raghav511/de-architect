@@ -1,8 +1,7 @@
 {
-  "version": "1.17.0",
+  "version": "1.17.1",
   "date": "2026-10-30",
   "notes": [
-    "New page Asked this week: interview questions reported in the last week at the companies you are preparing for, each with a model answer and a link to where it was reported. New ones also appear on the module's interview page and as a row in Today's interview practice.",
-    "Updates never mark anything done for you: Got it only hides the What is new note. New questions stay on Today until you tick each one, a finished interview step goes back to not done when its module gets new questions, and a finished tab whose text changed is no longer green."
+    "Behind the scenes: the weekly refresh that adds recent interview questions and AI news now runs from the app's own repository."
   ]
 }
