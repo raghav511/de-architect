@@ -1,12 +1,11 @@
 {
-  "version": "1.8.0",
-  "date": "2026-10-28",
+  "version": "1.9.0",
+  "date": "2026-10-30",
   "notes": [
-    "Profile: tap your avatar (top right) for one page with Sync now, Update app and Light/Dark/Auto as one-tap buttons at the top",
-    "Profile: Sync, Look (accent colour, your name), Plan, AI (features, coach, grading model, API key, model) and Data are short tabs that open in place; every change saves at once, no Save button",
-    "Phones: More has Sync and Profile; the Profile header folds away so everything fits on the first screen",
-    "Dark mode: the selected tab is readable everywhere in the app",
-    "Fix: closing a tab no longer overwrites progress another open tab saved after it",
-    "Tests: profile journeys on Mac and iPhone, other-tab save, Profile in the accessibility check; simulated users use the profile"
+    "New module A4, after module 4: text-to-SQL you can trust, semantic and context layers, MCP for databases, AI functions in SQL, and evaluating data agents",
+    "New module A5, after module 6: RAG as a pipeline, chunking and embeddings, where vectors live, keeping the index fresh with hashes and CDC, LLM extraction as ETL, privacy, and recall at k",
+    "13 new labs run entirely in this app (Python and DuckDB in your browser, a fake model in the tests, so they work offline and with AI off); readings are in-app notes, no outside links",
+    "Two new design problems: ask-your-data for operations, and a runbook assistant that stays fresh",
+    "Tests: all 13 labs solved in the browser editor, module order, design problems, no outside links in A5 readings"
   ]
 }

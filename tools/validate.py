@@ -44,7 +44,7 @@ def blocks(text, keys, letters):
     if b: res.append(b)
     return res
 
-mods = ['c%02d' % i for i in range(1, 13)] + ['a01', 'a02', 'a03'] + ['p%02d' % i for i in range(1, 7)] + ['m%02d' % i for i in range(1, 4)] + ['d01', 'j01', 'r01'] + ['s%02d' % i for i in range(13)]
+mods = ['c%02d' % i for i in range(1, 13)] + ['a01', 'a02', 'a03', 'a04', 'a05'] + ['p%02d' % i for i in range(1, 7)] + ['m%02d' % i for i in range(1, 4)] + ['d01', 'j01', 'r01'] + ['s%02d' % i for i in range(13)]
 sparkbank = json.load(open('data/bank/spark.json'))
 sqlbank = json.load(open('data/bank/sql.json'))
 pybank = json.load(open('data/bank/py.json'))

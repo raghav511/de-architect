@@ -497,7 +497,26 @@ async function T(name, fn, opt) {
     await go(p, '#/today');
     const mods = await p.evaluate(() => MODS.slice(0, 14).join(' '));
     ok(mods === 's00 p01 p02 a01 p03 p04 a02 p05 p06 a03 m01 m02 m03 s01', 'module order: ' + mods);
+    const ai = await p.evaluate(() => MODS.join(' ')); ok(/s04 a04 d01/.test(ai) && /s06 a05 s07/.test(ai), 'AI data stack modules not after the warehouse and CDC modules: ' + ai);
     const first = await p.evaluate(() => schedule().units.find(u => !isCC(u.mid)).mid); ok(first === 's00', 'first non-Claude-Code step should be in Setup: ' + first);
+  });
+
+  await T('AI data stack: A4 and A5 labs run in the browser and tick their Path steps', async p => {
+    await go(p, '#/path/a04', 900);
+    ok(/LLMs meet the warehouse/.test(await text(p, '#page')) && /Guard the SQL/.test(await text(p, '#page')), 'A4 module or its lab steps missing');
+    const sols = await p.evaluate(() => DATA.py.filter(x => x.m === 'a04' || x.m === 'a05').map(x => [x.id, x.sol]));
+    ok(sols.length === 13, 'expected 13 AI data stack exercises, got ' + sols.length);
+    for (const [id, sol] of sols) {
+      await hash(p, '#/py/' + id, 600);
+      await p.fill('textarea.code', sol);
+      await p.click('button.btn.pri:has-text("Run")');
+      await p.waitForFunction(() => { const v = document.querySelector('.verdict'); return v && v.style.display !== 'none' && /pass|Error/.test(v.textContent); }, null, { timeout: 120000 });
+      ok((await text(p, '.verdict')) === 'All checks pass', id + ' did not pass in the browser: ' + await text(p, '.out .body'));
+    }
+    const left = await p.evaluate(() => schedule().units.filter(u => (u.mid === 'a04' || u.mid === 'a05') && u.kind === 'build' && !u.isDone).map(u => u.title));
+    ok(!left.length, 'lab steps not ticked: ' + left.join(', '));
+    await go(p, '#/learn/a05/readings', 900); ok(!(await p.$('#page a[href^="http"]')), 'A5 readings send you out of the app');
+    await go(p, '#/design/a04', 900); ok(/Ask-your-data/.test(await text(p, '#page')), 'A4 design problem missing');
   });
 
   await T('python: solving the level-check tasks ticks the Setup step', async p => {
@@ -559,8 +578,8 @@ async function T(name, fn, opt) {
 
   await T('platform and leadership: placed in order, Scala exercises tick the step, practice lists them', async p => {
     await go(p, '#/today');
-    const pos = await p.evaluate(() => [MODS.indexOf('j01') - MODS.indexOf('s07'), MODS.indexOf('r01') - MODS.indexOf('s10'), MODS.indexOf('d01') - MODS.indexOf('s04')]);
-    ok(pos[0] === 1 && pos[1] === 1 && pos[2] === 1, 'Platform 1 should follow DE 7, Leadership 1 DE 10, Systems 1 DE 4: ' + pos);
+    const pos = await p.evaluate(() => [MODS.indexOf('j01') - MODS.indexOf('s07'), MODS.indexOf('r01') - MODS.indexOf('s10'), MODS.indexOf('d01') - MODS.indexOf('a04')]);
+    ok(pos[0] === 1 && pos[1] === 1 && pos[2] === 1, 'Platform 1 should follow DE 7, Leadership 1 DE 10, Systems 1 the AI data stack module after DE 4: ' + pos);
     const sols = await p.evaluate(() => DATA.spark.filter(x => x.m === 'j01').map(x => [x.id, x.sol]));
     ok(sols.length === 3, 'expected 3 Scala exercises');
     for (const [id, sol] of sols) {
