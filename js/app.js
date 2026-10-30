@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.10.0';
+const VERSION = '1.10.1';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -457,7 +457,7 @@ function vWork(kind, id, mode) {
       S.runs[qid] = runs() + 1;
       S.seen = S.seen || {}; S.seen[qid] = Date.now(); /* when you last worked on it, for the nightly coach */
       if (r.pass) {
-        const first = !S.solved[qid]; S.solved[qid] = 1; if (S.cv) S.cv.ex[qid] = exHash(findQ(qid)); /* the version you solved */
+        const first = !S.solved[qid]; S.solved[qid] = 1; if (S.cv && S.cv.ex) S.cv.ex[qid] = exHash(findQ(qid)); /* the version you solved */
         if (review) {
           const lapsed = nh() > H.length; revPut(qid, lapsed ? 0 : rv.box + 1); review = false;
           const nr = S.rev[qid];

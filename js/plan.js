@@ -107,7 +107,7 @@ function schedule() {
   const byDay = {}, used = {};
   const put = (k, u) => { (byDay[k] = byDay[k] || []).push(u); used[k] = (used[k] || 0) + u.mins; u.day = k; };
   units.forEach(u => { const d = doneDate(u); u.isDone = !!d; if (d) put(d, u); });
-  if (S.cv) units.forEach(u => { if (u.isDone && !S.cv.units[u.uid] && tracked(u)) S.cv.units[u.uid] = unitHash(u); }); /* remember which version you finished */
+  if (S.cv && S.cv.units) units.forEach(u => { if (u.isDone && !S.cv.units[u.uid] && tracked(u)) S.cv.units[u.uid] = unitHash(u); }); /* remember which version you finished */
   const cur = new Date(t), q = units.filter(u => !u.isDone && !isCC(u.mid)), cq = units.filter(u => !u.isDone && isCC(u.mid)); let guard = 0;
   const ccDay = {}; units.forEach(u => { if (u.isDone && isCC(u.mid) && u.day) ccDay[u.day] = (ccDay[u.day] || 0) + 1; });
   /* Claude Code pace: enough steps a week to finish around when the main path does (1 to 3 a week) */
@@ -505,12 +505,22 @@ function fnv(t) { let h = 0x811c9dc5; for (let i = 0; i < t.length; i++) { h ^= 
 function tracked(u) { return u.kind !== 'news' && u.kind !== 'cc' && u.kind !== 'project'; } /* news changes weekly by design; graded and project work keeps its own record */
 function unitHash(u) { return fnv(u.title + '|' + (u.src != null ? u.src : u.goal + '|' + u.done)); }
 function exHash(x) { return fnv((x.p || '') + '|' + JSON.stringify(x.tests || x.sol || '')); }
-function wasDone(uid) { const a = S.archive && S.archive.done[uid]; return a ? (typeof a.at === 'string' ? a.at : iso(new Date(a.when || Date.now()))) : null; }
-function openUpdates() { return (S.updates || []).filter(x => !x.read); }
+function wasDone(uid) { const a = S.archive && S.archive.done && S.archive.done[uid]; return a ? (typeof a.at === 'string' ? a.at : iso(new Date(a.when || Date.now()))) : null; }
+function openUpdates() { return Array.isArray(S.updates) ? S.updates.filter(x => x && !x.read && Array.isArray(x.items)) : []; }
 function isNewUnit(u) { return openUpdates().some(x => x.items.some(i => i.uid === u.uid || (i.kind === 'module' && i.mid === u.mid))); }
 function isNewMod(m) { return openUpdates().some(x => x.items.some(i => i.kind === 'module' && i.mid === m)); }
 function modUpdated(m) { return openUpdates().some(x => x.items.some(i => i.mid === m && i.kind !== 'module')); }
+/* synced or restored data can arrive damaged; repair the tracker's own fields instead of failing (progress fields are untouched) */
+function repairTracker() {
+  const obj = x => x && typeof x === 'object' && !Array.isArray(x);
+  if (S.cv && !(obj(S.cv) && obj(S.cv.units) && obj(S.cv.ex) && obj(S.cv.known))) delete S.cv;
+  if (!obj(S.archive)) S.archive = { done: {}, solved: {}, quiz: {} };
+  ['done', 'solved', 'quiz'].forEach(k => { if (!obj(S.archive[k])) S.archive[k] = {}; });
+  if (!Array.isArray(S.updates)) S.updates = [];
+  S.updates = S.updates.filter(x => obj(x) && Array.isArray(x.items));
+}
 function reconcileContent() {
+  repairTracker();
   const units = [].concat(...MODS_ALL.map(modUnits)), had = Object.keys(S.done || {}).length + Object.keys(S.solved || {}).length > 0;
   S.archive = S.archive || { done: {}, solved: {}, quiz: {} };
   if (!S.cv) {
