@@ -55,6 +55,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.15.1: search and dialogs close when you change screen; the error page has a Reload button (from the screen-map crawl).
 - 1.15.0: module 6's CDC lab in the browser (change events by LSN, reconciliation, hourly drift, propose-approve-execute).
 - 1.14.0: module 5's streaming lab in the browser (watermark windows, exactly-once after a crash, dead-letter queue, schema compatibility); the phone terminal no longer scrolls sideways; the size budget counts only the app's own files.
 - 1.13.0: module 1's walking-skeleton lab runs in the browser on `py/minilake.py` (Kafka-, S3- and Airflow-style); five exercises replace the Docker lab, which stays as optional; the rerun incident is the landing exercise's rerun test.

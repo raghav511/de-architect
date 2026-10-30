@@ -1,9 +1,9 @@
 {
-  "version": "1.15.0",
+  "version": "1.15.1",
   "date": "2026-10-30",
   "notes": [
-    "Module 6: change data capture is practised in your browser: Debezium-style change events applied by log position (late and duplicate events ignored, deletes win, replays change nothing), row-level reconciliation, hourly drift detection, and a fix that runs only after a person approves it",
-    "The Postgres, Debezium and Iceberg version stays as an optional lab; the Slack approval flow is replaced by an in-app check of the same control",
-    "Tests: the browser journey covers modules 1, 5 and 6"
+    "Search, menus and dialogs close when you move to another screen instead of staying on top of it",
+    "If a screen fails to load (often a dropped connection), there is now a Reload button; your progress is saved",
+    "Test: search closes on navigation"
   ]
 }
