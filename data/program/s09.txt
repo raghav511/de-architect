@@ -16,11 +16,11 @@ hours: 10
 908 | talk | 1.25 | Interview set 9 and the mock | 14 of 18 questions ticked, and a mock score recorded. | interview
 
 @@readings
-- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
-- **Reading note: An AI on-call assistant for Airflow in production.** A real system reads failed task logs and metadata, classifies the failure, suggests a fix with evidence and links, and leaves the decision to a person. Its value came from narrow scope, good context and measured accuracy, and its limits from noisy logs and rare failure types.
-- **Reading note: Evaluating agents.** Build an eval set before the agent; grade outcomes with code when possible, then rubric judges calibrated on human labels; read transcripts; run several trials because agents are not deterministic; track cost and latency.
-- **Reading note: Data contracts and data quality in a catalogue.** A contract states a dataset's schema, semantics, freshness and quality rules, owned by the producer. Catalogues such as OpenMetadata attach tests to tables and alert owners when a check fails, so quality becomes visible and assigned.
-- **Reading note: Autonomous incident response for orchestrators.** The direction of the field: agents that detect a failed run, gather evidence, propose or apply a safe fix (retry, clear, backfill) under policy, and report. Approval gates and audit trails decide what may run without a person.
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
+- **Reading note: An AI on-call assistant for Airflow in production.** A real system reads failed task logs and metadata, classifies the failure, suggests a fix with evidence and links, and leaves the decision to a person. Its value came from narrow scope, good context and measured accuracy, and its limits from noisy logs and rare failure types. [ⓘ](https://www.zenml.io/llmops-database/ai-powered-on-call-assistant-for-airflow-pipeline-debugging)
+- **Reading note: Evaluating agents.** Build an eval set before the agent; grade outcomes with code when possible, then rubric judges calibrated on human labels; read transcripts; run several trials because agents are not deterministic; track cost and latency. [ⓘ](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents)
+- **Reading note: Data contracts and data quality in a catalogue.** A contract states a dataset's schema, semantics, freshness and quality rules, owned by the producer. Catalogues such as OpenMetadata attach tests to tables and alert owners when a check fails, so quality becomes visible and assigned. [ⓘ](https://docs.open-metadata.org/v2.0.x/how-to-guides/data-contracts)
+- **Reading note: Autonomous incident response for orchestrators.** The direction of the field: agents that detect a failed run, gather evidence, propose or apply a safe fix (retry, clear, backfill) under policy, and report. Approval gates and audit trails decide what may run without a person. [ⓘ](https://airflowsummit.org/sessions/2026/stop-fighting-fires-autonomous-incident-response-for-apache-airflow-using-ai-powered-agents/)
 
 @@chapter
 ## 9.1 The failures that do not fail

@@ -17,11 +17,11 @@ A308 | talk | 0.75 | Interview set A3 | 6 of 8 answered out loud and ticked. | i
 A309 | practice | 0.5 | Agent design drills | Three agent designs critiqued and compared with the model answers. | practice
 
 @@readings
-- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
-- **Reading note: Model Context Protocol concepts.** Servers offer tools (actions with input schemas), resources (readable data) and prompts (templates). Clients discover them and call them on the model's behalf. One server can serve every assistant in a company.
-- **Reading note: Harnesses for long-running agents.** Long tasks need a progress file the agent updates, an initial step that sets up the plan and environment, checkpoints, and a way to resume after a crash or a context reset.
-- **Reading note: Multi-agent research systems.** A lead agent splits a research task across parallel subagents and combines their findings. It helps for broad, parallel questions and costs many more tokens; it does not help for tightly coupled work.
-- **Reading note: Excessive agency.** Give agents the fewest tools, with the least privilege, and require approval for irreversible actions. Most agent incidents come from a tool that could do more than the task needed.
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
+- **Reading note: Model Context Protocol concepts.** Servers offer tools (actions with input schemas), resources (readable data) and prompts (templates). Clients discover them and call them on the model's behalf. One server can serve every assistant in a company. [ⓘ](https://modelcontextprotocol.io/)
+- **Reading note: Harnesses for long-running agents.** Long tasks need a progress file the agent updates, an initial step that sets up the plan and environment, checkpoints, and a way to resume after a crash or a context reset. [ⓘ](https://www.anthropic.com/engineering)
+- **Reading note: Multi-agent research systems.** A lead agent splits a research task across parallel subagents and combines their findings. It helps for broad, parallel questions and costs many more tokens; it does not help for tightly coupled work. [ⓘ](https://www.anthropic.com/engineering/multi-agent-research-system)
+- **Reading note: Excessive agency.** Give agents the fewest tools, with the least privilege, and require approval for irreversible actions. Most agent incidents come from a tool that could do more than the task needed. [ⓘ](https://genai.owasp.org/llm-top-10/)
 
 @@chapter
 ## A3.1 Long-running agents

@@ -16,12 +16,12 @@ hours: 10
 808 | talk | 1 | Interview set 8 and the mock | 14 of 18 questions ticked, and a mock score recorded. | interview
 
 @@readings
-- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
-- **Reading note: Delta Lake and file layout.** Delta keeps an ordered transaction log of JSON commits plus checkpoints; readers replay it to find the current files. OPTIMIZE compacts small files; VACUUM removes files no longer referenced after a retention period. Time travel reads an older version.
-- **Reading note: Liquid clustering.** Instead of fixed partitions and Z-ordering, liquid clustering lets the engine cluster data by chosen keys incrementally and change those keys later without rewriting everything. It suits tables whose filter columns change or have uneven sizes.
-- **Reading note: Snowflake clustering and pruning.** Snowflake stores data in micro-partitions with min/max metadata per column and skips those a filter excludes. A clustering key keeps related rows together on large tables, at the cost of background reclustering credits. Worth it only for big tables with stable, selective filters.
-- **Reading note: Snowflake reading Iceberg tables.** Snowflake can manage Iceberg tables stored in your own cloud storage or read tables managed by another catalogue, so one copy of data serves several engines. Know who owns the catalogue and who may write.
-- **Reading note: The open table format market in 2026.** Most engines now read Iceberg, many write it, and catalogues compete. Read vendor surveys as a map of support, not a verdict, and check the specific engine version you will run.
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
+- **Reading note: Delta Lake and file layout.** Delta keeps an ordered transaction log of JSON commits plus checkpoints; readers replay it to find the current files. OPTIMIZE compacts small files; VACUUM removes files no longer referenced after a retention period. Time travel reads an older version. [ⓘ](https://docs.databricks.com/aws/en/delta)
+- **Reading note: Liquid clustering.** Instead of fixed partitions and Z-ordering, liquid clustering lets the engine cluster data by chosen keys incrementally and change those keys later without rewriting everything. It suits tables whose filter columns change or have uneven sizes. [ⓘ](https://delta.io/blog/liquid-clustering/)
+- **Reading note: Snowflake clustering and pruning.** Snowflake stores data in micro-partitions with min/max metadata per column and skips those a filter excludes. A clustering key keeps related rows together on large tables, at the cost of background reclustering credits. Worth it only for big tables with stable, selective filters. [ⓘ](https://docs.snowflake.com/en/user-guide/tables-clustering-keys)
+- **Reading note: Snowflake reading Iceberg tables.** Snowflake can manage Iceberg tables stored in your own cloud storage or read tables managed by another catalogue, so one copy of data serves several engines. Know who owns the catalogue and who may write. [ⓘ](https://docs.snowflake.com/en/user-guide/tables-iceberg)
+- **Reading note: The open table format market in 2026.** Most engines now read Iceberg, many write it, and catalogues compete. Read vendor surveys as a map of support, not a verdict, and check the specific engine version you will run. [ⓘ](https://datalakehousehub.com/blog/iceberg-market-2026)
 
 @@chapter
 ## 8.1 Why there are two

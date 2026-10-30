@@ -12,10 +12,10 @@ C703 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
 C704 | test | 0.33 | Quiz C7 | 80% or better. | quiz
 
 @@readings
-- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
-- **Reading note: Project memory.** A CLAUDE.md file in the project (and one for you) holds conventions, commands and rules the agent reads every session. Keep it short and specific; import other files when needed.
-- **Reading note: Custom commands.** A markdown file becomes a slash command with arguments, for prompts you repeat (review this PR, write a migration).
-- **Reading note: Skills.** A skill is a folder of instructions and scripts loaded only when a task needs it, so specialised know-how does not fill every conversation.
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
+- **Reading note: Project memory.** A CLAUDE.md file in the project (and one for you) holds conventions, commands and rules the agent reads every session. Keep it short and specific; import other files when needed. [ⓘ](https://docs.claude.com/en/docs/claude-code/memory)
+- **Reading note: Custom commands.** A markdown file becomes a slash command with arguments, for prompts you repeat (review this PR, write a migration). [ⓘ](https://docs.claude.com/en/docs/claude-code/slash-commands)
+- **Reading note: Skills.** A skill is a folder of instructions and scripts loaded only when a task needs it, so specialised know-how does not fill every conversation. [ⓘ](https://docs.claude.com/en/docs/claude-code/skills)
 
 @@chapter
 ## C7.1 Three layers of reuse

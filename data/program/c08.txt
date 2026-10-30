@@ -12,10 +12,10 @@ C803 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
 C804 | test | 0.33 | Quiz C8 | 80% or better. | quiz
 
 @@readings
-- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
-- **Reading note: Hooks.** Hooks run your commands at fixed points (before a tool runs, after a file is edited, when a session stops). They receive JSON on input and can block an action with an exit code or JSON reply.
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
+- **Reading note: Hooks.** Hooks run your commands at fixed points (before a tool runs, after a file is edited, when a session stops). They receive JSON on input and can block an action with an exit code or JSON reply. [ⓘ](https://docs.claude.com/en/docs/claude-code/hooks)
 - **Reading note: A first hook.** A common start: run the formatter after every edit, or block edits to protected paths.
-- **Reading note: Hooks run as you.** Hooks execute with your permissions, so review them like code and keep them in version control.
+- **Reading note: Hooks run as you.** Hooks execute with your permissions, so review them like code and keep them in version control. [ⓘ](https://docs.claude.com/en/docs/claude-code/security)
 
 @@chapter
 ## C8.1 Why hooks

@@ -12,11 +12,11 @@ C103 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
 C104 | test | 0.33 | Quiz C1 | 80% or better. | quiz
 
 @@readings
-- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
-- **Reading note: What Claude Code is.** An agent that works in your project: it reads files, runs commands and edits code, with your permission. It runs in the terminal, in IDEs, in a desktop app and on the web, with the same model and settings.
-- **Reading note: First session.** Install, sign in, open a project folder and describe a task. Start read-only ("explain this repo"), then small changes you can check.
-- **Reading note: Common workflows.** Understand a codebase, fix bugs, refactor, write tests, review changes, and create commits and pull requests. You will use most of them in this track.
-- **Reading note: Explore, plan, code, commit.** Ask it to read the relevant files first, then write a plan you approve, then implement, then verify with tests, then commit. Skipping the plan is the most common cause of wasted work.
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
+- **Reading note: What Claude Code is.** An agent that works in your project: it reads files, runs commands and edits code, with your permission. It runs in the terminal, in IDEs, in a desktop app and on the web, with the same model and settings. [ⓘ](https://docs.claude.com/en/docs/claude-code/overview)
+- **Reading note: First session.** Install, sign in, open a project folder and describe a task. Start read-only ("explain this repo"), then small changes you can check. [ⓘ](https://docs.claude.com/en/docs/claude-code/quickstart)
+- **Reading note: Common workflows.** Understand a codebase, fix bugs, refactor, write tests, review changes, and create commits and pull requests. You will use most of them in this track. [ⓘ](https://docs.claude.com/en/docs/claude-code/common-workflows)
+- **Reading note: Explore, plan, code, commit.** Ask it to read the relevant files first, then write a plan you approve, then implement, then verify with tests, then commit. Skipping the plan is the most common cause of wasted work. [ⓘ](https://www.anthropic.com/engineering/claude-code-best-practices)
 
 @@chapter
 ## C1.1 What Claude Code actually is

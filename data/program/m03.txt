@@ -15,13 +15,13 @@ M306 | test | 0.5 | Quiz M3 | 80% or better. | quiz
 M307 | talk | 0.5 | Interview set M3 | 5 of 6 answered out loud and ticked. | interview
 
 @@readings
-- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
 - **Reading note: Modelling and serving (Fundamentals of DE ch. 8 and 9).** Choose the model per stage: raw for fidelity, cleaned and conformed for reuse, business marts for consumption. Serving covers analytics (BI), ML (features and training sets) and reverse ETL back into operational tools, each with its own freshness and correctness needs.
 - **Reading note: Data Vault: hubs, links and satellites.** Hubs hold business keys, links hold relationships, satellites hold descriptive attributes with history. Loads are insert-only and parallel, which suits auditability and many sources; queries need a presentation layer on top.
-- **Reading note: The medallion architecture.** Bronze keeps raw data as landed, silver holds cleaned and conformed data, gold holds business-level aggregates and marts. It is a naming convention for layers, not a modelling method.
-- **Reading note: Semantic layers and metrics.** Define metrics once (measure, dimensions, filters, time grain) and let BI tools, notebooks and language models ask for them, so everyone gets the same number. Module A4 shows why this matters even more for AI.
-- **Reading note: Point-in-time joins for training data.** When building training data, join each label with feature values as they were at that moment, never later. Otherwise the model learns from the future and fails in production.
-- **Reading note: Write, audit, publish.** Write new data to a branch or staging table, run quality checks, then publish by fast-forwarding or swapping atomically. Iceberg branches and tags make this cheap; failed audits never reach consumers.
+- **Reading note: The medallion architecture.** Bronze keeps raw data as landed, silver holds cleaned and conformed data, gold holds business-level aggregates and marts. It is a naming convention for layers, not a modelling method. [ⓘ](https://www.databricks.com/glossary/medallion-architecture)
+- **Reading note: Semantic layers and metrics.** Define metrics once (measure, dimensions, filters, time grain) and let BI tools, notebooks and language models ask for them, so everyone gets the same number. Module A4 shows why this matters even more for AI. [ⓘ](https://docs.getdbt.com/docs/use-dbt-semantic-layer/dbt-sl)
+- **Reading note: Point-in-time joins for training data.** When building training data, join each label with feature values as they were at that moment, never later. Otherwise the model learns from the future and fails in production. [ⓘ](https://docs.feast.dev/getting-started/concepts/point-in-time-joins)
+- **Reading note: Write, audit, publish.** Write new data to a branch or staging table, run quality checks, then publish by fast-forwarding or swapping atomically. Iceberg branches and tags make this cheap; failed audits never reach consumers. [ⓘ](https://iceberg.apache.org/docs/latest/branching/)
 
 @@chapter
 ## M3.1 One platform, several models

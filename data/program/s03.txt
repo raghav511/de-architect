@@ -16,10 +16,10 @@ hours: 10
 308 | talk | 1 | Interview set 3 and the mock | 14 of 18 questions ticked, and a mock score recorded. | interview
 
 @@readings
-- **In this app.** Each note says what an outside source teaches, in short. The chapter has everything the labs, quiz and interview need, so you never have to leave the app.
-- **Reading note: Spark SQL performance tuning.** Adaptive query execution re-plans at runtime from real shuffle sizes: it merges small shuffle partitions, switches a sort-merge join to broadcast when one side turns out small, and splits skewed partitions. Know spark.sql.shuffle.partitions, the broadcast threshold, and that AQE is on by default in Spark 3.
-- **Reading note: Spark tuning: memory.** Executor memory is shared between execution (shuffles, joins, sorts) and storage (cached data) in one unified region that can borrow from each other. Spills to disk and long garbage collection are the usual symptoms of too little memory per task. Prefer fewer, well-sized partitions and Kryo serialisation over adding memory blindly.
-- **Reading note: Join hints.** When the optimiser chooses badly, hints force a strategy: BROADCAST for a small side, MERGE, SHUFFLE_HASH, or SHUFFLE_REPLICATE_NL. Use them after checking the plan, not by default, and remember AQE may already fix it at runtime.
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
+- **Reading note: Spark SQL performance tuning.** Adaptive query execution re-plans at runtime from real shuffle sizes: it merges small shuffle partitions, switches a sort-merge join to broadcast when one side turns out small, and splits skewed partitions. Know spark.sql.shuffle.partitions, the broadcast threshold, and that AQE is on by default in Spark 3. [ⓘ](https://spark.apache.org/docs/latest/sql-performance-tuning.html)
+- **Reading note: Spark tuning: memory.** Executor memory is shared between execution (shuffles, joins, sorts) and storage (cached data) in one unified region that can borrow from each other. Spills to disk and long garbage collection are the usual symptoms of too little memory per task. Prefer fewer, well-sized partitions and Kryo serialisation over adding memory blindly. [ⓘ](https://spark.apache.org/docs/latest/tuning.html)
+- **Reading note: Join hints.** When the optimiser chooses badly, hints force a strategy: BROADCAST for a small side, MERGE, SHUFFLE_HASH, or SHUFFLE_REPLICATE_NL. Use them after checking the plan, not by default, and remember AQE may already fix it at runtime. [ⓘ](https://spark.apache.org/docs/latest/sql-ref-syntax-qry-select-hints.html)
 
 @@chapter
 ## 3.1 From your code to tasks
