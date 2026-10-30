@@ -581,6 +581,22 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => [...document.querySelectorAll('.termside .ok')].length === 3), 'expected three ✓ lines');
   });
 
+  await T('system labs: module 1 walking skeleton runs in the browser (Kafka, S3, Airflow style) and ticks its steps', async p => {
+    await go(p, '#/path/s01', 900);
+    const sols = await p.evaluate(() => DATA.py.filter(x => x.m === 's01').map(x => [x.id, x.sol]));
+    ok(sols.length === 5, 'expected 5 module 1 exercises, got ' + sols.length);
+    for (const [id, sol] of sols) {
+      await hash(p, '#/py/' + id, 600);
+      await p.fill('textarea.code', sol);
+      await p.click('button.btn.pri:has-text("Run")');
+      await p.waitForFunction(() => { const v = document.querySelector('.verdict'); return v && v.style.display !== 'none' && /pass|Error/.test(v.textContent); }, null, { timeout: 120000 });
+      ok((await text(p, '.verdict')) === 'All checks pass', id + ' did not pass in the browser: ' + await text(p, '.out .body'));
+    }
+    const left = await p.evaluate(() => schedule().units.filter(u => u.mid === 's01' && /walking skeleton|rerun/i.test(u.title) && !u.isDone).map(u => u.title));
+    ok(!left.length, 'steps not ticked: ' + left.join(', '));
+    await go(p, '#/learn/s01/lab', 900); ok(/without Docker/.test(await text(p, '#page')), 'lab page does not lead with the in-app lab');
+  });
+
   await T('AI data stack: A4 and A5 labs run in the browser and tick their Path steps', async p => {
     await go(p, '#/path/a04', 900);
     ok(/LLMs meet the warehouse/.test(await text(p, '#page')) && /Guard the SQL/.test(await text(p, '#page')), 'A4 module or its lab steps missing');

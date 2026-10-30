@@ -1,12 +1,10 @@
 {
-  "version": "1.12.0",
+  "version": "1.13.0",
   "date": "2026-10-30",
   "notes": [
-    "Terminal: a small Alpine Linux (bash, git 2.45, busybox) boots inside the app on the v86 emulator; nothing to install, works on Mac, iPad and iPhone, and offline after the first start (about 10 MB, then files load as they are used)",
-    "Git lessons: Practise in the terminal sets up the lab's broken repository in one tap; Check my fix shows each check with \u2713 or \u2717 and ticks the Git step on your plan",
-    "Phones: a key row for Tab, Ctrl-C, Esc and the arrow keys",
-    "Terminal is in the menu; the Linux keeps running while you move around the app",
-    "Built without Docker from Alpine packages (tools/vm/, licences in vm/README.md)",
-    "Test: boot, set up Git lab 1, type the fix in the shell, Check passes and the step ticks"
+    "Module 1: the walking skeleton is built in your browser on small, real versions of Kafka (partitions, offsets, consumer groups), S3 (Parquet by hour, read with DuckDB) and Airflow (data intervals, a quality gate, backfill): five exercises with tests",
+    "Module 1: the 'rerun doubles every row' incident is now a test you make pass; the Docker version stays as an optional lab",
+    "CLAUDE.md: running notes on how this app is built, tested and shipped",
+    "Tests: the five exercises solved in the browser editor tick module 1's steps"
   ]
 }

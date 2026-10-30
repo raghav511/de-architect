@@ -8,7 +8,7 @@ const ready = (async () => {
   py = await loadPyodide({ indexURL: PYODIDE });
   postMessage({ type: 'progress', text: 'Loading DuckDB…' });
   await py.loadPackage(['duckdb']);
-  for (const f of ['minispark.py', 'runtime.py']) {
+  for (const f of ['minispark.py', 'minilake.py', 'runtime.py']) {
     const src = await (await fetch('../py/' + f, { cache: 'no-cache' })).text();
     py.FS.writeFile('/home/pyodide/' + f, src);
   }
