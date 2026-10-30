@@ -108,5 +108,15 @@
   "title": "A trip store that survives a lost data centre",
   "prompt": "Meridian needs an operational store for live trips: 50,000 writes a second at peak, riders and drivers read their own trip state constantly, and the service must keep working if one of three data centres goes down.",
   "deliverable": "The storage engine and why (B-tree or LSM), the partition key and how hot cities are handled, replication factor and R/W quorum settings, the read-your-writes guarantee, what happens during a data-centre outage (CAP choice), and how the analytics copy is fed (CDC) without double counting."
+ },
+ "a04": {
+  "title": "Ask-your-data for the operations team",
+  "prompt": "Ops leads ask 200 questions a week about trips, drivers and cancellations, and wait two days for an analyst. Design an assistant that answers from the warehouse: 300 tables, a semantic layer with 40 metrics, PII in the riders table, answers in under 10 seconds.",
+  "deliverable": "A one-page design: the six layers, which questions go to metrics and which to guarded SQL, the MCP tools and their limits, the eval set and the release rule, and a monthly cost estimate."
+ },
+ "a05": {
+  "title": "A runbook assistant that stays fresh",
+  "prompt": "On-call engineers search 8,000 runbook pages and 50,000 past incident notes. Pages change daily and some are deleted. Design retrieval with citations, access by team, and an index that is never more than 15 minutes behind the wiki.",
+  "deliverable": "Ingest and query paths in boxes, the chunk schema with metadata, how changes and deletes reach the index, where vectors live and why, and the retrieval eval with its target."
  }
 }

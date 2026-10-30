@@ -1,0 +1,245 @@
+@@meta
+id: a05
+n: 5
+title: Vectors, documents and RAG pipelines: unstructured data as a data engineering problem
+goal: Build the pipeline behind retrieval-augmented generation the way you build any pipeline: chunk and embed documents, store and search vectors next to your tables, keep the index fresh with change detection, extract structured rows from text with validation and a dead-letter path, keep personal data out, and measure retrieval before tuning prompts. Every lab runs in this app.
+hours: 7
+
+@@tickets
+A501 | learn | 0.75 | Chapter part 1: RAG is a pipeline; chunking and embeddings | You can draw the ingest and query paths of RAG and choose a chunk size for runbooks. | chapter:0-1
+A502 | learn | 0.75 | Chapter part 2: where vectors live and keeping them fresh | You can say when pgvector or the warehouse is enough, and how CDC keeps an index fresh. | chapter:2-3
+A503 | learn | 0.75 | Chapter part 3: LLM extraction, privacy and measuring retrieval | You can design an extraction job with a dead-letter table and explain recall at k. | chapter:4-5
+A504 | build | 1 | Lab A5.1: chunk and embed | Both exercises pass their tests in the editor. | py:1-2
+A505 | build | 1 | Lab A5.2: vector search in DuckDB and a fresh index | Both exercises pass their tests in the editor. | py:3-4
+A506 | build | 1 | Lab A5.3: measure retrieval, extract rows, redact personal data | All three exercises pass their tests in the editor. | py:5-7
+A507 | test | 0.5 | Quiz A5 | 80% or better. | quiz
+A508 | talk | 0.75 | Interview set A5 | 5 of 6 answered out loud and ticked. | interview
+A509 | practice | 0.5 | RAG pipeline drills | Five drills answered, then checked against the model answers. | practice
+
+@@readings
+- **In this app: the chapter.** A5.1 to A5.6 cover everything the labs and interviews need.
+- **Reading note: vector storage in 2026.** For most workloads, vectors can live where the data already is: Postgres with pgvector, or the warehouse and lakehouse engines that now have vector types and similarity functions (DuckDB has `array_cosine_similarity`). Dedicated vector databases earn their place at very large scale or with strict latency needs.
+- **Reading note: retrieval quality.** Most poor answers come from retrieval, not generation. Hybrid search (keywords plus vectors), metadata filters (team, date, access), and a re-ranking step usually beat a bigger model.
+- **Reading note: documents into tables.** Models now extract fields from emails, PDFs and invoices into structured rows, inside warehouse AI functions or in pipeline code. Treat the model as an unreliable source: validate, retry once, and dead-letter what fails.
+
+@@chapter
+## A5.1 RAG is a data pipeline
+
+Retrieval-augmented generation answers a question using your documents: find the most relevant passages, put them in the prompt, ask the model to answer from them and cite them. Two paths:
+
+- **Ingest path (batch or streaming):** read sources (runbooks, tickets, wiki pages, contracts), clean, split into chunks, redact personal data, embed, and write chunks with metadata to an index.
+- **Query path (online):** embed the question, filter by metadata the user may see, search for the top k chunks, optionally re-rank, build the prompt, answer with citations.
+
+Everything you learned about pipelines applies to the ingest path: idempotent runs, incremental loads, lineage from chunk back to source document and version, quality checks, backfills when the embedding model changes. The query path is a service: latency, access control, caching and logs.
+
+**Say it:** "RAG is an ingest pipeline that builds an index and a query service that reads it. Most of the work is the pipeline."
+
+## A5.2 Chunking and embeddings
+
+An **embedding** is a list of numbers that places text in space so that similar meanings land close together. Similarity is usually cosine: the angle between two normalised vectors.
+
+**Chunking** decides what can be found:
+
+- Too big, and one chunk mixes topics, so its vector is blurry and the prompt fills with noise.
+- Too small, and an answer split across a boundary is never retrieved whole.
+- A sensible start: 200 to 400 words with 10 to 20% overlap, split on headings and paragraphs where possible. Keep the heading path ("Runbook > Kafka > Consumer lag") in the chunk metadata and often in the text.
+
+Store with each chunk: `doc_id`, `chunk_no`, text, `content_hash`, `embedding_model`, `embedded_at`, and access labels. A new embedding model means a full re-embed into a new index, compared on your eval set before you switch.
+
+**Say it:** "Chunk on structure with overlap, store lineage and the model name with every vector, and re-embed into a new index when the model changes."
+
+## A5.3 Where vectors live
+
+You do not need a new database on day one.
+
+- **Postgres with pgvector:** vectors next to the application data, with transactions and the access rules you already have. Enough for most teams up to tens of millions of vectors with an approximate index (HNSW or IVF).
+- **The warehouse or lakehouse:** vector types and similarity functions in SQL (DuckDB, Snowflake, Databricks, BigQuery). Good for analytics and batch retrieval, and the data never leaves.
+- **A dedicated vector database:** very large scale, very low latency, heavy filtering at high query rates.
+
+Exact search compares the query with every vector; approximate indexes trade a little recall for a lot of speed. Measure recall at k with and without the index before you trust it.
+
+**Hybrid search** combines keyword ranking (good for exact names, error codes, ticket ids) with vector ranking (good for meaning). Most production systems use both, plus metadata filters such as team and date.
+
+**Say it:** "Start where the data lives, pgvector or the warehouse; move to a vector database only for scale or latency; use hybrid search with filters."
+
+## A5.4 Keeping the index fresh
+
+A stale index gives confident wrong answers from deleted or outdated documents. Treat it like any derived table:
+
+- **Change detection.** Hash each document's text. Re-embed only new or changed documents; delete chunks of documents that disappeared. Full re-embeds every night are the most common cost leak.
+- **CDC.** If documents live in a database, stream changes (inserts, updates, deletes) from the log, as in module 6, and apply them to the index. Deletes matter most: "right to be forgotten" applies to vectors too.
+- **Idempotent upserts.** Key chunks by `(doc_id, chunk_no, content_hash)` so a retry does not duplicate.
+- **Freshness metrics.** Lag between a source change and the index, and the count of chunks whose source no longer exists.
+
+**Say it:** "Hash or CDC to embed only what changed, delete what was removed, upsert idempotently, and alert on index lag."
+
+## A5.5 LLM extraction as ETL, and privacy
+
+Models can turn unstructured text into rows: the city, fare and date from a complaint email; the parties and dates from a contract. That is an ingestion job with an unreliable source, so give it the same contract:
+
+- **A schema** for the output, checked in code (types, formats, allowed values).
+- **One bounded retry** with the validation error, then a **dead-letter table** for rows that still fail, reviewed by a person.
+- **Version columns:** model, prompt version, extracted_at, so you can backfill deliberately.
+- **A labelled sample** to measure field accuracy.
+
+**Privacy.** Prompts, logs, caches and vector indexes are new copies of your data. Redact personal data (emails, phone numbers, names where possible) at ingestion, before text reaches a model or an index. Keep access labels on every chunk and filter by them at query time, so a person only retrieves what they may read.
+
+**Say it:** "Extraction is ingestion with a schema, a bounded retry and a dead-letter table. Redact before the model and the index, and filter by access at query time."
+
+## A5.6 Measuring RAG
+
+Measure the two halves separately.
+
+- **Retrieval:** a set of questions, each labelled with the chunks that answer it. **Recall at k** is the share of those chunks in the top k. If recall is low, fix chunking, filters and hybrid search before touching the prompt.
+- **Generation:** is the answer supported by the retrieved chunks (faithfulness), does it answer the question, does it cite correctly? Use code checks where possible (citation ids exist) and a rubric judge calibrated on human labels for the rest.
+- **Operations:** latency per stage, cost per answer, cache hit rate, index lag.
+
+Run the eval on every change of chunking, embedding model, index settings or prompt.
+
+**Say it:** "Recall at k for retrieval, faithfulness for generation, both on a labelled set, rerun on every pipeline change."
+
+@@lab
+## Lab A5.1: chunk and embed (1 hour)
+
+Open the A5 exercises in the code editor (Path, module A5, the Lab steps). Everything runs in your browser.
+
+1. **Chunk a document with overlap.**
+2. **Embeddings you can see.** A tiny hashed-word embedding and cosine similarity. Swap it for a real model later and nothing else changes.
+
+## Lab A5.2: vector search in DuckDB and a fresh index (1 hour)
+
+1. **Vector search inside DuckDB** with `array_cosine_similarity`.
+2. **Keep the index fresh.** Decide what to embed and what to delete from content hashes.
+
+## Lab A5.3: measure, extract, redact (1 hour)
+
+1. **Recall at k** for a small labelled set.
+2. **LLM extraction as ETL** with validation, one retry and a dead-letter result. The tests use a fake model.
+3. **Redact personal data** before it reaches a model.
+
+**Explain it.** Say the whole ingest path out loud using your functions: redact, chunk, embed, plan the index changes, write to DuckDB, search, and measure recall.
+
+@@practice
+## RAG pipeline drills (30 minutes)
+
+1. Answers cite a runbook that was deleted last month. What is wrong in the pipeline?
+2. Users search for the error code `KFK-1043` and get unrelated chunks. What do you add?
+3. The team wants to switch to a better embedding model. What is the plan?
+4. Each night's re-embed costs more every week. Why, and what is the fix?
+5. A contractor retrieved a chunk from an HR policy they should not see. Where was the gap?
+
+**Model answers:** 1, deletes are not applied to the index: handle deletes through hashing or CDC and alert on chunks whose source is gone. 2, hybrid search: keyword ranking finds exact codes that vectors blur; also keep the code in the chunk text. 3, embed everything into a new index, run the retrieval eval on both, switch when recall at k is equal or better, keep the old index until rollback is no longer needed. 4, it re-embeds every document every night; hash content and embed only new or changed documents. 5, access labels were not stored on chunks or not applied as a filter at query time; filter before ranking, by the user's permissions.
+
+@@quiz
+TYPE: mcq
+TAG: ai
+Q: A RAG assistant gives wrong answers. Retrieval recall at 5 on your labelled set is 40%. What do you fix first?
+A) Use a bigger model
+B) Chunking, filters and search (for example hybrid search)
+C) Raise the temperature
+D) Shorten the prompt
+ANS: B
+WHY: The model cannot answer from passages it never sees. Fix retrieval before generation.
+---
+TYPE: mcq
+TAG: ai
+Q: The cheapest way to keep a vector index fresh is to...
+A) Re-embed every document every night
+B) Embed only new or changed documents (by hash or CDC) and delete removed ones
+C) Never update it
+D) Re-embed only on weekends
+ANS: B
+WHY: Change detection embeds what changed and applies deletes, which full refreshes waste money on and incremental loads without deletes miss.
+---
+TYPE: mcq
+TAG: ai
+Q: A team with 2 million document chunks already runs Postgres. Where should the vectors live first?
+A) A new dedicated vector database cluster
+B) Postgres with pgvector, next to the data and its access rules
+C) Spreadsheets
+D) Inside the prompt
+ANS: B
+WHY: pgvector handles this scale well; a dedicated store is for much larger scale or strict latency needs.
+---
+TYPE: fill
+TAG: ai
+Q: Combining keyword ranking with vector similarity is called ____ search.
+ANS: hybrid
+WHY: Keywords catch exact names and codes; vectors catch meaning.
+---
+TYPE: fill
+TAG: ai
+Q: The share of relevant chunks that appear in the top k results is called recall at ____.
+ANS: k
+WHY: Recall at k measures retrieval separately from the answer.
+---
+TYPE: mcq
+TAG: ai
+Q: An extraction job gets invalid JSON from the model for 2% of emails. What should happen to those rows?
+A) Drop them silently
+B) Retry once with the error, then write the rest to a dead-letter table for review
+C) Retry forever
+D) Load them anyway
+ANS: B
+WHY: Bounded retry plus a dead-letter path is the standard ingestion contract for an unreliable source.
+---
+TYPE: mcq
+TAG: ai
+Q: Where should you redact personal data in a RAG system?
+A) In the final answer only
+B) At ingestion, before text reaches the model or the index
+C) Nowhere, the model ignores it
+D) Only in logs
+ANS: B
+WHY: Prompts, caches and indexes are copies of the data; once embedded, personal data is hard to find and remove.
+---
+TYPE: short
+TAG: ai
+Q: What metadata should you store with every chunk?
+MODEL: doc_id and chunk number, source version or content hash, the heading path, the embedding model and when it was embedded, and access labels (team, sensitivity).
+ANS: doc_id, chunk_no, content_hash, embedding_model, embedded_at, access labels
+WHY: Lineage, freshness, deliberate re-embeds and access filtering all depend on it.
+---
+TYPE: short
+TAG: ai
+Q: Name the two paths of a RAG system and one concern of each.
+MODEL: Ingest path (clean, chunk, redact, embed, index; concerns: incremental loads, deletes, lineage, cost). Query path (embed question, filter by access, search, re-rank, answer with citations; concerns: latency, access control, faithfulness).
+ANS: ingest, query
+WHY: The ingest path is a data pipeline; the query path is a service.
+---
+TYPE: mcq
+TAG: ai
+Q: You change the embedding model. What must you do with the existing vectors?
+A) Nothing, vectors from both models are comparable
+B) Re-embed into a new index and compare recall before switching
+C) Average old and new vectors
+D) Delete the old index first
+ANS: B
+WHY: Vectors from different models live in different spaces. Build the new index side by side and switch on evidence.
+---
+
+@@interview
+Q: Design a runbook assistant for on-call engineers.
+TAG: ai
+A: Ingest: runbooks and past incident notes from the wiki and the ticket system, cleaned, split on headings into 300-word chunks with overlap, personal data redacted, embedded, stored in Postgres with pgvector with doc id, heading path, hash, model and team labels. Changes flow in by hash comparison or CDC, including deletes. Query: hybrid search filtered by team, re-rank the top 20, answer from the top 5 with citations, and say "not found" when nothing scores well. Eval: 50 real on-call questions labelled with the right chunks, recall at 5 and faithfulness, rerun on every change. Ops: latency per stage, cost per answer, index lag.
+---
+Q: When do you need a dedicated vector database?
+TAG: ai
+A: When the data is very large (hundreds of millions of vectors), query rates and latency targets are strict, or filtering at that scale is heavy. Before that, pgvector or the warehouse's vector functions keep vectors next to the data, under the same access rules and backups, with one less system to run.
+---
+Q: How do you keep a RAG index consistent with its sources?
+TAG: ai
+A: Treat it as a derived table. Hash each document; embed only new or changed ones; delete chunks for removed documents; upsert by doc id, chunk number and hash so retries are safe. For database sources, use CDC so deletes arrive too. Track lag from source change to index and the count of orphan chunks, and alert on both.
+---
+Q: How do you turn 5 million support emails into a table of structured fields?
+TAG: ai
+A: A batch extraction job: a JSON schema for the fields, a prompt with a few labelled examples, temperature 0 and a pinned model. Validate every reply in code; retry once with the error; dead-letter the rest for review. Cache by email hash and store model and prompt version with each row. Trial on 1,000 emails for cost and field accuracy against labels, then run incrementally.
+---
+Q: A RAG assistant's answers are wrong. How do you debug it?
+TAG: ai
+A: Split retrieval from generation. Check recall at k on labelled questions: if the right chunk is not retrieved, fix chunking, filters, hybrid search or re-ranking. If it is retrieved but the answer is wrong, check faithfulness: the prompt, the number of chunks, and whether the model is told to answer only from the sources. Also check freshness: stale or deleted documents in the index.
+---
+Q: How do you protect personal data in an AI pipeline?
+TAG: ai
+A: Redact at ingestion before text reaches a model, cache or index; keep access labels on every chunk and filter by the user's permissions before ranking; log prompts with the same retention and access rules as the source data; send data only to approved model endpoints with no training on our data; and make deletes flow through to the index.
+---

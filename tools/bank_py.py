@@ -335,3 +335,145 @@ q(m='d01', t='Assign Kafka partitions to consumers', lv=M, sig='def range_assign
   h=['Sort consumers first: assignment must be the same on every member.', 'divmod(num_partitions, len(consumers)) gives the base size and how many get one extra.', 'Walk a running start index, like splitting rows between workers in Python 1\'s level check.'],
   sol='def range_assign(num_partitions, consumers):\n    cs = sorted(consumers)\n    base, extra = divmod(num_partitions, len(cs))\n    out, start = {}, 0\n    for i, c in enumerate(cs):\n        n = base + (1 if i < extra else 0)\n        out[c] = list(range(start, start + n))\n        start += n\n    return out',
   why='One partition is read by at most one consumer in a group, so extra consumers sit idle: the DE 5 consumer-group question, now as code.')
+
+# ---------- A4: LLMs meet the warehouse. Everything runs in your browser: DuckDB in memory, and a fake model in the tests ----------
+q(m='a04', t='Guard the SQL a model wrote', lv=M, sig='import re\n\n\ndef safe_sql(sql, allowed, limit=100):\n    pass\n',
+  p='A model turned a question into SQL. Before it touches the warehouse, check it. Return `[True, sql]` with the cleaned SQL, or `[False, reason]`.\n\n'
+    '1. Strip spaces and one trailing `;`. If a `;` is still inside, reason `"multiple statements"`.\n'
+    '2. It must start with `SELECT` or `WITH` (any case), else `"only SELECT"`.\n'
+    '3. Any of `insert update delete drop alter create copy attach pragma install load` as a whole word: `"write keyword"`.\n'
+    '4. Every table after `FROM` or `JOIN` must be in `allowed` (lower case) or be a CTE name (`name AS (`); else `"table not allowed: name"`.\n'
+    '5. No `LIMIT n` at all? Add ` LIMIT {limit}` at the end.',
+  tests=[['plain select gets a limit', 'safe_sql("select city, count(*) from trips group by city;", {"trips"})', [True, 'select city, count(*) from trips group by city LIMIT 100']],
+         ['existing limit kept', 'safe_sql("SELECT * FROM trips LIMIT 5", {"trips"})', [True, 'SELECT * FROM trips LIMIT 5']],
+         ['two statements', 'safe_sql("select 1; drop table trips", {"trips"})', [False, 'multiple statements']],
+         ['not a select', 'safe_sql("delete from trips", {"trips"})', [False, 'only SELECT']],
+         ['write hidden in a CTE', 'safe_sql("with x as (select 1) insert into trips select * from x", {"trips"})', [False, 'write keyword']],
+         ['table outside the allow list', 'safe_sql("select * from trips t join riders r on t.rider_id = r.id", {"trips"})', [False, 'table not allowed: riders']],
+         ['CTE names are fine', 'safe_sql("with done as (select * from trips) select count(*) from done", {"trips"})[0]', True]],
+  h=['Clean first, then four checks in order, then add the limit.', 're.search(r"\\b(insert|update|...)\\b", sql, re.I) finds a keyword as a whole word.',
+     'Tables: re.findall(r"\\b(?:from|join)\\s+([a-zA-Z_][\\w.]*)", sql, re.I). CTE names: re.findall(r"(\\w+)\\s+as\\s*\\(", sql, re.I).',
+     'if not re.search(r"\\blimit\\s+\\d+", sql, re.I): sql += " LIMIT " + str(limit)'],
+  sol='import re\n\n\ndef safe_sql(sql, allowed, limit=100):\n    sql = sql.strip()\n    if sql.endswith(";"):\n        sql = sql[:-1].strip()\n    if ";" in sql:\n        return [False, "multiple statements"]\n    if not re.match(r"(select|with)\\b", sql, re.I):\n        return [False, "only SELECT"]\n    if re.search(r"\\b(insert|update|delete|drop|alter|create|copy|attach|pragma|install|load)\\b", sql, re.I):\n        return [False, "write keyword"]\n    ctes = {c.lower() for c in re.findall(r"(\\w+)\\s+as\\s*\\(", sql, re.I)}\n    for t in re.findall(r"\\b(?:from|join)\\s+([a-zA-Z_][\\w.]*)", sql, re.I):\n        if t.lower() not in allowed and t.lower() not in ctes:\n            return [False, "table not allowed: " + t.lower()]\n    if not re.search(r"\\blimit\\s+\\d+", sql, re.I):\n        sql += " LIMIT " + str(limit)\n    return [True, sql]',
+  why='Never run model-written SQL as is: a read-only check, an allow list and a row limit are the first guardrails of every text-to-SQL and MCP database tool.')
+q(m='a04', t='Schema linking: send only the tables that matter', lv=E, sig='import re\n\n\ndef pick_tables(schema, question):\n    pass\n',
+  p='`schema` maps table name to its columns, for example `{"trips": ["trip_id", "city", "fare"], "riders": ["rider_id", "tier"]}`. A warehouse has hundreds of tables, so the prompt gets only the ones the question needs.\n\n'
+    'Split the question into lower-case words (`re.findall(r"[a-z_]+", q.lower())`). Keep a table if a word equals the table name, the table name without a trailing `s`, or one of its column names. Return the kept names sorted.',
+  tests=[['by table name', 'pick_tables({"trips": ["trip_id", "fare"], "riders": ["rider_id", "tier"]}, "How many trips yesterday?")', ['trips']],
+         ['singular and a column', 'pick_tables({"trips": ["trip_id", "fare"], "riders": ["rider_id", "tier"]}, "Average fare per rider tier")', ['riders', 'trips']],
+         ['nothing matches', 'pick_tables({"trips": ["fare"]}, "hello there")', []]],
+  h=['Words of the question against three names per table.', 'Build the set of words once.', 'A table matches on its name, its name.rstrip("s")... careful: only one trailing s.',
+     'words = set(re.findall(r"[a-z_]+", question.lower()))\nkeep = [t for t, cols in schema.items() if t in words or (t.endswith("s") and t[:-1] in words) or words & set(cols)]'],
+  sol='import re\n\n\ndef pick_tables(schema, question):\n    words = set(re.findall(r"[a-z_]+", question.lower()))\n    keep = [t for t, cols in schema.items() if t in words or (t.endswith("s") and t[:-1] in words) or words & set(cols)]\n    return sorted(keep)',
+  why='Text-to-SQL accuracy drops as the schema in the prompt grows: picking the relevant tables first (schema linking) is cheaper and more accurate than sending everything.')
+q(m='a04', t='Score text-to-SQL by running it', lv=M, sig='import duckdb\n\n\ndef same_result(con, gold_sql, pred_sql):\n    pass\n',
+  p='The fair test of generated SQL is not the text, it is the answer. Run both queries on `con` (a DuckDB connection) and return `True` when they give the same rows, ignoring row order and column names, with floats rounded to 6 places. If `pred_sql` fails, return `False`.',
+  tests=[['different SQL, same answer', 'con = duckdb.connect()\ncon.execute("create table t as select * from (values (1, \'Pune\', 10.0), (2, \'Goa\', 20.0), (3, \'Pune\', 5.0)) v(id, city, fare)")\nsame_result(con, "select city, sum(fare) from t group by city", "select city as c, sum(fare) as revenue from t group by 1 order by 1 desc")', True],
+         ['wrong filter', 'con = duckdb.connect()\ncon.execute("create table t as select * from (values (1, 10.0), (2, 20.0)) v(id, fare)")\nsame_result(con, "select count(*) from t", "select count(*) from t where fare > 15")', False],
+         ['broken SQL', 'con = duckdb.connect()\nsame_result(con, "select 1", "selec 1")', False]],
+  h=['Fetch both results, normalise, compare.', 'con.execute(sql).fetchall() gives a list of tuples.', 'Round floats inside each row, then sort the rows.',
+     'def norm(rows):\n    return sorted(tuple(round(v, 6) if isinstance(v, float) else v for v in r) for r in rows)'],
+  sol='import duckdb\n\n\ndef same_result(con, gold_sql, pred_sql):\n    def norm(rows):\n        return sorted((tuple(round(v, 6) if isinstance(v, float) else v for v in r) for r in rows), key=repr)\n    gold = norm(con.execute(gold_sql).fetchall())\n    try:\n        pred = norm(con.execute(pred_sql).fetchall())\n    except Exception:\n        return False\n    return gold == pred',
+  why='Execution accuracy on a gold question set is how text-to-SQL and data agents are evaluated before release and after every model or schema change.')
+q(m='a04', t='A text-to-SQL loop that fixes its own errors', lv=M, sig='def ask_sql(question, llm, run, tries=3):\n    pass\n',
+  p='`llm(prompt)` returns SQL text; `run(sql)` returns rows or raises. Send the question; if running fails, send a new prompt with the error so the model can fix it. Stop after `tries` attempts.\n\n'
+    'Return `{"sql": sql, "rows": rows, "tries": n}` on success, or `{"sql": None, "rows": None, "tries": tries}` when every attempt failed. The retry prompt is the question, a new line, then `"The last SQL failed: "` and the error text.',
+  tests=[['fixed on the second try', 'import duckdb\ncon = duckdb.connect()\nanswers = iter(["select count(*) from trip", "select count(*) from range(5)"])\nprompts = []\ndef llm(p):\n    prompts.append(p)\n    return next(answers)\nr = ask_sql("How many?", llm, lambda s: con.execute(s).fetchall())\n[r["rows"], r["tries"], "The last SQL failed: " in prompts[1]]', [[[5]], 2, True]],
+         ['gives up', 'def bad(s):\n    raise ValueError("no such table")\nask_sql("q", lambda p: "select x", bad, tries=2)', {'sql': None, 'rows': None, 'tries': 2}],
+         ['first try works', 'ask_sql("q", lambda p: "select 1", lambda s: [[1]])["tries"]', 1]],
+  h=['A loop with a changing prompt.', 'try: rows = run(sql) ... except Exception as e: build the next prompt from str(e).', 'Return inside the try as soon as it works.',
+     'prompt = question\nfor i in range(tries):\n    sql = llm(prompt)\n    try:\n        return {"sql": sql, "rows": run(sql), "tries": i + 1}\n    except Exception as e:\n        prompt = question + "\\nThe last SQL failed: " + str(e)'],
+  sol='def ask_sql(question, llm, run, tries=3):\n    prompt = question\n    for i in range(tries):\n        sql = llm(prompt)\n        try:\n            return {"sql": sql, "rows": run(sql), "tries": i + 1}\n        except Exception as e:\n            prompt = question + "\\nThe last SQL failed: " + str(e)\n    return {"sql": None, "rows": None, "tries": tries}',
+  why='Feeding the database error back is the cheapest accuracy boost in text-to-SQL; the try cap keeps cost and latency bounded.')
+q(m='a04', t='An AI column function with a cache', lv=E, sig='import hashlib\n\n\ndef classify_all(texts, llm, cache):\n    pass\n',
+  p='Warehouse AI functions (like `AI_CLASSIFY` in Snowflake or `ai_query` in Databricks) call a model once per row, and you pay per call. Write `classify_all`: return the label for each text in order, calling `llm(text)` only for texts not already in `cache` (a dict keyed by the SHA-256 hex of the text). Store new labels in `cache`.',
+  tests=[['labels in order, duplicates called once', 'calls = []\ndef llm(t):\n    calls.append(t)\n    return "late" if "late" in t else "other"\ncache = {}\n[classify_all(["driver late", "great ride", "driver late"], llm, cache), len(calls)]', [['late', 'other', 'late'], 2]],
+         ['second run is free', 'calls = []\ndef llm(t):\n    calls.append(t)\n    return "x"\ncache = {}\nclassify_all(["a", "b"], llm, cache)\nclassify_all(["b", "a"], llm, cache)\nlen(calls)', 2]],
+  h=['One key per text; call only on a miss.', 'hashlib.sha256(text.encode()).hexdigest()', 'Duplicates inside one batch hit the cache too, if you store as you go.',
+     'out = []\nfor t in texts:\n    k = hashlib.sha256(t.encode()).hexdigest()\n    if k not in cache:\n        cache[k] = llm(t)\n    out.append(cache[k])'],
+  sol='import hashlib\n\n\ndef classify_all(texts, llm, cache):\n    out = []\n    for t in texts:\n        k = hashlib.sha256(t.encode()).hexdigest()\n        if k not in cache:\n            cache[k] = llm(t)\n        out.append(cache[k])\n    return out',
+  why='Caching by input hash makes AI backfills idempotent and cheap to rerun; store the model and prompt version with the label so a change forces a refresh.')
+q(m='a04', t='A read-only database tool for an agent (MCP style)', lv=M, sig='import duckdb\n\n\ndef call_tool(con, name, args):\n    pass\n',
+  p='An agent reaches your data through tools, the way an MCP server exposes them. Implement three tools on a DuckDB connection, returning plain JSON values:\n\n'
+    '- `list_tables`: sorted table names (`select table_name from information_schema.tables`).\n'
+    '- `describe_table` with `{"table": name}`: `[[column, type], ...]` in table order, or `{"error": "no such table"}`.\n'
+    '- `run_query` with `{"sql": ...}`: rows as lists (at most 50), only if the SQL starts with `select` (any case, after spaces); else `{"error": "read-only"}`. If it fails, `{"error": message}`.\n'
+    '- Any other name: `{"error": "unknown tool"}`.',
+  tests=[['list', 'con = duckdb.connect()\ncon.execute("create table trips(id int, city varchar)")\ncon.execute("create table riders(id int)")\ncall_tool(con, "list_tables", {})', ['riders', 'trips']],
+         ['describe', 'con = duckdb.connect()\ncon.execute("create table trips(id int, city varchar)")\ncall_tool(con, "describe_table", {"table": "trips"})', [['id', 'INTEGER'], ['city', 'VARCHAR']]],
+         ['missing table', 'call_tool(duckdb.connect(), "describe_table", {"table": "nope"})', {'error': 'no such table'}],
+         ['query', 'con = duckdb.connect()\ncall_tool(con, "run_query", {"sql": "  SELECT 1 + 1"})', [[2]]],
+         ['writes refused', 'call_tool(duckdb.connect(), "run_query", {"sql": "drop table trips"})', {'error': 'read-only'}],
+         ['unknown', 'call_tool(duckdb.connect(), "delete_everything", {})', {'error': 'unknown tool'}]],
+  h=['One branch per tool name; every branch returns plain lists, dicts and strings.', 'information_schema.columns has column_name, data_type and ordinal_position.',
+     'For run_query: name.strip().lower().startswith("select"); wrap execute in try/except.', 'rows = con.execute(sql).fetchmany(50)\nreturn [list(r) for r in rows]'],
+  sol='import duckdb\n\n\ndef call_tool(con, name, args):\n    if name == "list_tables":\n        return sorted(r[0] for r in con.execute("select table_name from information_schema.tables").fetchall())\n    if name == "describe_table":\n        rows = con.execute("select column_name, data_type from information_schema.columns where table_name = ? order by ordinal_position", [args.get("table")]).fetchall()\n        return [list(r) for r in rows] if rows else {"error": "no such table"}\n    if name == "run_query":\n        sql = args.get("sql", "")\n        if not sql.strip().lower().startswith("select"):\n            return {"error": "read-only"}\n        try:\n            return [list(r) for r in con.execute(sql).fetchmany(50)]\n        except Exception as e:\n            return {"error": str(e)}\n    return {"error": "unknown tool"}',
+  why='This is the shape of a database MCP server: discover, describe, query read-only, with a row cap and errors the model can read. Least privilege lives in the tools, not in the prompt.')
+
+# ---------- A5: Vectors, documents and RAG pipelines ----------
+q(m='a05', t='Chunk a document with overlap', lv=E, sig='def chunk_words(text, size, overlap):\n    pass\n',
+  p='Split `text` into words (`text.split()`) and return chunks of `size` words, each starting `size - overlap` words after the previous one, joined with single spaces. The last chunk ends at the last word; do not add a chunk that only repeats the overlap. Empty text gives `[]`.',
+  tests=[['overlap', 'chunk_words("a b c d e f g", 3, 1)', ['a b c', 'c d e', 'e f g']],
+         ['short text', 'chunk_words("one two", 5, 2)', ['one two']],
+         ['no overlap', 'chunk_words("a b c d", 2, 0)', ['a b', 'c d']],
+         ['empty', 'chunk_words("   ", 3, 1)', []]],
+  h=['Slide a window of size words by size - overlap.', 'Stop as soon as a window reaches the end.', 'Empty: return [] before the loop.',
+     'i = 0\nwhile True:\n    out.append(" ".join(w[i:i + size]))\n    if i + size >= len(w):\n        break\n    i += size - overlap'],
+  sol='def chunk_words(text, size, overlap):\n    w = text.split()\n    if not w:\n        return []\n    out, i = [], 0\n    while True:\n        out.append(" ".join(w[i:i + size]))\n        if i + size >= len(w):\n            break\n        i += size - overlap\n    return out',
+  why='Chunk size and overlap decide what retrieval can find: too big blurs the meaning, too small loses context across a boundary.')
+q(m='a05', t='Embeddings you can see: hashed word vectors', lv=M, sig='import hashlib, math, re\n\n\ndef embed(text, dim=64):\n    pass\n\n\ndef cosine(a, b):\n    pass\n',
+  p='Real embeddings come from a model, but the pipeline around them is the same. Build a tiny one that runs anywhere:\n\n'
+    '`embed`: lower-case words `re.findall(r"[a-z0-9]+", text.lower())`; each adds 1 at position `int(hashlib.md5(word.encode()).hexdigest(), 16) % dim`; then divide by the vector length (L2 norm). All zeros stays all zeros.\n\n'
+    '`cosine(a, b)`: dot product of two normalised vectors (0 if either is all zeros).',
+  tests=[['same text', 'round(cosine(embed("kafka consumer lag"), embed("Kafka consumer LAG")), 6)', 1.0],
+         ['closer meaning ranks higher', 'q = embed("kafka lag alert")\ncosine(q, embed("consumer lag on kafka topic")) > cosine(q, embed("spark join skew"))', True],
+         ['length and norm', 'v = embed("a b c")\n[len(v), round(sum(x * x for x in v), 6)]', [64, 1.0]],
+         ['empty', 'sum(embed("!!!"))', 0]],
+  h=['Count words into buckets, then normalise.', 'n = math.sqrt(sum(x * x for x in v))', 'cosine of normalised vectors is just sum(x * y).',
+     'v = [0.0] * dim\nfor w in re.findall(r"[a-z0-9]+", text.lower()):\n    v[int(hashlib.md5(w.encode()).hexdigest(), 16) % dim] += 1'],
+  sol='import hashlib, math, re\n\n\ndef embed(text, dim=64):\n    v = [0.0] * dim\n    for w in re.findall(r"[a-z0-9]+", text.lower()):\n        v[int(hashlib.md5(w.encode()).hexdigest(), 16) % dim] += 1\n    n = math.sqrt(sum(x * x for x in v))\n    return [x / n for x in v] if n else v\n\n\ndef cosine(a, b):\n    return sum(x * y for x, y in zip(a, b))',
+  why='Every vector pipeline is embed, normalise, compare. Swap this function for a model call and the rest of the pipeline does not change.')
+q(m='a05', t='Vector search inside DuckDB', lv=M, sig='import duckdb\n\n\ndef search(con, qvec, k):\n    pass\n',
+  p='Table `chunks(id INTEGER, txt VARCHAR, emb FLOAT[n])` holds embeddings. Return the ids of the `k` chunks most similar to `qvec` (a Python list of n floats), best first, using DuckDB\'s `array_cosine_similarity`. Cast the parameter to the same fixed size: `?::FLOAT[n]` where n is `len(qvec)`.',
+  tests=[['nearest first', 'con = duckdb.connect()\ncon.execute("create table chunks(id int, txt varchar, emb float[3])")\ncon.execute("insert into chunks values (1, \'kafka\', [1, 0, 0]), (2, \'spark\', [0, 1, 0]), (3, \'kafka lag\', [0.9, 0.1, 0])")\nsearch(con, [1, 0, 0], 2)', [1, 3]],
+         ['k larger than the table', 'con = duckdb.connect()\ncon.execute("create table chunks(id int, txt varchar, emb float[2])")\ncon.execute("insert into chunks values (7, \'a\', [0, 1])")\nsearch(con, [0, 1], 5)', [7]]],
+  h=['ORDER BY similarity DESC LIMIT k.', 'Fixed-size arrays need the size in the type: FLOAT[3].', 'Pass qvec and k as parameters, not by gluing strings of numbers.',
+     'sql = f"select id from chunks order by array_cosine_similarity(emb, ?::FLOAT[{len(qvec)}]) desc limit ?"'],
+  sol='import duckdb\n\n\ndef search(con, qvec, k):\n    sql = f"select id from chunks order by array_cosine_similarity(emb, ?::FLOAT[{len(qvec)}]) desc limit ?"\n    return [r[0] for r in con.execute(sql, [qvec, k]).fetchall()]',
+  why='Most teams do not need a separate vector database at first: the warehouse or Postgres (pgvector) can store and rank embeddings next to the rest of the data.')
+q(m='a05', t='Keep the index fresh: what to embed and what to delete', lv=E, sig='import hashlib\n\n\ndef plan_index(indexed, docs):\n    pass\n',
+  p='`indexed` maps doc id to the SHA-256 hex of the text that is in the vector index now. `docs` maps doc id to the current text in the source. Return `{"embed": [...], "delete": [...]}`: ids that are new or whose text changed, and ids that are in the index but gone from the source. Both sorted.',
+  tests=[['new, changed, gone, same', 'import hashlib\nh = lambda t: hashlib.sha256(t.encode()).hexdigest()\nplan_index({"a": h("v1"), "b": h("same"), "c": h("old")}, {"a": "v2", "b": "same", "d": "new"})', {'embed': ['a', 'd'], 'delete': ['c']}],
+         ['nothing to do', 'import hashlib\nplan_index({"x": hashlib.sha256(b"t").hexdigest()}, {"x": "t"})', {'embed': [], 'delete': []}]],
+  h=['Compare hashes, not texts.', 'New: id not in indexed. Changed: hash differs.', 'Gone: in indexed, not in docs.',
+     'embed = sorted(i for i, t in docs.items() if indexed.get(i) != hashlib.sha256(t.encode()).hexdigest())'],
+  sol='import hashlib\n\n\ndef plan_index(indexed, docs):\n    embed = sorted(i for i, t in docs.items() if indexed.get(i) != hashlib.sha256(t.encode()).hexdigest())\n    delete = sorted(i for i in indexed if i not in docs)\n    return {"embed": embed, "delete": delete}',
+  why='Re-embedding everything every night is the most common RAG cost leak. Hash-based change detection (or CDC from the source) embeds only what changed and removes what was deleted.')
+q(m='a05', t='Measure retrieval: recall at k', lv=E, sig='def recall_at_k(results, gold, k):\n    pass\n',
+  p='`results` maps each question to the ranked list of chunk ids your search returned. `gold` maps each question to the list of chunk ids that answer it. Recall at k for one question is (relevant ids in the top k) / (number of relevant ids). Return the average over the questions in `gold`, rounded to 3 places. A question missing from `results` scores 0.',
+  tests=[['two questions', 'recall_at_k({"q1": [3, 1, 9], "q2": [5, 6]}, {"q1": [1, 2], "q2": [5]}, 2)', 0.75],
+         ['missing question', 'recall_at_k({}, {"q": [1]}, 3)', 0.0],
+         ['k matters', 'recall_at_k({"q": [9, 8, 1]}, {"q": [1]}, 2)', 0.0]],
+  h=['Per question, then average.', 'set(results.get(q, [])[:k]) & set(rel)', 'Divide by len(gold).',
+     'scores = [len(set(results.get(q, [])[:k]) & set(rel)) / len(rel) for q, rel in gold.items()]'],
+  sol='def recall_at_k(results, gold, k):\n    scores = [len(set(results.get(q, [])[:k]) & set(rel)) / len(rel) for q, rel in gold.items()]\n    return round(sum(scores) / len(scores), 3) if scores else 0.0',
+  why='Most bad RAG answers are retrieval misses. Recall at k on a small labelled set tells you whether to fix chunking and search before you touch the prompt.')
+q(m='a05', t='LLM extraction as ETL: validate, retry, dead-letter', lv=M, sig='import json, re\n\n\ndef extract_trip(text, llm):\n    pass\n',
+  p='Turn a support email into a row. `llm(prompt)` returns a JSON string. Valid means: an object with `city` (non-empty string), `fare` (a number, not a bool) and `date` matching `YYYY-MM-DD`.\n\n'
+    'Prompt with `text`. If the reply is invalid, prompt once more with `text`, a new line, and `"Fix: "` plus a short reason. Return `{"ok": True, "data": {"city", "fare", "date"}}` with only those three keys, or after two bad replies `{"ok": False, "error": reason}` (the row goes to a dead-letter table, not the warehouse).',
+  tests=[['valid first time', 'extract_trip("Ride in Pune on 2026-10-02 cost 250", lambda p: \'{"city": "Pune", "fare": 250, "date": "2026-10-02", "mood": "ok"}\')', {'ok': True, 'data': {'city': 'Pune', 'fare': 250, 'date': '2026-10-02'}}],
+         ['fixed on retry', 'replies = iter([\'not json\', \'{"city": "Goa", "fare": 99.5, "date": "2026-09-30"}\'])\nseen = []\ndef llm(p):\n    seen.append(p)\n    return next(replies)\nr = extract_trip("email", llm)\n[r["ok"], r["data"]["city"], "Fix: " in seen[1]]', [True, 'Goa', True]],
+         ['dead letter', 'extract_trip("email", lambda p: \'{"city": "Goa", "fare": "lots", "date": "yesterday"}\')["ok"]', False]],
+  h=['A validate function, then at most two tries.', 'json.loads in try/except; isinstance(fare, (int, float)) and not isinstance(fare, bool).', 're.fullmatch(r"\\d{4}-\\d{2}-\\d{2}", date)',
+     'def check(s):\n    try:\n        d = json.loads(s)\n    except ValueError:\n        return None, "not JSON"\n    ...'],
+  sol='import json, re\n\n\ndef extract_trip(text, llm):\n    def check(s):\n        try:\n            d = json.loads(s)\n        except ValueError:\n            return None, "not JSON"\n        if not isinstance(d, dict):\n            return None, "not an object"\n        if not isinstance(d.get("city"), str) or not d["city"]:\n            return None, "city missing"\n        f = d.get("fare")\n        if not isinstance(f, (int, float)) or isinstance(f, bool):\n            return None, "fare is not a number"\n        if not isinstance(d.get("date"), str) or not re.fullmatch(r"\\d{4}-\\d{2}-\\d{2}", d["date"]):\n            return None, "date is not YYYY-MM-DD"\n        return {"city": d["city"], "fare": f, "date": d["date"]}, None\n    prompt, why = text, ""\n    for _ in range(2):\n        data, why = check(llm(prompt))\n        if data:\n            return {"ok": True, "data": data}\n        prompt = text + "\\nFix: " + why\n    return {"ok": False, "error": why}',
+  why='LLM extraction turns unstructured text into tables, but only with a schema check, a bounded retry and a dead-letter path, the same contract as any other ingestion job.')
+q(m='a05', t='Redact personal data before it reaches a model', lv=E, sig='import re\n\n\ndef redact(text):\n    pass\n',
+  p='Replace email addresses with `[EMAIL]` and phone numbers with `[PHONE]` before text goes into a prompt or a vector index. A phone number here is an optional `+`, then 10 to 13 digits that may be split by single spaces or dashes.',
+  tests=[['email', 'redact("Write to asha.k@example.com today")', 'Write to [EMAIL] today'],
+         ['phones', 'redact("Call +91 98450 12345 or 080-4123-4567.")', 'Call [PHONE] or [PHONE].'],
+         ['short numbers stay', 'redact("Trip 4521 cost 250")', 'Trip 4521 cost 250']],
+  h=['Two substitutions; emails first.', 'Email: r"[\\w.+-]+@[\\w-]+(\\.[\\w-]+)+"', 'Phone: a digit, then 9 to 12 more digits each optionally preceded by a space or dash.',
+     're.sub(r"\\+?\\d(?:[ -]?\\d){9,12}", "[PHONE]", text)'],
+  sol='import re\n\n\ndef redact(text):\n    text = re.sub(r"[\\w.+-]+@[\\w-]+(?:\\.[\\w-]+)+", "[EMAIL]", text)\n    return re.sub(r"\\+?\\d(?:[ -]?\\d){9,12}", "[PHONE]", text)',
+  why='Prompts, logs and vector indexes are new places for personal data to leak; redact at ingestion, before the model or the index ever sees it.')
