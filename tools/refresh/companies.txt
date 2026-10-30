@@ -1,0 +1,127 @@
+# Companies the weekly refresh searches: the learner's interview folder plus top data companies. One per line.
+Accenture
+Adidas
+Adobe
+Airbnb
+Airtel
+Amazon
+Amdocs
+American Express
+Apple
+Atlassian
+Autodesk
+Bank of America
+Barclays
+Bitwise
+Block
+Booking.com
+Broadcom
+ByteDance
+Capco
+Capgemini
+Capital One
+CGI
+Chhub
+Cisco
+Cognizant
+Coinbase
+Confluent
+CRED
+Databricks
+Dbt Labs
+Delivery Hero
+Deloitte
+Deutsche Bank
+Deutsche Telekom
+DoorDash
+Duck Creek Technologies
+Eclerx
+EPAM
+EXL
+Expedia
+EY
+Fanatics
+Fivetran
+Flipkart
+Fractal
+Genpact
+Globant
+Goldman Sachs
+Google
+Grab
+HashedIn by Deloitte
+HCL
+IBM
+Indeed
+Indium
+Infosys
+Instacart
+Intuit
+IRIS
+JPMorgan Chase
+Junglee Games
+Kotak Mahindra
+KPMG
+LinkedIn
+LTIMindtree
+Lyft
+MakeMyTrip
+MassMutual
+Mastercard
+McKinsey
+Media.net
+Meesho
+Meta
+Microsoft
+Moonfare
+Morgan Stanley
+Myntra
+Netflix
+Nielsen
+Nutanix
+Nvidia
+Oracle
+Palantir
+PayPal
+Paytm
+PayU
+Persistent
+PhonePe
+Pinterest
+Publicis Sapient
+Puma
+PwC
+Razorpay
+Robinhood
+Salesforce
+Shopee
+Shopify
+Snap Analytics
+Snowflake
+Spotify
+Starvie
+Stripe
+Swiggy
+Synechron
+Target
+TCS
+Tech Mahindra
+Thoughtworks
+Tiger Analytics
+TikTok
+Twilio
+Uber
+UBS
+Verizon
+Virtusa
+Visa
+Walmart
+Wayfair
+Wipro
+Wissen Technology
+YASH Technologies
+Zemoso
+Zen
+Zeta
+Zomato
+ZS
