@@ -1,7 +1,15 @@
 {
- "updated": "2026-10-30",
+ "updated": "2026-10-31",
  "note": "Refreshed every week by the program's research task. Each item says what changed, why it matters to a data engineer or architect, and how to test the claim yourself.",
  "items": [
+  {
+   "title": "Flink Agents 0.4.0: sub-agents, typed decisions and model routing inside a streaming job",
+   "summary": "On 30 October the Apache Flink project released Flink Agents 0.4.0, a preview that runs AI agents inside Flink pipelines. It adds sub-agents (in the same job or as external services), a Decision Model API that returns typed outputs such as a score or a choice, per-request model routing (Java only for now), multimodal messages, and a Trace Log with built-in latency and backlog metrics. New providers include Gemini, vLLM and IBM watsonx.ai. There are breaking changes from 0.3.",
+   "why": "Agents that act on every event are moving into the stream processor, where checkpoints can record a model call's result and replay it after a failure instead of calling the model again. In a design round, that is the answer to 'how do you keep an LLM step exactly-once and affordable': cache the decision in state, return typed outputs, and route cheap cases to a small model.",
+   "try": "In module 5's streaming lab, pick one event type (for example a suspicious payment) and write down where an LLM decision would sit, what typed output it returns, what happens on replay after a crash, and the cost per thousand events with and without routing to a smaller model.",
+   "url": "https://flink.apache.org/2026/10/30/apache-flink-agents-0.4.0-release-announcement/",
+   "source": "Apache Flink blog"
+  },
   {
    "title": "Spark streaming in milliseconds: Real-Time Mode is GA for Declarative Pipelines",
    "summary": "On 29 October Databricks made Real-Time Mode generally available on Spark Declarative Pipelines. Instead of running a micro-batch every few seconds, all stages run at once and rows move on as soon as they are produced. Databricks reports millisecond latencies. You turn it on with a continuous pipeline, the realTimeMode setting and an update flow with the RealTime trigger.",

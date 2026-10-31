@@ -1,9 +1,7 @@
 {
-  "version": "1.18.0",
-  "date": "2026-10-30",
+  "version": "1.18.1",
+  "date": "2026-10-31",
   "notes": [
-    "Today is now one box with five parts: Reading and labs, Quiz, Coding track, Interview practice and Coaching, with a summary at the top.",
-    "Each part has its own minutes each day (change them in Profile \u203a Plan): interview practice and coaching now share 30 minutes on weekdays and 45 at weekends, instead of growing with every new question.",
-    "Unfinished work moves to the next day inside its own part, newest first. An earlier module's unfinished reading shows first in its own block; last week's unsolved problems wait for the weekend instead of mixing into this week's set; a mock's unanswered questions open the next mock on the same module."
+    "What is new: Flink Agents 0.4.0 brings sub-agents, typed decisions and model routing into streaming jobs (6 news items in all)."
   ]
 }
