@@ -59,6 +59,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.18.1: weekly refresh 2026-10-31: no new interview questions confirmed in the window beyond the 2026-10-30 run; news adds Flink Agents 0.4.0 (6 items); no module edits.
 - 1.18.0: rolling daily plan: one Today box with five sections and per-group minutes; interview and coaching capped at 30/45 min; leftovers carry within their group, an older week's never mixes into a new week's list.
 - 1.17.4: weekly refresh 2026-10-30 (from PR #31, which was blocked by the review rule): 21 interview questions, 5 news items; module 5 section 5.7 notes Spark Real-Time Mode (GA on Declarative Pipelines).
 - 1.17.3: iPhone fixes from the screen atlas: coach button hidden on quizzes and room for it at the page end, Submit quiet until the last question, coach box full width, practice sets fold, days before the start say when the plan starts, 44px header and tabs, no ⌘↵ hint on touch, mental map words no longer break.
