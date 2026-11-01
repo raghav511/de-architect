@@ -1,7 +1,7 @@
 {
-  "version": "1.18.1",
-  "date": "2026-10-31",
+  "version": "1.18.2",
+  "date": "2026-11-01",
   "notes": [
-    "What is new: Flink Agents 0.4.0 brings sub-agents, typed decisions and model routing into streaming jobs (6 news items in all)."
+    "What is new: Anthropic's new Usage and Cost Analytics API shows token cost by API key and service account, and OpenAI's fast GPT-6.1 Terra model (6 news items in all)."
   ]
 }
