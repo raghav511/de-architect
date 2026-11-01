@@ -59,6 +59,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.18.3: Up next stays on the first screen on iPhone and iPad (the summary and day chip hide when the Today column is under 600px); new learners get no notice about the week's questions; Today reuses its schedule and caches weekly sets.
 - 1.18.2: weekly refresh 2026-11-01: news adds the Claude Usage and Cost Analytics API and GPT-6.1 Terra (6 items); A3.6 refreshed for November; no extension module yet (starts 14 weeks after 2026-10-19).
 - 1.18.1: weekly refresh 2026-10-31: no new interview questions confirmed in the window beyond the 2026-10-30 run; news adds Flink Agents 0.4.0 (6 items); no module edits.
 - 1.18.0: rolling daily plan: one Today box with five sections and per-group minutes; interview and coaching capped at 30/45 min; leftovers carry within their group, an older week's never mixes into a new week's list.

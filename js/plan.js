@@ -178,9 +178,11 @@ function unitCard(u, opts) {
    week's set, waits for the weekend's catch-up minutes instead of mixing into the new week's theme. */
 function budgets(d) { const we = d.getDay() === 0 || d.getDay() === 6, n = (v, x) => +v > 0 ? +v : x; return { code: we ? n(S.settings.codeWe, 80) : n(S.settings.codeWd, 50), iv: we ? n(S.settings.ivWe, 45) : n(S.settings.ivWd, 30) }; }
 const SQMAP = [0, null, 1, 2, 3, 4, null], SPMAP = [null, 0, 1, 2, 3, null, 4];
+const WKC = {}; /* each week's problem sets, filtered once */
+function wk(k, w) { return (WKC[k + w] = WKC[k + w] || byWeek(DATA[k], w)); }
 function dayProblems(ci) {
   const w = Math.floor(ci / 7) % 12 + 1, d = ci % 7, out = [];
-  const x = byWeek(DATA.dsa, w)[d], q = SQMAP[d] == null ? null : byWeek(DATA.sql, w)[SQMAP[d]], p = SPMAP[d] == null ? null : byWeek(DATA.spark, w)[SPMAP[d]];
+  const x = wk('dsa', w)[d], q = SQMAP[d] == null ? null : wk('sql', w)[SQMAP[d]], p = SPMAP[d] == null ? null : wk('spark', w)[SPMAP[d]];
   if (x) out.push({ id: x.id, chip: 'dsa', t: x.t, sub: 'DSA · ' + WEEKS[w - 1][4] + ' · ' + x.lv, mins: 20, href: '#/dsa/' + x.id, auto: !!S.solved[x.id] });
   if (q) out.push({ id: q.id, chip: 'sql', t: q.t, sub: 'SQL · ' + (q.k === 'O' ? 'optimize' : 'write') + ' · ' + q.lv, mins: 15, href: '#/sql/' + q.id, auto: !!S.solved[q.id] });
   if (p) out.push({ id: p.id, chip: 'spark', t: p.t, sub: 'PySpark · ' + (p.k === 'O' ? 'optimize' : 'write') + ' · ' + p.lv, mins: 15, href: '#/spark/' + p.id, auto: !!S.solved[p.id] });
@@ -201,8 +203,8 @@ function codingItems(off) {
   const [catchup, laterOld] = weekend ? fill(older, Math.max(0, cap - used)) : [[], older];
   return { now, catchup, later: laterWeek.concat(laterOld), olderWaiting: weekend ? laterOld.length : older.length };
 }
-function interviewItems(off, k) {
-  const day = new Date(k + 'T00:00:00'), cap = budgets(day).iv, cur = curMid();
+function interviewItems(off, k, cur) {
+  const day = new Date(k + 'T00:00:00'), cap = budgets(day).iv; cur = cur || curMid();
   const [mins, nq] = MOCK_LEN[mockKind(k)], mk = (S.mock || {})[k];
   const mock = { id: 'mock', chip: 'test', t: (mockKind(k) === 'sunday' ? 'Sunday mock interview' : 'Daily mock interview') + ' · ' + nq + ' questions', sub: 'Unanswered questions from your last mock on this module come first. ' + (aiOn() ? 'Your coach grades it tonight.' : 'Compare with the model answers.'), mins, href: '#/mock/' + k, auto: !!(mk && mk.sub) };
   const coach = []; if (!off && aiOn()) { const c = coachData(); (c.focus || []).forEach((f, i) => coach.push({ id: 'coach' + i + ':' + (c.generated_at || ''), chip: 'ai', t: f.title, sub: 'From your coach' + (f.why ? ' · ' + f.why : ''), mins: Math.min(15, +f.mins || 10), href: /^#\//.test(f.href || '') ? f.href : '#/coach', auto: focusDone(f, c) })); }
@@ -244,7 +246,7 @@ function vToday(off) {
   const sc = schedule();
   const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + off);
   const k = iso(d), cap = capOf(d), us = sc.byDay[k] || [];
-  const pre = k < S.start, C = pre ? { now: [], catchup: [], later: [] } : codingItems(off), V = pre ? { iv: [], coach: [], later: [] } : interviewItems(off, k);
+  const pre = k < S.start, C = pre ? { now: [], catchup: [], later: [] } : codingItems(off), V = pre ? { iv: [], coach: [], later: [] } : interviewItems(off, k, sc.cur);
   const xc = C.now.concat(C.catchup), xs = xc.concat(V.iv, V.coach);
   /* remember the day a step was first planned, so a step carried to a later day says where it came from */
   if (off === 0 && !pre) { S.planned = S.planned || {}; let ch = 0; us.forEach(u => { if (!u.isDone && !S.planned[u.uid]) { S.planned[u.uid] = k; ch = 1; } }); if (ch) save(false); }
@@ -279,11 +281,11 @@ function vToday(off) {
   const coachSec = pre || (!V.coach.length && !cn) ? null : (V.coach.length ? xGroup(k, 'Coaching', '', V.coach, 'grp-coach', cn, V.laterC ? el('a', { href: '#/coach', style: { fontWeight: 600, fontSize: '14px' }, text: V.laterC + ' more coach item' + (V.laterC > 1 ? 's' : '') + ' tomorrow ›' }) : null) : sec('grp-coach', 'Coaching', '', [cn]));
   const allDone = us.every(u => u.isDone) && xs.every(x => xDone(k, x));
   const plan = el('section', { class: 'card pad stack plan' }, [
-    el('div', { class: 'row planhead' }, [ring, el('h2', { class: 'grow', text: off === 0 ? 'Today' : pre ? 'Before your plan starts' : dayName(k) }), pre ? null : el('span', { class: 'muted', text: doneMins + ' of ' + planMins + ' min done' })]),
-    nav,
-    pre ? null : el('div', { class: 'row wrap daysum', role: 'group', 'aria-label': 'This day in parts' }, [['grp-hour', 'Reading', us.map(u => [u.mins, u.isDone])], ['grp-coding', 'Coding', xc.map(x => [x.mins, xDone(k, x)])], ['grp-interview', 'Interview', V.iv.concat(V.coach).map(x => [x.mins, xDone(k, x)])]].filter(g => g[2].length).map(([id, n, xs]) => {
+    el('div', { class: 'row planhead wrap' }, [ring, el('div', { class: 'grow stack', style: { gap: '0' } }, [el('h2', { text: off === 0 ? 'Today' : pre ? 'Before your plan starts' : dayName(k) }), pre ? null : el('span', { class: 'muted', style: { fontSize: '14px' }, text: doneMins + ' of ' + planMins + ' min done' })]),
+      pre ? null : el('div', { class: 'row wrap daysum', role: 'group', 'aria-label': 'This day in parts' }, [['grp-hour', 'Reading', us.map(u => [u.mins, u.isDone])], ['grp-coding', 'Coding', xc.map(x => [x.mins, xDone(k, x)])], ['grp-interview', 'Interview', V.iv.concat(V.coach).map(x => [x.mins, xDone(k, x)])]].filter(g => g[2].length).map(([id, n, xs]) => {
       const tot = xs.reduce((a, x) => a + x[0], 0), dn = xs.filter(x => x[1]).reduce((a, x) => a + x[0], 0), all = xs.every(x => x[1]);
-      return el('button', { class: 'dsum' + (all ? ' done' : ''), 'aria-label': n + ': ' + dn + ' of ' + tot + ' minutes done' + (all ? ', finished' : '') + '. Show it', onclick: () => { const t = document.getElementById(id); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }, [all ? svg(I.check, 14) : null, el('b', { text: n }), el('span', { text: dn + '/' + tot + ' min' })]); })),
+      return el('button', { class: 'dsum' + (all ? ' done' : ''), 'aria-label': n + ': ' + dn + ' of ' + tot + ' minutes done' + (all ? ', finished' : '') + '. Show it', onclick: () => { const t = document.getElementById(id); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }, [all ? svg(I.check, 14) : null, el('b', { text: n }), el('span', { text: dn + '/' + tot + ' min' })]); }))]),
+    nav,
     off === 0 && sc.missed.length ? el('div', { class: 'hint behind', role: 'status' }, [el('b', { text: 'Catching up · ' }), missedText(sc.missed) + ' moved to today. Nothing was skipped.']) : null,
     pre ? el('p', { style: { margin: 0 }, text: 'Your plan starts ' + shortDate(S.start) + '.' }) : null,
     readSec, quizSec, codeSec, ivSec, coachSec,
@@ -303,7 +305,7 @@ function vToday(off) {
   const nx = off === 0 && !cur ? sc.next : null;
   const hero = nx ? el('section', { class: 'hero' }, [el('div', { class: 'grow stack', style: { gap: '3px', minWidth: '200px' } }, [el('span', { class: 'lbl', text: (us.includes(nx) ? 'Up next' : 'Ahead of plan · next') + ' · ' + nx.mins + ' min · module ' + modLabel(nx.mid) }), el('b', { text: nx.title })]), el('a', { class: 'btn', href: nx.href, text: nx.cta + ' ›' })]) : null;
   shell(off === 0 ? 'Today' : 'Plan · ' + shortDate(k), 'Module ' + modLabel(m) + ' · ' + weekText(k), [
-    el('div', { class: 'stack', style: { gap: '4px' } }, [el('h1', { text: (hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + ', ' + userName() }), el('span', { class: 'muted hsub', text: (+S.settings.capWd || 60) + ' min on weekdays, ' + (+S.settings.capWe || 120) + ' on Saturday and Sunday for reading, plus coding and interview time; everything for the day is in the Today box below (change the minutes in Profile › Plan).' })]),
+    el('div', { class: 'stack', style: { gap: '4px' } }, [el('h1', { text: (hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + ', ' + userName() }), el('span', { class: 'muted hsub', text: (+S.settings.capWd || 60) + ' min on weekdays, ' + (+S.settings.capWe || 120) + ' on Saturday and Sunday for reading, plus coding and interview time. Change them in Profile › Plan.' })]),
     hero,
     off === 0 ? whatsNewCard() : null,
     el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [modCard, desCard])]),
@@ -627,7 +629,7 @@ function reconcileContent() {
     S.cv = { units: {}, ex: {}, known: {} };
     units.forEach(u => { if (doneDate(u) && tracked(u)) S.cv.units[u.uid] = unitHash(u); if (!had || !RECENT_MODS.includes(u.mid)) S.cv.known[u.uid] = 1; });
     Object.keys(S.solved || {}).forEach(id => { const x = findQ(id); if (x) S.cv.ex[id] = exHash(x); });
-    if (!had) { save(false); return []; }
+    if (!had) { S.rqSeen = (DATA.recent || {}).updated || ''; save(false); return []; } /* a new learner starts with this week's questions, not a notice about them */
   }
   const cv = S.cv, items = [], today = iso(new Date());
   /* 1. new steps: a whole new module, or new steps inside a module you know */

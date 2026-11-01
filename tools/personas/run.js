@@ -408,7 +408,8 @@ async function run(P) {
     });
     await task('catch up on a skipped DSA problem first', async () => {
       const s = await p.$$eval('.xit .s', a => a.map(x => x.innerText).join(' | '));
-      return /from (Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test(s) || new Date().getDay() === 1 || 'coding track jumped past unsolved problems: ' + s.slice(0, 120);
+      const g = await p.$eval('#grp-coding', x => x.innerText).catch(() => '');
+      return /from (Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test(s) || /more problems? wait/.test(g) || new Date().getDay() === 1 || 'coding track lost unsolved problems from earlier days (neither shown nor counted): ' + s.slice(0, 120);
     });
     await task('do the first step by touch and see the plan move', async () => {
       const before = await p.$eval('.unit.cur .t', e => e.innerText);
