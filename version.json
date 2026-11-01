@@ -1,7 +1,8 @@
 {
-  "version": "1.18.2",
+  "version": "1.18.3",
   "date": "2026-11-01",
   "notes": [
-    "What is new: Anthropic's new Usage and Cost Analytics API shows token cost by API key and service account, and OpenAI's fast GPT-6.1 Terra model (6 news items in all)."
+    "On iPhone and iPad the Up next button is back on the first screen: the summary row hides when the Today column is narrow, since each section already shows its minutes.",
+    "A new learner no longer sees a notice about this week's interview questions; they are simply in Today."
   ]
 }
