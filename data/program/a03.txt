@@ -76,16 +76,16 @@ Airflow failure ──► trigger ──► agent
 
 Evaluation: inject 10 known failures (schema change, OOM, late upstream, bad credentials, duplicate rerun). Score: correct cause, cited evidence, no unsafe action, minutes and cost per incident.
 
-## A3.6 What is new in agents (October 2026)
+## A3.6 What is new in agents (November 2026)
 
 The field moves weekly, so this section is refreshed by the program's weekly research update. Concepts worth knowing now, with reports to read:
 
-- **Skills as an open standard.** Anthropic donated Agent Skills (instructions plus scripts an agent loads only when a task needs them) to the Agentic AI Foundation, MCP's home under the Linux Foundation. Treat skills as versioned team runbooks that keep the base prompt small and cacheable. (Anthropic)
-- **Guardrails moving into the platform.** Databricks Unity Gateway now screens MCP tool calls and results for prompt injection (beta). Tool results are the main injection path into data agents, so this is the A3.4 guardrail layer as a managed service. (Databricks release notes)
-- **Agents as ordinary pipeline steps.** Genie Code tasks in Lakeflow Jobs (GA) run an agent prompt as a job step. Apply the usual job rules: idempotency, retries, budgets and a queryable audit trail. (Databricks release notes)
-- **Portable request shapes in the warehouse.** Snowflake added a Responses API to the Cortex REST API (preview), which makes a harness easier to move between providers while data stays governed in place. (Snowflake)
-- **Incremental agents.** Claude Security now runs a deep baseline scan, then rescans only changed code weighted by risk, and closes or reopens findings as fixes ship: the incremental-processing pattern applied to agent cost. (Claude blog)
-- **Always-on agents with approval gates.** Claude Duet (research preview) works on its own cloud computer, checks in on a schedule and asks before sensitive actions. The same design an always-on data agent needs before it touches production (A3.2). (Claude)
+- **Cost attribution as an API.** Anthropic's Usage and Cost Analytics API (beta) groups tokens and cost by model, workspace, API key and service account. Give each agent or pipeline its own key and load cost into the warehouse like any fact table. (Claude Platform release notes)
+- **Agents inside the stream processor.** Flink Agents 0.4.0 adds sub-agents, typed decisions and per-request model routing to Flink jobs; checkpoints can record a model's decision so replay after a crash does not call the model again. (Apache Flink)
+- **New fast tiers change routing.** OpenAI's GPT-6.1 Terra is a fast, efficient model for computer use and visual reasoning. Route cheap cases to it only after your own eval set says it holds up. (OpenAI API changelog)
+- **AI parsing as a SQL function.** Snowflake's AI_PARSE_DOCUMENT gained an agentic mode (preview) that interprets charts and tables in documents within one SQL call: document AI becomes an ordinary, governed pipeline step. (Snowflake)
+- **Millisecond streaming in declarative pipelines.** Spark Real-Time Mode is GA for Spark Declarative Pipelines, the low-latency path for features an agent or model reads. (Databricks)
+- **Cost guardrails as permissions.** Databricks Serverless Compute Access Controls (GA) make spend a matter of who may use which compute object, the platform version of a per-agent budget. (Databricks)
 
 How to judge any new development: what problem does it remove, what does it cost per successful task, can you evaluate it on your own eval set within a day, and what new risk does it add?
 
