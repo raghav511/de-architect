@@ -8,7 +8,9 @@
    "why": "Cost per successful task is the number an architect has to defend, and it needs attribution: which pipeline, which key, which service account. With grouping by API key and service account you can give each agent or pipeline its own key and load daily cost into the warehouse like any other fact table, then alert on drift.",
    "try": "In projects/ai-foundations, run lab7_optimise.py twice (with and without prompt caching) and write the per-run token counts from traces/ into a small fact table keyed by run, model and 'api_key' label; then write the SQL that the analytics endpoint's group-by would replace and the alert you would set on cost per successful task.",
    "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "source": "Claude Platform release notes"
+   "source": "Claude Platform release notes",
+   "mid": "a01",
+   "sec": "A1.6"
   },
   {
    "title": "Flink Agents 0.4.0: sub-agents, typed decisions and model routing inside a streaming job",
@@ -16,7 +18,9 @@
    "why": "Agents that act on every event are moving into the stream processor, where checkpoints can record a model call's result and replay it after a failure instead of calling the model again. In a design round, that is the answer to 'how do you keep an LLM step exactly-once and affordable': cache the decision in state, return typed outputs, and route cheap cases to a small model.",
    "try": "In module 5's streaming lab, pick one event type (for example a suspicious payment) and write down where an LLM decision would sit, what typed output it returns, what happens on replay after a crash, and the cost per thousand events with and without routing to a smaller model.",
    "url": "https://flink.apache.org/2026/10/30/apache-flink-agents-0.4.0-release-announcement/",
-   "source": "Apache Flink blog"
+   "source": "Apache Flink blog",
+   "mid": "s05",
+   "sec": "5.7"
   },
   {
    "title": "GPT-6.1 Terra: a fast, efficient model aimed at computer use and visual reasoning",
@@ -24,7 +28,9 @@
    "why": "Each new small, fast tier changes the routing math in a harness: cheap cases go to the fast model, hard ones escalate. A model swap is only safe if your eval set says so, so treat it as a release to test, not an upgrade to accept.",
    "try": "In projects/ai-foundations, use lab5_evals.py to run your eval set against two model settings of the harness (the mock in harness/mock.py can stand in for the cheap tier), and record pass rate, tokens and cost per passing task; decide which cases you would route to the cheaper tier.",
    "url": "https://developers.openai.com/api/docs/changelog",
-   "source": "OpenAI API changelog"
+   "source": "OpenAI API changelog",
+   "mid": "a03",
+   "sec": "A3.6"
   },
   {
    "title": "Agentic document parsing in a single SQL call",
@@ -32,7 +38,9 @@
    "why": "Getting unstructured documents into tables (invoices, reports, manuals) is becoming a normal data-engineering task. The design questions are cost per page, how to evaluate extraction quality, and where to keep the raw document for reprocessing.",
    "try": "In module A5's RAG pipeline, list the checks you would run on parsed output before it is embedded: a sample of tables compared by hand, numbers matched against the source text, and a cost-per-page budget.",
    "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-10-28-ai-parse-document-agentic-mode-preview",
-   "source": "Snowflake release notes"
+   "source": "Snowflake release notes",
+   "mid": "a05",
+   "sec": "A5.5"
   },
   {
    "title": "Spark streaming in milliseconds: Real-Time Mode is GA for Declarative Pipelines",
@@ -40,7 +48,9 @@
    "why": "The classic interview answer, 'Spark for seconds, Flink for milliseconds', is now incomplete. A senior answer names the trade-off: Real-Time Mode keeps one engine and one skill set for batch and stream, while Flink still has the most mature event-time and large-state handling.",
    "try": "In module 5's streaming lab, write down the latency budget for each sink (dashboard, fraud check, lake table) and mark which ones need sub-second results. That decides whether Real-Time Mode is worth its always-on cost.",
    "url": "https://www.databricks.com/blog/announcing-general-availability-real-time-mode-spark-declarative-pipelines-databricks",
-   "source": "Databricks blog"
+   "source": "Databricks blog",
+   "mid": "s05",
+   "sec": "5.7"
   },
   {
    "title": "Serverless cost control moves to permissions on compute objects",
@@ -48,7 +58,9 @@
    "why": "Cluster policies controlled cost by limiting machines. With serverless there are no machines to limit, so cost governance becomes 'who may use which compute, up to what size', plus attribution. Expect this in platform and FinOps design questions.",
    "try": "Using the cost questions in module 7, sketch two compute objects (ad hoc analysts, production jobs) with their groups, size caps and a budget alert, and write the query that reports spend per object from the billing table.",
    "url": "https://www.databricks.com/blog/smarter-cost-controls-serverless",
-   "source": "Databricks blog"
+   "source": "Databricks blog",
+   "mid": "s08",
+   "sec": "8.3"
   }
  ]
 }

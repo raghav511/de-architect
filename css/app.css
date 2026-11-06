@@ -484,3 +484,8 @@ a.srcl:hover{background:var(--teal-l)}
 .live .lhire{font:800 20px var(--display)}
 .live .btn.rec{background:var(--red-l);border-color:var(--red);color:var(--red-d)}
 .live [role=radio][aria-checked=true]{background:var(--teal);color:#fff;border-color:var(--teal)}
+/* New this week inside a module section (freshBox in js/plan.js) */
+.fresh{margin:8px 0 14px;padding:4px 12px;border-radius:10px;background:var(--amber-xl);border:1px solid var(--amber-b)}
+.fresh summary{cursor:pointer;list-style:none;min-height:44px;display:flex;align-items:center}.fresh summary::-webkit-details-marker{display:none}
+.fresh summary .lbl{color:var(--amber-d)}
+.fresh .fnews{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}

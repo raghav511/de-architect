@@ -751,6 +751,17 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'live mock scrolls sideways on a phone');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
+  await T('new this week inside sections: What is new items sit under their section (sec), company questions under the best-matching section or at the top, folded; ticked questions disappear', async p => {
+    await go(p, '#/today', 1200); await p.evaluate(() => { S.rq = {}; save(); });
+    await go(p, '#/learn/s05/chapter', 1400);
+    ok(await p.evaluate(() => [...document.querySelectorAll('details.fresh')].some(d => { const h = d.previousElementSibling; return h && /^5\.7 /.test(h.textContent) && /what is new/.test(d.textContent); })), 'news item not under section 5.7');
+    ok(await p.evaluate(() => [...document.querySelectorAll('details.fresh')].every(d => !d.open)), 'new-this-week boxes are not folded');
+    const before = await p.evaluate(() => document.querySelectorAll('details.fresh .check').length); ok(before > 0, 'no company questions in module 5');
+    await p.evaluate(() => { S.rq = {}; recentFor('s05').forEach(q => S.rq[q.id] = iso(new Date())); save(); }); await go(p, '#/learn/s04/chapter', 600); await go(p, '#/learn/s05/chapter', 1200);
+    ok(await p.evaluate(() => document.querySelectorAll('details.fresh .check').length) === 0, 'ticked questions still shown in the chapter');
+    await go(p, '#/news', 900); ok(await p.evaluate(() => document.querySelectorAll('#page section.card').length) >= 6, 'What is new page lost its items');
+  });
+
   await T('today: one Today box holds reading, quiz, coding, interview practice and coaching, with a summary on top and interview capped at its minutes', async p => {
     await go(p, '#/today', 1200); await p.waitForSelector('.plan .daysum');
     const t = await text(p, '.plan .daysum'); ok(/Reading/.test(t) && /Coding/.test(t) && /Interview/.test(t), 'summary row incomplete: ' + t);

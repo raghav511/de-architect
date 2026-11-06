@@ -1,8 +1,7 @@
 {
-  "version": "1.21.1",
+  "version": "1.21.2",
   "date": "2026-11-06",
   "notes": [
-    "Systems 1 has a new section on the serving side: load balancing, caching, rate limits, retries, circuit breakers and scaling, with a link to the distributed systems series you shared.",
-    "Module 6 now teaches zero-downtime migrations and backfilling a huge table, and the live mock has four new staff-level questions."
+    "Questions asked at companies this week and What is new items now also appear inside the module section they belong to, folded so they do not get in the way."
   ]
 }

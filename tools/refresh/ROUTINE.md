@@ -39,6 +39,7 @@ Skip duplicates of questions already in `data/recent.json` (same company and sam
 | `found` | Today, as YYYY-MM-DD |
 | `TAG` | One of: sql, dsa, py, spark, streaming, modeling, design, arch, cloud, ai, core, behavioral, git |
 | `mid` | The module that teaches it. Modules are in `js/plan.js` `BASE_MODS`; see each module's `@@meta` title in `data/program/<mid>.txt`. Use "" only if nothing fits. |
+| `sec` | The chapter section number it belongs to, the first word of that `## ` heading in the module (for example `5.7` or `A3.6`). The app shows the question inside that section; leave it out only if no section fits (it then shows at the top of the module's chapter). |
 | `Q` | The question, in your own short words (one or two sentences, never a long quote) |
 | `A` | A model answer written fresh for this app: 4–10 lines, structure first, with the key trade-off, written as a senior data engineer would answer out loud |
 | `src` | Site name |
@@ -77,3 +78,7 @@ The app's update tracker marks the edited steps "Updated" and returns them to no
 - Never invent a question, a date or a source. If you can't confirm when it was asked, leave it out.
 - If `ship.sh` prints `NEEDS YOUR MERGE`, report the PR link in the summary.
 - End with a three-line summary: questions added (by company), news items, and any module edits, plus the PR link.
+
+## Placement of What is new items
+
+Every item in `data/news.json` also gets `mid` (the module it belongs to, from `BASE_MODS` in `js/plan.js`) and `sec` (the section number, as above). The app shows each item inside that section of the module's chapter as well as on the What is new page. Nothing is marked done for the learner.

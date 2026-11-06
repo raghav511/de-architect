@@ -416,6 +416,14 @@ async function vLearn(m, tab, range) {
   if (tab === 'chapter' && a === 0) { if (m === 's01') body.appendChild(kafkaLesson()); else body.appendChild(weekMap(m)); }
   const text = rg ? sliceH2(src, a, b) : src;
   const ch = mdEl(text || '_Nothing here for this module._');
+  /* this week's company questions and What is new items, inside the section they belong to */
+  if (tab === 'chapter') {
+    const h2s = [...ch.querySelectorAll('h2')], by = {}, top = [];
+    const secs = h2s.map(h => { let b = '', n = h.nextElementSibling; while (n && n.tagName !== 'H2') { b += ' ' + n.textContent; n = n.nextElementSibling; } return { head: h.textContent.trim(), body: b }; });
+    freshFor(m).forEach(f => { const i = freshPlace(secs, f); if (i >= 0) (by[i] = by[i] || []).push(f); else top.push(f); });
+    Object.keys(by).forEach(i => h2s[i].after(freshBox(by[i])));
+    if (top.length && a === 0) body.appendChild(freshBox(top));
+  }
   /* the learner's Udemy lectures: under each matching chapter section, or one row for the whole module */
   const U = DATA.udemy && DATA.udemy.modules[m];
   if (U && tab === 'chapter') {
@@ -481,7 +489,25 @@ function vNews() {
   shell('What is new in AI', 'Updated ' + (N.updated || '') + ' · refreshed weekly', [
     newsAge() > 10 ? el('div', { class: 'hint', style: { background: 'var(--amber-l)', borderColor: 'var(--amber-b)' } }, [el('b', { text: 'These items are ' + newsAge() + ' days old. ' }), 'The weekly refresh has not run since; treat "new" with care and check the sources.']) : null, /* trust fix 22 */
     el('section', { class: 'card pad stack' }, [el('p', { style: { margin: 0 }, text: N.note || '' }), u ? el('button', { class: 'btn', style: { alignSelf: 'flex-start' }, onclick: () => toggleUnit(u), text: u.isDone ? 'Mark not done' : 'Mark this week\'s reading done' }) : null]),
-    el('div', { class: 'stack' }, N.items.map(x => el('section', { class: 'card pad stack' }, [el('b', { style: { fontSize: '18px' }, text: x.title }), el('span', { text: x.summary }), el('span', {}, [el('b', { style: { color: 'var(--plum-d)' }, text: 'Why it matters: ' }), x.why]), x.try ? el('span', {}, [el('b', { style: { color: 'var(--teal-d)' }, text: 'Test it yourself: ' }), x.try]) : null, x.url || x.source ? el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'Source: ' + (x.source || new URL(x.url).hostname) }) : null /* credit the source without sending you out of the app */])))], { back: '#/today' });
+    el('div', { class: 'stack' }, N.items.map(x => newsCard(x)))], { back: '#/today' });
+}
+
+/* one What is new item; also shown inside the module section it belongs to (mid, sec in data/news.json) */
+function newsCard(x, cls) { return el('section', { class: cls || 'card pad stack' }, [el('b', { style: { fontSize: '18px' }, text: x.title }), el('span', { text: x.summary }), el('span', {}, [el('b', { style: { color: 'var(--plum-d)' }, text: 'Why it matters: ' }), x.why]), x.try ? el('span', {}, [el('b', { style: { color: 'var(--teal-d)' }, text: 'Test it yourself: ' }), x.try]) : null, x.url || x.source ? el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'Source: ' + (x.source || new URL(x.url).hostname) }) : null /* credit the source without sending you out of the app */]); }
+/* items for a module's chapter: What is new (mid) and the week's company questions (recent.json mid), each placed
+   under its section: sec names the heading number ("5.7"); otherwise the heading whose words match best, else the top */
+function freshFor(m) { return ((DATA.news || {}).items || []).filter(x => x.mid === m).map(x => ({ kind: 'news', x, sec: x.sec, text: x.title + ' ' + x.summary })).concat(recentFor(m).filter(q => !(S.rq || {})[q.id]).map(q => ({ kind: 'rq', x: q, sec: q.sec, text: q.Q }))); }
+function freshPlace(secs, f) {
+  if (f.sec) { const i = secs.findIndex(s => s.head.split(' ')[0] === f.sec); if (i >= 0) return i; }
+  const W = s => new Set((s.toLowerCase().match(/[a-z0-9]{4,}/g) || []).filter(w => !['with', 'from', 'that', 'this', 'what', 'your', 'when', 'into', 'have', 'does', 'design', 'data', 'would', 'which', 'there', 'their', 'they', 'them', 'than', 'then', 'each', 'more', 'about', 'only', 'also', 'like', 'need', 'used', 'using'].includes(w)));
+  const fw = W(f.text); let best = -1, sc = 3;
+  secs.forEach((s, i) => { const hw = W(s.head), bw = W(s.body); let n = 0; fw.forEach(w => { if (hw.has(w)) n += 3; else if (bw.has(w)) n += 1; }); if (n > sc) { sc = n; best = i; } });
+  return best;
+}
+function freshBox(list) {
+  const nq = list.filter(f => f.kind === 'rq').length, nn = list.length - nq;
+  return el('details', { class: 'fresh' }, [el('summary', {}, [el('span', { class: 'lbl', text: '★ New this week · ' + [nq ? nq + (nq === 1 ? ' question asked at ' : ' questions asked at ') + [...new Set(list.filter(f => f.kind === 'rq').map(f => f.x.company))].join(', ') : '', nn ? nn + ' what is new' : ''].filter(Boolean).join(' · ') })]),
+    el('div', { class: 'stack', style: { gap: '10px', marginTop: '8px' } }, list.map(f => f.kind === 'rq' ? rqCard(f.x) : newsCard(f.x, 'stack fnews')))]);
 }
 
 /* ---------------- Recent interview questions (weekly research task) ---------------- */
