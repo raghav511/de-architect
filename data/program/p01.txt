@@ -7,7 +7,7 @@ hours: 5
 
 @@tickets
 P101 | learn | 0.75 | Chapter part 1: objects, lists and dicts | You can draw what `b = a` does for a list, and say why `x in a_set` is fast and `x in a_list` is not. | chapter:0-3
-P102 | learn | 0.75 | Chapter part 2: Big-O, collections, strings and files | You can give the Big-O of a loop with a nested lookup, and name the collections type for counting, grouping and a sliding window. | chapter:4-6
+P102 | learn | 0.75 | Chapter part 2: Big-O, collections, strings and files | You can give the Big-O of a loop with a nested lookup, and name the collections type for counting, grouping and a sliding window. | chapter:4-7
 P103 | build | 1 | Exercises 1–3: dedupe, top words, group by | All three pass their tests in the editor, including the 12,000-value speed test. | py:1-3
 P104 | build | 1 | Exercises 4–5: tail of a stream, log level counts | Both pass, and you can explain why your tail keeps only n lines in memory. | py:4-5
 P105 | practice | 0.5 | Predict-the-output drill | All six snippets answered before opening the answers, and every miss understood. | practice
@@ -190,6 +190,52 @@ with open("trips.log", encoding="utf-8") as f:
 ```
 
 `f.read()` or `f.readlines()` loads everything into memory: fine for a config file, wrong for a 20 GB log. The `with` block closes the file even if an error happens (module P5 shows how that works).
+
+## P1.8 Architect's lens: Python in a data platform
+
+Every tool you learn gets this lens in the week it is taught: the questions an architect is asked about a tool, beyond how to use it.
+
+| Question | Short answer for Python |
+|---|---|
+| **What problem does it solve?** | The glue of a data platform: orchestration code (Airflow DAGs), ingestion scripts, data quality checks, the PySpark driver, ML and LLM work, all in one readable language. |
+| **Why it over the alternatives?** | Against Scala or Java: faster to write and read, and the library ecosystem (pandas, Polars, DuckDB, boto3, the LLM SDKs) is unmatched. Against SQL: it handles APIs, files, retries and control flow that SQL cannot. |
+| **When not to use it?** | A transformation the warehouse can do in SQL (keep it in dbt, where it is tested and costed); a hot row-by-row loop over millions of rows (vectorise, or push down to Spark or SQL); a low-latency stream processor with large state (Flink or Kafka Streams on the JVM). |
+| **Who owns and pays for it?** | The team that writes it. The platform team owns the base: a pinned Python version, a shared package template, a lockfile, and a base container image, so a hundred pipelines do not each pick their own. |
+| **Where does it sit?** | Around and above the engines: it schedules, calls and checks them. Heavy data should flow through Spark, DuckDB or the warehouse, not through Python lists. |
+| **How does it fail and scale?** | Memory blow-ups from loading everything at once (P3 fixes this with generators); one CPU core per process because of the GIL (P6); slow Python UDFs in Spark; "works on my machine" dependency drift. |
+| **When do you move off it?** | When a job's cost or latency is dominated by Python itself: rewrite the hot path in SQL, Spark built-ins or a vectorised library before reaching for another language. |
+
+### Under the hood
+
+These are asked in DE interviews as "why" follow-ups. Answer each out loud first.
+
+**1. Why is a Python loop over a million numbers slow, while NumPy, pandas or Polars do the same sum in milliseconds?**
+<details><summary>Model answer</summary>
+
+A Python loop runs one bytecode instruction at a time in the interpreter, and every number is a full object on the heap (type, reference count, value), so each `+` means looking up types, allocating a result object and updating reference counts. Vectorised libraries store the numbers as one contiguous block of raw machine values and run a compiled loop over it in C or Rust, with no per-element objects and with CPU caches and SIMD instructions working for them. Same algorithm, a hundred times less work per element.
+
+</details>
+
+**2. Why does a list of a million integers use several times more memory than an array of a million integers?**
+<details><summary>Model answer</summary>
+
+A list stores a million pointers (8 bytes each), and each pointer leads to a separate int object of about 28 bytes. An `array('q')` or a NumPy array stores the raw 8-byte values side by side. That is roughly 36 bytes per value against 8, and the array is also friendlier to the CPU cache. Small ints from -5 to 256 are shared, which is why tiny benchmarks can mislead.
+
+</details>
+
+**3. What actually happens when PySpark runs a Python UDF, and why are pandas (Arrow) UDFs faster?**
+<details><summary>Model answer</summary>
+
+Spark runs on the JVM. For a plain Python UDF, each executor starts Python worker processes, serialises rows out of the JVM, sends them over a socket, and Python unpickles them, calls your function once per row and sends results back. The optimizer cannot see inside the function, so it cannot push filters through it. A pandas UDF ships whole column batches in Apache Arrow format, which both sides read without converting row by row, and your function runs vectorised on each batch. Fastest of all is a built-in function from `pyspark.sql.functions`, which never leaves the JVM.
+
+</details>
+
+**4. What does the GIL block, and what does it not block?**
+<details><summary>Model answer</summary>
+
+The global interpreter lock lets only one thread run Python bytecode at a time in a process, so threads do not speed up CPU-bound Python code. It is released while a thread waits on I/O (network, disk, a database call) and inside many C extensions (NumPy, compression, hashing), so threads do help an ingestion script that waits on many API calls. For CPU-bound work, use processes, a vectorised library, or the engine. Python 3.13 adds an optional free-threaded build; Python 6 covers this in depth.
+
+</details>
 
 @@lab
 ## Exercises 1–3 (1 hour)
@@ -399,6 +445,18 @@ Q: Give the Big-O of this code and improve it: `for a in xs: for b in ys: if a =
 MODEL: O(len(xs) · len(ys)) time. Build `s = set(ys)` once (O(m)), then `out = [a for a in xs if a in s]` is O(n + m) time with O(m) extra space. It is the same change as a nested-loop join becoming a hash join.
 
 @@interview
+Q: Your team wants to rewrite a nightly Python job in Scala because it is slow. What do you check before agreeing?
+TAG: arch
+A: Where the time goes. Profile first: if it is a row-by-row Python loop or Python UDFs, moving that logic to Spark built-ins, SQL or a vectorised library usually fixes it without a new language. If it waits on I/O, add concurrency. A rewrite costs hiring, tooling and a second language to maintain, so it is justified only when Python itself is the bottleneck after those fixes, for example a long-running stream processor with large state, where the JVM ecosystem (Flink, Kafka Streams) fits better.
+---
+Q: Why is a Python loop slow but a NumPy or Polars operation on the same data fast?
+TAG: py
+A: The loop runs bytecode one step at a time and every value is a heap object with a type and reference count, so each step allocates and checks types. Vectorised libraries keep raw values in one contiguous buffer and run a compiled loop over it, using CPU caches and SIMD. The work per element drops by about two orders of magnitude.
+---
+Q: Why are Python UDFs slow in Spark, and what do you use instead?
+TAG: spark
+A: Rows are serialised out of the JVM to Python worker processes and back, the function runs once per row, and the optimizer cannot see inside it. Use built-in functions first; if custom logic is needed, use a pandas UDF, which moves column batches in Arrow format and runs vectorised.
+---
 Q: What is the time complexity of looking up a key in a Python dict, and how does it work?
 TAG: py
 A: O(1) on average. A dict is a hash table: Python computes `hash(key)`, uses it to pick a slot, and compares the key stored there. Collisions are resolved by probing other slots, so the worst case is O(n), but with a good hash and the automatic resizing that keeps the table partly empty, lookups stay constant on average. That is why keys must be hashable (immutable): if a key changed after insertion, its slot would be wrong.

@@ -57,11 +57,13 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 - **Scheduler:** units are packed day by day from today; nothing is skipped. Days since `S.since` (first use or "Make this week 1") with nothing done count as missed and show a "Catching up" note. Main-path steps come before Claude Code steps on the same day.
 - **Update tracker:** each step, exercise and quiz has a content fingerprint (`S.cv`). When content you finished changes, the step goes back to not done with an "Updated" tag, and the old completion, score and code move to `S.archive`. New modules and steps are listed in the one-line "What is new" note on Today. `repairTracker()` fixes damaged tracker data.
 - **Udemy links:** `udemyLinks()` shows a folded "Watch on Udemy" list under D1's chapter sections (`modules.d01.sections`, keyed by chapter h2 index), one row at the top of P1–P5's chapter (`modules.pX.lectures`), and on DSA problems by week (`dsa.weeks`). The lessons themselves are written for the app; never copy course material. No separate Udemy modules: content goes into the module and week already in the schedule.
+- **Architect's lens:** a chapter h2 containing "Architect's lens" is wrapped in a `.lens` card by `mdEl()`: a 7-row table (what problem, why over others, when not, who owns and pays, where it sits, how it fails and scales, when to move off) and "Under the hood" internals questions with `<details>` model answers; matching questions join the module's `@@interview`. One per technology, in the week it is taught (P1 has the first). Phone view stacks the rows.
 - **Saving:** `save()` writes after 150 ms and flushes on pagehide or hidden; `saveT` is reset after each write.
 - **Profile:** the avatar at top right opens `#/profile`: one-tap Sync, Update and Mode, then tabs Sync, Look, Plan, AI, Data that autosave.
 
 ## Recent changes
 
+- 1.20.0: Start here explains the data foundation (golden paths, governance, platform as a product) and the new O1–O5 modules to come; Python 1 gets the first architect's lens (P1.8) with four internals questions and three interview questions.
 - 1.19.0: module D1 gets 8 step-through diagrams (pages, scans, B+tree, WAL, replication, sharding, isolation, deadlock) and notes on query plans, B+trees, partitioning and locks; links to the learner's Udemy lectures (Database Engineering in D1, 100 Days of Code in P1–P5, Coding Interview on DSA problems).
 - 1.18.3: Up next stays on the first screen on iPhone and iPad (the summary and day chip hide when the Today column is under 600px); new learners get no notice about the week's questions; Today reuses its schedule and caches weekly sets.
 - 1.18.2: weekly refresh 2026-11-01: news adds the Claude Usage and Cost Analytics API and GPT-6.1 Terra (6 items); A3.6 refreshed for November; no extension module yet (starts 14 weeks after 2026-10-19).
@@ -85,6 +87,9 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 - 1.9.0: modules A4 (LLMs meet the warehouse) and A5 (vectors and RAG pipelines), 13 in-browser labs.
 
 ## Next
+
+- Organization modules O1–O5 (user asked 2026-11-06), one PR each: O1 data mesh and data products, O2 golden paths, O3 governance, O4 platform as a product (after s10, in that order), O5 capstone foundation blueprint (after r01). Add each to `BASE_MODS`, `PROGRAM` in sw.js and `mods` in validate.py.
+- One architect's lens per technology, in the week it is taught (Kafka, Spark, Iceberg, Airflow, dbt, Snowflake, Databricks, Debezium, Flink, Postgres…), each with internals questions such as how Kafka is fast while writing to disk.
 
 - Live mock interviewer (user asked 2026-11-06): spoken answers, follow-up questions, per-answer rubric scores, rounds by topic and level, using Profile › AI. Show the design first.
 

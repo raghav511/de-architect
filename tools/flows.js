@@ -719,6 +719,13 @@ async function T(name, fn, opt) {
     await go(p, '#/dsa/d071', 900); ok(/Binary Search/.test(await p.evaluate(() => document.querySelector('.udemy').textContent)), 'binary search problem has no matching lecture');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
+  await T('architect\'s lens: Python 1 shows a lens card with seven questions and four internals answers, stacked on a phone; Start here explains the data foundation', async p => {
+    await go(p, '#/learn/p01/chapter', 1500); await p.waitForSelector('.lens');
+    ok(await p.evaluate(() => document.querySelectorAll('.lens tbody tr').length === 7 && document.querySelectorAll('.lens details').length === 4), 'lens card incomplete');
+    ok(await p.evaluate(() => getComputedStyle(document.querySelector('.lens td')).display === 'block' && document.documentElement.scrollWidth <= innerWidth), 'lens is not stacked on a phone or scrolls sideways');
+    await go(p, '#/learn/s00/chapter', 900); ok(/From a platform to a data foundation/.test(await text(p, '.prose')), 'Start here has no data foundation section');
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
   await T('today: one Today box holds reading, quiz, coding, interview practice and coaching, with a summary on top and interview capped at its minutes', async p => {
     await go(p, '#/today', 1200); await p.waitForSelector('.plan .daysum');
     const t = await text(p, '.plan .daysum'); ok(/Reading/.test(t) && /Coding/.test(t) && /Interview/.test(t), 'summary row incomplete: ' + t);

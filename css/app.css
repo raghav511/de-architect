@@ -470,3 +470,8 @@ a.srcl:hover{background:var(--teal-l)}
 .udemy .s{font-size:13px;color:var(--plum-d)}
 .udemy .ulink{white-space:normal;max-width:100%;text-align:left;padding:6px 10px;border-radius:10px;text-decoration:none;min-height:36px;display:inline-flex;align-items:center;background:#fff;color:var(--plum-d);border:1px solid #D9C4E6;font-weight:600;font-size:13px}
 .udemy summary{cursor:pointer;list-style:none;display:flex;flex-direction:column;gap:2px;min-height:44px;justify-content:center}.udemy summary::-webkit-details-marker{display:none}
+/* architect's lens: a chapter section whose h2 starts "… Architect's lens" */
+.lens{border:2px solid var(--blue);border-radius:12px;padding:4px 16px 12px;margin:18px 0;background:var(--blue-l)}
+.lens h2::before{content:"Architect's lens";display:block;font:700 12px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--blue-d);margin-bottom:2px}
+.lens table td:first-child{white-space:nowrap}
+@media (max-width:600px){.lens .scroll{overflow:visible}.lens table,.lens tbody,.lens tr,.lens td{display:block;width:100%;border:0}.lens thead{display:none}.lens tr{padding:8px 0;border-top:1px solid var(--line)}.lens td{padding:2px 0}.lens td:first-child{white-space:normal;color:var(--blue-d)}}
