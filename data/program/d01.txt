@@ -7,7 +7,7 @@ hours: 5.5
 
 @@tickets
 D101 | learn | 0.75 | Chapter part 1: storage engines, replication, partitioning | You can compare B-trees with LSM-trees, name two replication-lag anomalies, and explain why hash partitioning creates hot spots for celebrity keys. | chapter:0-3
-D102 | learn | 0.75 | Chapter part 2: transactions, consistency and consensus, time and exactly-once | You can name the anomaly each isolation level prevents, explain linearizability versus eventual consistency, and say how Kafka and Flink achieve exactly-once in effect. | chapter:4-6
+D102 | learn | 0.75 | Chapter part 2: transactions, consistency and consensus, time and exactly-once | You can name the anomaly each isolation level prevents, explain linearizability versus eventual consistency, and say how Kafka and Flink achieve exactly-once in effect. | chapter:4-7
 D103 | build | 1 | Exercises 1–3: LSM compaction, consistent hashing, quorum reads | All three pass in the editor. | py:1-3
 D104 | build | 1 | Exercises 4–5: vector clocks, Kafka partition assignment | Both pass, and you can explain why a fifth consumer on a four-partition topic sits idle. | py:4-5
 D105 | practice | 0.5 | Explain it to an interviewer: five "why" questions | Each answered out loud in under two minutes before opening the model answer. | practice
@@ -25,6 +25,7 @@ D107 | talk | 0.5 | Interview set D1 | 5 of 6 answered out loud and ticked. | in
 - **Reading note: Consistency models map.** From strongest to weakest: strict serializable, serializable, linearizable, snapshot isolation, read committed and so on. Each level rules out particular anomalies; systems often promise less than their marketing suggests. [ⓘ](https://jepsen.io/consistency)
 - **Reading note: Exactly-once in Kafka.** Idempotent producers stop duplicates from retries; transactions write to several partitions and commit consumer offsets atomically; consumers with read_committed see only committed data. [ⓘ](https://www.confluent.io/blog/exactly-once-semantics-are-possible-heres-how-apache-kafka-does-it/)
 - **Reading note: Flink checkpoints.** Barriers flow through the stream; each operator snapshots its state when the barrier passes, giving a consistent snapshot without stopping. After a failure, Flink restores state and replays the source from the recorded offsets. [ⓘ](https://nightlies.apache.org/flink/flink-docs-stable/docs/concepts/stateful-stream-processing/#checkpointing)
+- **Reading note: a 23-part distributed systems series.** Short posts on load balancing, caching and invalidation, rate limiting, queues, fault tolerance, consistency models, distributed transactions, leader election, scaling and estimation; D1 and D1.8 cover what a data engineer needs from it. [ⓘ](https://www.puneetpatwari.in/blogs/series/distributed-systems)
 
 @@chapter
 ## D1.1 Why a data engineer needs this
@@ -174,6 +175,30 @@ How the tools in the program do it:
 
 The rule to say in interviews: *exactly-once delivery does not exist; exactly-once effect is built from at-least-once delivery plus idempotent, deterministic processing and transactional or idempotent sinks.*
 
+## D1.8 The serving side: load balancing, caching, rate limits and fault tolerance
+
+Data engineers own more serving than they expect: an ingestion API that apps call, a feature service a model reads at request time, a metrics API behind dashboards. System design rounds ask about these pieces even in data loops.
+
+**Load balancing.** A load balancer spreads requests over identical servers and stops sending to ones that fail health checks. Round robin is the default; *least connections* helps when requests vary in cost; *consistent hashing* (D1.4) sends the same key to the same server so its cache stays warm. Layer 4 balancers route by address and port (fast, simple); layer 7 balancers read the HTTP request and can route by path or header. A CDN is the same idea pushed to the edge: copies of static or rarely changing responses are served from a location near the user.
+
+**Caching and the hard part, invalidation.** A cache trades freshness for speed. The common patterns:
+
+| Pattern | How | Risk |
+|---|---|---|
+| Cache-aside | the app reads the cache; on a miss it reads the database and fills the cache | stale data until the entry expires or is deleted |
+| Write-through | every write goes to the cache and the database together | slower writes; caches data nobody reads |
+| Write-behind | write to the cache, flush to the database later | data loss if the cache dies first |
+
+Invalidate on write (delete the key when the row changes, often driven by CDC from module 6) and keep a time-to-live as a safety net. Watch for a **thundering herd**: a popular key expires and thousands of requests hit the database at once; fix it with a lock so one request refills the key, or by refreshing hot keys before they expire.
+
+**Rate limiting.** A token bucket gives each client a bucket that refills at a steady rate; each request spends a token, and an empty bucket means HTTP 429. It allows short bursts and caps the average. In a cluster the counters live in a shared store (Redis) or are kept per node with a looser limit. Your pipelines are also on the receiving end: when an API you ingest from returns 429, slow down and respect its `Retry-After`.
+
+**Fault tolerance: four habits.** Every remote call gets a **timeout** (no timeout means a stuck thread forever). **Retries** only for transient errors, with exponential backoff and jitter so clients do not retry in lockstep, and only for idempotent operations. A **circuit breaker** stops calling a dependency that keeps failing, fails fast for a while, then lets a few test calls through. **Bulkheads** give each dependency its own pool of connections or threads, so one slow dependency cannot use them all. An API gateway is where many teams centralise authentication, rate limits and routing; service discovery is how callers find the current addresses of a service as instances come and go.
+
+**Scaling up or out.** Scaling up (a bigger machine) is simplest and often cheapest until it hits a ceiling; scaling out (more machines) needs the work to be partitionable and the servers stateless. For a database the usual order is: fix queries and indexes, add a cache, add read replicas, partition big tables, scale the machine up, and only then shard (D1.4). Data locality is the same idea for pipelines: move the computation to the data (Spark tasks run where the blocks are) rather than the data to the computation.
+
+**Idempotency ties it together.** Retries, at-least-once delivery and replays (D1.7) are only safe when doing something twice has the same effect as doing it once. For a write API, the client sends an idempotency key with each request; the server stores the key with the result in the same transaction and returns the stored result when the key repeats.
+
 @@lab
 ## Exercises 1–3 (1 hour)
 
@@ -314,6 +339,18 @@ Q: Explain linearizability versus eventual consistency with one example of each.
 MODEL: Linearizability means the system acts like a single copy: once any read sees a write, all later reads do too; needed for things like a leader lease, a unique username or an account balance check (etcd, Spanner). Eventual consistency only promises replicas converge if writes stop; reads can be stale for a while, which is fine for a like counter or a product view count (Cassandra with low quorum settings, DNS).
 
 @@interview
+Q: A popular dashboard's cache key expires and the database falls over. What happened, and how do you prevent it?
+TAG: core
+A: A thundering herd: thousands of requests missed the cache at the same moment and all went to the database. Let one request refill the key while the others wait or get the slightly stale value (a lock or "single flight"), refresh hot keys before they expire, and add jitter to expiry times so keys do not expire together. Keep a rate limit or a circuit breaker in front of the database as the last line of defence.
+---
+Q: Your ingestion job calls a partner API that sometimes times out. How do you make the job reliable without hammering the partner?
+TAG: core
+A: Set a timeout on every call. Retry only transient failures (timeouts, 429, 5xx) with exponential backoff and jitter, and honour Retry-After. Make the write side idempotent so a retried page is not loaded twice (upsert on the record key, or an idempotency key). Add a circuit breaker so that after repeated failures the job stops calling for a while and reports clearly, and keep a client-side rate limit below the partner's quota.
+---
+Q: When would you scale a database up instead of out?
+TAG: arch
+A: Scale up first while it is enough: one bigger machine keeps transactions, joins and operations simple, and modern machines are large. Before either, fix queries and indexes and add a cache and read replicas. Scale out (partitioning across machines, sharding) when writes or data size outgrow the biggest affordable machine, accepting harder cross-shard queries and transactions and a routing layer.
+---
 Q: How does Kafka avoid losing or duplicating messages?
 TAG: core
 A: Each partition is a replicated log with a leader and in-sync replicas. With acks=all and min.insync.replicas of 2, a write is acknowledged only once it is on several replicas, so a broker crash does not lose it. Producer retries could duplicate, so the idempotent producer attaches a producer id and sequence number and the broker drops duplicates. For read-process-write pipelines, transactions commit output records and consumer offsets atomically, and consumers read only committed data. End to end, the sink must also be idempotent or transactional.
