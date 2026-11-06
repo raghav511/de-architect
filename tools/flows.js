@@ -707,6 +707,18 @@ async function T(name, fn, opt) {
     ok(/Your plan starts/.test(await text(p, '.plan')) && !/0 of 0 min/.test(await text(p, '.plan')), 'a day before the start does not say when the plan starts');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
+  await T('chapter figures and Udemy links: D1 has 8 step-through diagrams and folded lecture links under its sections; P2 and DSA problems link their lectures; no sideways scroll on a phone', async p => {
+    await go(p, '#/learn/d01/chapter', 1500); await p.waitForSelector('figure.dfig');
+    ok((await p.$$('figure.dfig')).length === 8, 'D1 does not show 8 diagrams');
+    const f = await p.$('figure.dfig'); const c1 = await f.$eval('.figcap', x => x.textContent);
+    await (await f.$$('button'))[1].click(); ok(await f.$eval('.figcap', x => x.textContent) !== c1, 'Next did not change the diagram step');
+    ok((await p.$$('details.udemy')).length === 5 && await p.evaluate(() => ![...document.querySelectorAll('details.udemy')].some(d => d.open)), 'D1 Udemy links missing or not folded');
+    ok(await p.evaluate(() => /udemy\.com\/course\/database-engines-crash-course\/learn\/lecture\/\d+$/.test(document.querySelector('.udemy a').href)), 'Udemy lecture link is wrong');
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'D1 chapter scrolls sideways on a phone');
+    await go(p, '#/learn/p02/chapter', 900); ok(/5 lectures/i.test(await text(p, '.udemy summary')), 'P2 has no Udemy lectures row');
+    await go(p, '#/dsa/d071', 900); ok(/Binary Search/.test(await p.evaluate(() => document.querySelector('.udemy').textContent)), 'binary search problem has no matching lecture');
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
   await T('today: one Today box holds reading, quiz, coding, interview practice and coaching, with a summary on top and interview capped at its minutes', async p => {
     await go(p, '#/today', 1200); await p.waitForSelector('.plan .daysum');
     const t = await text(p, '.plan .daysum'); ok(/Reading/.test(t) && /Coding/.test(t) && /Interview/.test(t), 'summary row incomplete: ' + t);

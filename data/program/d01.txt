@@ -58,6 +58,22 @@ B-tree (Postgres, MySQL, most OLTP)          LSM-tree (Cassandra, RocksDB, HBase
 
 **Indexes** trade write cost and space for read speed: a secondary index is another structure to update on every write. Lakehouses mostly use partition pruning, file statistics, clustering (Z-order, liquid clustering) and bloom filters instead of B-tree indexes.
 
+**Inside a row-store database.** A table is a file of fixed-size pages (8 KB in Postgres, 16 KB in MySQL InnoDB), and the database always reads and writes whole pages. An index is a second structure, sorted by its key, whose entries say where each row lives. The cost of a query is roughly the number of pages it touches.
+
+<div data-fig="pages"></div>
+
+**How the planner reads a table.** For each query the planner estimates how many rows match (from table statistics) and picks a plan: an **index scan** for a few rows, a **bitmap index scan** for a moderate number (collect the pages first, then read each once in disk order), a **sequential scan** when most of the table matches, and an **index-only scan** when the index holds every column the query needs. `EXPLAIN ANALYZE` shows the plan with estimated and actual rows; a big gap between them means stale statistics or a predicate the planner cannot use (a function on the column, mismatched types). Build an index on a busy table with `CREATE INDEX CONCURRENTLY` so writes are not blocked.
+
+<div data-fig="scans"></div>
+
+**Why B+trees.** Each node is one page holding hundreds of keys, so even a billion rows need only three or four levels, and the top levels stay in memory. Values sit only in the leaves, which are linked, so a range scan descends once and then walks sideways. Keep keys small and, for primary keys, increasing: random UUIDs scatter inserts across leaves and cause page splits, while time-ordered ids (bigint, UUIDv7) append to the right edge.
+
+<div data-fig="bplus"></div>
+
+**Durability comes from the write-ahead log.** A change first goes to the page in memory and to an append-only log that is flushed before COMMIT returns. After a crash the database replays the log; checkpoints write dirty pages to the table files in the background so old log can be recycled.
+
+<div data-fig="wal"></div>
+
 ## D1.3 Replication: copies, lag and its anomalies
 
 Replication keeps copies on several machines for availability and read scale. Three families:
@@ -80,6 +96,8 @@ Replication keeps copies on several machines for availability and read scale. Th
 
 For data engineers, CDC (DE 6) is replication: Debezium is a follower reading Postgres's write-ahead log.
 
+<div data-fig="replication"></div>
+
 ## D1.4 Partitioning: spreading data and its hot spots
 
 Partitioning (sharding) splits data so each node holds a part.
@@ -95,6 +113,10 @@ Partitioning (sharding) splits data so each node holds a part.
 **Rebalancing**: when nodes join or leave, data must move. Fixed-number-of-partitions schemes (Kafka, Elasticsearch, Cassandra's vnodes) move whole partitions; never use `hash(key) mod N` with N = number of nodes, because changing N moves almost every key.
 
 **Kafka specifics**: a topic has a fixed number of partitions; **ordering is guaranteed only within a partition**, so key by the entity whose order matters (trip_id, account_id). In a consumer group each partition goes to exactly one consumer (Exercise 5), so the partition count caps consumer parallelism.
+
+**Partitioning inside one database versus sharding across many.** Postgres declarative partitioning splits one table into child tables on the same server (by month, by region), so queries prune to fewer partitions and old data is dropped by detaching a partition. Sharding puts rows on different servers; it scales writes but makes joins, transactions and resharding hard, so index, add replicas and partition first.
+
+<div data-fig="shard"></div>
 
 ## D1.5 Transactions and isolation levels
 
@@ -112,6 +134,12 @@ Anomalies to explain with an example:
 - **Write skew**: two on-call engineers each check "at least one other person is on call" and both go off call. Each read was valid; together they break the rule. Only serializable isolation (or explicit locks) prevents it.
 
 **MVCC** (multi-version concurrency control) keeps old row versions so readers see a snapshot without blocking writers. **Lakehouse table formats work the same way**: an Iceberg or Delta table is a series of snapshots; readers read one snapshot, and writers commit a new one with **optimistic concurrency** (if someone else committed first, retry against the new snapshot). That is why two concurrent MERGE jobs on one table can fail with a commit conflict.
+
+<div data-fig="isolation"></div>
+
+**Locks and deadlocks.** Reads can share a lock; writes take an exclusive row lock held until commit (two-phase locking: acquire as you go, release everything at the end). Two transactions that lock the same rows in opposite order wait for each other forever; the database detects the cycle and aborts one, so the app must retry. Lock rows in a fixed order (`ORDER BY id FOR UPDATE`) and keep transactions short. Two related habits: page with keyset pagination (`WHERE id > last_seen ORDER BY id LIMIT 50`) rather than large `OFFSET`s, which read and discard every skipped row, and put a connection pool in front of the database so each request does not open its own connection.
+
+<div data-fig="deadlock"></div>
 
 ## D1.6 Consistency, consensus and clocks
 

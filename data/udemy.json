@@ -1,0 +1,448 @@
+{
+ "note": "Links to the learner's own Udemy courses (titles and lecture ids only). Lessons in the app are written for the app; these open the matching lecture on udemy.com.",
+ "courses": {
+  "dbeng": {
+   "title": "Fundamentals of Database Engineering",
+   "slug": "database-engines-crash-course"
+  },
+  "dsa": {
+   "title": "Master the Coding Interview: Data Structures + Algorithms",
+   "slug": "master-the-coding-interview-data-structures-algorithms"
+  },
+  "py100": {
+   "title": "100 Days of Code: The Complete Python Pro Bootcamp",
+   "slug": "100-days-of-code"
+  }
+ },
+ "modules": {
+  "d01": {
+   "course": "dbeng",
+   "sections": {
+    "1": [
+     [
+      29082924,
+      "How tables and indexes are stored on disk"
+     ],
+     [
+      23084542,
+      "Row-Based vs Column-Based Databases"
+     ],
+     [
+      26775206,
+      "Primary Key vs Secondary Key"
+     ],
+     [
+      33825764,
+      "Why Databases Read Pages instead of Rows?"
+     ],
+     [
+      22503520,
+      "Getting Started with Indexing"
+     ],
+     [
+      25480844,
+      "Understanding The SQL Query Planner and Optimizer with Explain"
+     ],
+     [
+      24171140,
+      "Bitmap Index Scan vs Index Scan vs Table Scan"
+     ],
+     [
+      22641281,
+      "Index Scan vs Index Only Scan"
+     ],
+     [
+      23887318,
+      "Combining Database Indexes for Better Performance"
+     ],
+     [
+      24618416,
+      "Create Index Concurrently"
+     ],
+     [
+      27467064,
+      "Original B-Tree"
+     ],
+     [
+      27467078,
+      "B+Tree"
+     ],
+     [
+      27467112,
+      "B+Tree DBMS Considerations"
+     ],
+     [
+      49511295,
+      "How UUIDs in B+Tree Indexes can affect performance"
+     ],
+     [
+      32924902,
+      "WAL, Redo and Undo logs"
+     ],
+     [
+      17439124,
+      "What is a Database Engine?"
+     ],
+     [
+      17439172,
+      "RocksDB"
+     ],
+     [
+      17439158,
+      "InnoDB"
+     ],
+     [
+      26274548,
+      "Write Amplification Explained"
+     ]
+    ],
+    "2": [
+     [
+      22762033,
+      "Master/Standby Replication"
+     ],
+     [
+      22762035,
+      "Multi-master Replication"
+     ],
+     [
+      22762037,
+      "Synchronous vs Asynchronous Replication"
+     ]
+    ],
+    "3": [
+     [
+      25130976,
+      "What is Partitioning?"
+     ],
+     [
+      25130980,
+      "Vertical vs Horizontal Partitioning"
+     ],
+     [
+      25130990,
+      "The Difference Between Partitioning and Sharding"
+     ],
+     [
+      25131342,
+      "What is Database Sharding?"
+     ],
+     [
+      25131344,
+      "Consistent Hashing"
+     ],
+     [
+      25144912,
+      "When Should you consider Sharding your Database?"
+     ]
+    ],
+    "4": [
+     [
+      28927754,
+      "What is a Transaction?"
+     ],
+     [
+      28927902,
+      "Isolation"
+     ],
+     [
+      25758230,
+      "Phantom Reads"
+     ],
+     [
+      25758282,
+      "Serializable vs Repeatable Read"
+     ],
+     [
+      37270902,
+      "All Isolation Levels - Explained Details"
+     ],
+     [
+      25144616,
+      "Shared vs Exclusive Locks"
+     ],
+     [
+      22484514,
+      "Dead Locks"
+     ],
+     [
+      22484518,
+      "Two-phase Locking"
+     ],
+     [
+      22484524,
+      "Solving the Double Booking Problem"
+     ],
+     [
+      27516664,
+      "Optimistic vs Pessimistic Concurrency Control"
+     ],
+     [
+      24168964,
+      "SQL Pagination With Offset is Very Slow"
+     ],
+     [
+      22485164,
+      "Database Connection Pooling"
+     ]
+    ],
+    "5": [
+     [
+      52266343,
+      "CAP Theorem Explained"
+     ]
+    ]
+   }
+  },
+  "p01": {
+   "course": "py100",
+   "lectures": [
+    [
+     17841330,
+     "Day 2: Data types and strings"
+    ],
+    [
+     18011807,
+     "Day 4: Python lists"
+    ],
+    [
+     19279090,
+     "Day 9: Dictionaries and nesting"
+    ]
+   ]
+  },
+  "p02": {
+   "course": "py100",
+   "lectures": [
+    [
+     19211018,
+     "Day 8: Function parameters"
+    ],
+    [
+     19487586,
+     "Day 10: Functions with outputs"
+    ],
+    [
+     20336493,
+     "Day 19: Higher order functions"
+    ],
+    [
+     20761314,
+     "Day 26: List comprehension"
+    ],
+    [
+     20781124,
+     "Day 27: *args and **kwargs"
+    ]
+   ]
+  },
+  "p03": {
+   "course": "py100",
+   "lectures": [
+    [
+     20532962,
+     "Day 24: Files, directories and paths"
+    ],
+    [
+     20628466,
+     "Day 25: CSV data and pandas"
+    ]
+   ]
+  },
+  "p04": {
+   "course": "py100",
+   "lectures": [
+    [
+     19911792,
+     "Day 16: Object oriented programming"
+    ],
+    [
+     19964886,
+     "Day 17: The benefits of OOP"
+    ],
+    [
+     20361125,
+     "Day 21: Inheritance and list slicing"
+    ]
+   ]
+  },
+  "p05": {
+   "course": "py100",
+   "lectures": [
+    [
+     19846328,
+     "Day 13: Debugging"
+    ],
+    [
+     20963116,
+     "Day 30: Errors, exceptions and JSON"
+    ]
+   ]
+  }
+ },
+ "dsa": {
+  "course": "dsa",
+  "weeks": {
+   "1": [
+    [
+     12310740,
+     "Hash Tables Introduction"
+    ],
+    [
+     12311440,
+     "Hash Collisions"
+    ],
+    [
+     12314690,
+     "Hash Tables VS Arrays"
+    ]
+   ],
+   "2": [
+    [
+     12300322,
+     "Arrays Introduction"
+    ],
+    [
+     12300334,
+     "Static vs Dynamic Arrays"
+    ],
+    [
+     12309366,
+     "Solution: Merge Sorted Arrays"
+    ]
+   ],
+   "3": [
+    [
+     12308636,
+     "Strings and Arrays"
+    ],
+    [
+     12310382,
+     "Interview Questions: Arrays"
+    ],
+    [
+     12133490,
+     "Big O and Scalability"
+    ]
+   ],
+   "4": [
+    [
+     12332950,
+     "Stacks"
+    ],
+    [
+     12332952,
+     "Queues"
+    ],
+    [
+     12334492,
+     "Queues Using Stacks"
+    ]
+   ],
+   "5": [
+    [
+     12308636,
+     "Strings and Arrays"
+    ],
+    [
+     12308764,
+     "Solution: Reverse A String"
+    ]
+   ],
+   "6": [
+    [
+     12406452,
+     "Merge Sort and O(n log n)"
+    ],
+    [
+     12406460,
+     "Quick Sort"
+    ],
+    [
+     12406660,
+     "Which Sort Is Best?"
+    ]
+   ],
+   "7": [
+    [
+     12412816,
+     "Binary Search"
+    ],
+    [
+     12364930,
+     "O(log n)"
+    ]
+   ],
+   "8": [
+    [
+     12368890,
+     "Binary Heaps"
+    ],
+    [
+     12369322,
+     "Priority Queue"
+    ]
+   ],
+   "9": [
+    [
+     12320246,
+     "What Is A Linked List?"
+    ],
+    [
+     12323082,
+     "Doubly Linked Lists"
+    ],
+    [
+     12324578,
+     "Solution: reverse()"
+    ]
+   ],
+   "10": [
+    [
+     12365004,
+     "Binary Search Trees"
+    ],
+    [
+     12426690,
+     "BFS Introduction"
+    ],
+    [
+     12429762,
+     "PreOrder, InOrder, PostOrder"
+    ]
+   ],
+   "11": [
+    [
+     12369748,
+     "Graphs Introduction"
+    ],
+    [
+     12432460,
+     "BFS in Graphs"
+    ],
+    [
+     12432464,
+     "DFS in Graphs"
+    ],
+    [
+     12432472,
+     "Dijkstra + Bellman-Ford Algorithms"
+    ]
+   ],
+   "12": [
+    [
+     12409060,
+     "Memoization 1"
+    ],
+    [
+     12409054,
+     "Dynamic Programming Introduction"
+    ],
+    [
+     12409090,
+     "Interview Questions: Dynamic Programming"
+    ]
+   ]
+  }
+ }
+}
