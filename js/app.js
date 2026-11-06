@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.18.3';
+const VERSION = '1.19.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -82,6 +82,7 @@ async function loadData() {
   DATA.dsa = d; DATA.sql = q; DATA.spark = p;
   try { DATA.py = await fetch('data/bank/py.json').then(r => r.json()); } catch (e) { DATA.py = []; }
   try { DATA.projects = await fetch('data/projects.json').then(r => r.json()); } catch (e) { DATA.projects = []; }
+  try { DATA.udemy = await fetch('data/udemy.json').then(r => r.json()); } catch (e) { DATA.udemy = null; }
   await loadModules();
 }
 const byWeek = (arr, w) => arr.filter(x => x.w === w);
@@ -160,7 +161,7 @@ function confirmBox(title, body, actions) {
   });
 }
 function lightbox(src) { const lb = el('div', { class: 'lightbox', role: 'dialog', 'aria-label': 'Image', onclick: () => lb.remove() }, [el('img', { src, alt: '' })]); document.body.appendChild(lb); }
-function mdEl(s, cls) { const d = el('div', { class: cls || 'prose', html: md(s) }); d.querySelectorAll('table').forEach(t => { const w = el('div', { class: 'scroll' }); t.parentNode.insertBefore(w, t); w.appendChild(t); }); d.querySelectorAll('a[href^="http"]').forEach(a => { a.target = '_blank'; a.rel = 'noopener'; }); d.querySelectorAll('pre').forEach(x => x.setAttribute('tabindex', '0')); d.querySelectorAll('img').forEach(i => { i.loading = 'lazy'; i.addEventListener('click', () => lightbox(i.src)); }); return d; }
+function mdEl(s, cls) { const d = el('div', { class: cls || 'prose', html: md(s) }); d.querySelectorAll('table').forEach(t => { const w = el('div', { class: 'scroll' }); t.parentNode.insertBefore(w, t); w.appendChild(t); }); d.querySelectorAll('a[href^="http"]').forEach(a => { a.target = '_blank'; a.rel = 'noopener'; }); d.querySelectorAll('pre').forEach(x => x.setAttribute('tabindex', '0')); if (typeof FIGS !== 'undefined') FIGS.mount(d); d.querySelectorAll('img').forEach(i => { i.loading = 'lazy'; i.addEventListener('click', () => lightbox(i.src)); }); return d; }
 function chipFor(k) { return { py: ['Python', 'c-py'], dsa: ['DSA', 'c-dsa'], core: ['Core DE', 'c-core'], arch: ['Architecture', 'c-arch'], ai: ['Agentic AI', 'c-ai'], git: ['Git', 'c-git'], cloud: ['Cloud', 'c-core'], streaming: ['Streaming', 'c-core'], modeling: ['Data modeling', 'c-core'], design: ['System design', 'c-arch'], behavioral: ['Behavioral', 'c-test'], sql: ['SQL', 'c-sql'], spark: ['PySpark', 'c-spark'], test: ['Check', 'c-test'], talk: ['Interview', 'c-test'] }[k] || [k, 'c-test']; }
 function chip(k) { const c = chipFor(k); return el('span', { class: 'chip ' + c[1], text: c[0] }); }
 
@@ -236,6 +237,13 @@ function videoCard(w) {
   if (!v) return el('section', { class: 'card pad stack' }, [el('h3', { text: 'Video' }), el('p', { class: 'muted', style: { margin: 0 }, text: 'This week\'s videos come with the next content update. Use the readings and the animated map above for now.' })]);
   /* the topics stay; the outside videos do not: everything is covered by the chapter and the animated map in the app */
   return el('section', { class: 'card pad stack' }, [el('h3', { text: 'Covered in this lesson' }), el('div', { class: 'list' }, v.map(([t, u]) => el('div', { class: 'item' }, [el('span', { class: 'grow t', text: '✓ ' + t }), el('span', { class: 's', text: 'chapter and map' }), el('a', { class: 'srcl', href: u, target: '_blank', rel: 'noopener noreferrer', title: 'Watch the free video on developer.confluent.io', 'aria-label': 'Watch the free video: ' + t + ' (opens in a new tab)', text: '▶' })])))]);
+}
+/* Links to the matching lectures of the learner's own Udemy courses (data/udemy.json); the lesson itself is in the app */
+function udemyLinks(course, lectures, label) {
+  const c = DATA.udemy && DATA.udemy.courses[course];
+  if (!c || !lectures || !lectures.length) return null;
+  return el('details', { class: 'udemy' }, [el('summary', {}, [el('span', { class: 'lbl', text: '▶ ' + label + ' · ' + lectures.length + (lectures.length === 1 ? ' lecture' : ' lectures') }), el('span', { class: 's', text: c.title })]),
+    el('div', { class: 'row wrap', style: { gap: '6px', marginTop: '8px' } }, lectures.map(([id, t]) => el('a', { class: 'chip ulink', href: 'https://www.udemy.com/course/' + c.slug + '/learn/lecture/' + id, target: '_blank', rel: 'noopener noreferrer', 'aria-label': 'Watch on Udemy: ' + t + ' (opens in a new tab)', text: t })))]);
 }
 /* Kafka lesson: step-through diagrams with ‹ › controls */
 function kafkaLesson() {
@@ -358,6 +366,7 @@ function vWork(kind, id, mode) {
       kind === 'py' ? el('div', { class: 'schema', text: 'Example (' + Q.tests[0][0] + '):\n' + Q.tests[0][1] + '\n# → ' + JSON.stringify(Q.tests[0][2]), style: { whiteSpace: 'pre-wrap' } }) : null]),
     review ? el('div', { class: 'hint' }, [el('b', { text: 'Review ' + (rv.box + 1) + ' of ' + REV_GAPS.length + '. ' }), 'Solve it again from a blank editor. Pass without opening the solution and it comes back in ' + (REV_GAPS[rv.box + 1] ? REV_GAPS[rv.box + 1] + ' days' : 'no more reviews') + '. If you open the solution, it starts again in 3 days.']) : null,
     Q.why ? el('div', { class: 'why' }, [el('b', { text: 'Why a data engineer cares: ' }), Q.why]) : null,
+    kind === 'dsa' && DATA.udemy ? udemyLinks('dsa', (DATA.udemy.dsa.weeks || {})[Q.w], 'This topic in your Udemy course') : null,
     lang !== 'python' ? tablesBox() : null,
     Q.rec ? el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'lbl', text: 'On full data (typical estimate)' }), el('div', { class: 'hint', style: { background: 'var(--red-l)', borderColor: '#F0C4B8' } }, [el('b', { text: 'Before: ' }), Q.rec[0]]), el('div', { class: 'hint' }, [el('b', { text: 'Target: ' }), Q.rec[1]])]) : null,
     kind !== 'test' ? el('a', { href: '#/path/' + (Q.m || Q.w), style: { fontWeight: 600 }, text: 'See this topic in its module' }) : null]);

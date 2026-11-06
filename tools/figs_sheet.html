@@ -1,0 +1,8 @@
+<!doctype html><meta charset="utf-8"><title>All chapter figures</title>
+<style>body{font-family:system-ui;background:#F4F5F0;margin:16px}.g{display:grid;grid-template-columns:repeat(2,640px);gap:10px}.s{background:#fff;border:1px solid #ccc}.s p{font-size:12px;margin:4px 8px}</style>
+<div id="o"></div><script src="../js/figs.js"></script><script>
+/* review sheet: every step of every figure (open from the repo root server: /tools/figs_sheet.html) */
+const o = document.getElementById('o');
+FIGS.names.forEach(n => { const f = FIGS.build(n); const ns = f.querySelector('.lbl').textContent.split('/ ')[1]; const h = document.createElement('h3'); h.textContent = n; o.append(h); const g = document.createElement('div'); g.className = 'g'; o.append(g);
+  for (let i = 0; i < +ns; i++) { const d = document.createElement('div'); d.className = 's'; d.innerHTML = f.querySelector('.figsvg').innerHTML + '<p>' + f.querySelector('.figcap').textContent + '</p>'; g.append(d); f.querySelectorAll('button')[1].click(); } });
+</script>

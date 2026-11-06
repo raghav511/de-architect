@@ -1,8 +1,8 @@
 {
-  "version": "1.18.3",
-  "date": "2026-11-01",
+  "version": "1.19.0",
+  "date": "2026-11-06",
   "notes": [
-    "On iPhone and iPad the Up next button is back on the first screen: the summary row hides when the Today column is narrow, since each section already shows its minutes.",
-    "A new learner no longer sees a notice about this week's interview questions; they are simply in Today."
+    "Module D1 now has 8 animated diagrams you can step through: pages, how the planner scans, B+trees, the write-ahead log, replication, sharding, isolation and deadlocks.",
+    "Each D1 section, the Python modules P1 to P5 and every DSA problem link to the matching lectures in your Udemy courses."
   ]
 }

@@ -462,3 +462,11 @@ a.srcl:hover{background:var(--teal-l)}
 .plan{container-type:inline-size}
 @container (max-width:600px){.daysum,.daynav>.chip{display:none}} /* a narrow Today column (phone, iPad beside the module card): the section headings carry the minutes, and Up next stays on the first screen */
 @media (max-width:560px){.tsec,.plan .xgroup{padding-top:8px}}
+/* chapter figures (js/figs.js) and Udemy lecture links */
+.dfig{margin:14px 0}.dfig .figsvg{overflow-x:auto;-webkit-overflow-scrolling:touch}.dfig .figsvg svg{width:100%;min-width:560px;height:auto;display:block;background:#fff;border-radius:10px;border:1px solid var(--line)}
+.dfig .figcap{margin:0;font-size:15px;line-height:1.5;min-height:3em}
+.dfig .btn.sm{min-width:44px}
+.udemy{display:block;margin:10px 0 16px;padding:4px 12px;border-radius:10px;background:var(--plum-l);border:1px solid #D9C4E6}
+.udemy .s{font-size:13px;color:var(--plum-d)}
+.udemy .ulink{white-space:normal;max-width:100%;text-align:left;padding:6px 10px;border-radius:10px;text-decoration:none;min-height:36px;display:inline-flex;align-items:center;background:#fff;color:var(--plum-d);border:1px solid #D9C4E6;font-weight:600;font-size:13px}
+.udemy summary{cursor:pointer;list-style:none;display:flex;flex-direction:column;gap:2px;min-height:44px;justify-content:center}.udemy summary::-webkit-details-marker{display:none}

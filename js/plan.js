@@ -415,6 +415,12 @@ async function vLearn(m, tab, range) {
   if (tab === 'chapter' && a === 0) { if (m === 's01') body.appendChild(kafkaLesson()); else body.appendChild(weekMap(m)); }
   const text = rg ? sliceH2(src, a, b) : src;
   const ch = mdEl(text || '_Nothing here for this module._');
+  /* the learner's Udemy lectures: under each matching chapter section, or one row for the whole module */
+  const U = DATA.udemy && DATA.udemy.modules[m];
+  if (U && tab === 'chapter') {
+    if (U.sections) ch.querySelectorAll('h2').forEach((h, i) => { let nx = h.nextElementSibling; while (nx && nx.tagName !== 'H2') { if (!nx.nextElementSibling || nx.nextElementSibling.tagName === 'H2') break; nx = nx.nextElementSibling; } const u = udemyLinks(U.course, U.sections[String(i + a)], 'Watch on Udemy'); if (u) nx ? nx.after(u) : h.after(u); });
+    else if (a === 0 && U.lectures) body.appendChild(udemyLinks(U.course, U.lectures, 'Your Udemy lectures for this module'));
+  }
   const hs = ch.querySelectorAll('h2');
   if (hs.length > 1) {
     const toc = el('nav', { class: 'toc', 'aria-label': 'Sections' });
