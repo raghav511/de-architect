@@ -49,6 +49,26 @@ Ride-hailing was chosen on purpose. In your question bank, Uber, Meta, Google an
 
 DE 1 builds a thin version of this whole picture. Later modules deepen one layer at a time while the rest keeps running. In DE 7 the platform moves to AWS.
 
+## From a platform to a data foundation
+
+A platform that one engineer runs is not yet a foundation an organization can build on. That takes the parts other teams touch:
+
+```
+   domain teams (rides, payments, food)        analysts, data scientists, app teams
+            │  publish data products                 ▲  find, request, trust, pay
+            ▼                                        │
+  ┌──────────────────────────────────────────────────────────────────┐
+  │ golden paths: a template makes a new pipeline in minutes         │
+  │ governance: classes of data, owners, access approval, retention  │
+  │ platform as a product: onboarding, docs, service levels, costs   │
+  └──────────────────────────────────────────────────────────────────┘
+            the platform you build in DE 1–9 (ingest, store, model, serve)
+```
+
+The program builds it in this order: DE 1–9 build and harden the platform; DE 10 designs at scale; then five modules turn it into a foundation: **O1** data mesh and data products, **O2** golden paths (self-serve templates), **O3** governance, **O4** the platform as a product, and after **Leading as an architect**, **O5**, a capstone blueprint for a made-up company, from the strategy document to a working starter kit.
+
+Every tool also gets an **architect's lens** in the week it is taught: what problem it solves, why it beats the alternatives, when not to use it, who owns and pays for it, where it sits, how it fails and scales, when to move off it, and the internals interviewers ask about.
+
 ## What a module contains
 
 | Step | What it is |

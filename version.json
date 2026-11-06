@@ -1,8 +1,8 @@
 {
-  "version": "1.19.0",
+  "version": "1.20.0",
   "date": "2026-11-06",
   "notes": [
-    "Module D1 now has 8 animated diagrams you can step through: pages, how the planner scans, B+trees, the write-ahead log, replication, sharding, isolation and deadlocks.",
-    "Each D1 section, the Python modules P1 to P5 and every DSA problem link to the matching lectures in your Udemy courses."
+    "Python 1 has the first architect's lens: what Python is for in a data platform, when not to use it, who owns it, and four under-the-hood questions interviewers ask.",
+    "Start here now explains how the platform becomes a data foundation for a whole company, and the five new modules that will teach it."
   ]
 }
