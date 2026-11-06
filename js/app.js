@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.20.0';
+const VERSION = '1.21.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -82,6 +82,7 @@ async function loadData() {
   DATA.dsa = d; DATA.sql = q; DATA.spark = p;
   try { DATA.py = await fetch('data/bank/py.json').then(r => r.json()); } catch (e) { DATA.py = []; }
   try { DATA.projects = await fetch('data/projects.json').then(r => r.json()); } catch (e) { DATA.projects = []; }
+  try { DATA.staff = await fetch('data/staff.json').then(r => r.json()); } catch (e) { DATA.staff = { kinds: {}, items: [] }; }
   try { DATA.udemy = await fetch('data/udemy.json').then(r => r.json()); } catch (e) { DATA.udemy = null; }
   await loadModules();
 }
@@ -223,6 +224,7 @@ function route() {
     else if (r === 'profile') vProfile();
     else if (r === 'terminal') vTerminal(p[1], p[2]);
     else if (r === 'mock') vMock(p[1]);
+    else if (r === 'live') vLive(p[1]);
     else if (r === 'coach') vCoach();
     else if (r === 'projects') vProjects();
     else if (r === 'project') vProject(p[1]);
