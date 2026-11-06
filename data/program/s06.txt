@@ -204,6 +204,23 @@ The agent's tool list contains `propose_fix` and does not contain `execute_appro
 
 Decide which actions need approval by asking whether the action can be undone. Reading is free. Restarting an idempotent task is low risk. Changing or deleting data needs a person. This is the same reasoning as "retry transient errors, alert on the rest" from sprint 1, applied to an agent.
 
+## 6.8 Migrating live: zero-downtime changes and backfilling a huge table
+
+Sooner or later the source of truth itself has to change while it is in use: a column type on a table of two billion rows, a split of one table into two, a move to a new database. Interviewers ask this as "migrate it with no downtime and prove nothing was lost".
+
+**Expand, migrate, contract.** Never change a busy table in one step.
+
+1. **Expand:** add the new structure next to the old (a new column or table) so that old code keeps working.
+2. **Write to both:** new writes go to old and new. Either the application writes twice, or, more safely, CDC (6.2) copies every change from old to new, so no code path is forgotten.
+3. **Backfill:** copy the existing rows into the new structure in the background.
+4. **Verify:** compare old and new (counts, sums and per-key hashes by range, as in 6.5) until they match for a while.
+5. **Switch reads**, one reader at a time, with a flag you can flip back.
+6. **Contract:** stop writing the old structure and drop it, only after a waiting period.
+
+**Backfilling without hurting production.** Copy in small batches by primary-key range (`WHERE id > last_id ORDER BY id LIMIT 5000`), not with `OFFSET` and not in one giant transaction, which holds locks and bloats the log. Commit each batch, record the last id so the job resumes after a crash, and throttle: pause between batches and back off when replication lag or database load rises. Make each batch idempotent (an upsert), because a batch may run twice. Rows that change during the backfill are covered by the CDC stream; apply changes in order and let the newer version win.
+
+**Rollback.** Until the contract step, rollback is flipping reads back to the old structure, which has stayed complete. That is why the old path is removed last.
+
 @@lab
 ## In the app: change data capture without Postgres or Kafka (2.5 hours)
 
@@ -596,6 +613,10 @@ assert out == [(1,"delivered",100),(3,"delivered",70),(4,"placed",30)], out
 -->
 
 @@interview
+Q: You must change a column from INT to BIGINT on a two-billion-row orders table that takes writes all day. How do you do it with no downtime?
+TAG: core
+A: Expand and contract. Add a new BIGINT column (or a new table), keep it in sync for new writes with a trigger or CDC, and backfill old rows in small primary-key batches that commit separately, resume from the last id, are idempotent and throttle on replication lag. Verify old against new by key range, switch readers behind a flag, then stop writing the old column and drop it after a waiting period. Rollback until then is flipping the flag back.
+---
 Q: Explain Debezium, and how you would use CDC to populate a warehouse such as Snowflake or BigQuery. Discuss schema evolution and ordering guarantees.
 SRC: LinkedIn, 5 YOE
 TAG: streaming

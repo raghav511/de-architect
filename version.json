@@ -1,8 +1,8 @@
 {
-  "version": "1.21.0",
+  "version": "1.21.1",
   "date": "2026-11-06",
   "notes": [
-    "Every day there is a live mock interview built from what you study that week: speak or type your answers, the AI interviewer asks follow-ups and scores each answer, and you see your hire level at senior or staff.",
-    "Five questions on weekdays (concept, under the hood, architect's lens, a staff-level question and recall) and a 40-minute round on weekends. Weak answers come back the next day."
+    "Systems 1 has a new section on the serving side: load balancing, caching, rate limits, retries, circuit breakers and scaling, with a link to the distributed systems series you shared.",
+    "Module 6 now teaches zero-downtime migrations and backfilling a huge table, and the live mock has four new staff-level questions."
   ]
 }
