@@ -630,7 +630,7 @@ async function T(name, fn, opt) {
   await T('today: the coding track and interview practice are rows in the plan, and the day is done only when they are', async p => {
     await go(p, '#/today', 1200); await p.waitForSelector('.plan .unit');
     const t = await text(p, '.plan');
-    ok(/Reading and labs/.test(t) && /Coding track/.test(t) && /Interview practice/.test(t) && /Daily mock interview|Sunday mock interview/.test(t), 'plan is missing a group: ' + t.slice(0, 300));
+    ok(/Reading and labs/.test(t) && /Coding track/.test(t) && /Interview practice/.test(t) && /Live mock|Weekend live mock/.test(t), 'plan is missing a group: ' + t.slice(0, 300));
     ok(await p.evaluate(() => document.querySelectorAll('.plan .xit').length >= 2), 'no coding or mock rows in the plan');
     ok(await p.evaluate(() => ![...document.querySelectorAll('.grid2 > .stack h2')].some(h => /Coding track/.test(h.textContent))), 'coding track is still a separate card');
     /* tick every hour step: not done for today while coding and the mock are open */
@@ -724,6 +724,31 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => document.querySelectorAll('.lens tbody tr').length === 7 && document.querySelectorAll('.lens details').length === 4), 'lens card incomplete');
     ok(await p.evaluate(() => getComputedStyle(document.querySelector('.lens td')).display === 'block' && document.documentElement.scrollWidth <= innerWidth), 'lens is not stacked on a phone or scrolls sideways');
     await go(p, '#/learn/s00/chapter', 900); ok(/From a platform to a data foundation/.test(await text(p, '.prose')), 'Start here has no data foundation section');
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  await T('live mock: Today links it; five questions from this week (concept, under the hood, lens, staff slot, recall); AI follow-up and rubric scores; weak answers open the next mock; self-marking with AI off', async p => {
+    await p.route('https://api.anthropic.com/**', r => { const H = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST, OPTIONS' }; if (r.request().method() === 'OPTIONS') return r.fulfill({ status: 204, headers: H }); const b = r.request().postData() || ''; const fu = /ONE follow-up/.test(b); r.fulfill({ headers: H, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: fu ? '{"followup":"What changes at 100 times the data?"}' : '{"scores":{"correct":2,"depth":2,"trade":2,"clear":3},"rejected":true,"limits":false,"operate":false,"feedback":"Say what you rejected.","better":"A stronger answer."}' }] }) }); });
+    p.setDefaultTimeout(8000); p.on('pageerror', e => console.log('PAGEERR', e.message));
+    await go(p, '#/today', 1200); await p.evaluate(() => { S.settings.ai = true; S.settings.aiKey = 'test-key'; S.live = {}; save(); }); await go(p, '#/today', 900);
+    ok(await p.evaluate(() => [...document.querySelectorAll('#grp-interview a')].some(a => /#\/live\//.test(a.getAttribute('href')))), 'Today has no live mock row');
+    await go(p, '#/live', 1500); await p.waitForSelector('.lslots li');
+    const labels = await p.$$eval('.lslots li b', b => b.map(x => x.textContent)); const we = await p.evaluate(() => liveWeekend(iso(new Date())));
+    ok(we ? labels.length === 7 && labels[0] === 'Concept' && labels[labels.length - 1] === 'Recall' : labels.length === 5 && labels[0] === 'Concept' && labels[1] === 'Under the hood' && labels[2] === "Architect's lens" && labels[4] === 'Recall', 'wrong question mix: ' + labels.join(', '));
+    await p.click("#page button.pri:has-text(\"Start\")"); await p.waitForSelector('#page textarea');
+    for (let n = 0; n < labels.length; n++) { if (process.env.LDBG) console.log('Q', n, (await text(p, '#page')).slice(0, 160).replace(/\n/g, ' | '));
+      await p.fill('#page textarea', 'An answer about trade-offs ' + n); await p.click('#page button:has-text("Done")');
+      await p.waitForSelector('.lfu'); ok(/100 times/.test(await text(p, '.lfu')), 'no follow-up shown');
+      await p.fill('#page textarea', 'follow-up answer'); await p.click('#page button:has-text("Done")');
+      await p.waitForSelector('.lscore'); await p.click(n + 1 < labels.length ? 'button:has-text("Next question")' : 'button:has-text("See your scorecard")');
+    }
+    const card = await text(p, '#page'); ok(/Scorecard/.test(card) && /Lean no hire|No hire/.test(card) && new RegExp('Named what you rejected\\s*' + labels.length + ' of').test(card), 'scorecard wrong: ' + card.slice(0, 300));
+    ok(/open\s+your next live mock/.test(card), 'weak answers do not carry over');
+    const carried = await p.evaluate(async () => { const k = iso(new Date()), d = new Date(); d.setDate(d.getDate() + 1); const r = await liveQuestions(iso(d)); return r.qs.filter(q => q.carried === k).length; });
+    ok(carried === 2, 'tomorrow does not open with two weak answers: ' + carried);
+    await p.evaluate(() => { S.settings.ai = false; S.live = {}; save(); }); await go(p, '#/today', 600); await go(p, '#/live', 1500); await p.click("#page button.pri:has-text(\"Start\")");
+    await p.fill('#page textarea', 'x'); await p.click('#page button:has-text("Done")'); await p.waitForSelector('[role=radiogroup]');
+    ok(/Compare with the model answer/.test(await text(p, '#page')), 'AI off does not offer self-marking');
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'live mock scrolls sideways on a phone');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
   await T('today: one Today box holds reading, quiz, coding, interview practice and coaching, with a summary on top and interview capped at its minutes', async p => {
@@ -1072,7 +1097,7 @@ async function T(name, fn, opt) {
     await go(p, '#/today', 1200); await p.evaluate(() => { S.settings.ai = false; applyAi(); save(); route(); }); await p.waitForTimeout(600);
     const t = await text(p, '#page');
     ok(!/Sync is not set up|grades it tonight|coach grades/i.test(t), 'Today still mentions the AI coach: ' + (t.match(/[^\n]*(Sync is not set up|grades it tonight)[^\n]*/) || [''])[0]);
-    ok(/Daily mock interview/.test(t), 'daily mock missing');
+    ok(/Live mock|Weekend live mock/.test(t), "live mock missing");
     await go(p, '#/coach', 1000); ok(/AI features are off/.test(await text(p, '#page')), 'coach page does not explain');
   });
 

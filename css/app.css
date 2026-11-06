@@ -475,3 +475,12 @@ a.srcl:hover{background:var(--teal-l)}
 .lens h2::before{content:"Architect's lens";display:block;font:700 12px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--blue-d);margin-bottom:2px}
 .lens table td:first-child{white-space:nowrap}
 @media (max-width:600px){.lens .scroll{overflow:visible}.lens table,.lens tbody,.lens tr,.lens td{display:block;width:100%;border:0}.lens thead{display:none}.lens tr{padding:8px 0;border-top:1px solid var(--line)}.lens td{padding:2px 0}.lens td:first-child{white-space:normal;color:var(--blue-d)}}
+/* live mock (js/live.js) */
+.live .lq{font-size:18px;font-weight:600;line-height:1.45}
+.live .lslots{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.live .lyou{background:var(--soft);border-radius:10px;padding:8px 12px;font-size:15px}
+.live .lfu{border:2px solid var(--blue);border-radius:10px;padding:8px 12px;font-size:15.5px;background:var(--blue-l)}
+.live .lscore{display:flex;flex-direction:column;gap:4px;font-size:15px;border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.live .lhire{font:800 20px var(--display)}
+.live .btn.rec{background:var(--red-l);border-color:var(--red);color:var(--red-d)}
+.live [role=radio][aria-checked=true]{background:var(--teal);color:#fff;border-color:var(--teal)}

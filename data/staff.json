@@ -1,0 +1,592 @@
+{
+ "kinds": {
+  "scale": "What breaks at 100×",
+  "page": "The 3 a.m. page",
+  "defend": "Pick and defend",
+  "metric": "Metric, then model",
+  "org": "Fix the organization",
+  "cost": "Cut the cost",
+  "migrate": "Migrate live",
+  "estimate": "Estimate it",
+  "deep": "Project deep dive",
+  "lead": "Lead and influence"
+ },
+ "items": [
+  {
+   "id": "st01",
+   "kind": "scale",
+   "mids": [
+    "p01",
+    "p02",
+    "p03",
+    "p04",
+    "p05",
+    "p06"
+   ],
+   "q": "A Python script that cleans a 1 GB CSV in 3 minutes now has to handle 100 GB every night. What breaks first, and what do you change?",
+   "points": [
+    "Memory: reading the whole file at once fails; stream it in chunks or with generators",
+    "A single core becomes the limit; move the heavy work to DuckDB, Polars or Spark instead of adding threads",
+    "The runtime passes the nightly window; partition the input so parts run in parallel and can be retried alone",
+    "Name the point where you would stop scaling the script and move to an engine"
+   ]
+  },
+  {
+   "id": "st02",
+   "kind": "scale",
+   "mids": [
+    "s01",
+    "s02",
+    "s03"
+   ],
+   "q": "Your nightly Spark job runs for 2 hours on 1 TB. Data grows 100× over two years. What breaks first, and what is your plan?",
+   "points": [
+    "Shuffle and skew grow faster than data: the widest join or aggregation breaks first",
+    "Full reprocessing stops fitting the window: move to incremental processing by partition",
+    "Small files and metadata growth slow the table; compaction and partition design matter",
+    "Cost grows with it: state the cost per run now and at 100×",
+    "Say what you would measure before changing anything"
+   ]
+  },
+  {
+   "id": "st03",
+   "kind": "scale",
+   "mids": [
+    "s05",
+    "s06",
+    "d01"
+   ],
+   "q": "A Kafka topic carries 5,000 events a second today. Product wants 500,000. What breaks, in order?",
+   "points": [
+    "Partition count caps consumer parallelism; adding partitions later reshuffles keys and order",
+    "Consumer lag and rebalances; state size in the stream processor",
+    "Broker disk and network; retention times throughput",
+    "Hot keys: one big city or merchant overloads one partition",
+    "Downstream sinks often break before Kafka does"
+   ]
+  },
+  {
+   "id": "st04",
+   "kind": "scale",
+   "mids": [
+    "m01",
+    "m02",
+    "m03",
+    "s04"
+   ],
+   "q": "A star schema serves 20 analysts well. The company grows to 2,000 users and 40 teams querying it. What breaks?",
+   "points": [
+    "Concurrency and cost on the warehouse; workload isolation and caching",
+    "Conflicting metric definitions as teams add their own; a semantic layer or shared metrics",
+    "Wide fact tables and slowly changing dimensions grow; partition and cluster for the common filters",
+    "Ownership: who approves changes to shared dimensions"
+   ]
+  },
+  {
+   "id": "st05",
+   "kind": "scale",
+   "mids": [
+    "a01",
+    "a02",
+    "a03",
+    "a04",
+    "a05"
+   ],
+   "q": "An LLM-based assistant answers 50 questions a day for one team. It is rolled out to 5,000 employees. What breaks?",
+   "points": [
+    "Cost and rate limits; caching, smaller models for easy questions, budgets per team",
+    "Quality drift across many more question types; evals that grow with real questions",
+    "Access control: users must only retrieve what they are allowed to see",
+    "Latency and observability: tracing each answer to its sources"
+   ]
+  },
+  {
+   "id": "st06",
+   "kind": "page",
+   "mids": [
+    "p01",
+    "p02",
+    "p03",
+    "p04",
+    "p05",
+    "p06"
+   ],
+   "q": "At 3 a.m. the nightly Python ingestion job is killed for using too much memory. It worked yesterday. Walk me through the first 15 minutes.",
+   "points": [
+    "Stop the damage: is anything downstream reading partial data? Pause or mark the run failed clearly",
+    "Compare inputs: did today's file grow, change shape, or contain one giant record?",
+    "Check the last code or dependency change",
+    "Rerun safely only if the job is idempotent; otherwise fix the partial output first",
+    "Write down the follow-up: streaming the input and an alert on input size"
+   ]
+  },
+  {
+   "id": "st07",
+   "kind": "page",
+   "mids": [
+    "s01",
+    "s02",
+    "s03",
+    "s04",
+    "s09"
+   ],
+   "q": "The revenue dashboard shows yesterday's revenue doubled. The CFO has already seen it. Walk me through the first 15 minutes.",
+   "points": [
+    "Assume a data problem until proven otherwise; tell stakeholders it is being checked, with a time for the next update",
+    "Check freshness and row counts by source and partition: duplicates from a rerun are the most common cause",
+    "Trace lineage from the dashboard back to the first table where the number is wrong",
+    "Fix forward or roll back the bad partition; then add the check that would have caught it (a uniqueness or volume test)"
+   ]
+  },
+  {
+   "id": "st08",
+   "kind": "page",
+   "mids": [
+    "s05",
+    "s06"
+   ],
+   "q": "Consumer lag on the payments topic has grown for an hour and real-time fraud scores are 40 minutes late. What do you do?",
+   "points": [
+    "Find whether input rose or processing slowed: compare produce rate and consume rate",
+    "Look for a poison message, a slow sink, a rebalance loop or one hot partition",
+    "Short term: scale consumers up to the partition count, skip to a dead-letter queue, or degrade to batch scoring",
+    "Communicate the business impact (fraud checks are late), then the fix and the follow-up"
+   ]
+  },
+  {
+   "id": "st09",
+   "kind": "page",
+   "mids": [
+    "a01",
+    "a02",
+    "a03",
+    "a04",
+    "a05"
+   ],
+   "q": "Your on-call agent posted a wrong root cause for a pipeline failure in the incident channel, and an engineer acted on it. What now?",
+   "points": [
+    "Correct it in the channel first and stop the wrong action",
+    "Find why: missing evidence, a tool returning stale data, or the model guessing",
+    "Add an eval case from this incident; require the agent to cite evidence for each claim",
+    "Decide what the agent may do alone and what needs a human approval"
+   ]
+  },
+  {
+   "id": "st10",
+   "kind": "defend",
+   "mids": [
+    "p01",
+    "p02",
+    "p03",
+    "p04",
+    "p05",
+    "p06"
+   ],
+   "q": "For a 50 GB daily job, pick pandas, Polars, DuckDB or Spark, and say what you rejected and why.",
+   "points": [
+    "Name the decision drivers: data size, team skills, where it runs, cost",
+    "A single-node engine (DuckDB or Polars) often wins at 50 GB on one machine: no cluster to run",
+    "Reject pandas for memory, and Spark for operational cost unless data or concurrency grows a lot",
+    "State the condition that would change your choice"
+   ]
+  },
+  {
+   "id": "st11",
+   "kind": "defend",
+   "mids": [
+    "s01",
+    "s05",
+    "d01"
+   ],
+   "q": "The team wants Kafka for 200 events a minute from one service to one consumer. Approve or push back?",
+   "points": [
+    "Push back unless replay, many consumers or ordering per key are needed soon",
+    "A queue (SQS) or a table with a poller is cheaper to run at this volume",
+    "Kafka's cost is operations: brokers, upgrades, schema registry, on-call",
+    "Say what future need would make Kafka the right call, and how to switch later"
+   ]
+  },
+  {
+   "id": "st12",
+   "kind": "defend",
+   "mids": [
+    "s02",
+    "s08"
+   ],
+   "q": "Iceberg, Delta Lake or Hudi for a new lakehouse used by Spark, Trino and Snowflake. Pick one and defend it.",
+   "points": [
+    "Engine support decides first: which engines must read and write",
+    "Iceberg is the most engine-neutral; Delta is strongest inside Databricks; Hudi fits heavy upserts",
+    "Name what you give up with your pick",
+    "Mention catalog choice, because it matters as much as the table format"
+   ]
+  },
+  {
+   "id": "st13",
+   "kind": "defend",
+   "mids": [
+    "s04",
+    "m01",
+    "m02",
+    "m03"
+   ],
+   "q": "One big wide table or a star schema for the company's core business metrics? Defend your choice.",
+   "points": [
+    "Star schema: one place to change a dimension, history kept, shared by many tables",
+    "Wide table: fast and simple for one use case, but duplicated logic and painful history",
+    "Often both: star as the source of truth, wide tables built from it for dashboards",
+    "Say who maintains each and what it costs to change"
+   ]
+  },
+  {
+   "id": "st14",
+   "kind": "defend",
+   "mids": [
+    "s07",
+    "s08"
+   ],
+   "q": "Databricks or Snowflake as the main platform for a 300-person company? You must pick one.",
+   "points": [
+    "Start from the workloads: SQL analytics, data science, streaming, AI",
+    "Snowflake: less to operate, strong SQL and governance; Databricks: stronger for Spark, ML and open formats",
+    "Cost model and skills of the current team",
+    "State how you would keep the exit door open (open table formats)"
+   ]
+  },
+  {
+   "id": "st15",
+   "kind": "metric",
+   "mids": [
+    "p01",
+    "p02",
+    "p03",
+    "p04",
+    "p05",
+    "p06",
+    "a01",
+    "a02",
+    "a03",
+    "a04",
+    "a05"
+   ],
+   "q": "Leadership asks whether the new in-app coaching feature is working. Define the metric, then the table that would compute it.",
+   "points": [
+    "One north-star metric tied to the goal (for example, share of users who complete a practice session in week 2), plus guardrails",
+    "Define the grain: one row per user per day, or one row per session",
+    "Name the events needed and how late or duplicate events are handled",
+    "Say how you would avoid fooling yourself: a comparison group or a before-after with care"
+   ]
+  },
+  {
+   "id": "st16",
+   "kind": "metric",
+   "mids": [
+    "s04",
+    "m01",
+    "m02",
+    "s11"
+   ],
+   "q": "How would you know if shared rides (pooling) is working? Define the metrics, then model the fact table.",
+   "points": [
+    "Metrics for riders (wait and trip time), drivers (earnings per hour) and the business (cost per trip), with one north star",
+    "Grain: one row per ride segment or per pooled trip, and why",
+    "Dimensions: rider, driver, zone, time; handle a trip whose riders change mid-route",
+    "Guardrails: cancellation rate and rider rating"
+   ]
+  },
+  {
+   "id": "st17",
+   "kind": "metric",
+   "mids": [
+    "s05",
+    "s10"
+   ],
+   "q": "Daily active users dropped 15% overnight. How do you find out whether it is real or a data problem?",
+   "points": [
+    "Check data first: late or missing events by platform, app version and region",
+    "Compare with an independent source (logins, server logs)",
+    "If real, slice by segment to find where the drop sits",
+    "Report what you know, what you do not yet know, and when you will know"
+   ]
+  },
+  {
+   "id": "st18",
+   "kind": "org",
+   "mids": [
+    "s04",
+    "s09",
+    "s10",
+    "r01"
+   ],
+   "q": "Forty pipelines across six teams produce three different revenue numbers. What is your plan for the next two quarters?",
+   "points": [
+    "First month: inventory the pipelines and owners, and agree one definition of revenue with finance",
+    "Build one certified revenue table with tests and an owner; deprecate the others on a dated plan",
+    "Make the right way the easy way: a template and a metrics layer, not a policy document",
+    "Measure progress: number of certified metrics, number of retired pipelines, incidents"
+   ]
+  },
+  {
+   "id": "st19",
+   "kind": "org",
+   "mids": [
+    "s09",
+    "s10",
+    "r01",
+    "s12"
+   ],
+   "q": "You join as the first data architect at a 500-person company with no data platform strategy. What do you do in your first 90 days?",
+   "points": [
+    "Listen first: meet the main data consumers and producers, and list their top pains",
+    "Write a short current-state map and three to five principles",
+    "Pick one visible win in the first quarter",
+    "Deliver a strategy document with a roadmap, costs and what you will not do"
+   ]
+  },
+  {
+   "id": "st20",
+   "kind": "org",
+   "mids": [
+    "p01",
+    "p02",
+    "p03",
+    "p04",
+    "p05",
+    "p06",
+    "a01",
+    "a02",
+    "a03",
+    "a04",
+    "a05",
+    "s00"
+   ],
+   "q": "Every team writes its pipelines in a different style and Python version, and on-call is painful. How do you fix that without slowing teams down?",
+   "points": [
+    "A golden path: a template repo with the Python version, packaging, tests, logging and CI already set up",
+    "Make it the fastest way to start, not a mandate",
+    "Migrate the worst offenders first, measured by incidents",
+    "Keep an exception process for real needs"
+   ]
+  },
+  {
+   "id": "st21",
+   "kind": "cost",
+   "mids": [
+    "s07",
+    "s08",
+    "s03"
+   ],
+   "q": "Cut the data platform bill by 40% this quarter without missing any service level. Where do you look first?",
+   "points": [
+    "Measure first: cost by team, job and table (tagging and showback)",
+    "Biggest wins are usually idle clusters, oversized warehouses, full refreshes that could be incremental, and unused tables",
+    "Storage tiering and retention for old raw data",
+    "Agree with each team what service level it really needs"
+   ]
+  },
+  {
+   "id": "st22",
+   "kind": "cost",
+   "mids": [
+    "a01",
+    "a02",
+    "a03",
+    "a04",
+    "a05"
+   ],
+   "q": "Your LLM features cost 30,000 dollars a month and finance wants it halved. What do you do?",
+   "points": [
+    "Measure cost by feature and prompt",
+    "Cache repeated work, shorten prompts and context, route easy requests to smaller models",
+    "Batch offline work, cap tokens per request, set budgets per team",
+    "Check that quality does not drop with evals before and after"
+   ]
+  },
+  {
+   "id": "st23",
+   "kind": "cost",
+   "mids": [
+    "s04",
+    "m03"
+   ],
+   "q": "Warehouse costs doubled in six months while data grew 20%. What is going on, and what do you change?",
+   "points": [
+    "Find the top queries and jobs by cost: often dashboards refreshing too often or full rebuilds",
+    "Clustering, materialised aggregates, and incremental models",
+    "Workload isolation and auto-suspend",
+    "Make cost visible to the teams who create it"
+   ]
+  },
+  {
+   "id": "st24",
+   "kind": "migrate",
+   "mids": [
+    "s06",
+    "s02"
+   ],
+   "q": "Move the orders data from Postgres to a lakehouse with no downtime, and prove nothing was lost.",
+   "points": [
+    "Initial snapshot plus change data capture from the same log position",
+    "Run both in parallel; reconcile counts and sums per day and per key",
+    "Switch readers one by one with a rollback plan",
+    "Decide when the old path is turned off, and who signs off"
+   ]
+  },
+  {
+   "id": "st25",
+   "kind": "migrate",
+   "mids": [
+    "s07",
+    "s08",
+    "r01"
+   ],
+   "q": "Migrate 300 Hive jobs to Spark on a lakehouse in the cloud over a year. How do you plan it?",
+   "points": [
+    "Inventory and group the jobs by pattern; automate the common patterns",
+    "Migrate by business domain with a parallel run and automated comparison",
+    "Freeze new development on the old platform with a date",
+    "Track progress and cost every month; keep the team who owns each job involved"
+   ]
+  },
+  {
+   "id": "st26",
+   "kind": "migrate",
+   "mids": [
+    "p01",
+    "p02",
+    "p03",
+    "p04",
+    "p05",
+    "p06"
+   ],
+   "q": "A critical pipeline is a 4,000-line Python script nobody wants to touch. How do you replace it safely?",
+   "points": [
+    "Characterisation tests: capture its outputs on real inputs first",
+    "Strangle it: move one part at a time behind the same interface",
+    "Run old and new side by side and compare outputs",
+    "Remove the old part only when the comparison has been clean for a while"
+   ]
+  },
+  {
+   "id": "st27",
+   "kind": "estimate",
+   "mids": [
+    "s05",
+    "s01",
+    "d01"
+   ],
+   "q": "2 million ride events a minute, 1 KB each. How many Kafka partitions, and how much storage a day with 7 days of retention and replication 3?",
+   "points": [
+    "About 33,000 events a second, about 33 MB a second",
+    "At around 5 to 10 MB a second per partition consumer, roughly 8 to 16 partitions, more for headroom and peaks",
+    "About 2.9 TB a day raw; times 3 replicas and 7 days is about 60 TB",
+    "State the assumptions out loud and round"
+   ]
+  },
+  {
+   "id": "st28",
+   "kind": "estimate",
+   "mids": [
+    "p01",
+    "p02",
+    "p03",
+    "p04",
+    "p05",
+    "p06"
+   ],
+   "q": "How much memory does a Python dict with 50 million string keys and integer values need? Would you hold it in memory?",
+   "points": [
+    "Each entry costs the key string object, the int object and the hash table slot: roughly 100 bytes or more per entry",
+    "So about 5 GB or more: too big for many workers",
+    "Alternatives: a sorted array, a database, DuckDB, or processing by partition",
+    "Say how you would measure it (tracemalloc) instead of guessing"
+   ]
+  },
+  {
+   "id": "st29",
+   "kind": "estimate",
+   "mids": [
+    "s02",
+    "s04",
+    "s08"
+   ],
+   "q": "A fact table gets 500 million rows a day at 200 bytes a row in Parquet. How big is a year, and how would you partition it?",
+   "points": [
+    "About 100 GB a day uncompressed, maybe 20 to 30 GB compressed; around 10 TB a year compressed",
+    "Partition by day (or hour if queries are hourly); avoid partitions smaller than about 1 GB",
+    "Cluster by the common filter columns",
+    "Plan retention and compaction"
+   ]
+  },
+  {
+   "id": "st30",
+   "kind": "deep",
+   "mids": [
+    "*"
+   ],
+   "q": "Walk me through the most complex data system you built: why each main choice, what failed, and what you would change now.",
+   "points": [
+    "A one-minute overview: the business problem, scale and your role",
+    "Two or three key decisions with the alternatives you rejected",
+    "One real failure and what you changed afterwards",
+    "What you would do differently today, and the measurable impact"
+   ]
+  },
+  {
+   "id": "st31",
+   "kind": "deep",
+   "mids": [
+    "*"
+   ],
+   "q": "Tell me about a design decision you got wrong. How did you find out, and what did you do?",
+   "points": [
+    "Pick a real decision with consequences",
+    "How you detected it (metrics, incidents, user feedback)",
+    "How you fixed it and communicated it",
+    "What you do differently now"
+   ]
+  },
+  {
+   "id": "st32",
+   "kind": "lead",
+   "mids": [
+    "*"
+   ],
+   "q": "Another team's design will hurt your platform, and you do not manage them. What do you do?",
+   "points": [
+    "Understand their goals and constraints first",
+    "Bring data: the cost or risk to your platform, in their terms",
+    "Offer an alternative that meets their goal, and agree a decision maker",
+    "Disagree and commit if the decision goes against you, with the risk written down"
+   ]
+  },
+  {
+   "id": "st33",
+   "kind": "lead",
+   "mids": [
+    "*"
+   ],
+   "q": "A senior engineer on your team keeps shipping pipelines without tests and says they slow him down. How do you handle it?",
+   "points": [
+    "Talk one to one about outcomes: incidents and rework, not rules",
+    "Make testing cheap: templates and examples",
+    "Agree a clear standard for the team, applied to everyone",
+    "Follow up and recognise the change"
+   ]
+  },
+  {
+   "id": "st34",
+   "kind": "lead",
+   "mids": [
+    "*"
+   ],
+   "q": "You must say no to a VP who wants a real-time dashboard by next week. How do you handle it?",
+   "points": [
+    "Ask what decision the dashboard supports and how fresh the data truly needs to be",
+    "Offer options with dates: hourly next week, real time in a quarter",
+    "Be clear about the cost and risk of rushing",
+    "Confirm the agreement in writing"
+   ]
+  }
+ ]
+}

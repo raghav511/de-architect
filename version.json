@@ -1,8 +1,8 @@
 {
-  "version": "1.20.0",
+  "version": "1.21.0",
   "date": "2026-11-06",
   "notes": [
-    "Python 1 has the first architect's lens: what Python is for in a data platform, when not to use it, who owns it, and four under-the-hood questions interviewers ask.",
-    "Start here now explains how the platform becomes a data foundation for a whole company, and the five new modules that will teach it."
+    "Every day there is a live mock interview built from what you study that week: speak or type your answers, the AI interviewer asks follow-ups and scores each answer, and you see your hire level at senior or staff.",
+    "Five questions on weekdays (concept, under the hood, architect's lens, a staff-level question and recall) and a 40-minute round on weekends. Weak answers come back the next day."
   ]
 }
