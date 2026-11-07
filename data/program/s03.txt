@@ -214,6 +214,58 @@ Add a second tool that returns `explain("formatted")` for a named query, and the
 
 Then do the part that matters most. Diagnose the job yourself first, and write your answer down. Only after that, run the agent and compare. An agent's diagnosis is a hypothesis. The UI is the evidence.
 
+## 3.10 Architect's lens: Spark in a data platform
+
+The questions an architect is asked about Spark, beyond how to write a DataFrame job.
+
+| Question | Short answer for Spark |
+|---|---|
+| **What problem does it solve?** | Large batch transformations that do not fit on one machine: joins, aggregations and rewrites over terabytes of files in the lake, in SQL or Python, with the work split across many machines and retried when one fails. The same engine also runs micro-batch streaming and feature preparation for machine learning. |
+| **Why it over the alternatives?** | Against Flink: Spark is batch first and simpler for large rewrites and backfills; Flink wins for low-latency, stateful streaming. Against DuckDB or Polars: those are faster and far cheaper while data fits on one machine (up to a few hundred gigabytes). Against warehouse SQL (Snowflake, BigQuery): no data copy, open table formats, Python and libraries next to SQL, and control of the compute bill, at the cost of tuning it yourself. Against Dask or Ray: a mature query optimizer and SQL for ETL; Ray is the better fit for GPU training and general Python tasks. |
+| **When not to use it?** | Small data (a single-node engine finishes before a cluster starts); millisecond serving or lookups (use a database or cache); per-event stateful streaming with tight latency (Flink); transforms that are plain SQL over warehouse tables (dbt in the warehouse); when nobody will own cluster versions, sizing and cost. |
+| **Who owns and pays for it?** | A platform team owns the runtime (Databricks, EMR, or the Spark operator on Kubernetes), cluster policies, versions, default configs and cost guardrails such as auto-termination and spot use. Pipeline teams own their jobs, their sizing and their data's skew; cost is tagged per job and shown back per team. |
+| **Where does it sit?** | The compute layer over the lakehouse: it reads Parquet, Iceberg or Delta tables (and Kafka for streaming), is scheduled by Airflow or a job service, and writes tables that Trino, the warehouse or BI tools read. It is not a serving layer and not a database. |
+| **How does it fail and scale?** | It scales by partitions and executors: more cores run more tasks at once, until a shuffle, the driver or one partition becomes the limit. It fails as a straggler task from skew, executor out-of-memory or container kills, heavy spill, shuffle fetch failures when executors (often spot) disappear, a driver that collects too much or plans millions of small files, and a bill that grows faster than the data. |
+| **When do you move off it?** | When data shrinks to one machine (DuckDB, Polars), when the workload becomes low-latency streaming (Flink), when transforms are SQL that the warehouse runs cheaper (dbt), or when the work is GPU training and Python tasks (Ray). |
+
+### Under the hood
+
+**1. What do the driver, the DAG, stages and tasks each do when you call an action?**
+<details><summary>Model answer</summary>
+
+Transformations only build a plan; nothing runs until an action such as `write` or `count`. The driver is the one process that holds the plan: it optimizes the query, builds a graph of the work (the DAG), and cuts it into stages wherever data must be shuffled between machines. Inside a stage, the narrow steps (filter, select, map) are chained and run as one task per partition. The driver's scheduler sends tasks to executors, preferring ones that already hold the data, retries a failed task (four times by default), and reruns a parent stage if its shuffle output is lost. So a job is one action, a stage is the work between two shuffles, and a task is one partition of one stage on one core.
+
+</details>
+
+**2. Why is a shuffle expensive, and how do broadcast joins and adaptive query execution avoid it?**
+<details><summary>Model answer</summary>
+
+A shuffle moves every row to the partition that owns its key. Each map task sorts and writes its output to local disk split by target partition; each reduce task then fetches its piece from every map task over the network. That costs serialization, disk writes and reads, network transfer, and a barrier: the next stage cannot start until the whole map side is done. A broadcast join avoids it by sending the small table to every executor as a hash map, so the large side is read in place and never moved. Adaptive query execution (on by default since Spark 3.2) re-plans at each stage boundary from the real shuffle sizes: it switches a sort-merge join to a broadcast join when one side turns out small, merges many tiny shuffle partitions into fewer, and splits oversized ones.
+
+</details>
+
+**3. What is data skew, how do you spot it, and how does salting fix it?**
+<details><summary>Model answer</summary>
+
+Skew is one key holding far more rows than the rest, so after a shuffle one partition, and the one task that reads it, is many times larger. The stage page shows it: median task 10 seconds, maximum 30 minutes, and one task with most of the shuffle read. Try adaptive skew join first, which splits a partition larger than five times the median and 256 MB. If that is not enough, salt: add a random number from 0 to N-1 to the hot key on the large side, and copy each row of the small side N times, once per salt value, so the join still matches. The hot key's rows now spread over N tasks. The cost is a small side N times larger, so salt only the hot keys and pick N from the measured skew. For aggregations, aggregate by key and salt first, then by key alone.
+
+</details>
+
+**4. How is executor memory divided, what is spill, and what usually causes out-of-memory errors?**
+<details><summary>Model answer</summary>
+
+The heap (`spark.executor.memory`) keeps 300 MB reserved, then splits the rest: 60% (`spark.memory.fraction`) is unified memory shared by execution (shuffles, joins, sorts, aggregations) and storage (cached data), and the remaining 40% is user memory for your objects and Spark's metadata. Execution can evict cached blocks above the protected storage half, but not the reverse. Outside the heap, `memoryOverhead` (at least 384 MB or 10%) holds JVM internals, network buffers and Python workers. When a task's execution memory runs out, Spark spills sorted runs to disk and merges them later: slower, but the job survives. Out-of-memory comes from what cannot spill: a skewed partition or huge rows built by `explode`, a broadcast table larger than expected, `collect()` on the driver, too many cores sharing one executor, or Python and Arrow buffers that blow past the overhead so YARN or Kubernetes kills the container.
+
+</details>
+
+**5. What do Catalyst and Tungsten's whole-stage code generation actually do?**
+<details><summary>Model answer</summary>
+
+Catalyst is the optimizer. It resolves names against the catalog (analysis), rewrites the logical plan with rules such as predicate pushdown, column pruning and constant folding, then picks a physical plan, for example broadcast or sort-merge, from size statistics. Tungsten is the execution layer: rows live in a compact binary format, often off the Java heap, so there are fewer objects and less garbage collection. Whole-stage code generation fuses a chain of operators, such as scan, filter, project and partial aggregate, into one generated Java function with a tight loop, instead of calling each operator once per row; operators marked with `*(n)` in `explain` run this way. A Python UDF is a black box to both: Catalyst cannot push filters through it, and rows must leave the binary format for a Python process. Built-in functions, or pandas UDFs over Arrow, keep the speed.
+
+</details>
+
+
 @@lab
 ## Build: the enrichment job, measured (2.5 hours)
 
@@ -421,6 +473,36 @@ Q: Explain `cache()`, `persist()` and `checkpoint()`, and when you would use eac
 MODEL: `cache()` keeps a DataFrame after it is first computed, in memory with spill to disk, so later actions reuse it. `persist()` does the same with an explicit storage level, such as memory only or disk only. Both keep the lineage, so lost partitions can be recomputed. Use them when a costly result feeds more than one action, and `unpersist()` when finished.
 
 `checkpoint()` writes the data to reliable storage and **drops the lineage**. Use it when the plan has grown very long, as in iterative algorithms, or where recomputation from the start would be too expensive. Caching something used once only wastes memory.
+---
+TYPE: mcq
+TAG: spark
+Q: A join's small side is estimated at 2 GB before the job runs, but after a filter it is 8 MB at run time. What does adaptive query execution do?
+A) Nothing; join strategy is fixed at planning time
+B) Switches the sort-merge join to a broadcast join at the stage boundary
+C) Adds more executors
+D) Caches the large side
+ANS: B
+WHY: Adaptive execution re-plans after each shuffle stage from the real sizes, so a side that turns out small is broadcast and the large side is not shuffled.
+---
+TYPE: mcq
+TAG: spark
+Q: You salt a hot key with 10 salt values to fix a skewed join. What must you do to the other side of the join?
+A) Nothing
+B) Drop the hot key from it
+C) Copy each of its rows 10 times, once per salt value
+D) Sort it by the salt
+ANS: C
+WHY: The large side's hot rows now carry salts 0 to 9, so every matching row on the other side must exist with each salt for the join to still find it.
+---
+TYPE: mcq
+TAG: spark
+Q: An executor is killed by Kubernetes for exceeding its memory limit, yet the Java heap was not full. What is the most likely cause?
+A) Too many shuffle partitions
+B) Python workers or Arrow buffers used more than memoryOverhead allows
+C) Catalyst chose the wrong join
+D) The driver ran out of memory
+ANS: B
+WHY: Python UDF workers, Arrow batches and network buffers live outside the heap in memoryOverhead; when they grow past it, the container is killed even though the heap has room.
 
 @@coding
 TITLE: Employees who out-earn their manager
@@ -659,6 +741,18 @@ Q: Describe a time you resolved a performance bottleneck in Spark.
 SRC: Microsoft, 4 YOE
 TAG: behavioral
 A: Use this sprint's incident if you have no stronger production story, and tell it with numbers. **Situation:** a nightly enrichment job went from 20 minutes to 3 hours and began failing. **Task:** restore the SLA without adding hardware. **Action:** found one task reading most of the shuffle data, traced it to a hot city key and NULL driver ids, removed the NULLs, enabled adaptive skew handling, and compared it with manual salting. **Result:** the measured run time before and after, and a check added so skew is noticed earlier. Finish with what you would do differently. From your resume, the 2M-record DUNS enrichment is another candidate.
+---
+Q: A team wants Spark for every new pipeline. When do you agree, and when do you push back?
+TAG: arch
+A: Agree for large batch rewrites, joins and backfills over the lake, for open table formats, and where Python and SQL must run side by side at terabyte scale. Push back when data fits on one machine (DuckDB or Polars is cheaper and faster), when the work is low-latency stateful streaming (Flink), when it is plain SQL over warehouse tables (dbt in the warehouse), or for serving lookups. Before saying yes, name who owns the runtime and versions, how cost is tagged per job, and who fixes skew and sizing.
+---
+Q: Why is a shuffle the most expensive thing in a Spark job, and how do you avoid one?
+TAG: spark
+A: Every row moves to the partition that owns its key: map tasks sort and write their output to local disk, reduce tasks fetch it over the network, and the next stage waits for the whole map side. That is serialization, disk, network and a barrier. Avoid it by broadcasting the small side of a join, filtering and pruning columns before wide steps, not repartitioning on a key you then change, bucketing tables that are joined often, and letting adaptive execution switch to broadcast and merge small partitions at run time.
+---
+Q: Explain how executor memory is divided, and the difference between spill and an out-of-memory error.
+TAG: spark
+A: After 300 MB reserved, 60% of the heap is unified memory shared by execution (shuffles, joins, sorts) and storage (cache), where execution can evict cache down to a protected half; the rest is user memory. memoryOverhead outside the heap holds JVM internals, network buffers and Python workers. Spill is when execution memory runs out and Spark writes sorted runs to disk to merge later: slow but safe. Out-of-memory is what cannot spill: a skewed or exploded partition, an oversized broadcast, collect() on the driver, too many cores per executor, or Python memory past the overhead, which gets the container killed.
 
 @@mock
 ## Mock 3: Spark deep dive (35 minutes)
