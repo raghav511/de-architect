@@ -649,6 +649,683 @@
     "Anomalies: compare each driver with recent fare-per-km and acceptance baselines; beware drivers who just lost network",
     "Say what runs in real time and what runs in batch, and how you would test it"
    ]
+  },
+  {
+   "id": "st39",
+   "kind": "scale",
+   "mids": [
+    "s05",
+    "s10"
+   ],
+   "q": "A clickstream pipeline handles 50,000 events a second today. Marketing plans a launch that brings 2 million a second for a week. What breaks first, in order, and what do you change?",
+   "points": [
+    "Partition count: at a few MB/s per partition, 2 GB/s needs hundreds of partitions; repartitioning a live topic reshuffles keys, so create a new topic sized for peak and cut producers over",
+    "Consumers: one task per partition, so stream jobs need matching parallelism and state backends sized for the larger key space",
+    "Sinks: the lake gets millions of small files and the serving store gets write hot spots; batch writes, compact hourly, salt hot keys",
+    "Broker disks and network with replication factor 3, and retention: shorten it or turn on tiered storage",
+    "Say what you test first: a load test at 2× the forecast, and which dashboards you accept being minutes stale during the launch"
+   ]
+  },
+  {
+   "id": "st40",
+   "kind": "scale",
+   "mids": [
+    "s02",
+    "s08",
+    "s10"
+   ],
+   "q": "Your Iceberg lake has 3 PB and query planning now takes longer than the queries. Why, and what do you change?",
+   "points": [
+    "Planning reads manifests: millions of small files and long snapshot histories make the metadata tree huge",
+    "Compact data files to 512 MB to 1 GB and rewrite manifests so each covers a partition range",
+    "Expire old snapshots and remove orphan files on a schedule, keeping enough history for time travel and audits",
+    "Partition for the filters people use (hidden partitioning by day, sort by the next filter column) so pruning skips most manifests",
+    "Measure before and after: planning time, files scanned per query, and the catalog's request rate"
+   ]
+  },
+  {
+   "id": "st41",
+   "kind": "defend",
+   "mids": [
+    "s04",
+    "s08",
+    "m03"
+   ],
+   "q": "Your VP wants to replace the warehouse with a lakehouse to save money. Defend a position.",
+   "points": [
+    "Start from workloads: concurrent BI, ad hoc, ML training, streaming; the answer differs per workload",
+    "Open tables (Iceberg, Delta) cut storage cost and lock-in and let several engines share one copy; the warehouse still wins on high-concurrency dashboards and zero tuning",
+    "Hidden costs: running engines, compaction, governance and people; compare total cost, not storage price",
+    "A likely answer: lake as the system of record, a warehouse or OLAP store for hot marts, one catalog and access policy for both",
+    "Say how you would prove it: migrate one domain, measure cost per query and freshness, then decide"
+   ]
+  },
+  {
+   "id": "st42",
+   "kind": "defend",
+   "mids": [
+    "s06",
+    "s05"
+   ],
+   "q": "A team proposes dual writes (to the database and to Kafka in the same request) instead of CDC. Approve or push back.",
+   "points": [
+    "Dual writes fail halfway: the database commits and Kafka fails, or the reverse, and the two disagree silently",
+    "Log-based CDC (Debezium) reads committed changes, so Kafka matches the database without touching app code",
+    "If they need business events rather than row changes, use the outbox pattern: write the event in the same transaction, CDC ships it",
+    "CDC costs: connector operations, WAL retention when the connector lags, schema changes",
+    "Decision: push back on dual writes; outbox plus CDC gives the same events safely"
+   ]
+  },
+  {
+   "id": "st43",
+   "kind": "page",
+   "mids": [
+    "s06",
+    "s09"
+   ],
+   "q": "At 2 a.m. the Postgres primary's disk is 95% full and climbing. Nothing changed in the app. What do you check first?",
+   "points": [
+    "Replication slots: a stalled CDC connector or dead replica holds WAL forever; pg_replication_slots shows lag in bytes",
+    "Act: restart or fix the connector; if it cannot catch up before the disk fills, drop the slot and plan a re-snapshot (say the cost)",
+    "Other causes: long-running transactions blocking vacuum, a runaway temp table, logs",
+    "Prevent it: alert on slot lag in bytes, cap WAL retention for slots (max_slot_wal_keep_size), and page the connector's owner",
+    "Afterwards: a blameless review and a runbook entry"
+   ]
+  },
+  {
+   "id": "st44",
+   "kind": "page",
+   "mids": [
+    "s05",
+    "s09"
+   ],
+   "q": "A Flink job's checkpoint times are rising and the job restarts every hour. Consumer lag is growing. Walk me through it.",
+   "points": [
+    "Look at backpressure and the slowest operator first; checkpoints wait for barriers behind backpressure",
+    "Check state size growth: a window or join without TTL keeps every key forever",
+    "Check skew: one subtask with far more records (a hot key) slows every checkpoint",
+    "Fixes: state TTL, incremental checkpoints with RocksDB, unaligned checkpoints under backpressure, salting the hot key, more parallelism up to the partition count",
+    "Protect the business meanwhile: tell consumers the data is late, and alert on checkpoint duration before it fails"
+   ]
+  },
+  {
+   "id": "st45",
+   "kind": "page",
+   "mids": [
+    "s04",
+    "s09",
+    "m02"
+   ],
+   "q": "The CFO's revenue dashboard shows yesterday at half its usual value. It is 7 a.m. What do you do?",
+   "points": [
+    "First, is the data late or wrong? Check freshness and row counts per source against a normal day",
+    "Common causes: a partition that did not land, a join that dropped rows after a dimension change, a currency or timezone change",
+    "Communicate early: a banner on the dashboard and a message to the CFO's team with an estimate",
+    "Fix forward: rerun the affected partition idempotently, then reconcile totals with the finance source",
+    "Prevent: volume and freshness checks that block publishing, and a certified metric with an owner"
+   ]
+  },
+  {
+   "id": "st46",
+   "kind": "page",
+   "mids": [
+    "s07",
+    "s09",
+    "s02"
+   ],
+   "q": "An S3-backed job starts failing with 503 Slow Down errors after a new partitioning scheme went live. Diagnose and fix.",
+   "points": [
+    "S3 limits request rate per prefix (about 3,500 writes and 5,500 reads a second); the new scheme probably puts all writes under one prefix",
+    "Confirm with the request metrics per prefix or the error spread over keys",
+    "Fix: spread keys over prefixes (hash or high-cardinality first component), and write fewer, larger files",
+    "Retries with exponential backoff and jitter keep the job alive meanwhile",
+    "Add a load test of the write path when partitioning changes"
+   ]
+  },
+  {
+   "id": "st47",
+   "kind": "metric",
+   "mids": [
+    "s11",
+    "m02",
+    "s04"
+   ],
+   "q": "Uber Eats: how would you measure whether a new restaurant ranking helps the marketplace, not just clicks?",
+   "points": [
+    "Goal: more completed orders that customers rate well, without starving smaller restaurants or slowing deliveries",
+    "Primary: completed orders per session; guardrails: delivery time, cancellation rate, share of orders to new restaurants",
+    "Experiment unit: users, but watch interference (courier supply is shared), so consider city-level switchback tests",
+    "Data: impression log with rank position, orders joined by session, a daily fact per user and variant",
+    "Decide in advance the minimum effect worth shipping and the run time"
+   ]
+  },
+  {
+   "id": "st48",
+   "kind": "metric",
+   "mids": [
+    "s11",
+    "s04"
+   ],
+   "q": "Meta: Reels watch time is up 8% but daily active users are flat. Is the product doing well?",
+   "points": [
+    "Check definitions: watch time per user or total; did a logging change inflate it (autoplay counted)?",
+    "Segment: is the gain concentrated in heavy users while light users churn?",
+    "Look for cannibalisation: did feed or messaging time fall by the same amount?",
+    "Long-term signals: retention at 7 and 28 days, creator posting, satisfaction surveys",
+    "Conclude with what you would recommend measuring next and which guardrail would make you stop"
+   ]
+  },
+  {
+   "id": "st49",
+   "kind": "metric",
+   "mids": [
+    "s11",
+    "s04",
+    "m01"
+   ],
+   "q": "Salesforce: define the metrics and the data model for customer health across thousands of tenant orgs.",
+   "points": [
+    "Health = adoption (weekly active users / licences), depth (key features used), outcomes (cases closed, deals won), and risk (support tickets, contract end)",
+    "Grain: one row per org per week, a periodic snapshot, with a score and its parts",
+    "Sources: product events per tenant, licence and billing data, support cases; tenant id on everything",
+    "Dimensions: org (Type 2 on segment and owner), product, date",
+    "Validate the score: does it predict renewals? Back-test before anyone uses it"
+   ]
+  },
+  {
+   "id": "st50",
+   "kind": "metric",
+   "mids": [
+    "s11",
+    "s04"
+   ],
+   "q": "Google Maps: offline maps downloads are up 30% after a release. Prove it is real before you celebrate.",
+   "points": [
+    "Check logging first: a new event name, double firing, retries counted as downloads",
+    "Compare with server-side bytes served and storage used on devices",
+    "Segment by app version, platform and country to find where the change is",
+    "Check the release itself: did a prompt push downloads users never use? Measure offline sessions after download",
+    "Report the real effect with a confidence interval and what changed in usage"
+   ]
+  },
+  {
+   "id": "st51",
+   "kind": "metric",
+   "mids": [
+    "s11",
+    "s05",
+    "s04"
+   ],
+   "q": "Define and pipeline a real-time driver supply metric for a ride-hailing city operations team.",
+   "points": [
+    "Metric: available drivers per geo cell per minute versus open requests (supply-demand ratio), plus ETA to pickup",
+    "Events: driver_status (online, available, on trip) with location every few seconds; ride requests",
+    "Pipeline: Kafka keyed by driver; a stream job keeps each driver's latest state and counts per cell per minute",
+    "Serve to a real-time OLAP store for dashboards; land raw events for daily history",
+    "Edge cases: GPS noise, drivers toggling status, late events, cells with few drivers"
+   ]
+  },
+  {
+   "id": "st52",
+   "kind": "org",
+   "mids": [
+    "r01",
+    "s12"
+   ],
+   "q": "Three product teams each built their own customer table with different numbers. How do you fix it without stopping them?",
+   "points": [
+    "Find the definitions and the consumers; agree on one owner for customer data",
+    "Publish one certified customer table with a contract, tests and documented semantics",
+    "Migrate consumers team by team with a diff report; keep the old tables read-only for a period",
+    "Make it the easy path: a golden path template, catalog listing, and access by default",
+    "Measure: number of copies over time and incidents from mismatched numbers"
+   ]
+  },
+  {
+   "id": "st53",
+   "kind": "org",
+   "mids": [
+    "r01",
+    "s12"
+   ],
+   "q": "The data platform team is a ticket queue: every request waits two weeks. How do you change that?",
+   "points": [
+    "Find the top request types; most are repetitive (new source, new table, access)",
+    "Turn them into self-service with guardrails: templates, a CLI or UI, automatic checks",
+    "Define what the platform owns versus domain teams (data mesh style responsibilities)",
+    "Set service levels and publish them; reserve capacity for platform work",
+    "Measure lead time per request type before and after"
+   ]
+  },
+  {
+   "id": "st54",
+   "kind": "org",
+   "mids": [
+    "r01",
+    "s09"
+   ],
+   "q": "Incidents keep coming from the same pipelines but nobody owns them. What do you put in place?",
+   "points": [
+    "An owner for every pipeline and table in the catalog, with an on-call rotation",
+    "Service levels for the important datasets (freshness, completeness) with alerts that page the owner",
+    "Blameless post-incident reviews with tracked actions",
+    "Retire or hand over orphans: no owner, no production status",
+    "Report incident counts and time to recover per domain monthly"
+   ]
+  },
+  {
+   "id": "st55",
+   "kind": "org",
+   "mids": [
+    "r01",
+    "s12"
+   ],
+   "q": "You join as the first staff data engineer in a 40-person data org. What do you do in your first 90 days?",
+   "points": [
+    "Listen: meet consumers and teams, read incident history, map the systems and costs",
+    "Find the two or three problems with the most pain and leverage, with numbers",
+    "Write a short strategy document: where we are, where we go, what we will not do",
+    "Ship one visible win early to earn trust, while starting the longer change",
+    "Build the habits: design reviews, ownership, standards"
+   ]
+  },
+  {
+   "id": "st56",
+   "kind": "org",
+   "mids": [
+    "r01",
+    "m03",
+    "s12"
+   ],
+   "q": "Analysts and engineers disagree about who owns transformation logic. Settle it.",
+   "points": [
+    "Split by layer: engineers own ingestion and core models with contracts; analysts own marts on top",
+    "One tool and repository for transformations (dbt), with code review for both groups",
+    "Tests and contracts at the boundary so changes below do not break marts silently",
+    "Shared on-call for certified marts; experimental work stays in sandboxes",
+    "Write it down and revisit in a quarter"
+   ]
+  },
+  {
+   "id": "st57",
+   "kind": "cost",
+   "mids": [
+    "s07",
+    "s04",
+    "s10"
+   ],
+   "q": "Your BigQuery bill doubled in a month. Find the cause and cut it.",
+   "points": [
+    "Look at the job history: top queries and users by bytes scanned; usually a few dashboards or a scheduled query",
+    "Fix scans: partition by date, cluster by filter columns, require partition filters on big tables",
+    "Pre-aggregate the dashboard queries into a small daily table",
+    "Consider capacity pricing (slots) if spend is steady; set quotas per project",
+    "Report savings in dollars a month and set an alert on spend"
+   ]
+  },
+  {
+   "id": "st58",
+   "kind": "cost",
+   "mids": [
+    "s07",
+    "s02",
+    "s08"
+   ],
+   "q": "Storage is now the largest line on your cloud bill: 8 PB of S3. How do you cut it by half?",
+   "points": [
+    "Know what is there: an inventory by prefix, age and last access",
+    "Lifecycle rules: infrequent access after 30 days, archive after 180 for raw data you rarely read",
+    "Delete what nobody needs: old snapshots, temp data, duplicate copies; set retention by dataset",
+    "Compress and compact: Parquet with zstd, fewer small files (also cuts request costs)",
+    "Check retrieval costs and legal holds before archiving"
+   ]
+  },
+  {
+   "id": "st59",
+   "kind": "cost",
+   "mids": [
+    "s07",
+    "s03"
+   ],
+   "q": "Spark jobs run on on-demand clusters 24 hours a day. How do you lower the cost without missing SLAs?",
+   "points": [
+    "Measure utilisation: most clusters idle much of the day",
+    "Autoscaling and job clusters that shut down after the run",
+    "Spot capacity for restartable batch work with a fallback to on-demand",
+    "Right-size executors (memory and cores) from the Spark UI; fix skew and spills that waste time",
+    "Track cost per job and per table so owners see it"
+   ]
+  },
+  {
+   "id": "st60",
+   "kind": "cost",
+   "mids": [
+    "s07",
+    "s05"
+   ],
+   "q": "Your streaming platform runs 300 Flink jobs. Finance asks why it costs more than the batch platform. Answer them.",
+   "points": [
+    "Streaming pays for always-on compute; batch pays only while running",
+    "List jobs by cost and freshness need; many do not need seconds",
+    "Move minutes-fresh use cases to micro-batch or scheduled incremental jobs",
+    "Consolidate small jobs, scale down at night, right-size state backends",
+    "Show the trade-off in a table: freshness, cost, risk"
+   ]
+  },
+  {
+   "id": "st61",
+   "kind": "cost",
+   "mids": [
+    "s07",
+    "s09"
+   ],
+   "q": "Cross-region data transfer is 20% of the bill. What do you do?",
+   "points": [
+    "Find the flows: replication, consumers in another region, backups",
+    "Keep compute next to the data; read replicas or copies only where needed",
+    "Compress and filter before transfer; replicate aggregates instead of raw data",
+    "Check if multi-region is required at all for each dataset (RPO and RTO needs)",
+    "Price it: about $20 per TB between regions, so name the savings"
+   ]
+  },
+  {
+   "id": "st62",
+   "kind": "migrate",
+   "mids": [
+    "s06",
+    "s08"
+   ],
+   "q": "Move 500 tables from an on-premises Oracle warehouse to the cloud with no downtime for reporting.",
+   "points": [
+    "Inventory tables, jobs and consumers; group by domain",
+    "Initial bulk copy plus CDC to keep the cloud copy current",
+    "Rebuild jobs in the new platform domain by domain, run both and diff results automatically",
+    "Cut over consumers per domain with a rollback path; keep the old system read-only until signed off",
+    "Track progress and cost in a dashboard everyone sees"
+   ]
+  },
+  {
+   "id": "st63",
+   "kind": "migrate",
+   "mids": [
+    "s05",
+    "s06"
+   ],
+   "q": "Upgrade a Kafka cluster used by 200 services from ZooKeeper mode to KRaft without an outage.",
+   "points": [
+    "Read the supported path: upgrade to a bridge version, migrate metadata to KRaft controllers, then remove ZooKeeper",
+    "Test in a staging cluster with production-like traffic and clients",
+    "Roll brokers one at a time with health checks (under-replicated partitions zero before the next)",
+    "Communicate with service owners; freeze topic changes during the window",
+    "Rollback plan for each phase and what you monitor"
+   ]
+  },
+  {
+   "id": "st64",
+   "kind": "migrate",
+   "mids": [
+    "s04",
+    "m03"
+   ],
+   "q": "Replace hand-written SQL scripts scheduled by cron with dbt and an orchestrator.",
+   "points": [
+    "Inventory the scripts and their outputs; find dependencies from table reads",
+    "Port by domain into dbt models with tests; keep output tables identical",
+    "Run both and compare row counts and sums daily until they match",
+    "Move scheduling to the orchestrator with retries and alerts",
+    "Delete cron jobs only after a quiet period"
+   ]
+  },
+  {
+   "id": "st65",
+   "kind": "migrate",
+   "mids": [
+    "s08",
+    "s02"
+   ],
+   "q": "Change the partitioning of a 1 PB table that hundreds of jobs read, without breaking them.",
+   "points": [
+    "With Iceberg, partition evolution changes the spec for new data without rewriting old data",
+    "Readers using hidden partitioning keep working; jobs that read file paths directly need changes, so find them",
+    "Rewrite old partitions in the background if queries need the new layout",
+    "Watch query performance and file counts during the change",
+    "Announce it with a date and a contact"
+   ]
+  },
+  {
+   "id": "st66",
+   "kind": "estimate",
+   "mids": [
+    "s10",
+    "s05"
+   ],
+   "q": "Estimate the storage and compute for keeping 13 months of 50 billion ad impressions a day.",
+   "points": [
+    "50 billion × 200 bytes = 10 TB a day raw; Parquet about 2 TB a day; 13 months about 800 TB",
+    "Storage at about $23 a TB-month is about $18,000 a month standard; colder tiers for older months",
+    "Daily aggregation reads 2 TB; at about 50 MB/s per vCPU that is about 11 vCPU-hours, cheap",
+    "Queries over all history are the cost: pre-aggregate by campaign and day",
+    "State the assumptions and check the biggest one"
+   ]
+  },
+  {
+   "id": "st67",
+   "kind": "estimate",
+   "mids": [
+    "s10",
+    "s06"
+   ],
+   "q": "How many Debezium connectors and Kafka partitions for 200 databases doing 50,000 changes a second in total?",
+   "points": [
+    "One connector per database (they read one log each); 200 connectors over a Connect cluster",
+    "50,000 changes × 1 KB = 50 MB/s; partitions per table by key, a few partitions per busy table",
+    "Busiest database decides connector throughput; a single connector does a few thousand changes a second",
+    "WAL retention for the slowest connector's downtime",
+    "Monitor lag per connector"
+   ]
+  },
+  {
+   "id": "st68",
+   "kind": "estimate",
+   "mids": [
+    "s10",
+    "a05"
+   ],
+   "q": "Estimate the cost to embed 1 billion documents and serve similarity search for them.",
+   "points": [
+    "Tokens: 1 billion × 500 tokens = 500 billion tokens; at a hosted price per million tokens, multiply out (say the price you assume)",
+    "Vectors: 1 billion × 768 dimensions × 4 bytes ≈ 3 TB; with compression (quantisation) much less",
+    "Index memory for approximate search; shard across nodes",
+    "Re-embedding on model change is the hidden cost: plan for it",
+    "Compare self-hosted GPU embedding at volume"
+   ]
+  },
+  {
+   "id": "st69",
+   "kind": "estimate",
+   "mids": [
+    "s10",
+    "s04"
+   ],
+   "q": "How big is the warehouse for 5,000 analysts running 200 queries each a day?",
+   "points": [
+    "1 million queries a day; peak maybe 100 at once in office hours",
+    "Most are small; a few heavy ones dominate cost; separate workloads (warehouses or slot reservations)",
+    "Estimate bytes scanned per query from partitioning; turn into cost per month",
+    "Cache and pre-aggregate dashboards",
+    "Say how you would measure in the first week and resize"
+   ]
+  },
+  {
+   "id": "st70",
+   "kind": "deep",
+   "mids": [
+    "*"
+   ],
+   "q": "Walk me through the most complex pipeline you own, from source to consumer, with its numbers.",
+   "points": [
+    "Sources, volume (events a second, bytes a day), freshness target and consumers",
+    "The flow box by box, and why each box is there",
+    "Its failure modes and how you detect them",
+    "What it costs a month and what drives the cost",
+    "What you would change if you rebuilt it"
+   ]
+  },
+  {
+   "id": "st71",
+   "kind": "deep",
+   "mids": [
+    "*"
+   ],
+   "q": "Tell me about a time you chose between building and buying a data tool. What did you decide and why?",
+   "points": [
+    "The need and the options compared, with numbers (cost, time, risk)",
+    "Who would own it and run it",
+    "What you decided and the trade-off you accepted",
+    "How it turned out, with evidence",
+    "What you would do differently"
+   ]
+  },
+  {
+   "id": "st72",
+   "kind": "deep",
+   "mids": [
+    "*",
+    "s06"
+   ],
+   "q": "Describe a data correctness bug that reached a business decision. How did it happen and what changed?",
+   "points": [
+    "The bug and how it was found",
+    "Why tests and checks missed it",
+    "Impact in business terms and how you communicated",
+    "The fix and the checks you added",
+    "What you changed in process"
+   ]
+  },
+  {
+   "id": "st73",
+   "kind": "deep",
+   "mids": [
+    "*",
+    "s10"
+   ],
+   "q": "Pick a system you designed. What happens at ten times the load?",
+   "points": [
+    "Current numbers and the first bottleneck",
+    "The second and third bottlenecks",
+    "What you would change and at what scale",
+    "What it would cost",
+    "How you would test it"
+   ]
+  },
+  {
+   "id": "st74",
+   "kind": "deep",
+   "mids": [
+    "*",
+    "s07"
+   ],
+   "q": "Tell me about the largest cost saving you delivered. How did you find it?",
+   "points": [
+    "Where the money went and how you measured it",
+    "The changes, ranked by saving and risk",
+    "How you kept service levels",
+    "The result in dollars a month",
+    "How you kept it from creeping back"
+   ]
+  },
+  {
+   "id": "st75",
+   "kind": "deep",
+   "mids": [
+    "*",
+    "s09"
+   ],
+   "q": "Describe your worst production incident. What did you learn?",
+   "points": [
+    "What happened and the impact",
+    "How it was detected and the timeline",
+    "The root cause and contributing factors",
+    "What you changed to prevent it",
+    "What you learned about yourself or the team"
+   ]
+  },
+  {
+   "id": "st76",
+   "kind": "lead",
+   "mids": [
+    "r01"
+   ],
+   "q": "Two senior engineers disagree strongly about a design and the team is stuck. What do you do?",
+   "points": [
+    "Write the options down with criteria agreed first (cost, risk, time, operability)",
+    "Let each present; find what evidence would change minds and get it quickly (a spike or load test)",
+    "Decide, or name who decides, with a date",
+    "Record the decision and the reasons (an ADR)",
+    "Check later whether it worked; no blame"
+   ]
+  },
+  {
+   "id": "st77",
+   "kind": "lead",
+   "mids": [
+    "r01"
+   ],
+   "q": "How do you grow senior engineers into staff engineers on your team?",
+   "points": [
+    "Give them problems bigger than one team, with real ownership",
+    "Coach on writing (design docs, strategy) and influence",
+    "Sponsor them in rooms they are not in yet",
+    "Feedback with examples, regularly",
+    "Celebrate their wins publicly"
+   ]
+  },
+  {
+   "id": "st78",
+   "kind": "lead",
+   "mids": [
+    "r01",
+    "s11"
+   ],
+   "q": "A product director wants a feature in two weeks that you think needs two months to do safely. How do you handle it?",
+   "points": [
+    "Understand the goal behind the date",
+    "Offer options: a smaller version in two weeks, the full one later, and the risks of each",
+    "Make the risk concrete with numbers",
+    "Agree on the plan in writing",
+    "Deliver what you promised and report"
+   ]
+  },
+  {
+   "id": "st79",
+   "kind": "lead",
+   "mids": [
+    "r01",
+    "s12"
+   ],
+   "q": "How do you set technical direction for data across several teams you do not manage?",
+   "points": [
+    "A short written strategy with principles and a few bets",
+    "Bring others in early so it is theirs too",
+    "Make the right thing easy (templates, platforms)",
+    "Review designs and give useful feedback",
+    "Measure adoption and adjust"
+   ]
+  },
+  {
+   "id": "st80",
+   "kind": "lead",
+   "mids": [
+    "r01"
+   ],
+   "q": "Tell me about a time you changed your mind after a junior engineer pushed back.",
+   "points": [
+    "The situation and your initial view",
+    "What they said and how you listened",
+    "What evidence changed your mind",
+    "The outcome",
+    "What it taught you about leading"
+   ]
   }
  ]
 }
