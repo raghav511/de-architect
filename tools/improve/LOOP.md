@@ -26,11 +26,21 @@ and for **building a production-grade data foundation for an organization** at w
    change and passes with it. Then run, against the local server on 8811 (`python3 ../qa/serve.py 8811 "$PWD"` if not
    running): `node tools/qa_trust.js`, the flows matching the area, `node tools/sched_test.js`, `python3 tools/validate.py`.
    Use `NODE_PATH=../qa/node_modules`. Fix anything you broke. Never let a test reach 127.0.0.1:8765 or a real sync URL.
+   **Then test every feature, not only the one you built** (the user found reels silent while their tests passed):
+   run `node tools/smoke.js BASE` on Chromium and on WebKit with an iPhone profile, against the local server before
+   shipping and against the live site after. It must exercise each feature the way the learner uses it and check the
+   outcome a person would notice, not just that a screen drew: a reel makes sound (a recording plays and advances, or
+   a device voice speaks) and moves to the next beat; code runs and shows output; a quiz submits and scores; a live mock
+   asks, takes an answer and scores; the simulator runs traffic and grades; sync merges with a stub server; Today
+   ticks persist; search, Path, lessons, figures, labs, terminal boot, Git labs, playbook, warm-up, progress, profile
+   and update all open and respond; offline reload works. Any failure is the next thing you fix, before new features.
+   When you add a feature, add it to `tools/smoke.js` in the same PR.
 5. **Ship**: update `CLAUDE.md` (layout, mechanism, Recent changes, Next; prune stale lines), then
    `../qa/ship.sh <next minor or patch> "<title>" "<plain-words note>"...` and merge the PR. If GitHub reports a conflict,
    merge `origin/main`, resolve keeping both sides, retest, and merge. Never push to main directly or bypass review rules.
 6. **Verify live**: fetch `https://raghav511.github.io/de-architect/version.json` until it shows the new version
-   (re-request a Pages build if it is stuck over 10 minutes).
+   (re-request a Pages build if it is stuck over 10 minutes), then run `tools/smoke.js` against the live site on both
+   engines. A live failure is fixed and shipped before anything else.
 7. **Record**: move the item to Done in BACKLOG.md with the version, append one line to LOG.md
    (`date · version · item · tests added · result`), and add any follow-ups you found to the backlog.
 8. Show progress as a checklist, then schedule the next iteration.
