@@ -1,7 +1,9 @@
 {
-  "version": "1.36.5",
+  "version": "1.36.6",
   "date": "2026-11-07",
   "notes": [
-    "754 of 1239 reels now play in the natural Heart voice."
+    "On iPhone, lesson pages no longer slide sideways, and the This week heading and the design round timer no longer overlap other text.",
+    "Folded answers, reel buttons under headings, quests, simulator and loop chips, simulator tools and the code editor's tabs are easier to tap on a phone.",
+    "An empty Send to the coach or an empty Run line now puts the cursor in the box."
   ]
 }

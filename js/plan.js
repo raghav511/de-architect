@@ -326,7 +326,7 @@ function vToday(off) {
     off === 0 && typeof simToday === 'function' ? simToday() : null,
     off === 0 && typeof loopToday === 'function' ? loopToday() : null,
     off === 0 ? el('div', { id: 'gcardslot' }) : null,
-    el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'This week' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'minutes planned / budget · tap a day to see it' }), el('button', { class: 'btn sm', onclick: exportIcs, text: 'Add to calendar' })]), weekStrip(sc, k)])]);
+    el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', style: { minWidth: 'max-content' }, text: 'This week' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'minutes planned / budget · tap a day to see it' }), el('button', { class: 'btn sm', onclick: exportIcs, text: 'Add to calendar' })]), weekStrip(sc, k)])]);
   if (off === 0) { reelToday().then(c => { const s = document.getElementById('rtodayslot'); if (c && s) s.replaceWith(c); }); gameCard().then(c => { const s = document.getElementById('gcardslot'); if (c && s) s.replaceWith(c); }); gameShipCheck(); }
 }
 let todayTab = null; /* the plan tab picked on Today, kept while the app is open */
@@ -646,7 +646,7 @@ function programCard() {
   for (let i = 0; i < 84; i++) { const x = new Date(start); x.setDate(start.getDate() + i); const k = iso(x), v = per[k] || 0; cells.push(el('span', { title: shortDate(k) + ': ' + v + ' min', class: 'hm' + (v >= 90 ? ' h3' : v >= 45 ? ' h2' : v > 0 || active.has(k) ? ' h1' : '') + (k === sc.today ? ' now' : '') })); }
   const stat = (n, t) => el('div', { class: 'stack', style: { gap: '0' } }, [el('b', { style: { font: '800 26px var(--display)' }, text: n }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: t })]);
   return el('section', { class: 'card pad stack' }, [
-    el('div', { class: 'row wrap' }, [el('span', { class: 'lbl grow', text: 'Program' }), el('a', { href: '#/path', style: { fontWeight: 600, fontSize: '14px' }, text: 'Open the path ›' })]),
+    el('div', { class: 'row wrap' }, [el('span', { class: 'lbl grow', text: 'Program' }), el('a', { class: 'tlink', href: '#/path', style: { fontWeight: 600, fontSize: '14px' }, text: 'Open the path ›' })]),
     el('div', { class: 'statrow' }, [stat(done.length + '/' + U.length, 'steps done'), stat(Math.round(dm / 60) + ' / ' + Math.round(mins / 60) + ' h', 'study hours'), stat(streak + (streak === 1 ? ' day' : ' days'), 'study streak'), stat(shortDate(last).slice(4), 'planned finish (week ' + weekOf(last) + ')')]),
     el('div', { class: 'bar' }, el('i', { style: { width: Math.round(100 * dm / Math.max(1, mins)) + '%' } })),
     el('span', { class: 'lbl', text: 'Last 12 weeks · minutes studied per day' }), el('div', { class: 'heat', 'aria-label': 'Study activity, last 12 weeks' }, cells),

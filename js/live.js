@@ -155,7 +155,7 @@ function liveStart(page, k, m) {
     el('div', { class: 'row wrap' }, [el('span', { class: 'lbl', text: 'Level' }), lv]),
     el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: via === 'key' ? 'Follow-ups and scores come from the AI with the API key on this device (a few cents with the default model).' : via === 'mac' ? 'Follow-ups and scores come from Claude Code on your Mac (it must be awake).' : 'AI features are off: after each answer you compare with the model answer and mark yourself.' }),
     el('button', { class: 'btn pri', onclick: () => { m.i = 0; m.started = Date.now(); save(); route(); } }, 'Start'),
-    el('a', { href: '#/mock/' + k, class: 'muted', style: { fontSize: '14px' }, text: 'Prefer writing long answers? Take the written mock instead' })]));
+    el('a', { href: '#/mock/' + k, class: 'muted tlink', style: { fontSize: '14px' }, text: 'Prefer writing long answers? Take the written mock instead' })]));
 }
 
 function liveQuestion(page, k, m) {

@@ -21,6 +21,9 @@ const STATES = arg('--state') ? [arg('--state')] : ['fresh', 'mid'];
 const OUT = path.join(__dirname, 'crawl');
 const T = +(process.env.CRAWL_SLOW || 1); /* timeout multiplier for a busy Mac */
 const DESTRUCTIVE = /^(reset|delete|remove|clear|sign out|start over|erase|forget|wipe|restore|import)\b|reset and exit|delete wire|remove this design/i;
+/* tap-target exceptions, listed in the report: the simulator canvas (boxes and wires scale with zoom; pinch to enlarge)
+   and Progress's 84-square DSA heat-map (an overview; every problem is also a full-size row in Practice) */
+const TAP_EXEMPT = '.simnode, .simedge, .dsa-grid a';
 const CHROME = '.side, .tabbar, header.top, .coachfab, .fab'; /* shared on every screen: crawled once, on Today */
 const H = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS' };
 const AI = r => { if (r.request().method() === 'OPTIONS') return r.fulfill({ status: 204, headers: H }); const fu = /ONE follow-up/.test(r.request().postData() || ''); return r.fulfill({ headers: H, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: fu ? '{"followup":"What changes at 100 times the data?"}' : '{"scores":{"correct":3,"depth":3,"trade":2,"clear":3},"rejected":true,"limits":true,"operate":false,"feedback":"Name the limit.","better":"A stronger answer."}' }] }) }); };
@@ -133,8 +136,10 @@ async function crawl(browser, engine, state) {
       if (!(await page.$('h1'))) throw new Error('no heading');
     } catch (e) { if (process.env.DEBUG) console.log('    soft reset failed:', e.message.split('\n')[0]); await full(route); }
   }
+  /* wait until the screen stops changing (async parts of a screen render after route() returns) */
+  async function settle() { for (let i = 0; i < 15; i++) { const a = await page.evaluate(() => window.__mut).catch(() => 0); await page.waitForTimeout(200); const b = await page.evaluate(() => window.__mut).catch(() => 0); if (b - a <= 2) return; } }
   /* every visible control, in document order, with what the crawler needs to judge it */
-  const enumerate = (skipChrome) => page.evaluate(([skip, CHROME]) => {
+  const enumerate = (skipChrome) => page.evaluate(([skip, CHROME, EX]) => {
     const list = [...document.querySelectorAll(window.__crawlSEL)].filter(e => window.__crawlVis(e) && !(skip && e.closest(CHROME)) && !e.closest('.xterm, .cm-editor, .CodeMirror'));
     const counts = {};
     return list.map(e => {
@@ -143,10 +148,10 @@ async function crawl(browser, engine, state) {
       /* inline text links are exempt from the tap-target rule (WCAG 2.5.8) */
       const inline = tag === 'a' && cs.display === 'inline' && e.parentElement && /^(P|LI|TD|SPAN|EM|STRONG|B|DIV|LABEL|SMALL)$/.test(e.parentElement.tagName) && (e.parentElement.innerText || '').trim().length > (e.innerText || '').trim().length + 3;
       let over = false;
-      if (tag !== 'select' && cs.overflowX === 'visible' && !/ellipsis/.test(cs.textOverflow)) { over = e.scrollWidth > e.clientWidth + 2 && e.clientWidth > 0; if (!over && e.innerText) { const r = document.createRange(); r.selectNodeContents(e); const rb = r.getBoundingClientRect(); over = rb.width > 0 && (rb.right > b.right + 2 || rb.left < b.left - 2) && b.width < rb.width; } }
-      return { key, n: counts[key], tag, role: e.getAttribute('role') || '', cls: (e.className && e.className.baseVal === undefined ? e.className : '').split(' ').slice(0, 2).join('.'), label, named: !!label, href: e.getAttribute('href') || '', target: e.getAttribute('target') || '', w: Math.round(b.width), h: Math.round(b.height), inline, over, disabled: !!e.disabled || e.getAttribute('aria-disabled') === 'true', here: e.getAttribute('aria-current') === 'page', tablike: e.getAttribute('role') === 'tab' || e.hasAttribute('aria-expanded') || tag === 'summary' || e.hasAttribute('aria-controls') };
+      if (tag !== 'select' && cs.overflowX === 'visible' && !/ellipsis/.test(cs.textOverflow)) { over = e.scrollWidth > e.clientWidth + 6 && e.clientWidth > 0; /* a few px is an enlarged tap area (::after), not text */ if (!over && e.innerText && !e.querySelector('.sr')) { const r = document.createRange(); r.selectNodeContents(e); const rb = r.getBoundingClientRect(); over = rb.width > 0 && (rb.right > b.right + 2 || rb.left < b.left - 2) && b.width < rb.width; } }
+      return { key, n: counts[key], tag, role: e.getAttribute('role') || '', cls: (e.className && e.className.baseVal === undefined ? e.className : '').split(' ').slice(0, 2).join('.'), label, named: !!label, href: e.getAttribute('href') || '', target: e.getAttribute('target') || '', w: Math.round(b.width), h: Math.round(b.height), inline, over, disabled: !!e.disabled || e.getAttribute('aria-disabled') === 'true', exempt: !!e.closest(EX), term: !!e.closest('.xtkeys'), here: (e.getAttribute('aria-current') || 'false') !== 'false' || (e.getAttribute('href') || '').replace(/\/$/, '') === location.hash.replace(/\/$/, ''), tablike: e.getAttribute('role') === 'tab' || e.hasAttribute('aria-expanded') || tag === 'summary' || e.hasAttribute('aria-controls') };
     });
-  }, [skipChrome, CHROME]);
+  }, [skipChrome, CHROME, TAP_EXEMPT]);
   const find = (key, n) => page.evaluateHandle(([key, n, CHROME]) => window.__crawlFind(key, n), [key, n, CHROME]);
   /* effective tap target: the 44x44 box around the control's centre lands on the control (padding or ::after count) */
   async function tapTarget(h) {
@@ -159,14 +164,14 @@ async function crawl(browser, engine, state) {
     }).catch(() => true);
   }
   const before = () => page.evaluate(() => {
-    let hsh = 0; const s = [...document.body.children].filter(e => e.tagName !== 'SCRIPT').map(e => e.innerHTML).join(''); for (let i = 0; i < s.length; i += 7) hsh = (hsh * 31 + s.charCodeAt(i)) | 0;
+    let hsh = 0; const s = [...document.body.children].filter(e => e.tagName !== 'SCRIPT').map(e => e.innerHTML).join(''); for (let i = 0; i < s.length; i++) hsh = (hsh * 31 + s.charCodeAt(i)) | 0;
     return { hash: location.hash, dom: hsh + ':' + s.length, scrim: document.querySelectorAll('.scrim, [role=dialog], dialog[open]').length, toast: [...document.querySelectorAll('.toast')].map(t => t.innerText).join('|'), mut: window.__mut, snd: window.__snd, open: window.__open, clip: window.__clip || 0, y: Math.round(scrollY), focus: document.activeElement ? document.activeElement.outerHTML.slice(0, 80) : '', body: document.body.children.length, csp: window.__csp.length };
   }).catch(() => null);
-  const ctlState = h => h.evaluate(e => [e.getAttribute('aria-expanded'), e.getAttribute('aria-selected'), e.getAttribute('aria-pressed'), e.getAttribute('aria-checked'), e.checked, e.open, e.closest('details') ? e.closest('details').open : null, e.value, e.className, (e.textContent || '').slice(0, 60)].join('|')).catch(() => 'gone');
+  const ctlState = h => h.evaluate(e => [e.getAttribute('aria-expanded'), e.getAttribute('aria-selected'), e.getAttribute('aria-pressed'), e.getAttribute('aria-checked'), e.checked, e.open, e.closest('details') ? e.closest('details').open : null, e.value, e.className, e.getAttribute('style'), (e.textContent || '').slice(0, 60)].join('|')).catch(() => 'gone');
 
   const FINDER = () => {
     window.__crawlSEL = 'button, a[href], summary, select, input[type=checkbox], input[type=radio], [role=button], [role=tab], [role=switch], [role=menuitem], [role=checkbox], [role=link], [tabindex="0"][onclick]';
-    window.__crawlVis = e => { const b = e.getBoundingClientRect(), s = getComputedStyle(e); return b.width > 0 && b.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && !e.closest('[hidden], [aria-hidden="true"]') && parseFloat(s.opacity) > 0.01; };
+    window.__crawlVis = e => { const b = e.getBoundingClientRect(), s = getComputedStyle(e); return b.width > 0 && b.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && !e.closest('[hidden], [aria-hidden="true"]') && !e.closest('details:not([open]) > :not(summary)') && parseFloat(s.opacity) > 0.01; }; /* Chromium gives a closed <details>' content a box */
     const txt = e => (e.innerText || '').trim() || (e.textContent || '').trim();
     window.__crawlName = e => {
       const l = e.getAttribute('aria-label'); if (l && l.trim()) return l.trim();
@@ -209,7 +214,7 @@ async function crawl(browser, engine, state) {
       const sg = sigOf(c);
       if (!c.named) issue(route, 'name', 'control has no accessible name', c.tag + '.' + c.cls + (c.href ? ' ' + c.href : ''));
       if (c.over) issue(route, 'overflow', 'text overflows the control', c.label);
-      if (iphone && !c.inline && (c.w < 44 || c.h < 44) && !sigSeen['tap|' + sg]) {
+      if (iphone && !c.inline && !c.exempt && (c.w < 44 || c.h < 44) && !sigSeen['tap|' + sg]) {
         const h = await find(c.key, c.n); const el = h.asElement();
         if (el && !(await tapTarget(el))) issue(route, 'tap', `tap target ${c.w}x${c.h}px (under 44)`, c.label || c.tag);
         sigSeen['tap|' + sg] = 1;
@@ -219,7 +224,8 @@ async function crawl(browser, engine, state) {
     const queue = ctls.map(c => ({ c, prefix: [] }));
     const seenKeys = new Set(ctls.map(c => c.key + '#' + c.n));
     let subStates = 0;
-    while (queue.length) { try {
+    const deadline = Date.now() + 8 * 60e3 * T; /* one screen never holds up the whole crawl */
+    while (queue.length) { if (Date.now() > deadline) { issue(route, 'crawler', 'stopped after 8 minutes; ' + queue.length + ' controls not clicked'); break; } try {
       /* chapter text repeats the same kinds of control under every heading (reel, details, figure steps): in module
          tabs a kind of control is clicked three times in all, ignoring its label; elsewhere each label twice */
       const loose = fam.startsWith('learn/'), { c, prefix } = queue.shift(), sg = (loose ? 'learn' : fam) + '|' + sigOf(c, loose);
@@ -229,7 +235,8 @@ async function crawl(browser, engine, state) {
       if (c.disabled) { R.controls.push({ route, label: c.label, tag: c.tag, effect: 'disabled' }); continue; }
       if (c.target === '_blank' || (/^https?:/.test(c.href) && !c.href.startsWith(BASE))) { R.controls.push({ route, label: c.label, tag: c.tag, effect: 'external link (not opened)' }); continue; }
       await soft(route); await page.evaluate(FINDER).catch(() => {});
-      for (const pk of prefix) { const ph = (await find(pk.key, pk.n)).asElement(); if (ph) { await ph.evaluate(e => e.scrollIntoView({ block: 'center' })).catch(() => {}); await ph.click({ timeout: 3000 * T }).catch(() => {}); await page.waitForTimeout(250 * T); } }
+      await settle();
+      for (const pk of prefix) { const ph = (await find(pk.key, pk.n)).asElement(); if (ph && !(await ph.evaluate(e => (e.tagName === 'SUMMARY' && e.parentElement.open) || e.getAttribute('aria-expanded') === 'true' || e.getAttribute('aria-selected') === 'true').catch(() => false))) { /* already open: a second tap would close it */ await ph.evaluate(e => e.scrollIntoView({ block: 'center' })).catch(() => {}); await ph.click({ timeout: 3000 * T }).catch(() => {}); await page.waitForTimeout(250 * T); } }
       const h = (await find(c.key, c.n)).asElement();
       if (!h) { R.controls.push({ route, label: c.label, tag: c.tag, effect: 'not found after restore' }); continue; }
       ev.errs.length = 0; const e0 = { dlg: ev.dlg, dl: ev.dl, fc: ev.fc, popup: ev.popup };
@@ -241,8 +248,11 @@ async function crawl(browser, engine, state) {
       let clickErr = '';
       try {
         if (c.tag === 'select') { const vals = await h.evaluate(e => [...e.options].map(o => o.value)); const cur = await h.evaluate(e => e.value); await h.selectOption(vals.find(v => v !== cur) || cur, { timeout: 3000 * T }); }
-        else { await h.evaluate(e => e.scrollIntoView({ block: 'center', inline: 'nearest' })); await h.click({ timeout: 3000 * T }); } /* centred, as a person scrolls: not under the fixed header or tab bar */
-      } catch (e) { const by = (e.message.match(/<[^>]{0,80}> (?:from <[^>]{0,60}> subtree )?intercepts pointer events/) || [''])[0]; clickErr = (by ? 'covered: ' + by : e.message.split('\n')[0]).slice(0, 160); }
+        else { await h.evaluate(e => e.scrollIntoView({ block: 'center', inline: 'nearest' })); await h.click({ timeout: 3000 * T }).catch(async e => {
+          /* the restored screen can differ from a fresh load: retry once from a full reload before calling it a bug */
+          await full(route); await settle(); for (const pk of prefix) { const ph = (await find(pk.key, pk.n)).asElement(); if (ph && !(await ph.evaluate(x => (x.tagName === 'SUMMARY' && x.parentElement.open) || x.getAttribute('aria-expanded') === 'true' || x.getAttribute('aria-selected') === 'true'))) { await ph.click({ timeout: 3000 * T }).catch(() => {}); await page.waitForTimeout(300 * T); } }
+          const h2 = (await find(c.key, c.n)).asElement(); if (!h2) throw e; await h2.evaluate(x => x.scrollIntoView({ block: 'center' })); await h2.click({ timeout: 3000 * T }); }); }
+      } catch (e) { const by = (e.message.match(/<[^>]{0,80}> (?:from <[^>]{0,60}> subtree )?intercepts pointer events/) || [''])[0]; clickErr = (by ? 'covered: ' + by : e.message.split('\n')[0]).slice(0, 160); if (process.env.DEBUG) console.log(e.message.split('\n').slice(0, 12).join('\n')); }
       await page.waitForTimeout(450 * T);
       const a = await before();
       const st1 = a ? await ctlState(h) : 'gone';
@@ -261,11 +271,17 @@ async function crawl(browser, engine, state) {
         if (ev.dlg > e0.dlg) { fx.push('native dialog'); issue(route, 'dialog', 'native browser dialog (blocked on iPhone home-screen apps)', c.label); }
         if (a.y !== b1.y && Math.abs(a.y - b1.y) > 20 && !fx.length) fx.push('scrolled');
         if (a.focus !== b1.focus && !/^<(button|a|summary|select|input)/i.test(a.focus) && !fx.length) fx.push('focus moved');
-        if (!fx.length && (a.dom !== b1.dom || a.body !== b1.body) && (a.mut - b1.mut) > mutBase * 2 + 2) fx.push('content changed');
+        if (!fx.length && (a.dom !== b1.dom || a.body !== b1.body) && (a.mut - b1.mut) > mutBase * 2) fx.push('content changed');
       }
       if (clickErr) issue(route, 'click', 'cannot click: ' + clickErr, c.label);
       else if (!fx.length && c.here) fx.push('already here');
       else if (!fx.length && /\|(true)\|/.test('|' + st0.split('|').slice(1, 4).join('|') + '|')) fx.push('already selected');
+      if (!clickErr && !fx.length && a) { /* slow effects (a download after an image renders, a fetch): look again after a second */
+        await page.waitForTimeout(1200 * T); const a2 = await before();
+        if (ev.dl > e0.dl) fx.push('download'); else if (ev.popup > e0.popup || (a2 && a2.open > b1.open)) fx.push('popup');
+        else if (a2 && (a2.hash !== b1.hash || a2.scrim > b1.scrim || (a2.toast && a2.toast !== b1.toast) || a2.dom !== a.dom)) fx.push('changed after a second');
+      }
+      if (!clickErr && !fx.length && c.term) fx.push('sent to the terminal (drawn on its canvas; see the terminal journeys)');
       if (!clickErr && !fx.length) issue(route, 'dead', 'nothing visible happened', c.label || c.tag);
       ev.errs.splice(0).forEach(e => issue(route, /^csp/.test(e) ? 'csp' : 'error', 'after click: ' + e, c.label));
       if (a) { const t = await page.evaluate(() => (document.querySelector('.top .title b') || {}).textContent).catch(() => ''); if (t === 'Something went wrong') issue(route, 'error', 'click leads to the error page', c.label); }
@@ -277,11 +293,11 @@ async function crawl(browser, engine, state) {
         const now = await enumerate(route !== '#/today');
         const fresh = now.filter(x => !seenKeys.has(x.key + '#' + x.n));
         if (fresh.length) { subStates++; fresh.forEach(x => { seenKeys.add(x.key + '#' + x.n); queue.push({ c: x, prefix: prefix.concat([{ key: c.key, n: c.n }]) }); });
-          for (const x of fresh) { if (!x.named) issue(route, 'name', 'control has no accessible name', x.tag + '.' + x.cls + ' (after ' + c.label + ')'); if (iphone && !x.inline && (x.w < 44 || x.h < 44) && !sigSeen['tap|' + sigOf(x)]) { sigSeen['tap|' + sigOf(x)] = 1; const hx = (await find(x.key, x.n)).asElement(); if (hx && !(await tapTarget(hx))) issue(route, 'tap', `tap target ${x.w}x${x.h}px (under 44)`, x.label || x.tag); } if (x.over) issue(route, 'overflow', 'text overflows the control', x.label); } }
+          for (const x of fresh) { if (!x.named) issue(route, 'name', 'control has no accessible name', x.tag + '.' + x.cls + ' (after ' + c.label + ')'); if (iphone && !x.inline && !x.exempt && (x.w < 44 || x.h < 44) && !sigSeen['tap|' + sigOf(x)]) { sigSeen['tap|' + sigOf(x)] = 1; const hx = (await find(x.key, x.n)).asElement(); if (hx && !(await tapTarget(hx))) issue(route, 'tap', `tap target ${x.w}x${x.h}px (under 44)`, x.label || x.tag); } if (x.over) issue(route, 'overflow', 'text overflows the control', x.label); } }
     }
     } catch (e) { issue(route, 'crawler', 'crawler error (not the app): ' + e.message.split('\n')[0].slice(0, 120)); await full(route).catch(() => {}); } }
     rr.ms = Date.now() - t0;
-    fs.writeFileSync(path.join(OUT, engine + '-' + state + '.json'), JSON.stringify(R, null, 1)); /* partial results survive a stopped run */
+    fs.writeFileSync(path.join(OUT, engine + '-' + state + (ONLY ? '-only' : '') + '.json'), JSON.stringify(R, null, 1)); /* partial results survive a stopped run */
     console.log(`[${engine}/${state}] ${ri + 1}/${todo.length} ${route}: ${ctls.length} controls, ${rr.clicked} clicked, ${Math.round(rr.ms / 1000)}s, issues so far ${R.issues.length}`);
   }
 
@@ -296,6 +312,21 @@ async function crawl(browser, engine, state) {
 
 /* fixed bugs: return a message when the bug is back */
 const REGRESS = [
+  ['Today\'s "This week" heading and the design round timer keep their text on one line on a phone (1.36.6)', async (p, o) => {
+    if (!o.iphone) return; const out = [];
+    for (const [h, t] of [['#/today', 'This week'], ['#/design', 'Round timer']]) {
+      await o.full(h); await p.waitForTimeout(1500);
+      const r = await p.evaluate(t => { const e = [...document.querySelectorAll('h2, .lbl')].find(x => x.textContent.trim() === t); const b = e && (e.closest('.grow') || e); return b ? b.scrollWidth - b.clientWidth : null; }, t);
+      if (r === null) out.push(t + ' not found'); else if (r > 2) out.push(t + ' overflows by ' + r + 'px');
+    }
+    return out.join('; ');
+  }],
+  ['an empty Send in the coach panel puts the cursor in the message box (1.36.6)', async p => {
+    await p.click('button.fab').catch(() => {}); await p.waitForTimeout(400);
+    const b = p.locator('.coach button[aria-label="Send"], .coach button:has-text("Send")').first(); if (!(await b.count())) return 'no Send button in the coach panel';
+    await b.click({ timeout: 5000 }); await p.waitForTimeout(200);
+    return (await p.evaluate(() => document.activeElement && document.activeElement.getAttribute('aria-label'))) === 'Message the coach' ? '' : 'focus did not move to the message box';
+  }],
   ['every reel picture builds (written flows with steps or nodes instead of items crashed the player, 1.32.1)', async p => {
     const r = await p.evaluate(async () => { let n = 0; const bad = []; for (const m of MODS_ALL) for (const x of await reelsFor(m)) for (const b of x.beats || []) { if (!b.show) continue; n++; try { FX.build(b.show).stop(); } catch (e) { if (bad.length < 3) bad.push(x.id + ': ' + e.message); } } return { n, bad }; });
     return r.bad.length ? r.bad.join(' | ') : r.n < 100 ? 'only ' + r.n + ' pictures found' : '';
@@ -322,6 +353,7 @@ function report() {
   const all = dedupe([].concat(...runs.map(r => r.issues.map(i => Object.assign({ run: r.engine + '/' + r.state }, i)))));
   md += '\n## Issues\n\n' + (all.length ? '| Kind | Control | What | Screens |\n|---|---|---|---|\n' + all.map(i => `| ${i.kind} | ${esc(i.ctl)} | ${esc(i.what)} | ${esc(i.routes.slice(0, 4).join(', ') + (i.routes.length > 4 ? ' +' + (i.routes.length - 4) : ''))} |`).join('\n') + '\n' : 'None.\n');
   const sk = new Map(); runs.forEach(r => r.skipped.forEach(s => { const k = s.label; sk.set(k, (sk.get(k) || new Set()).add(s.route)); }));
+  md += '\n## Tap-target exceptions\n\nThe simulator canvas (`.simnode`, `.simedge`: boxes and wires scale with zoom, and the toolbar zooms in) and the 84-square DSA heat-map on Progress (`.dsa-grid`: an overview; every problem is also a full-size row in Practice) are not held to 44 px.\n';
   md += '\n## Skipped on purpose (destructive)\n\n' + (sk.size ? '| Control | Screens |\n|---|---|\n' + [...sk].map(([l, rs]) => `| ${esc(l)} | ${esc([...rs].slice(0, 5).join(', '))} |`).join('\n') + '\n' : 'None.\n');
   const fx = {}; runs.forEach(r => r.controls.forEach(c => { const k = c.effect.split(/[ ,"]/)[0] || 'none'; fx[k] = (fx[k] || 0) + 1; }));
   md += '\n## What clicks did\n\n| Effect | Clicks |\n|---|---|\n' + Object.entries(fx).sort((a, b) => b[1] - a[1]).map(([k, n]) => `| ${k} | ${n} |`).join('\n') + '\n';
@@ -339,7 +371,7 @@ function report() {
     const browser = await pw[engine].launch();
     for (const state of STATES) {
       const R = await crawl(browser, engine, state);
-      fs.writeFileSync(path.join(OUT, engine + '-' + state + '.json'), JSON.stringify(R, null, 1));
+      fs.writeFileSync(path.join(OUT, engine + '-' + state + (ONLY ? '-only' : '') + '.json'), JSON.stringify(R, null, 1));
       const d = dedupe(R.issues); n += d.length;
       d.forEach(i => console.log(`ISSUE [${engine}/${state}] ${i.kind} ${i.ctl ? '"' + i.ctl + '" ' : ''}${i.what} @ ${i.routes.slice(0, 3).join(', ')}`));
       console.log(`[${engine}/${state}] ${R.controls.length} clicks, ${R.skipped.length} skipped, ${d.length} issues`);

@@ -716,4 +716,14 @@ a.srcl:hover{background:var(--teal-l)}
 .seg button::after,.rmode button::after{content:'';position:absolute;inset:-4px 0}.rfilters button::after{content:'';position:absolute;inset:-8px 0}
 label.row:has(> input[type=checkbox]:first-child){min-height:44px;margin-left:-12px;padding-left:12px} /* the whole row, and a little to the left of the box, is the tap target */
 .tlink{display:inline-flex;align-items:center;min-height:44px}
-.gmini,.daynav .btn.icon{position:relative}.gmini::after{content:'';position:absolute;inset:-6px 0}.daynav .btn.icon::after{content:'';position:absolute;inset:-2px}
+.gmini{position:relative}.gmini::after{content:'';position:absolute;inset:-6px 0}
+/* touch targets found by the crawler (1.36.6): 44px on phones and tablets, desktop unchanged */
+@media (pointer:coarse){a.srcl{position:relative}a.srcl::after{content:'';position:absolute;inset:-4px}
+  .toc a{display:inline-flex;align-items:center;min-height:44px}.pset>summary,details>summary.lbl{min-height:44px;display:flex;align-items:center}
+  .simtabs button{min-height:44px}.simtools .btn.icon.sm,.daynav .btn.icon{width:44px;min-height:44px}
+  .mtabs button,.otab{min-height:44px}
+  details>summary{min-height:44px;box-sizing:border-box;padding-block:8px}.rsec{min-height:44px}
+  .gq,.simchips .chip,.lpco .chip,.lpco summary,.lpweb summary,.simcomp{min-height:44px}.lpco .chip{display:inline-flex;align-items:center}}
+select.btn{max-width:100%;text-overflow:ellipsis} /* a long module title never makes a lesson page scroll sideways on a phone (1.36.6) */
+.main{overflow-x:clip} /* WebKit counted wide code blocks (each in its own scroll box) in the page width: lesson pages panned sideways on iPhone (1.36.6) */
+.card{overflow-wrap:break-word} /* a long unbroken title wraps instead of running out of its card */
