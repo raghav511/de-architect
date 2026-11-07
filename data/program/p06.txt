@@ -3,7 +3,7 @@ id: p06
 n: 6
 title: Concurrency and performance: threads, processes, asyncio, and measuring first
 goal: Choose the right concurrency model for a job (threads for waiting, processes for computing, asyncio for thousands of API calls), respect rate limits, split and merge work, and find the slow part by measuring rather than guessing.
-hours: 5
+hours: 6.25
 quiz-same: qtg7e4 1n8y973
 
 @@tickets
@@ -11,6 +11,7 @@ P601 | learn | 0.75 | Chapter part 1: I/O versus CPU, threads, the GIL, processe
 P602 | learn | 0.75 | Chapter part 2: asyncio, rate limits, measuring | You can write `asyncio.gather` with a Semaphore from memory and describe a token bucket. | chapter:4-6
 P603 | build | 1 | Exercises 1–3: merge results, a token bucket, limited concurrent calls | All three pass their tests in the editor. | py:1-3
 P604 | build | 1 | Exercises 4–5: plan compaction, find the slow part | Both pass, including the speed test. | py:4-5
+P608 | build | 1.25 | Hard set: external sort, sort-merge join, hourly rollup in UTC | All three pass at interview length (about 25 minutes each), and you can name the trap each one hides. | py:6-8
 P605 | practice | 0.5 | Predict-the-output drill | All six snippets answered before opening the answers, and every miss understood. | practice
 P606 | test | 0.5 | Quiz P6 | 80% or better. | quiz
 P607 | talk | 0.5 | Interview set P6 | 5 of 6 answered out loud and ticked. | interview

@@ -87,10 +87,13 @@ def seed():
         for k in range(r.randint(4, 14)):
             t0 += dt.timedelta(minutes=r.choice([1, 2, 3, 5, 8, 12, 40, 75]))
             clicks.append((u, t0, r.choice(['home', 'search', 'quote', 'book', 'pay', 'help'])))
+    # edge rows so sessionisation answers are tested at the boundary: a gap of exactly 30 minutes stays in the session, 31 starts a new one
+    clicks += [(21, dt.datetime(2026, 10, 20, 9, 0), 'home'), (21, dt.datetime(2026, 10, 20, 9, 30), 'search'), (21, dt.datetime(2026, 10, 20, 10, 1), 'book')]
     con.execute('create table clicks(user_id int, ts timestamp, page varchar)')
     con.executemany('insert into clicks values (?,?,?)', clicks)
     emps = [(1, 'Meera', None, 'Eng', 310), (2, 'Arun', 1, 'Eng', 240), (3, 'Divya', 1, 'Data', 255), (4, 'Kiran', 2, 'Eng', 190), (5, 'Neha', 2, 'Eng', 250), (6, 'Rahul', 3, 'Data', 180), (7, 'Sneha', 3, 'Data', 260),
-            (8, 'Tarun', 3, 'Data', 175), (9, 'Vani', 1, 'Ops', 140), (10, 'Zubin', 9, 'Ops', 150), (11, 'Isha', 9, 'Ops', 120), (12, 'Gopal', 2, 'Eng', 190)]
+            (8, 'Tarun', 3, 'Data', 175), (9, 'Vani', 1, 'Ops', 140), (10, 'Zubin', 9, 'Ops', 150), (11, 'Isha', 9, 'Ops', 120), (12, 'Gopal', 2, 'Eng', 190),
+            (13, 'Pooja', 3, 'Data', 260)]  # ties Sneha at the top of Data, so 'second highest distinct salary' needs DENSE_RANK
     con.execute('create table employees(emp_id int, name varchar, manager_id int, dept varchar, salary int)')
     con.executemany('insert into employees values (?,?,?,?,?)', emps)
     _seed_modelling(riders, trips)

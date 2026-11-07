@@ -191,8 +191,10 @@ const WKC = {}; /* each week's problem sets, filtered once */
 function wk(k, w) { return (WKC[k + w] = WKC[k + w] || byWeek(DATA[k], w)); }
 function dayProblems(ci) {
   const w = Math.floor(ci / 7) % 12 + 1, d = ci % 7, out = [];
+  const st = wk('dsa', w).filter(y => y.st), s = st[d - 7 + st.length]; /* Hard stretch problems sit on the set's last days */
   const x = wk('dsa', w)[d], q = SQMAP[d] == null ? null : wk('sql', w)[SQMAP[d]], p = SPMAP[d] == null ? null : wk('spark', w)[SPMAP[d]];
   if (x) out.push({ id: x.id, chip: 'dsa', t: x.t, sub: 'DSA · ' + WEEKS[w - 1][4] + ' · ' + x.lv, mins: 20, href: '#/dsa/' + x.id, auto: !!S.solved[x.id] });
+  if (s) out.push({ id: s.id, chip: 'dsa', t: s.t, sub: 'DSA · Hard stretch · ' + WEEKS[w - 1][4], mins: 25, href: '#/dsa/' + s.id, auto: !!S.solved[s.id] });
   if (q) out.push({ id: q.id, chip: 'sql', t: q.t, sub: 'SQL · ' + (q.k === 'O' ? 'optimize' : 'write') + ' · ' + q.lv, mins: 15, href: '#/sql/' + q.id, auto: !!S.solved[q.id] });
   if (p) out.push({ id: p.id, chip: 'spark', t: p.t, sub: 'PySpark · ' + (p.k === 'O' ? 'optimize' : 'write') + ' · ' + p.lv, mins: 15, href: '#/spark/' + p.id, auto: !!S.solved[p.id] });
   return out;

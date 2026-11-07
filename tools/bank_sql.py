@@ -74,7 +74,7 @@ q(w=4, k='W', lv='Medium', t='Daily city fact table', p='Build a daily fact: tri
 q(w=4, k='W', lv='Medium', t='Pivot trips by status', p='Return city_id and three columns completed, cancelled, no_driver with trip counts.',
   sol="SELECT city_id,\n  SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,\n  SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled,\n  SUM(CASE WHEN status = 'no_driver' THEN 1 ELSE 0 END) AS no_driver\nFROM trips GROUP BY city_id",
   h=['One output column per status.', 'SUM(CASE WHEN status = ... THEN 1 ELSE 0 END).', 'Works in every engine, unlike PIVOT syntax.'], why='Manual pivots appear in most reporting rounds.')
-q(w=4, k='W', lv='Hard', t='SCD Type 2: rider tier history', p='Treat riders as the current snapshot. Build rows rider_id, tier, valid_from (signup_date), valid_to (NULL), is_current (TRUE) ready to load into a Type 2 dimension.',
+q(w=4, k='W', lv='Easy', t='SCD Type 2: rider tier history', p='Treat riders as the current snapshot. Build rows rider_id, tier, valid_from (signup_date), valid_to (NULL), is_current (TRUE) ready to load into a Type 2 dimension.',
   sol='SELECT rider_id, tier, signup_date AS valid_from, CAST(NULL AS DATE) AS valid_to, TRUE AS is_current FROM riders',
   h=['A Type 2 row has the value plus a validity window.', 'New rows start with valid_to NULL and is_current TRUE.', 'CAST(NULL AS DATE) gives the column a type.'], why='SCD2 shows up in every warehouse round; start with the initial load.')
 q(w=4, k='W', lv='Medium', t='First trip date per rider', p='Return rider_id and the date of their first completed trip, plus how many days after signup it happened.',
@@ -203,7 +203,7 @@ q(w=10, k='W', lv='Medium', t='Percentile fares', p='Return city_id with the med
 q(w=10, k='W', lv='Hard', t='Top route pairs', p='Treat the pair (rider city, trip city) as a route. Return the top 5 pairs by completed trips with names: from_city, to_city, trips.',
   sol="SELECT rc.city_name AS from_city, tc.city_name AS to_city, COUNT(*) AS trips\nFROM trips t JOIN riders r ON r.rider_id = t.rider_id JOIN cities rc ON rc.city_id = r.city_id JOIN cities tc ON tc.city_id = t.city_id\nWHERE t.status = 'completed' GROUP BY 1, 2 ORDER BY trips DESC, from_city, to_city LIMIT 5", ordered=True,
   h=['Join cities twice with different aliases.', 'Group by both names.', 'Deterministic ORDER BY before LIMIT.'], why='Role-playing dimensions (the same table used twice).')
-q(w=10, k='W', lv='Medium', t='Driver leaderboard with ties broken', p='Return the top 10 drivers by completed trips: driver_id, name, trips, avg rating; break ties by higher rating then driver_id.',
+q(w=10, k='W', lv='Medium', t='Driver leaderboard with ties broken', p='Return the top 10 drivers by completed trips: driver_id, name, trips and the driver\'s rating (from drivers); break ties by higher rating, then lower driver_id.',
   sol="SELECT d.driver_id, d.name, COUNT(*) AS trips, d.rating FROM trips t JOIN drivers d USING (driver_id) WHERE t.status = 'completed' GROUP BY d.driver_id, d.name, d.rating ORDER BY trips DESC, d.rating DESC, d.driver_id LIMIT 10", ordered=True,
   h=['Count completed trips per driver.', 'Order by count, then rating, then id.', 'Ties need a deterministic rule for a stable API.'], why='Serving APIs need stable ordering.')
 q(w=10, k='O', lv='Medium', t='Serve from a summary table', p='A dashboard tile runs this over raw trips on every page load. Write the summary query you would materialise once: trip_date, city_id, completed, revenue.',
@@ -218,7 +218,7 @@ q(w=10, k='O', lv='Medium', t='Serve from a summary table', p='A dashboard tile 
 q(w=11, k='W', lv='Medium', t='Conversion funnel', p='From trip_events, return how many trips reached each stage: requested, driver_assigned, completed (one row, three columns).',
   sol="SELECT COUNT(DISTINCT trip_id) FILTER (WHERE event_type = 'requested') AS requested, COUNT(DISTINCT trip_id) FILTER (WHERE event_type = 'driver_assigned') AS assigned, COUNT(DISTINCT trip_id) FILTER (WHERE event_type = 'completed') AS completed FROM trip_events",
   h=['Count distinct trips per stage.', 'Duplicates exist, so use DISTINCT.', 'One row with conditional counts.'], why='Funnels are the first metric in a customer discovery call.')
-q(w=11, k='W', lv='Hard', t='Week-1 retention by signup month', p='For riders who signed up in 2026, return signup month and the percent who completed a trip within 7 days of signing up (1 decimal).',
+q(w=11, k='W', lv='Hard', t='Week-1 retention by signup month', p='For riders who signed up in 2026, return signup month and the percent who completed a trip on their signup day or in the 7 days after it (1 decimal).',
   sol="SELECT DATE_TRUNC('month', r.signup_date) AS cohort, ROUND(100.0 * COUNT(DISTINCT t.rider_id) / COUNT(DISTINCT r.rider_id), 1) AS pct_week1\nFROM riders r LEFT JOIN trips t ON t.rider_id = r.rider_id AND t.status = 'completed' AND t.trip_date BETWEEN r.signup_date AND r.signup_date + INTERVAL 7 DAY\nWHERE r.signup_date >= DATE '2026-01-01' GROUP BY cohort",
   h=['Cohort = signup month.', 'LEFT JOIN trips within 7 days of signup (condition in ON).', 'Distinct retained riders / distinct cohort riders.'], why='Cohort retention is the classic product analytics question.')
 q(w=11, k='W', lv='Medium', t='Plus vs free riders: A/B style comparison', p='Return tier, riders, completed trips per rider (2 decimals) and average fare (2 decimals).',
@@ -239,7 +239,7 @@ q(w=11, k='O', lv='Medium', t='COUNT(DISTINCT) at scale', p='Daily active riders
 q(w=12, k='W', lv='Hard', t='Gaps and islands: active streaks', p='Return rider_id and their longest run of consecutive days with a completed trip.',
   sol="WITH d AS (SELECT DISTINCT rider_id, trip_date FROM trips WHERE status = 'completed'), g AS (SELECT rider_id, trip_date, trip_date - CAST(ROW_NUMBER() OVER (PARTITION BY rider_id ORDER BY trip_date) AS INT) AS grp FROM d)\nSELECT rider_id, MAX(n) AS longest FROM (SELECT rider_id, grp, COUNT(*) AS n FROM g GROUP BY rider_id, grp) x GROUP BY rider_id",
   h=['Distinct days first.', 'date - ROW_NUMBER() is constant inside a run of consecutive days.', 'Count per run, then take the max per rider.'], why='The single most famous SQL interview pattern.')
-q(w=12, k='W', lv='Hard', t='Second highest salary per department', p='Return dept and the second highest distinct salary (NULL if none).',
+q(w=12, k='W', lv='Medium', t='Second highest salary per department', p='Return dept and the second highest distinct salary (NULL if none).',
   sol='SELECT dept, MAX(salary) FILTER (WHERE rk = 2) AS second FROM (SELECT dept, salary, DENSE_RANK() OVER (PARTITION BY dept ORDER BY salary DESC) AS rk FROM employees) x GROUP BY dept',
   h=['Distinct salaries ranked per department.', 'DENSE_RANK = 2.', 'Departments with one salary still need a row (NULL).'], why='Classic Nth-highest with edge cases.')
 q(w=12, k='W', lv='Medium', t='Manager chain depth', p='Using a recursive CTE, return emp_id, name and depth (0 for the top boss).',
