@@ -5557,5 +5557,1035 @@
     "part": "2 of 2"
    }
   ]
+ },
+ "8.8 Architect's lens: Snowflake and Databricks": {
+  "hash": "35d70e93207c",
+  "sec": "8.8",
+  "reels": [
+   {
+    "title": "A rented kitchen or your own",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Why do companies pay for Snowflake or Databricks instead of running their own data engine?",
+      "show": {
+       "t": "big",
+       "text": "Rent the kitchen?",
+       "sub": "Two managed platforms"
+      }
+     },
+     {
+      "say": "Think of a restaurant. Snowflake is a fully run kitchen: you hand over ingredients and recipes, and staff handle the ovens, cleaning and storage. You pay for every minute the ovens are on.",
+      "show": {
+       "t": "scene",
+       "title": "A fully run *kitchen*",
+       "nodes": [
+        {
+         "id": "y",
+         "label": "You",
+         "sub": "SQL recipes",
+         "x": 25,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "s",
+         "label": "Snowflake",
+         "sub": "runs everything",
+         "x": 75,
+         "y": 30,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "y",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "y",
+          "s"
+         ]
+        },
+        {
+         "at": 0.45,
+         "packet": [
+          "y",
+          "s"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Pay per minute of ovens",
+          "tone": "blue",
+          "icon": "⏱"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Databricks is a kitchen built in your own building, on your own shelves. You get more control and more kinds of cooking, like Python and machine learning, but you choose more settings.",
+      "show": {
+       "t": "scene",
+       "title": "Your own *shelves*",
+       "nodes": [
+        {
+         "id": "d",
+         "label": "Databricks",
+         "sub": "compute",
+         "x": 25,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "b",
+         "label": "Your bucket",
+         "sub": "open files",
+         "x": 75,
+         "y": 30,
+         "tone": "grey",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "d",
+         "b"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "d",
+          "b"
+         ]
+        },
+        {
+         "at": 0.45,
+         "packet": [
+          "d",
+          "b"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Data stays in your storage",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Running your own engine on open tables is a third choice: cheapest at large scale, but you hire the kitchen staff yourself.",
+      "show": {
+       "t": "points",
+       "title": "Three choices",
+       "items": [
+        "Snowflake: least to run",
+        "Databricks: most kinds of work",
+        "Open engine: you run it all"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What is the main trade when you run an open engine yourself instead of a managed platform?",
+     "opts": [
+      "You lose SQL support",
+      "You save the vendor bill but must operate everything",
+      "Your data must leave the cloud"
+     ],
+     "ans": 1,
+     "why": "Open engines avoid the platform fee, but your team runs the engine, catalog, compaction and upgrades."
+    },
+    "work": [
+     "Write down who in your company would operate an open engine if you chose one.",
+     "List the workloads that are pure SQL and the ones that need Python or ML."
+    ]
+   },
+   {
+    "title": "Pruning and micro-partitions",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Snowflake has no indexes. So how does it skip most of a billion row table?",
+      "show": {
+       "t": "big",
+       "text": "No indexes, still fast",
+       "sub": "Pruning"
+      }
+     },
+     {
+      "say": "Each table is split into micro-partitions of about fifty to five hundred megabytes. For every one, Snowflake records the minimum and maximum of each column.",
+      "show": {
+       "t": "bars",
+       "title": "Order dates per micro-partition",
+       "unit": "day of month",
+       "items": [
+        [
+         "",
+         1,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "A query for day eight checks that metadata first. Parts one and two cannot hold day eight, so they are never read. Only part three is scanned.",
+      "show": {
+       "t": "scene",
+       "title": "Skip what cannot *match*",
+       "nodes": [
+        {
+         "id": "q",
+         "label": "Query",
+         "sub": "day = 8",
+         "x": 50,
+         "y": 12,
+         "tone": "amber"
+        },
+        {
+         "id": "a",
+         "label": "Part 1",
+         "sub": "skipped",
+         "x": 20,
+         "y": 60,
+         "tone": "grey"
+        },
+        {
+         "id": "b",
+         "label": "Part 2",
+         "sub": "skipped",
+         "x": 50,
+         "y": 60,
+         "tone": "grey"
+        },
+        {
+         "id": "c",
+         "label": "Part 3",
+         "sub": "read",
+         "x": 80,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "q",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "q",
+          "a",
+          "b",
+          "c"
+         ]
+        },
+        {
+         "at": 0.4,
+         "dim": "a"
+        },
+        {
+         "at": 0.5,
+         "dim": "b"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "q",
+          "c"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Read one part of three",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "This works when data arrives in the order you filter by, like events by date. When it does not, a clustering key re-sorts the data in the background, and you pay credits for it.",
+      "show": {
+       "t": "points",
+       "title": "Pruning rules",
+       "items": [
+        "Min and max per column",
+        "Order must match filters",
+        "Clustering re-sorts, for credits"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why can Snowflake skip micro-partitions for a date filter on time-ordered data?",
+     "opts": [
+      "It builds an index on every column",
+      "Each part records the min and max of its columns",
+      "It caches every table in memory"
+     ],
+     "ans": 1,
+     "why": "Pruning compares the filter with stored min and max values and skips parts that cannot match."
+    },
+    "work": [
+     "Open a slow query profile and compare partitions scanned with partitions total.",
+     "Check whether your largest table is loaded in the order it is filtered."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Warehouses, credits and caches",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Is a bigger Snowflake warehouse more expensive? Often not. Here is why.",
+      "show": {
+       "t": "big",
+       "text": "Bigger, same price?",
+       "sub": "How credits work"
+      }
+     },
+     {
+      "say": "Each size step doubles the power and doubles the credits per hour. Billing is per second, with a one minute minimum. If a query runs twice as fast on the next size, it costs about the same.",
+      "show": {
+       "t": "bars",
+       "title": "Same query, two sizes",
+       "unit": "credit minutes",
+       "items": [
+        [
+         "",
+         1,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Caches cut the bill further. The result cache returns an identical query on unchanged data for a day, with no warehouse running. Metadata answers counts and min and max. The warehouse disk keeps data it read, until it suspends.",
+      "show": {
+       "t": "points",
+       "title": "Three caches",
+       "items": [
+        "Result: no warehouse at all",
+        "Metadata: count, min, max",
+        "Local disk: lost on suspend"
+       ]
+      }
+     },
+     {
+      "say": "So set auto suspend to a few minutes: too short loses the warm cache, too long pays for idle time.",
+      "show": {
+       "t": "scene",
+       "title": "Tune *auto suspend*",
+       "nodes": [
+        {
+         "id": "w",
+         "label": "Warehouse",
+         "sub": "idle",
+         "x": 30,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "c",
+         "label": "Warm cache",
+         "sub": "on disk",
+         "x": 70,
+         "y": 30,
+         "tone": "teal",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "w",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "w",
+          "c"
+         ]
+        },
+        {
+         "at": 0.5,
+         "glow": "c"
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "A few minutes is a good start",
+          "tone": "blue",
+          "icon": "⏱"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A query takes 8 minutes on Medium and 4 on Large. Which costs more?",
+     "opts": [
+      "Large, because it is bigger",
+      "About the same, since Large uses twice the credits for half the time",
+      "Medium, because of the one minute minimum"
+     ],
+     "ans": 1,
+     "why": "Each size doubles credits per hour; halving the run time keeps the cost roughly equal."
+    },
+    "work": [
+     "Measure one heavy job on two warehouse sizes and compare credits.",
+     "Check auto suspend on every BI warehouse."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Clustering versus search optimization",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your query looks for one customer among billions of rows, and pruning does nothing. What now?",
+      "show": {
+       "t": "big",
+       "text": "A needle in a haystack",
+       "sub": "Two different tools"
+      }
+     },
+     {
+      "say": "A clustering key re-sorts data so similar values sit together. It helps range filters, such as a date or region, on very large tables with stable filters.",
+      "show": {
+       "t": "scene",
+       "title": "Sort for *ranges*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Table",
+         "sub": "unsorted",
+         "x": 25,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "k",
+         "label": "Clustered",
+         "sub": "by date",
+         "x": 75,
+         "y": 30,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "k"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "t",
+          "k"
+         ]
+        },
+        {
+         "at": 0.45,
+         "packet": [
+          "t",
+          "k"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Good for range filters",
+          "tone": "blue",
+          "icon": "→"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The search optimization service builds a hidden lookup structure instead. It suits equality on high cardinality ids, substring search and fields inside variant columns, where no single sort order helps.",
+      "show": {
+       "t": "scene",
+       "title": "Look up the *needle*",
+       "nodes": [
+        {
+         "id": "q",
+         "label": "customer_id = 42",
+         "sub": "",
+         "x": 25,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "s",
+         "label": "Search path",
+         "sub": "hidden lookup",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "q",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "q",
+          "s"
+         ]
+        },
+        {
+         "at": 0.45,
+         "packet": [
+          "q",
+          "s"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Point lookups, not ranges",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Both bill storage and serverless credits in the background. Measure partitions scanned before and after, and remove what does not pay.",
+      "show": {
+       "t": "points",
+       "title": "Before paying",
+       "items": [
+        "Range filter: cluster",
+        "Point lookup: search optimization",
+        "Measure scanned partitions"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Which tool suits finding a few rows by a high cardinality id on time ordered data?",
+     "opts": [
+      "A larger warehouse",
+      "The search optimization service",
+      "A multi-cluster warehouse"
+     ],
+     "ans": 1,
+     "why": "A time order cannot prune id lookups; search optimization builds a lookup structure for them."
+    },
+    "work": [
+     "Find tables with automatic clustering and check their monthly credits.",
+     "List point-lookup queries that scan most partitions."
+    ],
+    "part": "1 of 3"
+   },
+   {
+    "title": "Time Travel, clones and hidden storage",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "A clone of a ten terabyte table is created in seconds and costs nothing. Then the bill grows anyway. Why?",
+      "show": {
+       "t": "big",
+       "text": "Free clone, growing bill",
+       "sub": "Immutable parts"
+      }
+     },
+     {
+      "say": "Micro-partitions are never changed in place. An update writes new parts. A clone copies only metadata, so both tables point at the same parts until either side changes.",
+      "show": {
+       "t": "scene",
+       "title": "Share the same *parts*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Table",
+         "sub": "prod",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Clone",
+         "sub": "test",
+         "x": 80,
+         "y": 25,
+         "tone": "plum"
+        },
+        {
+         "id": "p",
+         "label": "Micro-partitions",
+         "sub": "shared",
+         "x": 50,
+         "y": 70,
+         "tone": "grey",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "p"
+        ],
+        [
+         "b",
+         "p"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "a",
+          "p"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": "b"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "b",
+          "p"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Storage only as they diverge",
+          "tone": "plum",
+          "icon": "⇉"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Old parts are kept for Time Travel, one day by default and up to ninety on Enterprise, then seven more days of Fail safe for permanent tables. A table with heavy updates can hold many times its live size.",
+      "show": {
+       "t": "bars",
+       "title": "Storage for a busy table",
+       "unit": "terabytes",
+       "items": [
+        [
+         "",
+         1,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Use transient tables for staging, which skip Fail safe, and keep long Time Travel only where you need it.",
+      "show": {
+       "t": "points",
+       "title": "Keep storage honest",
+       "items": [
+        "Transient for staging",
+        "Short Time Travel by default",
+        "Watch table storage metrics"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why can a heavily updated Snowflake table cost far more storage than its live size?",
+     "opts": [
+      "Clones always copy data",
+      "Old micro-partitions are kept for Time Travel and Fail safe",
+      "Snowflake stores data uncompressed"
+     ],
+     "ans": 1,
+     "why": "Updates write new parts; old ones stay for the retention periods and are billed."
+    },
+    "work": [
+     "Query table storage metrics for your busiest tables.",
+     "Make staging tables transient."
+    ],
+    "part": "2 of 3"
+   },
+   {
+    "title": "Photon, deletion vectors and liquid clustering",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Three Databricks features are often confused. Each works at a different layer.",
+      "show": {
+       "t": "big",
+       "text": "Three layers",
+       "sub": "Engine, writes, layout"
+      }
+     },
+     {
+      "say": "Photon is the engine. A C plus plus vectorised engine runs SQL and DataFrame operators on column batches. It is on by default in SQL warehouses and serverless, and costs more on classic clusters.",
+      "show": {
+       "t": "scene",
+       "title": "Engine: *Photon*",
+       "nodes": [
+        {
+         "id": "q",
+         "label": "Query",
+         "sub": "SQL",
+         "x": 25,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "p",
+         "label": "Photon",
+         "sub": "C++ batches",
+         "x": 75,
+         "y": 30,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "q",
+         "p"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "q",
+          "p"
+         ]
+        },
+        {
+         "at": 0.45,
+         "packet": [
+          "q",
+          "p"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "No gain for Python UDFs",
+          "tone": "red",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Deletion vectors change writes. Deleting ten rows records their positions in a small side file instead of rewriting a whole Parquet file. Readers skip those rows.",
+      "show": {
+       "t": "bars",
+       "title": "Bytes written to delete 10 rows",
+       "unit": "megabytes",
+       "items": [
+        [
+         "",
+         1,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Liquid clustering changes layout. Cluster by your filter columns replaces partitions and Z order, clusters incrementally, and lets you change keys without a rewrite. All three are generally available.",
+      "show": {
+       "t": "points",
+       "title": "Remember",
+       "items": [
+        "Photon: how queries run",
+        "Deletion vectors: cheap deletes",
+        "Liquid clustering: data layout"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A team says Photon will fix slow filters on an unclustered table. What is wrong?",
+     "opts": [
+      "Photon only works on Snowflake",
+      "Photon speeds execution but does not change which files are read",
+      "Photon disables liquid clustering"
+     ],
+     "ans": 1,
+     "why": "Photon is the engine; skipping files depends on layout such as liquid clustering."
+    },
+    "work": [
+     "Check which of your jobs pay for Photon but run mostly Python UDFs.",
+     "Move one partitioned table to liquid clustering on its filter columns."
+    ],
+    "part": "3 of 3"
+   },
+   {
+    "title": "Unity Catalog and serverless",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Who controls access, and who pays for the machines, in Databricks?",
+      "show": {
+       "t": "big",
+       "text": "Govern and run",
+       "sub": "Unity Catalog and compute"
+      }
+     },
+     {
+      "say": "Unity Catalog is one governance layer across workspaces: three level names, grants, row filters, column masks, lineage and storage credentials, so no user holds bucket keys. It is generally available and open source.",
+      "show": {
+       "t": "scene",
+       "title": "One *catalog*",
+       "nodes": [
+        {
+         "id": "u",
+         "label": "Unity Catalog",
+         "sub": "grants, lineage",
+         "x": 50,
+         "y": 12,
+         "tone": "plum"
+        },
+        {
+         "id": "a",
+         "label": "Workspace A",
+         "sub": "",
+         "x": 25,
+         "y": 60,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Workspace B",
+         "sub": "",
+         "x": 75,
+         "y": 60,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "u",
+         "a"
+        ],
+        [
+         "u",
+         "b"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "u"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "u",
+          "a"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.65,
+         "packet": [
+          "u",
+          "b"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Rules defined once",
+          "tone": "plum",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Classic compute runs in your cloud account: you pick instances and networking, and pay DBUs plus virtual machines. Serverless runs in the vendor account, starts in seconds, and its DBU price includes the machines, with less control.",
+      "show": {
+       "t": "points",
+       "title": "Classic or serverless",
+       "items": [
+        "Classic: control, slower start",
+        "Serverless: seconds, no sizing",
+        "Both: tag cost per team"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What do you give up by moving a job from classic to serverless compute?",
+     "opts": [
+      "Unity Catalog permissions",
+      "Some control over instance types and network paths",
+      "Delta Lake support"
+     ],
+     "ans": 1,
+     "why": "Serverless runs in the vendor account with managed machines, so you trade some control for fast starts and no sizing."
+    },
+    "work": [
+     "List the jobs that need special hardware or network paths.",
+     "Move one scheduled job to serverless and compare its cost."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Snowflake, Databricks or open tables",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "The board asks: Snowflake, Databricks, or Iceberg on Trino? Answer with workloads, not brands.",
+      "show": {
+       "t": "big",
+       "text": "Pick by workload",
+       "sub": "And by who runs it"
+      }
+     },
+     {
+      "say": "SQL analytics and dashboards with a small platform team point to Snowflake. Python, Spark, streaming and machine learning on data in your own bucket point to Databricks.",
+      "show": {
+       "t": "scene",
+       "title": "Match the *workload*",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Snowflake",
+         "sub": "SQL and BI",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "d",
+         "label": "Databricks",
+         "sub": "Python and ML",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "o",
+         "label": "Iceberg on Trino",
+         "sub": "open, self run",
+         "x": 50,
+         "y": 70,
+         "tone": "amber"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "s"
+        },
+        {
+         "at": 0.4,
+         "show": "d"
+        },
+        {
+         "at": 0.7,
+         "show": "o"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Workload first",
+          "tone": "blue",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Many engines, strict open format rules, or petabyte costs with a strong platform team point to Iceberg with a REST catalog and Trino. You trade the vendor bill for running everything yourself.",
+      "show": {
+       "t": "points",
+       "title": "Open tables when",
+       "items": [
+        "Several engines",
+        "Open formats required",
+        "A team to run it"
+       ]
+      }
+     },
+     {
+      "say": "Many companies combine them: Databricks writes, gold tables are published as Iceberg, and Snowflake reads them without a copy. Always name one writer per table.",
+      "show": {
+       "t": "points",
+       "title": "Whatever you pick",
+       "items": [
+        "One writer per table",
+        "One catalog of record",
+        "Access rules on every engine"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Two platforms read one Iceberg table. What rule prevents corruption?",
+     "opts": [
+      "Both engines commit through their own catalogs",
+      "Exactly one engine writes, through one catalog of record",
+      "Copy the table into each platform"
+     ],
+     "ans": 1,
+     "why": "One writer and one catalog of record keep commits consistent; others only read."
+    },
+    "work": [
+     "Write a one page comparison for your main workloads.",
+     "Name the single writer for every shared table."
+    ],
+    "part": "2 of 2"
+   }
+  ]
  }
 }

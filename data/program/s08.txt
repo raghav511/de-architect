@@ -187,6 +187,65 @@ Both platforms now offer SQL functions that call a model for each row, which is 
 
 For work that can wait, providers offer batch endpoints that process large sets of requests asynchronously. A nightly classification job is a natural fit.
 
+## 8.8 Architect's lens: Snowflake and Databricks
+
+The questions an architect is asked about the two platforms, beyond how to load a table. Features marked GA are generally available; newer ones change fast, so check their status in each vendor's release notes before an interview.
+
+| Question | Short answer for Snowflake and Databricks |
+|---|---|
+| **What problem does it solve?** | A managed analytics platform, so a team does not run its own query engine, storage layout, catalog and access control. Snowflake is a SQL warehouse that manages storage, compute and tuning for you. Databricks is a lakehouse on your own cloud storage, built on Spark and Delta, for engineering, SQL and machine learning in one place. |
+| **Why it over the alternatives?** | Snowflake: the least operations for SQL analytics and BI, near-instant scaling of isolated warehouses, and governed data sharing between accounts. Databricks: Python, Spark and ML next to SQL, data in open formats in your bucket, and control over the compute. Against Iceberg on Trino (or another open engine): no platform team needed to run the engine, catalog and upgrades, at the cost of a vendor bill and some lock-in. |
+| **When not to use it?** | Small data that fits one machine (DuckDB, or Postgres); millisecond serving to an app (a database or cache); a strict rule that data never leaves open formats and open engines (Iceberg with a REST catalog and Trino); or buying both platforms for teams that would be served by one. |
+| **Who owns and pays for it?** | A platform team owns accounts and workspaces, the catalog (Snowflake roles and policies, Unity Catalog), network and identity setup, and cost guardrails: resource monitors and budgets in Snowflake, cluster policies and budget alerts in Databricks. Teams own their warehouses, jobs and models; cost is tagged per team and reviewed monthly. Snowflake bills credits per second of warehouse time plus storage and serverless features; Databricks bills DBUs, plus the cloud VMs on classic compute. |
+| **Where does it sit?** | The analytics core: ingestion (Kafka, CDC, files) lands in it, transformation (dbt, pipelines) runs in it, and BI, notebooks, ML and reverse ETL read from it. With Iceberg, both can sit on one shared copy of the data instead of each holding its own (8.5). |
+| **How does it fail and scale?** | Both scale compute separately from storage. Snowflake scales up (larger warehouse) for heavy queries and out (multi-cluster) for concurrency; Databricks by cluster size, autoscaling and serverless. They fail mostly as cost: warehouses or clusters left running, full scans because data is not clustered for its filters, automatic clustering and search optimization billing quietly, oversized warehouses for small queries, and too many small files on the lake. Then come queueing at peak, skew in Spark jobs, and governance gaps when data is copied between the two. |
+| **When do you move off it?** | When the bill outgrows the value and a platform team could run Iceberg on Trino or Spark for less; when one platform could replace both; or when open formats become a requirement, which today usually means moving tables to Iceberg rather than leaving the platform. |
+
+### Under the hood
+
+**1. How does Snowflake skip data without indexes, and when do clustering keys and the search optimization service help?**
+<details><summary>Model answer</summary>
+
+Every table is split automatically into immutable micro-partitions of about 50 to 500 MB uncompressed, stored by column, with the minimum, maximum and distinct counts of every column kept as metadata. A filter is checked against that metadata first, and micro-partitions that cannot match are never read: that is pruning. It works when the data's physical order matches the filter, as with events loaded in time order and filtered by date. When it does not, a clustering key (GA) asks a background service to re-sort data so values of that key sit together; you can see how well clustered a table is with `SYSTEM$CLUSTERING_INFORMATION`. Automatic clustering bills serverless credits, so use it on large tables with selective, stable filters. The search optimization service (GA, Enterprise edition) is different: it builds a hidden lookup structure for needle-in-a-haystack queries, such as equality on a high-cardinality id, substring search or fields inside a `VARIANT`, where no single sort order could help. It also costs storage and serverless credits. Check the query profile's partitions scanned against total before paying for either.
+
+</details>
+
+**2. What does a Snowflake virtual warehouse cost, and how do the three caches change that?**
+<details><summary>Model answer</summary>
+
+A warehouse is an isolated compute cluster. Each size step doubles both capacity and credits per hour (X-Small 1, Small 2, Medium 4 and so on), billed per second with a one-minute minimum each time it resumes, so a query that is twice as fast on the next size costs about the same. Multi-cluster warehouses add whole clusters when queries queue, for concurrency rather than speed. Cloud services (compilation, metadata) are billed only above 10% of the day's warehouse credits. Serverless features (Snowpipe, automatic clustering, search optimization, materialized view upkeep) bill separately. The three caches: the result cache returns the stored result of an identical query on unchanged data for 24 hours, with no warehouse running; the metadata cache answers `COUNT(*)`, `MIN` and `MAX` from micro-partition metadata; the warehouse's local disk caches micro-partitions it has read, and is lost when the warehouse suspends. So an auto-suspend that is too short throws away a warm cache, and one that is too long pays for idle time; a few minutes is a common start for BI warehouses.
+
+</details>
+
+**3. How do Time Travel and zero-copy clones work, and what do they cost?**
+<details><summary>Model answer</summary>
+
+Micro-partitions are never changed in place: an update writes new micro-partitions and marks the old ones as no longer current. Time Travel keeps the old ones for the retention period (1 day by default, up to 90 days on Enterprise edition), so `AT(TIMESTAMP => ...)`, `BEFORE(STATEMENT => ...)` and `UNDROP` can read or restore them. After that, Fail-safe keeps permanent tables' data for 7 more days, reachable only by Snowflake support. Transient and temporary tables have no Fail-safe and at most 1 day of Time Travel, which is why staging tables are often transient. A clone (`CREATE ... CLONE`, also of a whole schema or database, optionally at a point in time) copies only metadata: both objects point at the same micro-partitions, and new storage is used only as either side changes. The hidden cost is storage: a table with heavy updates and long Time Travel can hold many times its live size, visible in `TABLE_STORAGE_METRICS`.
+
+</details>
+
+**4. What do Photon, deletion vectors and liquid clustering each change in Databricks?**
+<details><summary>Model answer</summary>
+
+They work at different layers. Photon (GA) is a vectorised query engine written in C++ that runs SQL and DataFrame operators in place of Spark's JVM code, processing columns in batches; it is on by default in SQL warehouses and serverless compute, and on classic clusters it is an option billed at a higher DBU rate, worth it for scan-, join- and aggregation-heavy work but not for Python UDF-bound jobs. Deletion vectors (GA) change how Delta writes a delete, update or merge: instead of rewriting a whole Parquet file to drop a few rows, Delta records the removed row positions in a small side file, and readers skip them. Writes become much cheaper; reads pay a little until `OPTIMIZE` or predictive optimization rewrites the files. Liquid clustering (GA) changes the layout: `CLUSTER BY (cols)` replaces partitioning and Z-ordering, clusters data incrementally as it is written and optimized, and lets you change the keys without rewriting the table; `CLUSTER BY AUTO`, which picks keys from your queries, is newer. Predictive optimization (GA for Unity Catalog managed tables) runs `OPTIMIZE` and `VACUUM` for you.
+
+</details>
+
+**5. What is Unity Catalog, and how do serverless and classic compute differ?**
+<details><summary>Model answer</summary>
+
+Unity Catalog (GA, and open source since 2024) is one governance layer across all workspaces in a region's metastore: three-level names (`catalog.schema.table`), grants on every object, row filters and column masks, lineage captured from queries, audit logs, and storage credentials, so users never hold bucket keys. It also serves Delta tables to Iceberg clients through an Iceberg REST interface. Classic compute runs clusters in your own cloud account: you choose instance types, networking and init scripts, you pay DBUs to Databricks plus the VMs to your cloud provider, and clusters take minutes to start. Serverless compute (GA for SQL warehouses, notebooks, jobs and pipelines) runs in Databricks' account: it starts in seconds, there is one DBU price that includes the machines, and there is nothing to size or patch, but you have less control over instance types, libraries and network paths. Most teams move scheduled jobs and SQL to serverless and keep classic for special hardware or network needs.
+
+</details>
+
+**6. When do you pick Snowflake, Databricks, or Iceberg on Trino?**
+<details><summary>Model answer</summary>
+
+Decide by the main workload and who will operate it. SQL analytics and BI with a small platform team: Snowflake, which tunes itself and isolates teams by warehouse. Heavy engineering in Python and Spark, streaming and ML on the same data, with data kept in your own bucket: Databricks. A large company with a strong platform team, several engines, strict open-format rules or a cost case at petabyte scale: Iceberg tables in object storage with a REST catalog (Polaris, Unity Catalog or a cloud catalog such as AWS Glue or S3 Tables) and Trino or Spark as engines; you trade the vendor bill for running the engines, catalog, compaction and upgrades yourself. Many companies run two: Databricks writes bronze and silver, publishes gold as Iceberg, and Snowflake reads it without a copy. Whatever you pick, name one writer per table, one catalog of record, and how access rules reach every engine.
+
+</details>
+
+
 @@lab
 ## Build: the same data on two platforms (2.5 hours)
 
@@ -418,6 +477,36 @@ MODEL: 1. **Locate.** Use lineage and a data inventory to list every table, file
 4. **Prove it.** Record what was deleted and when, without storing the personal data in the log.
 
 **Better design:** keep personal data in one table keyed by a surrogate id, reference only that id elsewhere, and erasure becomes one delete.
+---
+TYPE: mcq
+TAG: cloud
+Q: Yesterday's dashboard query is run again this morning in Snowflake, word for word, and no rows in its tables have changed. What happens?
+A) It runs on the warehouse again, faster because of the local disk cache
+B) It is answered from the result cache without any warehouse running
+C) It fails because the warehouse has suspended
+D) It is answered from Fail-safe
+ANS: B
+WHY: The result cache keeps a query's result for 24 hours and returns it for the identical query on unchanged data, with no warehouse needed.
+---
+TYPE: mcq
+TAG: cloud
+Q: A Snowflake table's queries filter on `customer_id = ?` to find a few rows among billions, and the data is loaded in time order. What usually helps most?
+A) A larger warehouse
+B) The search optimization service on `customer_id`
+C) A multi-cluster warehouse
+D) A longer Time Travel period
+ANS: B
+WHY: Point lookups on a high-cardinality column cannot be pruned by a time-ordered layout; search optimization builds a lookup structure for them. A bigger warehouse only scans the same partitions faster.
+---
+TYPE: mcq
+TAG: cloud
+Q: On a Delta table with deletion vectors enabled, a `DELETE` removes 10 rows from a 1 GB file. What is written?
+A) A rewritten copy of the 1 GB file without those rows
+B) A small file marking the 10 row positions as deleted
+C) Nothing until `VACUUM` runs
+D) A new partition for the deleted rows
+ANS: B
+WHY: Deletion vectors are merge-on-read: the delete records row positions in a side file, and readers skip them until the file is rewritten later.
 
 @@coding
 TITLE: Photoshop customers and their other spend
@@ -722,6 +811,18 @@ TAG: ai
 A: Answer on two levels. **As a developer:** you use coding assistants daily for SQL, PySpark and pipeline design, and you review what they produce: reading the plan, running tests, checking edge cases. Give one example where the assistant was wrong and you caught it.
 
 **As a builder:** you have put models into pipelines. Describe the agentic request-processing system at Salesforce, then the engineering controls you apply: structured output with validation, an evaluation set, caching and budgets for cost, masking of personal data before a call, human approval for changes, and prompt and model versions stored with outputs. That second half is what separates an engineer from a user.
+---
+Q: Your company is choosing between Snowflake, Databricks and Iceberg on Trino. How do you decide?
+TAG: arch
+A: By the main workload and who will run it. SQL analytics and BI with a small platform team points to Snowflake. Python, Spark, streaming and ML on data kept in your own bucket points to Databricks. Several engines, strict open-format rules, or a petabyte-scale cost case with a strong platform team points to Iceberg in object storage with a REST catalog and Trino or Spark, accepting that you run the engines, catalog, compaction and upgrades. Many companies combine two: Databricks writes, gold tables are published as Iceberg, and Snowflake reads them without a copy. Name one writer per table, one catalog of record, and how access rules reach each engine.
+---
+Q: A Snowflake query is slow and expensive. How do you find out why, and what are your options?
+TAG: cloud
+A: Open the query profile. Compare partitions scanned with partitions total: if most are scanned, the filter does not match the physical order, so consider a clustering key for a large table with stable selective filters, or the search optimization service for point lookups and VARIANT fields; both bill serverless credits. Check spilling to local or remote storage, which means the warehouse is too small for the join or sort. Check queueing, which calls for a multi-cluster warehouse rather than a bigger one. Check whether the result cache could serve repeated dashboard queries, and whether auto-suspend is so short that the warm cache is lost. Then size the warehouse by measured runs, since each size doubles both speed and cost.
+---
+Q: Databricks costs have doubled. Where do you look, and what do serverless, Photon and liquid clustering have to do with it?
+TAG: cloud
+A: Start from the billing system tables grouped by workspace, job, cluster and tag, to find the few jobs that drive most of the cost. Common causes: all-purpose clusters running scheduled jobs, clusters that never auto-terminate, oversized or idle autoscaling, Photon on jobs that are bound by Python UDFs and gain nothing, and full scans because tables are not clustered. Fixes: job or serverless compute for scheduled work (serverless starts in seconds and includes the machines in its DBU price), Photon only where it speeds up SQL and DataFrame work, liquid clustering on filter columns, predictive optimization for compaction, and cluster policies and budgets so the next team cannot repeat it.
 
 @@mock
 ## Mock 8: platform deep dive (35 minutes)
