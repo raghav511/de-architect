@@ -1,7 +1,9 @@
 {
-  "version": "1.34.1",
+  "version": "1.35.0",
   "date": "2026-11-07",
   "notes": [
-    "More reels now play in the natural Heart voice (452 of 1,209), and the new Airflow lens has its own reels."
+    "New: the architect's lens for dbt (4.10): what dbt run really does, incremental models and late data, slim CI for big projects, how snapshots build history and what they miss, and what tests and contracts check.",
+    "New: the architect's lens for dimensional modelling (M1.8): why star schemas are fast, the fan trap that doubles revenue, late-arriving dimension rows and correct point-in-time joins.",
+    "Five new interview questions; fourteen reels arrive with the next reel batch."
   ]
 }
