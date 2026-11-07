@@ -10,6 +10,8 @@ Run every evening by the scheduled task `data-architect-daily-reel-review`, befo
 3. Check the reel against the rules in `tools/reels/write.py` (SYSTEM): one idea, 30 to 60 seconds, cause and effect, four
    levels per concept (New to it, How it works, Inside and caveats, Architect), an animated scene per beat, a check
    question and a work list. Teaching only: no reels about the program, modules or scoring.
+   The check's right option must not stand out by length: reword the wrong options to similar length (each still
+   clearly wrong) when it is the longest. Fix up to 15 such checks a day while reviewing; the app shuffles option order.
 4. Improve what needs it: rewrite the script in `tools/reels/r_<mid>.py` (hand-written) or `tools/reels/auto/<mid>.json`,
    add missing levels or a part 2 when a point did not fit, fix anything wrong. Then `python3 tools/reels/build.py` and
    `python3 tools/reels/voice.py`.

@@ -49,7 +49,9 @@ Rules for every reel:
   Components appear when the narration names them; dots show each interaction; chips state the takeaway.
   You may also use big, points, flow, bars or code for simple beats.
 - End each reel with check: one multiple-choice question that tests the idea (not trivia), the right option index in ans
-  (0-based), and why. Then work: 2 or 3 concrete things to do at work because of this idea.
+  (0-based), and why. Write every option at about the same length and in the same style: the right option must not be
+  the longest or the most detailed, and each wrong option is a real misconception that stays clearly wrong. Put the
+  right option at any index (the app shuffles the order on screen). Then work: 2 or 3 concrete things to do at work because of this idea.
 - Write everything yourself from the section below. Do not copy sentences from it word for word.
 Reply with JSON only."""
 

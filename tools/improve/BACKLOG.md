@@ -30,6 +30,7 @@ Top unblocked item goes next. Each item: goal served (1 understand, 2 remember, 
 
 ## Done
 
+- Unguessable quizzes (critic review item 3): per-attempt option order, answers by option, 189 options reworded (right option longest 87% → 21%), validate.py rule, quiz-same, Q36–Q39. Left: about 1,000 reel checks still have the right option longest (order is now shuffled; the daily reel review rewords up to 15 a day).
 - 1.35.2: Iceberg architect's lens (2.9, linked from 8.5) with 6 internals answers (v3 deletion vectors), 3 interview and 3 quiz questions, 8 reels.
 - 1.32.0: Kafka architect's lens (5.9) with 6 internals answers (v3 deletion vectors), 3 interview questions, 8 reels.
 - 1.32.0: sign-in turned on with the exam app's client ID, sign-ins bound to Data Architect (nonce), cache clean-up limited to this app (user request: no data shared with the exam app).
