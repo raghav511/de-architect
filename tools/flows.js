@@ -753,6 +753,16 @@ async function T(name, fn, opt) {
     await go(p, '#/learn/s00/chapter', 900); ok(/From a platform to a data foundation/.test(await text(p, '.prose')), 'Start here has no data foundation section');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
+  await T('architect\'s lens: Iceberg (2.9) shows seven questions and six internals answers (v3 deletion vectors among them), its interview and quiz questions join module 2, its reels cover four levels, and module 8 links to it', async p => {
+    await go(p, '#/learn/s02/chapter', 1500); await p.waitForSelector('.lens');
+    ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details:not(.fresh)').length === 6 && /manifest list/.test(l.textContent) && /deletion vector/.test(l.textContent) && /Polaris/.test(l.textContent) && /merge-on-read/i.test(l.textContent); }), 'Iceberg lens card incomplete');
+    ok(await p.evaluate(() => getComputedStyle(document.querySelector('.lens td')).display === 'block' && document.documentElement.scrollWidth <= innerWidth), 'Iceberg lens is not stacked on a phone or scrolls sideways');
+    ok(await p.evaluate(async () => { const s = await sprint('s02'); return s.interview.filter(q => /move[ds]? to Iceberg|commit to the same Iceberg table|every minute for a month/.test(q.Q)).length === 3 && s.quiz.filter(q => /hours\(event_ts\)|merge-on-read Iceberg table|storage does not go down/.test(q.Q)).length === 3; }), 'Iceberg lens questions not in the interview and quiz sets');
+    ok(await p.evaluate(async () => { const r = (await reelsFor('s02')).filter(x => x.sec === '2.9'); return r.length === 8 && new Set(r.map(x => x.level)).size === 4; }), 'Iceberg lens reels missing or not at four levels');
+    await go(p, '#/learn/s08/chapter', 1500); await p.click('.prose a[href="#/learn/s02/chapter"]'); await p.waitForSelector('.lens');
+    ok(await p.evaluate(() => location.hash.startsWith('#/learn/s02')), 'module 8 does not link to the Iceberg lens');
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
   await T('live mock: Today links it; five questions from this week (concept, under the hood, lens, staff slot, recall); AI follow-up and rubric scores; weak answers open the next mock; self-marking with AI off', async p => {
     await p.route('https://api.anthropic.com/**', r => { const H = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST, OPTIONS' }; if (r.request().method() === 'OPTIONS') return r.fulfill({ status: 204, headers: H }); const b = r.request().postData() || ''; const fu = /ONE follow-up/.test(b); r.fulfill({ headers: H, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: fu ? '{"followup":"What changes at 100 times the data?"}' : '{"scores":{"correct":2,"depth":2,"trade":2,"clear":3},"rejected":true,"limits":false,"operate":false,"feedback":"Say what you rejected.","better":"A stronger answer."}' }] }) }); });
     p.setDefaultTimeout(8000); p.on('pageerror', e => console.log('PAGEERR', e.message));

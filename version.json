@@ -1,10 +1,8 @@
 {
-  "version": "1.36.2",
+  "version": "1.36.4",
   "date": "2026-11-07",
   "notes": [
-    "Grading through your sync script now checks for results on a gentle back-off (at most 8 checks per answer) and pauses while the app is in the background, so it no longer uses up Google quotas.",
-    "Your sync script refuses every request when it has no key set, unless you are signed in, and the app tells you why.",
-    "The app may now only talk to the services it needs (your sync script, Google sign-in, the AI API and the Python download), and Settings accepts only Google Apps Script sync URLs.",
-    "Profile \u203a AI warns that your key is kept in a browser address shared with your other pages, and suggests a spend-limited key."
+    "New in Storage (2.9): the architect's lens for Iceberg and open table formats. When to use one and when not, who owns and pays for it, how it fails, and six under-the-hood answers: the metadata tree, commits from two writers, hidden partitioning, copy-on-write or merge-on-read, compaction with snapshot expiry, and the new version 3 deletion vectors.",
+    "The lens covers Iceberg version 3, Amazon S3 Tables and REST catalogs such as Polaris; module 8 (8.5) adds the catalog products and links to the lens. Three new interview questions, three quiz questions and eight reels."
   ]
 }
