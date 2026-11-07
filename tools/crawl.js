@@ -300,14 +300,14 @@ const REGRESS = [
     const r = await p.evaluate(async () => { let n = 0; const bad = []; for (const m of MODS_ALL) for (const x of await reelsFor(m)) for (const b of x.beats || []) { if (!b.show) continue; n++; try { FX.build(b.show).stop(); } catch (e) { if (bad.length < 3) bad.push(x.id + ': ' + e.message); } } return { n, bad }; });
     return r.bad.length ? r.bad.join(' | ') : r.n < 100 ? 'only ' + r.n + ' pictures found' : '';
   }],
-  ['the Sign in button shows its whole label on a phone (1.32.1)', async (p, o) => {
+  ['the Sign in button shows its whole label on a phone (1.35.3)', async (p, o) => {
     if (!o.iphone) return; await o.full('#/quiz/s00');
     const r = await p.evaluate(() => { const b = document.querySelector('.authtop'); return b ? { sw: b.scrollWidth, cw: b.clientWidth } : null; });
     return r && r.sw > r.cw + 1 ? `label ${r.sw}px in a ${r.cw}px button` : '';
   }],
-  ['the reel title is not hidden under the Shuffle filter row (1.32.1)', async (p, o) => {
+  ['the reel title is not hidden under the Shuffle filter row (1.35.3)', async (p, o) => {
     await p.evaluate(() => { S.settings.reelMode = 'shuffle'; save(); }); await o.full('#/reels'); await p.waitForTimeout(1500);
-    const r = await p.evaluate(() => { const f = document.querySelector('.rfilters'), fd = document.querySelector('.rfeed'), s = fd && [...document.querySelectorAll('.rslide')].find(x => Math.abs(x.getBoundingClientRect().top - fd.getBoundingClientRect().top) < 5), h = s && s.querySelector('.rhead'); return f && h ? { f: f.getBoundingClientRect().bottom, h: h.getBoundingClientRect().top } : null; });
+    const r = await p.evaluate(() => { const f = document.querySelector('.rfilters'), fd = document.querySelector('.rfeed'), s = fd && [...document.querySelectorAll('.rslide')].find(x => Math.abs(x.getBoundingClientRect().top - fd.getBoundingClientRect().top) < 5), h = s && s.querySelector('.rhead'); const fb = f && f.querySelector('button'); return fb && h ? { f: fb.getBoundingClientRect().bottom, h: h.getBoundingClientRect().top } : null; /* the visible chips, not their tap padding */ });
     return !r ? 'no filter row or reel title found' : r.h < r.f - 1 ? `title starts at ${Math.round(r.h)}px, filters end at ${Math.round(r.f)}px` : '';
   }]
 ];

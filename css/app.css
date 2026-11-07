@@ -711,7 +711,7 @@ a.srcl:hover{background:var(--teal-l)}
 .lpmodel{font-size:15px}
 .lpco summary,.lpweb summary{cursor:pointer;font-weight:600;min-height:32px}
 .authtop{white-space:nowrap}.topbtns .btn.authtop{width:auto;padding:0 12px} /* the Sign in label is text, not an icon: never squeezed to 44px */
-/* 44px touch targets without changing the look: the hit area grows past the pill (crawler, 1.32.1) */
+/* 44px touch targets without changing the look: the hit area grows past the pill (crawler, 1.35.3) */
 .seg button,.rmode button,.rfilters button{position:relative}.rfilters button{min-width:44px}
 .seg button::after,.rmode button::after{content:'';position:absolute;inset:-4px 0}.rfilters button::after{content:'';position:absolute;inset:-8px 0}
 label.row:has(> input[type=checkbox]:first-child){min-height:44px;margin-left:-12px;padding-left:12px} /* the whole row, and a little to the left of the box, is the tap target */
