@@ -85,6 +85,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.34.1: reel batch: 452 of 1,209 reels fully recorded in the Heart voice, the Airflow lens's 7 reels added.
 - 1.33.1: Sign in with Google turned on (client ID shared with the exam app, sign-ins bound to this app); updates no longer delete the exam app's offline caches.
 - Airflow architect's lens (1.9): when to use an orchestrator and when not, who owns it, how it fails and scales, five internals answers, three interview questions and seven reels (built into data/reels.json by the next reel batch).
 - 1.32.0: Kafka architect's lens (5.9): when to use it and when not, who owns it, how it fails and scales, five internals answers, three interview questions and eight reels.

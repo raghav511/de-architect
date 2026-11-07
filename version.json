@@ -1,8 +1,7 @@
 {
-  "version": "1.33.1",
+  "version": "1.34.1",
   "date": "2026-11-07",
   "notes": [
-    "Sign in with Google is on: tap Sign in at the top right. You stay signed in for 24 hours.",
-    "Your exam app and Data Architect stay separate: a sign-in from one never opens the other's data, and updating Data Architect no longer clears the exam app's offline copy."
+    "More reels now play in the natural Heart voice (452 of 1,209), and the new Airflow lens has its own reels."
   ]
 }
