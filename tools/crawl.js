@@ -322,9 +322,9 @@ const REGRESS = [
     return out.join('; ');
   }],
   ['an empty Send in the coach panel puts the cursor in the message box (1.36.2)', async p => {
-    await p.click('.coachfab, .fab, [aria-label*="coach" i]').catch(() => {}); await p.waitForTimeout(400);
-    const b = p.locator('.coach button', { hasText: /^Send$/ }).first(); if (!(await b.count())) return 'no Send button in the coach panel';
-    await b.click(); await p.waitForTimeout(200);
+    await p.click('button.fab').catch(() => {}); await p.waitForTimeout(400);
+    const b = p.locator('.coach button[aria-label="Send"], .coach button:has-text("Send")').first(); if (!(await b.count())) return 'no Send button in the coach panel';
+    await b.click({ timeout: 5000 }); await p.waitForTimeout(200);
     return (await p.evaluate(() => document.activeElement && document.activeElement.getAttribute('aria-label'))) === 'Message the coach' ? '' : 'focus did not move to the message box';
   }],
   ['every reel picture builds (written flows with steps or nodes instead of items crashed the player, 1.32.1)', async p => {

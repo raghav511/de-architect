@@ -91,6 +91,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.36.6: second crawler batch: lesson pages no longer pan sideways on iPhone (a long module name in the picker, and WebKit counting wide code blocks); Today's "This week" and the design round timer no longer overlap; 44 px touch targets on phones for folded answers, reel buttons under headings, Progress quests and links, loop and simulator chips, simulator tools, editor pane tabs and the day arrows; an empty Send or Run line puts the cursor in its box; the quiz palette marks the current question for screen readers; the coach mic says when it is listening.
 - 1.36.5: release.
 - 1.36.4: Iceberg architect's lens (2.9, linked from 8.5): when to use an open table format and when not, who owns it, how it fails, six internals answers (format v3 deletion vectors among them), three interview and three quiz questions, eight reels; 8.5 adds the catalog products (Polaris, Unity, S3 Tables).
 - 1.36.2: Security hardening (review 11–13): grading checks back off and pause while hidden (at most 8 per answer), the sync script no longer serves anyone when no KEY is set, the page may only call the hosts it needs, and only Apps Script sync URLs are accepted; Profile › AI warns that the key lives in a browser origin shared with other pages.

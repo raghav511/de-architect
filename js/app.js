@@ -547,7 +547,7 @@ function vWork(kind, id, mode) {
     finally { runBtn.disabled = false; runBtn.firstChild.textContent = 'Run again'; if (window.innerWidth < 1024) mshow('out'); }
   }
   async function sendLine() {
-    const line = termIn.value; if (!line.trim()) return; termIn.value = '';
+    const line = termIn.value; if (!line.trim()) { termIn.focus(); return; } termIn.value = ''; /* an empty Run line puts you in the box */
     addTerm('cmd', (lang === 'sql' ? 'sql> ' : '>>> ') + line);
     try {
       if (lang === 'sql') { const r = await Py.json('run_sql', [line]); if (r.err) addTerm('err', r.err); else addTerm('', fmtTable(r.table)); }

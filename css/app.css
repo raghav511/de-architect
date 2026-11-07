@@ -721,6 +721,7 @@ label.row:has(> input[type=checkbox]:first-child){min-height:44px;margin-left:-1
 @media (pointer:coarse){a.srcl{position:relative}a.srcl::after{content:'';position:absolute;inset:-4px}
   .toc a{display:inline-flex;align-items:center;min-height:44px}.pset>summary,details>summary.lbl{min-height:44px;display:flex;align-items:center}
   .simtabs button{min-height:44px}.simtools .btn.icon.sm,.daynav .btn.icon{width:44px;min-height:44px}
+  .mtabs button,.otab{min-height:44px}
   details>summary{min-height:44px;box-sizing:border-box;padding-block:8px}.rsec{min-height:44px}
   .gq,.simchips .chip,.lpco .chip,.lpco summary,.lpweb summary,.simcomp{min-height:44px}.lpco .chip{display:inline-flex;align-items:center}}
 select.btn{max-width:100%;text-overflow:ellipsis} /* a long module title never makes a lesson page scroll sideways on a phone (1.36.2) */
