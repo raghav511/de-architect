@@ -13,28 +13,43 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 AUTO = os.path.join(os.path.dirname(__file__), 'auto')
 MODEL = os.environ.get('DA_REEL_MODEL', 'sonnet')
 SHOW = {'type': 'object', 'properties': {
-    't': {'type': 'string', 'enum': ['big', 'points', 'flow', 'bars', 'code']},
+    't': {'type': 'string', 'enum': ['scene', 'big', 'points', 'flow', 'bars', 'code']},
+    'title': {'type': 'string'}, 'kicker': {'type': 'string'},
+    'nodes': {'type': 'array', 'items': {'type': 'object'}}, 'edges': {'type': 'array', 'items': {'type': 'array'}}, 'steps': {'type': 'array', 'items': {'type': 'object'}},
     'text': {'type': 'string'}, 'sub': {'type': 'string'}, 'note': {'type': 'string'}, 'unit': {'type': 'string'},
     'items': {'type': 'array', 'items': {'type': 'string'}},
     'bars': {'type': 'array', 'items': {'type': 'object', 'properties': {'label': {'type': 'string'}, 'value': {'type': 'number'}, 'note': {'type': 'string'}}, 'required': ['label', 'value']}}},
     'required': ['t']}
-SCHEMA = {'type': 'object', 'properties': {'reels': {'type': 'array', 'minItems': 1, 'maxItems': 4, 'items': {'type': 'object', 'properties': {
-    'title': {'type': 'string'},
+SCHEMA = {'type': 'object', 'properties': {'reels': {'type': 'array', 'minItems': 2, 'maxItems': 8, 'items': {'type': 'object', 'properties': {
+    'title': {'type': 'string'}, 'level': {'type': 'string', 'enum': ['New to it', 'How it works', 'Inside and caveats', 'Architect']},
     'beats': {'type': 'array', 'minItems': 2, 'maxItems': 5, 'items': {'type': 'object', 'properties': {'say': {'type': 'string'}, 'show': SHOW}, 'required': ['say', 'show']}},
     'check': {'type': 'object', 'properties': {'q': {'type': 'string'}, 'opts': {'type': 'array', 'minItems': 3, 'maxItems': 4, 'items': {'type': 'string'}}, 'ans': {'type': 'integer'}, 'why': {'type': 'string'}}, 'required': ['q', 'opts', 'ans', 'why']},
-    'work': {'type': 'array', 'minItems': 2, 'maxItems': 3, 'items': {'type': 'string'}}}, 'required': ['title', 'beats', 'check', 'work']}}}, 'required': ['reels']}
-SYSTEM = """You write short narrated explainer reels for a senior data engineer preparing for staff and architect interviews.
-Rules:
-- Each reel is spoken in 30 to 60 seconds: 75 to 145 words of narration in total across its beats. Count carefully.
-- One idea per reel. If the section has more than one big idea, write 2 to 4 reels and split the ideas between them.
-- Beat 1 is a hook: a question or a surprising fact the learner wants answered. Then 1 to 3 beats that answer it.
-- Explain cause and effect in plain spoken English. Never state a mechanism without saying why it matters, e.g. not
-  "Kafka never seeks" but what a seek is, why it is slow, and what Kafka does instead. Prefer concrete numbers and examples.
-- Words are read aloud: no markdown, no code symbols in "say", spell out symbols ("n squared", "equals"). Short sentences.
-- Each beat has a picture: big (text plus sub, a short headline), points (2 to 4 short items), flow (2 to 5 steps),
-  bars (2 or 3 bars with numeric value and unit, for comparisons), or code (a few lines, only when the section is about code).
+    'work': {'type': 'array', 'minItems': 2, 'maxItems': 3, 'items': {'type': 'string'}}}, 'required': ['title', 'level', 'beats', 'check', 'work']}}}, 'required': ['reels']}
+SYSTEM = """You write short narrated explainer reels that teach one data engineering concept in and out, for a learner
+preparing for staff and architect interviews. You write a SERIES for the section: one or more reels at each of four levels,
+in this order, each level its own reel:
+  New to it          an everyday analogy for someone new or non-technical; no jargon without saying what it means.
+  How it works       the technical mechanism, step by step, with concrete numbers.
+  Inside and caveats internals, edge cases, failure modes and the gotchas interviewers probe.
+  Architect          trade-offs, when not to use it, cost, scale limits, what you would choose instead and why.
+If a level needs more than one reel, add another reel at the same level ("part" is set later). Skip a level only if the
+section has nothing for it. Teach the concept only: never talk about the course, the app, modules or scoring.
+Rules for every reel:
+- Spoken in 30 to 60 seconds: 75 to 145 words of narration in total across its beats. Count carefully.
+- Beat 1 is a hook: a question or a surprising fact. Then 1 to 3 beats that answer it.
+- Explain cause and effect in plain spoken English, never a mechanism without why it matters (not "Kafka never seeks",
+  but what a seek is, why it is slow, and what Kafka does instead). Prefer concrete numbers and examples.
+- Words are read aloud: no markdown or code symbols in "say"; spell symbols out. Short sentences.
+- Pictures are animated scenes. Prefer t "scene": {"t":"scene","title":"headline with one *highlighted* word",
+  "nodes":[{"id","label","sub","x","y","tone"}] (x and y are percent of a tall stage, keep at most 3 nodes per row and
+  labels short; tone is blue, teal, amber, red, plum or grey; kind "disk" draws a disk), "edges":[["a","b"]],
+  "steps":[{"at":0.0-1.0, then one of: "show":"id" or [ids], "packet":["a","b"],"n":3, "chip":{"text","tone","icon"},
+  "count":{"key","label","to","unit","tone"}, "cells":{"label","items":[["offset","value"]]},
+  "race":{"items":[["label",number,"tone"]],"unit"}, "glow":"id", "dim":"id", "seek":"id"}]}.
+  Components appear when the narration names them; dots show each interaction; chips state the takeaway.
+  You may also use big, points, flow, bars or code for simple beats.
 - End each reel with check: one multiple-choice question that tests the idea (not trivia), the right option index in ans
-  (0-based), and why. Then work: 2 or 3 concrete things to do at work tomorrow because of this idea.
+  (0-based), and why. Then work: 2 or 3 concrete things to do at work because of this idea.
 - Write everything yourself from the section below. Do not copy sentences from it word for word.
 Reply with JSON only."""
 
@@ -85,9 +100,12 @@ def tidy(reels):
             if s.get('t') == 'bars': s['items'] = [[x['label'], x['value'], x.get('note', '')] for x in s.pop('bars', [])] or [['', 1, '']]
         c = r['check']; c['ans'] = max(0, min(len(c['opts']) - 1, int(c['ans'])))
         out.append(r)
-    for i, r in enumerate(out):
-        if len(out) > 1: r['part'] = '%d of %d' % (i + 1, len(out))
-    return out
+    for lv in {r.get('level') for r in out}:  # parts count within one level
+        same = [r for r in out if r.get('level') == lv]
+        for i, r in enumerate(same):
+            if len(same) > 1: r['part'] = '%d of %d' % (i + 1, len(same))
+    order = ['New to it', 'How it works', 'Inside and caveats', 'Architect']
+    return sorted(out, key=lambda r: order.index(r['level']) if r.get('level') in order else 9)
 
 
 def main(a):

@@ -782,28 +782,31 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'sideways scroll on a phone');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
-  await T('reels: a Reels tab; a Reel button under every section; the player steps beats with captions, ends with a quick check that schedules a review and a work list saved to My playbook; Today lists reels for today; a voice picker; no sideways scroll', async p => {
-    await go(p, '#/today', 1500); await p.evaluate(() => { S.settings.reelVoice = false; S.reels = {}; S.playbook = {}; save(); });
+  await T('reels: Shorts-style feed, shuffle by default with My week and filters, teaching-only reels, four-level Kafka series, scenes animate, one voice at a time, quick check schedules a review, heart saves to My playbook', async p => {
+    await go(p, '#/today', 1500); await p.evaluate(() => { S.settings.reelVoice = false; delete S.settings.reelMode; S.reels = {}; S.playbook = {}; save(); });
     ok(await p.evaluate(() => [...document.querySelectorAll('.tabbar a')].some(a => a.getAttribute('href') === '#/reels')), 'no Reels tab');
-    await go(p, '#/learn/s05/chapter', 1500); await p.waitForSelector('.rsec');
-    ok(await p.evaluate(() => [...document.querySelectorAll('.prose h2')].every(h => h.nextElementSibling && h.nextElementSibling.classList.contains('rsec'))), 'a section has no Reel button right under its heading');
-    ok(/2 reels/.test(await p.evaluate(() => [...document.querySelectorAll('.rsec')][1].textContent)), 'section 5.2 does not show its two reels');
-    await p.evaluate(() => [...document.querySelectorAll('.rsec')][1].click()); await p.waitForSelector('.reelv .rstart');
-    ok(/Kafka writes to disk/.test(await text(p, '.reelv .rhead')), 'wrong reel opened');
-    await p.click('.reelv .rstart'); await p.click('[aria-label="Next point"]'); ok(/seek/.test(await text(p, '.reelv .rcap')), 'caption for beat 2 missing');
-    await p.click('[aria-label="Next point"]'); await p.click('[aria-label="Next point"]'); await p.waitForSelector('.ropt');
-    await p.click('.ropt >> nth=2'); const r = await p.evaluate(() => { const x = S.reels['s05-52-0']; return !!(x && x.ok === false && x.due > iso(new Date())); }); ok(r, 'a missed check does not schedule a review');
-    await p.click('.rendcard button:has-text("playbook")'); ok(await p.evaluate(() => !!S.playbook['s05-52-0']), 'work list not saved');
-    await p.click('[aria-label^="Choose a voice"]'); await p.waitForSelector('.rsheet'); ok(/Voice off/.test(await text(p, '.rsheet')), 'voice picker missing'); await p.click('.rsheet [aria-label="Close"]');
-    await p.click('[aria-label="Next reel"]'); ok(/page cache|Kafka is fast/i.test(await text(p, '.reelv .rhead')), 'next reel did not open');
-    ok(await p.evaluate(() => document.querySelector('.reelv').scrollWidth <= innerWidth), 'reel player wider than the phone');
-    await p.evaluate(() => { S.settings.reelVoice = true; delete S.settings.reelVoiceName; save(); }); await go(p, '#/today', 600);
-    const heard = p.waitForRequest(r => /audio\/reels\/s05-52-0-0-/.test(r.url()), { timeout: 8000 }).then(() => true).catch(() => false);
-    await go(p, '#/reels/s05-52-0', 1200); await p.click('.reelv .rstart'); ok(await heard, 'the recorded Heart voice did not load for a hand-written reel');
-    await p.evaluate(() => { S.settings.reelVoice = false; save(); });
-    await go(p, '#/playbook', 900); ok(/Size Kafka disks/.test(await text(p, '#page')), 'playbook does not list the saved work list');
-    await go(p, '#/today', 1800); await p.waitForSelector('.rtoday'); ok(await p.evaluate(() => document.querySelectorAll('.rtoday .rthumb').length > 0), 'no reels for today');
-    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Today scrolls sideways');
+    await go(p, '#/reels', 2500); await p.waitForSelector('.rmode');
+    ok(/Shuffle/.test(await text(p, '.rmode [aria-selected=true]')), 'shuffle is not the default order');
+    ok(await p.evaluate(() => document.querySelectorAll('.rfilters button').length >= 6), 'shuffle filters missing');
+    const meta = await p.evaluate(async () => { const all = (await Promise.all(MODS.map(m => reelsFor(m)))).flat(); return all.filter(r => r.m === 's00' || REEL_META.test(r.head)).length; }); ok(meta === 0, meta + ' reels are about the program itself');
+    await p.click('.rmode button:has-text("My week")'); await p.waitForTimeout(1500); ok(/My week/.test(await text(p, '.rmode [aria-selected=true]')), 'cannot switch back to My week');
+    await go(p, '#/today', 600); await go(p, '#/learn/s05/chapter', 1500); await p.waitForSelector('.rsec');
+    ok(await p.evaluate(() => [...document.querySelectorAll('.prose h2')].filter(h => !REEL_META.test(h.textContent)).every(h => h.nextElementSibling && h.nextElementSibling.classList.contains('rsec'))), 'a section has no Reel button under its heading');
+    ok(/4 reels/.test(await p.evaluate(() => [...document.querySelectorAll('.rsec')][1].textContent)), 'section 5.2 does not show its four-level series');
+    await go(p, '#/reels/s05-52-1', 1800); await p.waitForSelector('.rslide .rstart');
+    ok(await p.evaluate(() => { const s = document.querySelector('.rslide .rstart').closest('.rslide'); return /How it works/.test(s.querySelector('.rlevel').textContent); }), 'level badge missing');
+    await p.click('.rslide .rstart'); await p.waitForTimeout(2500);
+    ok(await p.evaluate(() => document.querySelectorAll('.rslide.playing').length === 1 && document.querySelectorAll('.rslide .fxnode.on').length > 0), 'scene did not animate or more than one reel plays');
+    const w = await p.evaluate(() => innerWidth); for (let n = 0; n < 3; n++) { await p.mouse.click(w - 30, 420); await p.waitForTimeout(300); }
+    await p.waitForSelector('.ropt'); await p.click('.ropt >> nth=2');
+    ok(await p.evaluate(() => { const x = S.reels['s05-52-1']; return !!(x && x.ok === false && x.due > iso(new Date())); }), 'a missed check does not schedule a review');
+    await p.evaluate(() => { const s = [...document.querySelectorAll('.rslide')].find(x => x.querySelector('.ropt')); s.querySelector('.rheart').click(); });
+    ok(await p.evaluate(() => !!S.playbook['s05-52-1']), 'heart did not save to My playbook');
+    await p.evaluate(() => window.reelGo(1)); await p.waitForTimeout(1500);
+    ok(await p.evaluate(() => document.querySelectorAll('.rslide.playing').length <= 1), 'two reels play at once after swiping');
+    ok(await p.evaluate(() => document.querySelector('.reelv').scrollWidth <= innerWidth + 1), 'reel player wider than the phone');
+    await go(p, '#/playbook', 900); ok(/Size Kafka disks|sequential/i.test(await text(p, '#page')), 'playbook does not list the saved work list');
+    ok(await p.evaluate(() => Object.keys((S.metrics || {})[iso(new Date())] || {}).length > 0 && ((S.metrics[iso(new Date())].ev || {}).reel_open || 0) > 0), 'usage totals are not recorded');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
   await T('today: one Today box holds reading, quiz, coding, interview practice and coaching, with a summary on top and interview capped at its minutes', async p => {
