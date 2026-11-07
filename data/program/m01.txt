@@ -7,7 +7,7 @@ hours: 5
 
 @@tickets
 M101 | learn | 0.75 | Chapter part 1: why model, the Kimball steps, keys and dimension types | You can state the four Kimball steps, the grain of a trips fact, and explain conformed, role-playing and junk dimensions. | chapter:0-2
-M102 | learn | 0.75 | Chapter part 2: SCDs, cumulative tables and graph modelling | You can choose an SCD type for any attribute, describe the cumulative table pattern, and sketch a vertex and edge schema. | chapter:3-6
+M102 | learn | 1 | Chapter part 2: SCDs, cumulative tables, graph modelling and the architect's lens | You can choose an SCD type for any attribute, describe the cumulative table pattern, and sketch a vertex and edge schema. | chapter:3-7
 M103 | build | 1 | Exercises 1–3: SCD2 from snapshots, as-of join, incremental SCD2 | All three pass in the editor, and you can explain why joining on is_current gives a wrong answer. | sql:1-3
 M104 | build | 1 | Exercises 4–5: cumulative table, referral graph | Both pass, and you can say why the cumulative table never rescans history. | sql:4-5
 M105 | practice | 0.5 | Model it out loud: four drills | All four answered out loud before opening the model answers. | practice
@@ -167,6 +167,51 @@ The schema is deliberately generic: a vertex has an identifier, a type and a pro
 
 Relational SQL can answer graph questions with **recursive CTEs** (Exercise 5) for a few hops. Use a graph database or engine (Neo4j, Neptune, GraphFrames) when queries traverse many hops, need shortest paths or community detection, or run interactively. Two things always matter: **cycles** (A refers B refers A) need a depth limit or a visited set, and **supernodes** (one vertex with millions of edges) need special handling.
 
+## M1.8 Architect's lens: dimensional modelling
+
+The questions an architect is asked about choosing and defending a dimensional model.
+
+| Question | Short answer for dimensional modelling |
+|---|---|
+| **What problem does it solve?** | Making business data easy to query correctly: facts at one declared grain, described by shared dimensions, so every team counts "trips by city last week" the same way and BI tools can slice anything by anything. |
+| **Why it over the alternatives?** | Against third normal form: far fewer joins, and names the business understands. Against one big table: dimensions are reused across facts and history lives in one place, while an OBT is rebuilt for every change. Against Data Vault: simpler to query, while Vault is better as an auditable raw-integration layer underneath. |
+| **When not to use it?** | Raw landing and integration of many changing sources (keep them close to source, or Data Vault); one dashboard that needs one fast wide table (an OBT built from the star); ML features and event logs that are naturally wide or nested. |
+| **Who owns and pays for it?** | Domain teams own their facts; conformed dimensions such as customer, date and city need one owner and a change process, because every fact depends on them. The cost is design time up front and the discipline of declaring grain. |
+| **Where does it sit?** | In the business (gold) layer, after cleaning and before serving: semantic layers, BI and many features read from it (see M3.2 for the model per stage). |
+| **How does it fail and scale?** | Undeclared or mixed grain, fan-out when two facts are joined directly, SCD2 joins that pick the wrong version, late-arriving dimension rows that drop facts, and dimensions so wide or fast-changing that history explodes (split them into mini-dimensions). |
+| **When do you move off it?** | You rarely do; you add around it: an OBT or aggregates for speed, a semantic layer for shared metrics, and a lakehouse table format underneath. |
+
+### Under the hood
+
+**1. Why do star schemas run fast in a columnar warehouse even though they need joins?**
+<details><summary>Model answer</summary>
+
+Dimensions are small, so the engine broadcasts them to every worker and joins without shuffling the large fact table. The fact is narrow (keys and numbers), so columnar storage reads only the few columns a query uses, and filters on dimension attributes become filters on fact keys that can skip whole files. A third-normal-form model needs many more joins, often between large tables, which do shuffle. An OBT skips the join entirely, which is why it wins for one hot dashboard, at the cost of rebuilding it whenever a dimension changes.
+
+</details>
+
+**2. You join orders and shipments on customer and the revenue doubles. What happened?**
+<details><summary>Model answer</summary>
+
+A fan trap: both facts have many rows per customer, so the join multiplies them (each order row repeats for every shipment row). Never join two facts directly. Aggregate each fact to the shared grain first, or drill across: query each fact separately by the conformed dimensions, then combine the results. Declaring the grain of every fact makes this visible in review.
+
+</details>
+
+**3. A fact row arrives for a driver who is not in the driver dimension yet. What do you do?**
+<details><summary>Model answer</summary>
+
+Do not drop the fact and do not block the load. Point it at an "unknown" or inferred member: insert a placeholder dimension row with the natural key and a new surrogate key, flagged as inferred, and fill in its attributes when the real record arrives (updating that row, not adding a new SCD2 version). Counts stay right, and a test on inferred members shows how often it happens.
+
+</details>
+
+**4. Why do SCD2 dimensions need surrogate keys, and what does a correct point-in-time join look like?**
+<details><summary>Model answer</summary>
+
+One natural key (driver id) has many versions over time, so the natural key no longer identifies a row; the surrogate key identifies one version. Either the fact stores the surrogate key chosen at load time, or you join on the natural key plus time: `fact.event_time >= dim.valid_from and fact.event_time < dim.valid_to`, with half-open ranges so a boundary instant matches exactly one version. Overlapping or gapped ranges in the dimension break this, so test for them.
+
+</details>
+
+
 @@lab
 ## Exercises 1–3 (1 hour)
 
@@ -325,3 +370,11 @@ A: Load it anyway. Either insert an inferred member into the dimension with the 
 Q: Star schema or snowflake on a modern lakehouse?
 TAG: modeling
 A: Star, in almost all cases. Columnar storage compresses repeated values well, so denormalising a dimension costs little, and every join you remove makes queries simpler and faster for analysts and BI tools. I would snowflake only for very large shared hierarchies maintained by another team, or when a sub-dimension changes on a different schedule. Many teams go further and serve wide one-big-tables for the most common questions, built from the star.
+---
+Q: Two facts, orders and shipments, joined on customer show double the revenue. Explain and fix it.
+TAG: modeling
+A: A fan trap: both facts have many rows per customer, so the join multiplies them. Never join facts directly: aggregate each to the shared grain first, or drill across by querying each fact by the conformed dimensions and combining the results. Declare every fact's grain so reviews catch it.
+---
+Q: When would you build a one-big-table instead of a star schema, and what do you keep anyway?
+TAG: arch
+A: For one hot dashboard or a tool that cannot join, where a wide precomputed table is fastest and simplest. Keep the star underneath as the source of truth and build the OBT from it, because dimensions and history live once in the star and the OBT must be rebuilt whenever they change.

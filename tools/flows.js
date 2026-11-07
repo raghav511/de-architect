@@ -742,6 +742,13 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => getComputedStyle(document.querySelector('.lens td')).display === 'block' && document.documentElement.scrollWidth <= innerWidth), 'Spark lens is not stacked on a phone or scrolls sideways');
     ok(await p.evaluate(async () => { const s = await sprint('s03'); return s.interview.some(q => /Spark for every new pipeline/.test(q.Q)) && s.interview.some(q => /most expensive thing in a Spark job/.test(q.Q)) && s.quiz.some(q => /salt a hot key with 10 salt values/.test(q.Q)); }), 'Spark lens questions not in the interview set or quiz');
     ok(await p.evaluate(async () => { const r = (await reelsFor('s03')).filter(x => x.sec === '3.10'); return r.length === 8 && ['New to it', 'How it works', 'Inside and caveats', 'Architect'].every(lv => r.some(x => x.level === lv)); }), 'Spark lens reels missing');
+    /* dbt (s04, five internals) and dimensional modelling (m01, four internals, scheduled in M102) */
+    for (const [m, n, word, q] of [['s04', 5, 'state:modified', /2,000 models and CI takes an hour/], ['m01', 4, 'fan trap', /joined on customer show double the revenue/]]) {
+      await go(p, '#/learn/' + m + '/chapter', 1500); await p.waitForSelector('.lens');
+      ok(await p.evaluate(([n, w]) => document.querySelectorAll('.lens tbody tr').length === 7 && document.querySelectorAll('.lens details').length === n && document.querySelector('.lens').textContent.includes(w), [n, word]), m + ' lens card incomplete');
+      ok(await p.evaluate(async ([m, q]) => (await sprint(m)).interview.some(x => new RegExp(q).test(x.Q)), [m, q.source]), m + ' lens questions not in the interview set');
+    }
+    ok(await p.evaluate(() => /architect's lens/.test((schedule().units.find(u => u.uid === 'm01:M102') || {}).title || '')), 'M1.8 is not in a reading step');
     await go(p, '#/learn/s00/chapter', 900); ok(/From a platform to a data foundation/.test(await text(p, '.prose')), 'Start here has no data foundation section');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
