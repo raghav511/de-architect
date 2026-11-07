@@ -1,8 +1,8 @@
 {
-  "version": "1.24.1",
+  "version": "1.25.0",
   "date": "2026-11-07",
   "notes": [
-    "Python 2 now has 8 reels in the natural Heart voice.",
-    "The refresh now runs every evening: new interview questions, coding problems, system design questions and AI news go into the right sections, with reels for anything new."
+    "Every module now has at least one reel on its hardest topic, in the Heart voice: 47 reels in all.",
+    "Fixed: moving to another reel no longer leaves the previous reel talking. Today opens about five times faster on phones."
   ]
 }

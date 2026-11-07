@@ -96,15 +96,16 @@ function reelPlayer(q) {
   const close = () => { stop(); ov.remove(); if (history.length > 1) history.back(); else location.hash = '#/today'; };
   document.body.appendChild(ov);
   cleanup.push(() => { stop(); ov.remove(); });
-  let audio = null;
-  function stop() { clearTimeout(timer); timer = null; if (audio) { audio.onended = audio.onerror = null; audio.pause(); audio = null; } try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { } }
-  function say(text, done, file) {
+  let audio = null, tok = 0;
+  function stop() { tok++; clearTimeout(timer); timer = null; if (audio) { audio.onended = audio.onerror = null; audio.pause(); audio = null; } try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { } }
+  function say(text, done0, file) {
     stop();
+    const my = tok, done = () => { if (my === tok) done0(); }; /* a line from an older reel or beat never speaks or advances */
     /* the recorded natural voice (Kokoro, Heart) when this beat has one and no device voice was picked */
     if (file && S.settings.reelVoice !== false && !S.settings.reelVoiceName) {
       audio = new Audio(file); audio.playbackRate = speed(); audio.preservesPitch = true;
-      audio.onended = () => done(); audio.onerror = () => { audio = null; say(text, done); };
-      audio.play().catch(() => { audio = null; say(text, done); }); return;
+      audio.onended = () => done(); audio.onerror = () => { if (my === tok) { audio = null; say(text, done0); } };
+      audio.play().catch(() => { if (my === tok) { audio = null; say(text, done0); } }); return;
     }
     if (speakOK()) { utter = new SpeechSynthesisUtterance(text); const v = reelVoice(); if (v) utter.voice = v; utter.rate = speed() * 0.97; utter.pitch = 1; utter.onend = () => { if (utter && utter._me === myTok) done(); }; const myTok = utter._me = Math.random(); speechSynthesis.speak(utter);
       timer = setTimeout(() => { if (playing && !speechSynthesis.speaking) done(); }, (text.split(' ').length / 2.2 / speed() + 3) * 1000); } /* safety net if the voice never reports the end */
