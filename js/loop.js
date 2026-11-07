@@ -165,7 +165,7 @@ function loopR1Practice(D) {
 
 /* round 2: method and complexity */
 function loopMethod(D) {
-  const n = (DATA.dsa || []).length, solved = (DATA.dsa || []).filter(x => S.solved[x.id]).length, p = n ? DATA.dsa[dayIndex() % n] : null;
+  const core = (DATA.dsa || []).filter(x => !x.st), n = core.length, solved = (DATA.dsa || []).filter(x => S.solved[x.id]).length, p = n ? core[dayIndex() % n] : null;
   return el('div', { class: 'stack' }, [el('section', { class: 'card pad stack' }, [el('h3', { text: 'The same seven steps, every problem' }),
     el('ol', { class: 'lpsteps' }, D.dsaSteps.map(([t, d]) => el('li', {}, [el('b', { text: t + '. ' }), el('span', { text: d })])))]),
     p ? el('section', { class: 'card pad stack' }, [el('b', { text: 'Today\'s problem: ' + p.t }), el('span', { class: 'muted', text: p.lv + ' · ' + solved + ' of ' + n + ' problems solved. Say each step out loud as you go, then the complexity.' }),

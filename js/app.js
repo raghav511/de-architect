@@ -374,7 +374,7 @@ function vWork(kind, id, mode) {
     Q = (DATA[kind] || []).find(x => x.id === id);
     if (!Q) { location.hash = '#/practice'; return; }
     lang = kind === 'dsa' || kind === 'py' ? 'python' : kind;
-    title = Q.t; eyebrow = kind === 'py' ? 'Python · ' + modLabel(Q.m) + ' · exercise ' + (DATA.py.filter(x => x.m === Q.m).indexOf(Q) + 1) + ' · ' + Q.lv : (kind === 'dsa' ? 'DSA · day ' + (DATA.dsa.indexOf(Q) + 1) + ' of 84' : kind === 'sql' ? 'SQL · ' + (Q.k === 'O' ? 'optimize' : 'write') : 'PySpark · ' + (Q.k === 'O' ? 'optimize' : 'write')) + (Q.m ? ' · ' + modLabel(Q.m) : ' · set ' + Q.w) + ' · ' + Q.lv;
+    title = Q.t; eyebrow = kind === 'py' ? 'Python · ' + modLabel(Q.m) + ' · exercise ' + (DATA.py.filter(x => x.m === Q.m).indexOf(Q) + 1) + ' · ' + Q.lv : (kind === 'dsa' ? (Q.st ? 'DSA · Hard stretch' : 'DSA · day ' + (DATA.dsa.indexOf(Q) + 1) + ' of 84') : kind === 'sql' ? 'SQL · ' + (Q.k === 'O' ? 'optimize' : 'write') : 'PySpark · ' + (Q.k === 'O' ? 'optimize' : 'write')) + (Q.m ? ' · ' + modLabel(Q.m) : ' · set ' + Q.w) + ' · ' + Q.lv;
   }
   const qid = Q.id;
   const rv = (S.rev || {})[qid];
@@ -910,7 +910,7 @@ function vProgress() {
   const ivAll = MODS.reduce((a, m) => a + (((DATA.sprints[m] || {}).interview) || []).length, 0);
   const ivP = ivAll ? Math.round(100 * MODS.reduce((a, m) => a + Object.values(S.iv[qk(m)] || {}).filter(Boolean).length, 0) / ivAll) : 0;
   const rows = [['Python', pct(DATA.py.filter(x => x.m !== 's00')), '#5B7A1E'], ['Data modelling', pct(DATA.sql.filter(x => x.m)), 'var(--plum)'], ['DSA', pct(DATA.dsa), 'var(--teal)'], ['SQL write', pct(sqlW), '#164C7E'], ['SQL optimize', pct(sqlO), '#164C7E'], ['PySpark write', pct(spW), '#8A3A0C'], ['PySpark optimize', pct(spO), '#8A3A0C'], ['Quizzes passed (80%+)', quizP, 'var(--blue)'], ['Interview questions ticked', ivP, 'var(--plum)']];
-  const grid = el('div', { class: 'dsa-grid', 'aria-label': '84 daily DSA problems' }, DATA.dsa.map((x, i) => el('a', { href: '#/dsa/' + x.id, title: (i + 1) + '. ' + x.t, class: S.solved[x.id] ? 'done' : i === dayIndex() % 84 ? 'today' : '' })));
+  const grid = el('div', { class: 'dsa-grid', 'aria-label': '84 daily DSA problems' }, DATA.dsa.filter(x => !x.st).map((x, i) => el('a', { href: '#/dsa/' + x.id, title: (i + 1) + '. ' + x.t, class: S.solved[x.id] ? 'done' : i === dayIndex() % 84 ? 'today' : '' })));
   const rg = recentGrades(14), kinds = { answer: 'Answers', code: 'Code', design: 'Design', cc: 'Claude Code' };
   const gradeCard = rg.length ? el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('span', { class: 'lbl grow', text: 'Instant grades · last 14 days' })].concat(Object.keys(kinds).filter(k => rg.some(g => g.kind === k)).map(k => { const xs = rg.filter(g => g.kind === k); return el('span', { class: 'chip c-test', text: kinds[k] + ' ' + (xs.reduce((a, g) => a + g.score, 0) / xs.length).toFixed(1) + ' / 5' }); }))),
     el('div', { class: 'stack', style: { gap: '6px' } }, rg.slice(0, 8).map(g => el('div', { class: 'row', style: { alignItems: 'flex-start' } }, [scoreBadge(g.score), el('div', { class: 'grow' }, [el('b', { style: { fontSize: '14px' }, html: mdi(g.q || g.key) }), el('div', { class: 'muted', style: { fontSize: '13px' }, html: mdi(g.improve || '') })])])))]) : null;
