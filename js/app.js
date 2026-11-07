@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.31.0';
+const VERSION = '1.31.1';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -26,7 +26,7 @@ const I = { reel: '<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M
   update: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>', back: '<path d="M15 18l-6-6 6-6"/>', fwd: '<path d="M9 6l6 6-6 6"/>', dbl_l: '<path d="M18 6l-6 6 6 6M11 6l-6 6 6 6"/>', dbl_r: '<path d="M6 6l6 6-6 6M13 6l6 6-6 6"/>',
   x: '<path d="M18 6L6 18M6 6l12 12"/>', check: '<path d="M5 12l5 5 9-10" stroke="#fff" stroke-width="3"/>', spark: '<path d="M12 3l1.8 4.6L18 9.4l-4.2 1.8L12 16l-1.8-4.8L6 9.4l4.2-1.8z"/><path d="M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
   git: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 7v10M18 11c0 4-6 3-11 7"/>', news: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/>',
-  term: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1.31.0 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'
+  term: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1.31.1 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'
 };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 /* text from the daily refresh (scraped questions, news) and from AI replies is rendered as Markdown, so its HTML is
@@ -1208,7 +1208,10 @@ let lastDay = iso(new Date());
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && iso(new Date()) !== lastDay) { lastDay = iso(new Date()); if (!/^#\/(dsa|sql|spark|test)\//.test(location.hash)) route(); } });
 window.addEventListener('keydown', e => { if (e.key === '`' && (e.ctrlKey || e.metaKey)) { const b = Array.from(document.querySelectorAll('.otab')).find(x => x.textContent === 'Terminal'); if (b) { e.preventDefault(); b.click(); } } });
 (async () => {
-  try { await loadData(); } catch (e) { $('#root').innerHTML = '<div style="padding:24px">Could not load the question bank. Check your connection and reload.</div>'; return; }
+  /* a download that stalls (weak signal) never leaves you on "Loading" with nothing to do */
+  const stuck = setTimeout(() => { if (booted) return; const r = $('#root'); r.textContent = ''; r.appendChild(el('div', { class: 'stack', style: { padding: '24px', gap: '12px', maxWidth: '420px' }, role: 'status' }, [el('b', { text: 'Still loading…' }), el('span', { text: 'The connection looks slow. Your progress is safe on this device.' }), el('button', { class: 'btn pri', style: { alignSelf: 'flex-start' }, onclick: () => location.reload(), text: 'Reload' })])); }, 12000);
+  try { await loadData(); } catch (e) { clearTimeout(stuck); $('#root').innerHTML = '<div style="padding:24px">Could not load the question bank. Check your connection and reload.</div>'; return; }
+  clearTimeout(stuck);
   try { reconcileContent(); } catch (e) { console.error(e); } /* an update never blocks the app */
   booted = true;
   route();
