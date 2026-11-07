@@ -312,7 +312,7 @@ async function crawl(browser, engine, state) {
 
 /* fixed bugs: return a message when the bug is back */
 const REGRESS = [
-  ['Today\'s "This week" heading and the design round timer keep their text on one line on a phone (1.36.2)', async (p, o) => {
+  ['Today\'s "This week" heading and the design round timer keep their text on one line on a phone (1.36.6)', async (p, o) => {
     if (!o.iphone) return; const out = [];
     for (const [h, t] of [['#/today', 'This week'], ['#/design', 'Round timer']]) {
       await o.full(h); await p.waitForTimeout(1500);
@@ -321,7 +321,7 @@ const REGRESS = [
     }
     return out.join('; ');
   }],
-  ['an empty Send in the coach panel puts the cursor in the message box (1.36.2)', async p => {
+  ['an empty Send in the coach panel puts the cursor in the message box (1.36.6)', async p => {
     await p.click('button.fab').catch(() => {}); await p.waitForTimeout(400);
     const b = p.locator('.coach button[aria-label="Send"], .coach button:has-text("Send")').first(); if (!(await b.count())) return 'no Send button in the coach panel';
     await b.click({ timeout: 5000 }); await p.waitForTimeout(200);
