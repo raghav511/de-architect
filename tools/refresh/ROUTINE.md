@@ -1,6 +1,6 @@
-# Weekly refresh routine
+# Daily refresh routine
 
-Run by the scheduled task `data-architect-weekly-refresh` once a week. It keeps three things current and ships them as one PR that it merges itself:
+Run by the scheduled task `data-architect-weekly-refresh` every evening (the name is kept so its history stays in one place). It keeps three things current and ships them as one PR that it merges itself:
 
 1. **Recent interview questions** in `data/recent.json`.
 2. **What is new in AI and data** in `data/news.json`.
@@ -8,7 +8,7 @@ Run by the scheduled task `data-architect-weekly-refresh` once a week. It keeps 
 
 Work in a clean clone (`~/.data-architect/refresh-repo`), on a new branch `refresh/YYYY-MM-DD`.
 
-## 1. Recent interview questions (last 7 days)
+## 1. Recent interview questions (since the last run)
 
 **Companies.** Use every company in `tools/refresh/companies.txt`, which holds the learner's own interview folder plus top data companies. If a search turns up a strong data company that isn't listed, add it to the file.
 
@@ -93,3 +93,26 @@ Find the modules on the learner's plan for the coming week (the next modules in 
 - End with a `check` (one multiple-choice question with `why`) and a `work` list of two or three things to do at work.
 - Write everything yourself from the module's chapter; never copy course or article text.
 - Then record the narration: `python3 tools/reels/voice.py` (Kokoro, Heart voice, on this Mac, no key; about 4 seconds a beat). It records only beats that are new or changed and links them in `data/reels.json`; commit the new files in `audio/reels/` with the PR.
+
+## Daily window
+
+Search the last 24 hours first (the past-day filter where offered), then the last 7 days for anything not already in `data/recent.json` (match on source URL and on the question's meaning). On Saturday, search the full week for every company in `tools/refresh/companies.txt`; on other days, cover at least 25 companies, rotating through the list by the day of the year, plus every company in the learner's folder list.
+
+## 5. Coding problems (`tools/bank_*.py`)
+
+When this run found a coding question (DSA, SQL, PySpark or Python) that the bank does not already cover, add it to the matching `tools/bank_*.py` in the same shape as its neighbours: a fresh problem statement in your own words, tests, hints, a reference solution and a starter that fails. Tag it with the week (`w`) or module (`m`) whose topic it practises. Run `python3 tools/build_bank.py`: every solution must pass and every starter must fail, or the problem is not added. At most 3 new problems a day.
+
+## 6. System design (`data/design.json`)
+
+When a design question asked this week is not already covered by a module's design problem, add it to the matching module's entry only if the module has none, otherwise add it to `data/recent.json` with `TAG: design` (it then shows in the module's interview page, the section and Today). Design answers follow the module's existing deliverable shape: requirements, estimates, a diagram in words, the deep dive, trade-offs and what you rejected.
+
+## 7. Reels for everything new or changed
+
+Last step before shipping, after every content edit of the day:
+
+1. `python3 tools/reels/write.py`: writes reels for every chapter section that is new or changed (it fingerprints each section). It uses Claude Code on this Mac; if it reports a login or authentication error, write the reels yourself instead, into `tools/reels/auto/<mid>.json` in the same shape (`{"<heading>": {"hash": "", "sec": "<number>", "reels": [...]}}`), following the rules in the section above.
+2. `python3 tools/reels/build.py` (refuses reels outside 30 to 60 seconds).
+3. `python3 tools/reels/voice.py` records the new beats in the Heart voice.
+4. Commit `tools/reels/auto/`, `data/reels.json` and `audio/reels/` with the day's PR.
+
+If nothing new was found today and no section changed, ship nothing.
