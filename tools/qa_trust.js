@@ -393,6 +393,18 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
     ok(r.done && r.cv === info.now && r.tab && !r.updated, 'reopened or flagged as updated: ' + JSON.stringify(r));
   });
 
+  await T('Q40', 'after Sign in with Google the greeting and avatar use the Google first name; a name set in Profile is kept', async (p, c) => {
+    await p.addInitScript(fakeGoogle); await authStub(c);
+    await boot(p); await p.evaluate(() => { S.settings.name = ''; S.settings.googleClientId = 'test-client'; S.settings.syncUrl = 'https://sync.test/exec'; save(); location.hash = '#/profile'; });
+    await p.waitForSelector('.authprof .gsi-fake'); await p.click('.authprof .gsi-fake'); await p.waitForTimeout(900);
+    await p.evaluate(() => { location.hash = '#/today'; }); await p.waitForTimeout(700);
+    const g = await p.evaluate(() => [document.querySelector('#page h1').textContent, document.querySelector('.avatar span').textContent, S.settings.name]);
+    ok(/^Good (morning|afternoon|evening), Sam$/.test(g[0]) && g[1] === 'S' && g[2] === '', 'greeting, avatar, stored name = ' + JSON.stringify(g));
+    await p.evaluate(() => { S.settings.name = 'Raj'; save(); route(); }); await p.waitForTimeout(400);
+    const h = await p.evaluate(() => [document.querySelector('#page h1').textContent, document.querySelector('.avatar span').textContent]);
+    ok(/, Raj$/.test(h[0]) && h[1] === 'R', 'the Profile name did not win: ' + JSON.stringify(h));
+  });
+
   await browser.close();
   for (const r of results) console.log(r[0].padEnd(5), r[1], r[2], r[3] ? '\n      ' + r[3] : '');
   console.log(results.filter(r => r[0] === 'PASS').length + ' passed, ' + results.filter(r => r[0] === 'FAIL').length + ' failed');
