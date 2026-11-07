@@ -271,6 +271,64 @@ With KRaft, the controllers keep cluster metadata in an internal Raft-replicated
 </details>
 
 
+## 5.10 Architect's lens: Flink and streaming engines
+
+The questions an architect is asked about stream processors: when Flink is worth it, when Spark Structured Streaming or Kafka Streams is enough, and when a batch job every few minutes is the honest answer.
+
+| Question | Short answer for Flink and streaming engines |
+|---|---|
+| **What problem does it solve?** | Continuous computation over unbounded streams with event-time correctness: windows, joins and aggregations that handle late and out-of-order events, keep large keyed state, and recover after a crash without losing or double-counting results. |
+| **Why it over the alternatives?** | Flink processes one event at a time with millisecond latency, has the richest event-time and state model, and gives exactly-once into sinks through checkpoints and two-phase commit. Spark Structured Streaming is simpler for teams already on Spark and the lakehouse (seconds of latency, one engine for batch and stream). Kafka Streams is a library inside your service for Kafka-to-Kafka work with no cluster. Managed services (Confluent Cloud for Flink, Amazon Managed Service for Apache Flink, Dataflow) remove the operations at a higher unit price. |
+| **When not to use it?** | When minutes of freshness are fine: an incremental batch or micro-batch job every few minutes is cheaper, easier to test and easier to backfill. When the logic is a simple Kafka-to-Kafka transform owned by one service (Kafka Streams). When nobody can own on-call for stateful jobs. |
+| **Who owns and pays for it?** | A platform team runs the clusters (or the managed service), the state backend storage and the deployment path; product or domain teams own their jobs, their state size and their service levels. Cost is always-on compute plus checkpoint storage, shown back per job. |
+| **Where does it sit?** | Between the log (Kafka, CDC topics) and the serving or lakehouse layers: it reads streams, keeps state, and writes to Kafka, OLAP stores, key-value stores and Iceberg or Paimon tables. It is not the system of record; the log and the tables are. |
+| **How does it fail and scale?** | It scales by parallelism up to the source's partitions, and by key: a hot key pins one subtask. It fails as backpressure, checkpoints that time out, state that grows without a TTL, skewed subtasks, and restarts that replay from the last checkpoint. |
+| **When do you move off it?** | When freshness needs relax to minutes (move to scheduled incremental jobs), when operating it costs more than a managed service, or when the work becomes a table that streams (Iceberg or Paimon change feeds read by a lighter engine). |
+
+### Under the hood
+
+**1. How does a Flink checkpoint work, and what are checkpoint barriers?**
+<details><summary>Model answer</summary>
+
+The job manager tells each source to inject a numbered barrier into its stream. Barriers flow with the data. When an operator has received the barrier on every input, it snapshots its state to durable storage and passes the barrier on; records after the barrier belong to the next checkpoint. When every sink has acknowledged, the checkpoint is complete, together with the source offsets at that barrier. After a crash, Flink restores every operator's state and rewinds the sources to those offsets, so each record affects state exactly once. Aligned checkpoints wait for barriers on all inputs, which stalls under backpressure; unaligned checkpoints let barriers overtake buffered records and store those records in the checkpoint instead.
+
+</details>
+
+**2. How does Flink get exactly-once into an external sink?**
+<details><summary>Model answer</summary>
+
+Checkpoints make state exactly-once; the sink needs more. A two-phase commit sink writes each checkpoint's output in a pending transaction (a Kafka transaction, or files not yet committed to an Iceberg table). When the checkpoint completes, Flink tells the sink to commit; if the job fails first, the pending transaction is aborted and replayed from the restored offsets. Readers using `read_committed` (Kafka) or the table's committed snapshots see each result once. Output appears only at checkpoint boundaries, so the checkpoint interval sets end-to-end latency. Sinks without transactions need idempotent writes instead, such as upserts by key.
+
+</details>
+
+**3. What does a watermark decide, and what happens to late data?**
+<details><summary>Model answer</summary>
+
+A watermark is the job's claim that no events older than time T are still coming, usually the maximum event time seen minus an allowed delay, such as 30 seconds. When the watermark passes a window's end, the window fires and its state can be cleaned up. Events that arrive later are late: with allowed lateness the window fires again with an updated result, otherwise they go to a side output, which you should land somewhere and count. Watermarks advance with the slowest input, so an idle partition holds every window back unless you configure idleness. The trade-off is latency against completeness: a longer delay waits for more stragglers.
+
+</details>
+
+**4. Where does Flink keep state, and why RocksDB?**
+<details><summary>Model answer</summary>
+
+Keyed state lives in a state backend. The heap backend keeps objects in JVM memory: fast, but state must fit in memory and garbage collection hurts at size. The RocksDB backend keeps state on local disk in an embedded key-value store, with only hot data in memory, so state can be hundreds of gigabytes per task, and it supports incremental checkpoints that upload only changed files. Costs: serialisation on every access and disk I/O. Either way, give state a TTL, or windows and joins over unbounded keys grow forever. Rescaling redistributes state by key groups, which caps the maximum parallelism you set at the start.
+
+</details>
+
+**5. What changed with Flink 2.0's disaggregated state?**
+<details><summary>Model answer</summary>
+
+Flink 2.0 (2025) added a disaggregated state backend, ForSt, that keeps the primary copy of state in remote object storage such as S3 and uses local disk only as a cache. Checkpoints become fast and small because state is already remote, recovery and rescaling no longer need to download all the state before starting, and compute nodes can be small and stateless, which suits Kubernetes and cloud autoscaling. The cost is latency on cache misses, which Flink hides with asynchronous state access. The same release removed the old DataSet API and pushed users to the unified DataStream and Table APIs.
+
+</details>
+
+**6. A job's lag grows and checkpoints slow down. How do you find the bottleneck?**
+<details><summary>Model answer</summary>
+
+Backpressure flows upstream: the slowest operator fills its input buffers, so everything before it slows down and the source falls behind the log. In the Flink UI, the operator that is busy while its upstream is backpressured is the bottleneck. Then ask why: too little parallelism (but a subtask per partition is the limit, as the simulator's [partitions challenge](#/sim/sc/partitions) shows), a hot key that pins one subtask (the [hot key challenge](#/sim/sc/hotkey)), a slow external call (use async I/O), or state that grew without a TTL. Fixes: raise source partitions and parallelism together, salt or pre-aggregate hot keys, and use unaligned checkpoints while you repair the cause.
+
+</details>
+
 @@lab
 ## In the app: streaming without a cluster (2 hours)
 
@@ -354,6 +412,36 @@ What do you ask before agreeing to build a stream? Decide, then compare.
 "Real time" is not a requirement. A freshness target with a number, and a decision it serves, is. Streams cost more to build and to run, so an engineer who replaces "real time" with "under 30 seconds, revised for two minutes" has saved the customer money.
 
 @@quiz
+TYPE: mcq
+TAG: streaming
+Q: What does a Flink checkpoint barrier do when it reaches an operator?
+A) It deletes records older than the current watermark
+B) It marks the point where the operator snapshots its state
+C) It commits the consumer group's offsets back to Kafka
+D) It forces every window to fire with its current result
+ANS: B
+WHY: Records before the barrier belong to this checkpoint; once the operator has the barrier on every input it snapshots its state and passes the barrier on.
+---
+TYPE: mcq
+TAG: streaming
+Q: A Flink job writes to Kafka with a two-phase commit sink and a 60-second checkpoint interval. When do consumers using read_committed see the results?
+A) Right away, as each record is processed by the job
+B) Only after the job is stopped with a savepoint
+C) When the checkpoint that covers them completes
+D) After the watermark passes the end of the window
+ANS: C
+WHY: The sink writes inside a transaction that commits when the checkpoint completes, so committed readers see output at checkpoint boundaries; the interval sets latency.
+---
+TYPE: mcq
+TAG: streaming
+Q: One Kafka partition feeding a Flink job stops receiving events. What happens to event-time windows, by default?
+A) They fire early using processing time instead
+B) They drop the idle partition and carry on
+C) They are held back because the watermark stops moving
+D) They restart from the last completed checkpoint
+ANS: C
+WHY: The watermark is the minimum across inputs, so an idle partition holds it back; configure source idleness so idle inputs are ignored.
+---
 TYPE: mcq
 TAG: streaming
 Q: A topic has 6 partitions. A consumer group has 8 consumers. How many consumers receive no messages?
@@ -643,6 +731,21 @@ assert out == [("2026-10-11 09:00:00",7,1),("2026-10-11 09:00:00",14,2),("2026-1
 -->
 
 @@interview
+Q: When would you choose Flink over Spark Structured Streaming, and when neither?
+SRC: staff-level practice
+TAG: arch
+A: Flink when sub-second latency changes a decision, when event-time logic is complex (sessions, joins with late data, CEP), or when state is very large, because it processes one event at a time, has rich state and timers, and gives exactly-once into sinks with two-phase commit. Spark Structured Streaming when the team already runs Spark and the lakehouse, seconds are fine, and one engine for batch and stream matters more than latency. Neither when minutes are fine: a scheduled incremental job is cheaper and easier to backfill and test. I would also weigh Kafka Streams for Kafka-to-Kafka logic inside one service, and a managed Flink service if nobody can own stateful on-call.
+---
+Q: Explain how Flink achieves exactly-once results end to end, and where it can break.
+SRC: staff-level practice
+TAG: arch
+A: Checkpoints snapshot every operator's state together with the source offsets, using barriers that flow with the data; on failure Flink restores state and rewinds the sources, so state is exactly-once. For output, a two-phase commit sink writes each checkpoint's results in a transaction that commits only when the checkpoint completes, such as Kafka transactions read with read_committed, or Iceberg commits. It breaks with sinks that cannot take part (an HTTP call or a plain database insert), which then need idempotent writes; with consumers reading uncommitted data; and when a transaction times out before the checkpoint commits. Latency of results equals the checkpoint interval.
+---
+Q: A Flink job has growing lag, checkpoints that time out and hourly restarts. Walk me through your diagnosis.
+SRC: staff-level practice
+TAG: arch
+A: Check backpressure in the UI to find the slowest operator, then check skew across its subtasks: one subtask with far more records points to a hot key. Check state size per operator over time: a join or window without TTL grows forever. Check checkpoint alignment time: under backpressure aligned barriers wait, so switch to unaligned checkpoints as a stopgap. Then fix the cause: more partitions and parallelism together, salting or pre-aggregating the hot key, a state TTL, RocksDB with incremental checkpoints, async I/O for slow lookups. Meanwhile tell consumers the data is late and alert on checkpoint duration before it fails.
+---
 Q: How does offset management work in Kafka?
 SRC: Confluent, 5–6 YOE
 TAG: streaming
