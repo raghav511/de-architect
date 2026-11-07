@@ -68,6 +68,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.22.1: weekly refresh 2026-11-07: 16 questions (Airbnb, Google, ByteDance, DoorDash) and 5 What is new items (Airflow 3.4, Snowflake open sharing, Iceberg backups and MCP background runs, Databricks AI Function tasks); no module edits.
 - 1.22.0: fun layer: career ladder with XP and boss-round promotions, streaks with a weekly freeze, four daily quests, a 60-second warm-up with combos, card of the day, a shipped-to-production moment per module and a skill map on Progress; weekend live mock is a 35-minute, 7-question boss round that leaves room for company questions.
 - 1.21.2: "Asked this week" questions and What is new items also show inside the module section they belong to.
 - 1.21.1: from the user's links: D1.8 (load balancing, caching and invalidation, rate limits, timeouts, retries, circuit breakers, bulkheads, scaling up or out, idempotent writes) with an ⓘ link to the distributed systems series; 6.8 zero-downtime migrations and backfills; 4 new staff questions (38).

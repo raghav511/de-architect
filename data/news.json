@@ -1,66 +1,56 @@
 {
- "updated": "2026-11-01",
+ "updated": "2026-11-07",
  "note": "Refreshed every week by the program's research task. Each item says what changed, why it matters to a data engineer or architect, and how to test the claim yourself.",
  "items": [
   {
-   "title": "Claude API: a Usage and Cost Analytics API you can group by key, workspace and user",
-   "summary": "On 29 October Anthropic launched the Usage and Cost Analytics API in beta (header analytics-usage-cost-2026-08-24). Its /v1/organizations/analytics/usage and /v1/organizations/analytics/cost endpoints report tokens and cost for Console and Enterprise organizations, filtered and grouped by model, workspace, API key and the user or service account behind each request. The older Usage and Cost API and the Enterprise usage and cost reports are now legacy but still supported. A day earlier the Messages API request limit rose from 32 MB to 128 MB.",
-   "why": "Cost per successful task is the number an architect has to defend, and it needs attribution: which pipeline, which key, which service account. With grouping by API key and service account you can give each agent or pipeline its own key and load daily cost into the warehouse like any other fact table, then alert on drift.",
-   "try": "In projects/ai-foundations, run lab7_optimise.py twice (with and without prompt caching) and write the per-run token counts from traces/ into a small fact table keyed by run, model and 'api_key' label; then write the SQL that the analytics endpoint's group-by would replace and the alert you would set on cost per successful task.",
-   "url": "https://platform.claude.com/docs/en/release-notes/overview",
-   "source": "Claude Platform release notes",
-   "mid": "a01",
-   "sec": "A1.6"
+   "title": "Airflow 3.4.0: task loops, a draining state, and breaking defaults for Python, Postgres and asset runs",
+   "summary": "Released on 6 November 2026. Task groups can now repeat at runtime with .loop() (an until condition and a max_iterations cap), an experimental Dag importer accepts Dags written in TypeScript, Go, Java or YAML, and a new 'draining' Dag state lets active runs finish and then pauses the Dag. Breaking: Python 3.11 or later is required, the Dataset alias is gone from the airflow module (use Asset from airflow.sdk), psycopg3 (postgresql+psycopg://) is the Postgres driver, asset-triggered Dags start one run per event instead of batching events, and try_number on an up_for_retry task now points at the next try.",
+   "why": "Upgrades break on exactly these lines: the metadata database connection string, old Dataset imports, and Dags that assumed several asset events would be batched into one run. Loops and draining are new tools for polling patterns and safe deploys that interviewers increasingly ask about.",
+   "try": "In projects/lakehouse/airflow/dags/lakehouse_daily.py, list every import and connection string an upgrade to 3.4 would touch, then sketch how a downstream Dag triggered by the daily table asset would behave if three events arrived in one minute (three runs now, not one) and whether its tasks are idempotent enough for that.",
+   "url": "https://airflow.apache.org/docs/apache-airflow/3.4.0/release_notes.html",
+   "source": "Apache Airflow release notes",
+   "mid": "s01",
+   "sec": "1.6"
   },
   {
-   "title": "Flink Agents 0.4.0: sub-agents, typed decisions and model routing inside a streaming job",
-   "summary": "On 30 October the Apache Flink project released Flink Agents 0.4.0, a preview that runs AI agents inside Flink pipelines. It adds sub-agents (in the same job or as external services), a Decision Model API that returns typed outputs such as a score or a choice, per-request model routing (Java only for now), multimodal messages, and a Trace Log with built-in latency and backlog metrics. New providers include Gemini, vLLM and IBM watsonx.ai. There are breaking changes from 0.3.",
-   "why": "Agents that act on every event are moving into the stream processor, where checkpoints can record a model call's result and replay it after a failure instead of calling the model again. In a design round, that is the answer to 'how do you keep an LLM step exactly-once and affordable': cache the decision in state, return typed outputs, and route cheap cases to a small model.",
-   "try": "In module 5's streaming lab, pick one event type (for example a suspicious payment) and write down where an LLM decision would sit, what typed output it returns, what happens on replay after a crash, and the cost per thousand events with and without routing to a smaller model.",
-   "url": "https://flink.apache.org/2026/10/30/apache-flink-agents-0.4.0-release-announcement/",
-   "source": "Apache Flink blog",
-   "mid": "s05",
-   "sec": "5.7"
-  },
-  {
-   "title": "GPT-6.1 Terra: a fast, efficient model aimed at computer use and visual reasoning",
-   "summary": "On 26 October OpenAI released GPT-6.1 Terra in the Responses and Chat Completions APIs, described as a fast, efficient model for visual reasoning, precise computer use and natural-sounding writing, with its own prompting and migration guide.",
-   "why": "Each new small, fast tier changes the routing math in a harness: cheap cases go to the fast model, hard ones escalate. A model swap is only safe if your eval set says so, so treat it as a release to test, not an upgrade to accept.",
-   "try": "In projects/ai-foundations, use lab5_evals.py to run your eval set against two model settings of the harness (the mock in harness/mock.py can stand in for the cheap tier), and record pass rate, tokens and cost per passing task; decide which cases you would route to the cheaper tier.",
-   "url": "https://developers.openai.com/api/docs/changelog",
-   "source": "OpenAI API changelog",
-   "mid": "a03",
-   "sec": "A3.6"
-  },
-  {
-   "title": "Agentic document parsing in a single SQL call",
-   "summary": "On 28 October Snowflake added an AGENTIC mode to AI_PARSE_DOCUMENT (Public Preview). It classifies the visuals in a document (charts, diagrams, tables), chooses how to process each one, and returns one response with the text, the layout, summaries of the visuals and the extracted structured data.",
-   "why": "Getting unstructured documents into tables (invoices, reports, manuals) is becoming a normal data-engineering task. The design questions are cost per page, how to evaluate extraction quality, and where to keep the raw document for reprocessing.",
-   "try": "In module A5's RAG pipeline, list the checks you would run on parsed output before it is embedded: a sample of tables compared by hand, numbers matched against the source text, and a cost-per-page budget.",
-   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-10-28-ai-parse-document-agentic-mode-preview",
+   "title": "Snowflake Open Data Sharing is GA: share Iceberg tables with engines outside Snowflake",
+   "summary": "On 2 November 2026 Snowflake made Open Data Sharing generally available. Consumers outside Snowflake can read live, read-only Snowflake-managed Iceberg tables through the standard Iceberg REST Catalog API, without copies or ETL, authenticating with programmatic access tokens or workload identity federation (AWS, Azure, GCP or OIDC). External consumers can be added to existing listings, and cross-region sharing works in AWS and Azure commercial regions.",
+   "why": "Sharing used to mean the consumer also ran Snowflake (or used a reader account). Now a partner's Spark, Trino or DuckDB can read the shared table directly, which changes how you design data products and is a strong answer to 'how do two companies on different platforms share data'.",
+   "try": "In module 8's build (the same data on two platforms), write down which tables you would expose as an Iceberg share, what identity the external engine would use, and how you would test that it can read but never write; then compare the cost and freshness with exporting Parquet files to the partner.",
+   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-02-open-data-sharing-ga",
    "source": "Snowflake release notes",
-   "mid": "a05",
-   "sec": "A5.5"
-  },
-  {
-   "title": "Spark streaming in milliseconds: Real-Time Mode is GA for Declarative Pipelines",
-   "summary": "On 29 October Databricks made Real-Time Mode generally available on Spark Declarative Pipelines. Instead of running a micro-batch every few seconds, all stages run at once and rows move on as soon as they are produced. Databricks reports millisecond latencies. You turn it on with a continuous pipeline, the realTimeMode setting and an update flow with the RealTime trigger.",
-   "why": "The classic interview answer, 'Spark for seconds, Flink for milliseconds', is now incomplete. A senior answer names the trade-off: Real-Time Mode keeps one engine and one skill set for batch and stream, while Flink still has the most mature event-time and large-state handling.",
-   "try": "In module 5's streaming lab, write down the latency budget for each sink (dashboard, fraud check, lake table) and mark which ones need sub-second results. That decides whether Real-Time Mode is worth its always-on cost.",
-   "url": "https://www.databricks.com/blog/announcing-general-availability-real-time-mode-spark-declarative-pipelines-databricks",
-   "source": "Databricks blog",
-   "mid": "s05",
-   "sec": "5.7"
-  },
-  {
-   "title": "Serverless cost control moves to permissions on compute objects",
-   "summary": "On 29 October Databricks made Serverless Compute Access Controls generally available. Each workspace gets default serverless compute objects for interactive work and for jobs and pipelines, with Can Use and Can Manage permissions like SQL warehouses. Size limits (S to XL) are in beta, and system.billing.usage gains a serverless_compute_id column for attribution.",
-   "why": "Cluster policies controlled cost by limiting machines. With serverless there are no machines to limit, so cost governance becomes 'who may use which compute, up to what size', plus attribution. Expect this in platform and FinOps design questions.",
-   "try": "Using the cost questions in module 7, sketch two compute objects (ad hoc analysts, production jobs) with their groups, size caps and a budget alert, and write the query that reports spend per object from the billing table.",
-   "url": "https://www.databricks.com/blog/smarter-cost-controls-serverless",
-   "source": "Databricks blog",
    "mid": "s08",
-   "sec": "8.3"
+   "sec": "8.5"
+  },
+  {
+   "title": "Snowflake backups now cover Iceberg tables on Snowflake Storage (GA on AWS)",
+   "summary": "On 4 November 2026 backup sets gained support for Iceberg tables on Snowflake Storage (CREATE BACKUP SET ... FOR ICEBERG TABLE) and dynamic Iceberg tables, restored with CREATE [DYNAMIC] ICEBERG TABLE ... FROM BACKUP SET. Schema and database backups now include eligible Iceberg tables. Available on AWS.",
+   "why": "Immutable backups and recovery were a reason to keep regulated data in native tables. With Iceberg tables covered, an open format no longer costs you the disaster-recovery story, which is a common objection in platform design rounds.",
+   "try": "For the governance incident in module 8 (delete one rider everywhere), write down how a backup set interacts with the right to be forgotten: how long backups keep the deleted rider, and what retention you would set so recovery and deletion rules both hold.",
+   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-04-iceberg-backups",
+   "source": "Snowflake release notes",
+   "mid": "s08",
+   "sec": "8.4"
+  },
+  {
+   "title": "Snowflake's managed MCP server can run agents in the background",
+   "summary": "On 4 November 2026 the Snowflake-managed MCP server's CORTEX_AGENT_RUN and CODING_AGENT tools gained a background option that returns a handle the client polls. Servers with those tools automatically get ASYNC_AGENT_RUN_STATUS, ASYNC_AGENT_RUN_CANCEL and AGENT_RUN_RESULT, which do not count toward the 50-tool limit, and a content_cel_filter parameter lets a client read an outline first and fetch only the blocks it needs.",
+   "why": "Long warehouse agent jobs no longer have to fit inside an MCP client timeout, and reading only the parts of a large result keeps the agent's context small and cheap. Start, poll, cancel and fetch is the pattern to describe for any long-running tool.",
+   "try": "In module A4's read-only data tool lab, add a second tool pair, start_query and query_status, that returns a handle immediately and lets the agent poll, and decide what the agent does if the status never reaches done (budget, cancel and report).",
+   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-04-mcp-async-agent-tools",
+   "source": "Snowflake release notes",
+   "mid": "a04",
+   "sec": "A4.4"
+  },
+  {
+   "title": "Databricks: AI Function tasks in jobs (Beta), and AI Functions in SQL will need Runtime 17.3 LTS",
+   "summary": "On 4 November 2026 Databricks added a Beta job task type that runs ai_parse_document, ai_extract or ai_classify over files in a volume or rows in a table and processes only new or changed inputs. On 5 November it announced that from January 2027 AI Functions in SQL require Databricks Runtime 17.3 LTS or later (ai_similarity and the REST API are unaffected).",
+   "why": "LLM extraction becomes an incremental, orchestrated job step, which is how it should be designed: only new inputs, retries, and cost you can see per run. Teams calling AI Functions from older runtimes have a hard upgrade date.",
+   "try": "In module A4's AI column function lab, make your function skip rows it has already processed (keyed on a content hash), then count how many model calls a second run makes; it should be zero for unchanged rows.",
+   "url": "https://docs.databricks.com/aws/en/release-notes/product/2026/november",
+   "source": "Databricks release notes",
+   "mid": "a04",
+   "sec": "A4.5"
   }
  ]
 }

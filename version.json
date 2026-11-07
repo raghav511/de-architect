@@ -1,8 +1,8 @@
 {
-  "version": "1.22.0",
+  "version": "1.22.1",
   "date": "2026-11-07",
   "notes": [
-    "Today now shows your level on a career ladder from Intern to Architect, your streak (one missed day a week is forgiven) and four daily quests.",
-    "New: a 60-second warm-up with combos, a card of the day, a Shipped to production moment when you finish a module, and a skill map on Progress. Promotions to Staff and above need a weekend boss round."
+    "16 new interview questions reported this week at Airbnb, Google, ByteDance and DoorDash.",
+    "What is new: 5 items on Airflow 3.4, Snowflake open data sharing, Iceberg backups and MCP, and Databricks AI Functions."
   ]
 }
