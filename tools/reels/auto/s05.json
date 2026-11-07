@@ -5634,5 +5634,922 @@
     "part": "2 of 2"
    }
   ]
+ },
+ "5.10 Architect's lens: Flink and streaming engines": {
+  "hash": "3f14118f44cb",
+  "sec": "5.10",
+  "reels": [
+   {
+    "title": "Flink: a counter that never stops",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "What do you use when the answer must change every second?",
+      "show": {
+       "t": "big",
+       "text": "Answers that keep moving",
+       "sub": "Stream processors"
+      }
+     },
+     {
+      "say": "A stream processor reads events as they arrive, keeps a running memory, called state, and updates results straight away. Flink is the best known one: it handles each event the moment it comes in.",
+      "show": {
+       "t": "scene",
+       "title": "Events in, *results out*",
+       "nodes": [
+        {
+         "id": "k",
+         "label": "Kafka",
+         "x": 20,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "f",
+         "label": "Flink",
+         "x": 50,
+         "y": 35,
+         "tone": "teal",
+         "sub": "keeps state"
+        },
+        {
+         "id": "o",
+         "label": "Results",
+         "x": 80,
+         "y": 35,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "k",
+         "f"
+        ],
+        [
+         "f",
+         "o"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "k",
+          "f",
+          "o"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "k",
+          "f"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "f",
+          "o"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Its cousins: Spark Structured Streaming works in small batches every few seconds, and Kafka Streams is a library inside your own service.",
+      "show": {
+       "t": "points",
+       "title": "Three engines",
+       "items": [
+        "Flink: event at a time, big state",
+        "Spark: micro-batches, one engine for batch too",
+        "Kafka Streams: a library, no cluster"
+       ]
+      }
+     },
+     {
+      "say": "And sometimes the right engine is none of them: if minutes are fine, a small batch job every five minutes is cheaper and simpler to fix.",
+      "show": {
+       "t": "big",
+       "text": "Minutes are fine?",
+       "sub": "Then run a batch job"
+      }
+     }
+    ],
+    "check": {
+     "q": "What makes Flink different from Spark Structured Streaming by default?",
+     "opts": [
+      "It handles each event as it arrives",
+      "It only reads files from object storage",
+      "It cannot keep any state between events"
+     ],
+     "ans": 0,
+     "why": "Flink processes one event at a time; Spark runs micro-batches every few seconds by default."
+    },
+    "work": [
+     "List your streaming jobs and the freshness each consumer really needs.",
+     "Mark which could be a five-minute batch job instead."
+    ]
+   },
+   {
+    "title": "Checkpoints and barriers",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "If a streaming job crashes, how does it avoid counting things twice?",
+      "show": {
+       "t": "big",
+       "text": "Crash, then what?",
+       "sub": "Checkpoints"
+      }
+     },
+     {
+      "say": "Every so often the sources slip a marker, a barrier, into the stream. When an operator sees the barrier on all its inputs, it saves its state and passes the barrier on.",
+      "show": {
+       "t": "scene",
+       "title": "Barriers flow *with the data*",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Source",
+         "x": 15,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "a",
+         "label": "Count per key",
+         "x": 50,
+         "y": 35,
+         "tone": "teal",
+         "sub": "saves state"
+        },
+        {
+         "id": "b",
+         "label": "Sink",
+         "x": 85,
+         "y": 35,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "a"
+        ],
+        [
+         "a",
+         "b"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "s",
+          "a",
+          "b"
+         ]
+        },
+        {
+         "at": 0.35,
+         "packet": [
+          "s",
+          "a"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.6,
+         "chip": {
+          "text": "Barrier 42 reached",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "a",
+          "b"
+         ],
+         "n": 1
+        }
+       ]
+      }
+     },
+     {
+      "say": "The checkpoint stores every operator's state plus the source offsets at that barrier, in durable storage such as S3.",
+      "show": {
+       "t": "scene",
+       "title": "One consistent *snapshot*",
+       "nodes": [
+        {
+         "id": "st",
+         "label": "State",
+         "x": 30,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "of",
+         "label": "Offsets",
+         "x": 70,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "s3",
+         "label": "S3",
+         "x": 50,
+         "y": 70,
+         "tone": "blue",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "st",
+         "s3"
+        ],
+        [
+         "of",
+         "s3"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "st",
+          "of",
+          "s3"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "st",
+          "s3"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "of",
+          "s3"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "After a crash, Flink restores that state and rewinds the sources to those offsets, so every event changes state exactly once.",
+      "show": {
+       "t": "points",
+       "title": "Recovery",
+       "items": [
+        "Restore state",
+        "Rewind sources to saved offsets",
+        "Replay: each event counted once"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What does a checkpoint save together with operator state?",
+     "opts": [
+      "The source offsets at the barrier",
+      "A copy of every output record",
+      "The job's source code and settings"
+     ],
+     "ans": 0,
+     "why": "State plus the offsets where the barrier was injected let Flink rewind and replay consistently."
+    },
+    "work": [
+     "Find your job's checkpoint interval and storage location.",
+     "Check the last checkpoint duration against the interval."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Watermarks and late events",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "When is a one-minute window really finished, if events arrive late?",
+      "show": {
+       "t": "big",
+       "text": "When is a minute over?",
+       "sub": "Watermarks"
+      }
+     },
+     {
+      "say": "A watermark says: no events older than this time are still coming. Usually it is the newest event time seen, minus an allowed delay, say thirty seconds.",
+      "show": {
+       "t": "scene",
+       "title": "Event time versus *watermark*",
+       "nodes": [
+        {
+         "id": "e",
+         "label": "Newest event 10:05:30",
+         "x": 30,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "w",
+         "label": "Watermark 10:05:00",
+         "x": 70,
+         "y": 35,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "e",
+         "w"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "e",
+          "w"
+         ]
+        },
+        {
+         "at": 0.6,
+         "chip": {
+          "text": "Allowed delay 30 s",
+          "tone": "teal",
+          "icon": "→"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "When the watermark passes a window's end, the window fires and its state is cleared. Events that come after that are late: send them to a side output and count them.",
+      "show": {
+       "t": "points",
+       "title": "After the watermark",
+       "items": [
+        "Window fires and clears state",
+        "Late events go to a side output",
+        "Or fire again with allowed lateness"
+       ]
+      }
+     },
+     {
+      "say": "One idle partition holds the watermark back for everyone, so windows stop firing. Configure idleness so silent inputs are ignored.",
+      "show": {
+       "t": "big",
+       "text": "Idle partition",
+       "sub": "freezes every window"
+      }
+     }
+    ],
+    "check": {
+     "q": "Why can one idle Kafka partition stop all windows from firing?",
+     "opts": [
+      "The watermark is the minimum across inputs",
+      "Flink pauses whenever a broker is idle",
+      "Idle partitions delete the window's state"
+     ],
+     "ans": 0,
+     "why": "The overall watermark follows the slowest input, so an idle one holds it back unless idleness is configured."
+    },
+    "work": [
+     "Count late events per day in a side output.",
+     "Set source idleness on topics with quiet partitions."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Exactly once into a sink",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Checkpoints protect state. What protects the output?",
+      "show": {
+       "t": "big",
+       "text": "Exactly once, outside Flink",
+       "sub": "Two-phase commit"
+      }
+     },
+     {
+      "say": "A two-phase commit sink writes each checkpoint's output inside a transaction, and commits only when that checkpoint completes. If the job fails first, the transaction is aborted and replayed.",
+      "show": {
+       "t": "scene",
+       "title": "Pre-commit, then *commit*",
+       "nodes": [
+        {
+         "id": "f",
+         "label": "Flink sink",
+         "x": 20,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "t",
+         "label": "Open transaction",
+         "x": 55,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "k",
+         "label": "Kafka or Iceberg",
+         "x": 85,
+         "y": 35,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "f",
+         "t"
+        ],
+        [
+         "t",
+         "k"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "f",
+          "t",
+          "k"
+         ]
+        },
+        {
+         "at": 0.35,
+         "packet": [
+          "f",
+          "t"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.65,
+         "chip": {
+          "text": "Checkpoint done → commit",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        },
+        {
+         "at": 0.85,
+         "packet": [
+          "t",
+          "k"
+         ],
+         "n": 1
+        }
+       ]
+      }
+     },
+     {
+      "say": "Readers must only see committed data, for example Kafka consumers set to read committed.",
+      "show": {
+       "t": "code",
+       "title": "Consumer setting",
+       "text": "isolation.level=read_committed"
+      }
+     },
+     {
+      "say": "The catch: results appear only at checkpoint boundaries, so the interval is your latency. Sinks without transactions need idempotent upserts by key instead.",
+      "show": {
+       "t": "points",
+       "title": "Trade-offs",
+       "items": [
+        "Latency = checkpoint interval",
+        "Transactions can time out",
+        "No transactions? Upsert by key"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "With a two-phase commit sink, what sets how soon consumers see results?",
+     "opts": [
+      "The number of task slots",
+      "The checkpoint interval",
+      "The watermark delay only"
+     ],
+     "ans": 1,
+     "why": "Output commits when a checkpoint completes, so the interval sets end-to-end latency."
+    },
+    "work": [
+     "Check that downstream consumers read committed data.",
+     "Make sure the sink transaction timeout exceeds the checkpoint interval."
+    ],
+    "part": "1 of 3"
+   },
+   {
+    "title": "State, RocksDB and Flink 2.0",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Where does a streaming job keep a hundred gigabytes of memory?",
+      "show": {
+       "t": "big",
+       "text": "Huge state",
+       "sub": "Where does it live?"
+      }
+     },
+     {
+      "say": "The heap backend keeps state as objects in memory: fast, but limited by RAM and garbage collection. RocksDB keeps it on local disk with hot data cached, so state can be far larger, with incremental checkpoints.",
+      "show": {
+       "t": "bars",
+       "title": "State per task, roughly",
+       "unit": "GB",
+       "items": [
+        [
+         "Heap backend",
+         5,
+         "fits in RAM"
+        ],
+        [
+         "RocksDB",
+         200,
+         "local disk"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Flink 2.0 went further with disaggregated state: the main copy lives in object storage, and local disk is only a cache. Checkpoints and rescaling get much faster.",
+      "show": {
+       "t": "scene",
+       "title": "State in *object storage*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Task",
+         "x": 25,
+         "y": 35,
+         "tone": "teal",
+         "sub": "cache only"
+        },
+        {
+         "id": "s3",
+         "label": "S3",
+         "x": 75,
+         "y": 35,
+         "tone": "blue",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "s3"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "t",
+          "s3"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "t",
+          "s3"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Fast rescale",
+          "tone": "teal",
+          "icon": "⇉"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Whatever the backend, give state a time to live. A join or window over endless keys grows until checkpoints time out.",
+      "show": {
+       "t": "big",
+       "text": "Set a state TTL",
+       "sub": "or state grows forever"
+      }
+     }
+    ],
+    "check": {
+     "q": "What did Flink 2.0's disaggregated state change?",
+     "opts": [
+      "State is kept only on the job manager",
+      "The primary copy of state lives in object storage",
+      "State is no longer checkpointed at all"
+     ],
+     "ans": 1,
+     "why": "ForSt keeps state in remote storage with local disk as a cache, speeding checkpoints and rescaling."
+    },
+    "work": [
+     "Chart state size per operator over a week.",
+     "Add a TTL to any join or window keyed by user or session."
+    ],
+    "part": "2 of 3"
+   },
+   {
+    "title": "Backpressure and hot keys",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Lag is growing. Which part of the job is slow?",
+      "show": {
+       "t": "big",
+       "text": "Lag keeps growing",
+       "sub": "Find the slow operator"
+      }
+     },
+     {
+      "say": "Backpressure flows upstream: the slowest operator fills its buffers, so everything before it slows and the source falls behind Kafka.",
+      "show": {
+       "t": "scene",
+       "title": "Pressure flows *upstream*",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Source",
+         "x": 15,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "m",
+         "label": "Map",
+         "x": 45,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "j",
+         "label": "Slow join",
+         "x": 80,
+         "y": 35,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "m"
+        ],
+        [
+         "m",
+         "j"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "s",
+          "m",
+          "j"
+         ]
+        },
+        {
+         "at": 0.5,
+         "chip": {
+          "text": "Join busy 100%",
+          "tone": "plum",
+          "icon": "!"
+         }
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Source backpressured",
+          "tone": "amber",
+          "icon": "←"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Common causes: too little parallelism, but never more than the topic's partitions; one hot key pinning one subtask; a slow lookup; state without a time to live.",
+      "show": {
+       "t": "points",
+       "title": "Usual causes",
+       "items": [
+        "Partitions cap parallelism",
+        "A hot key on one subtask",
+        "Slow external calls",
+        "State without TTL"
+       ]
+      }
+     },
+     {
+      "say": "Try both in the simulator: the partitions challenge and the hot key challenge fail in exactly these ways until you fix them.",
+      "show": {
+       "t": "big",
+       "text": "Practise it",
+       "sub": "Simulator: partitions, hot key"
+      }
+     }
+    ],
+    "check": {
+     "q": "Adding Flink parallelism past the topic's partition count does what?",
+     "opts": [
+      "Doubles throughput for every extra task",
+      "Leaves the extra subtasks idle",
+      "Removes the need for checkpoints"
+     ],
+     "ans": 1,
+     "why": "Each partition is read by one source subtask; extra subtasks get nothing to read."
+    },
+    "work": [
+     "Open the simulator's partitions and hot key challenges.",
+     "Check skew across subtasks in your busiest job."
+    ],
+    "part": "3 of 3"
+   },
+   {
+    "title": "Flink, Spark or a batch job?",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Your team asks for Flink. Is it the right call?",
+      "show": {
+       "t": "big",
+       "text": "Do we need Flink?",
+       "sub": "Pick and defend"
+      }
+     },
+     {
+      "say": "Pick Flink when sub-second answers change a decision, the event-time logic is complex, or state is huge. Pick Spark when the team lives on Spark and seconds are fine.",
+      "show": {
+       "t": "points",
+       "title": "Choose by need",
+       "items": [
+        "Flink: milliseconds, complex time, big state",
+        "Spark: seconds, one engine with batch",
+        "Kafka Streams: inside one service"
+       ]
+      }
+     },
+     {
+      "say": "If consumers read the numbers once an hour, a batch job every few minutes is cheaper, easier to test and easier to backfill. Say that out loud in interviews.",
+      "show": {
+       "t": "bars",
+       "title": "Rough monthly cost",
+       "unit": "relative",
+       "items": [
+        [
+         "Always-on stream job",
+         10,
+         ""
+        ],
+        [
+         "Five-minute batch",
+         3,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Managed services such as Confluent Cloud for Flink or Amazon's managed Flink remove operations, at a higher unit price. Choose them when nobody can own on-call.",
+      "show": {
+       "t": "big",
+       "text": "No on-call owner?",
+       "sub": "Use a managed service"
+      }
+     }
+    ],
+    "check": {
+     "q": "Dashboards are read hourly. What is usually the best engine?",
+     "opts": [
+      "A Flink job with a one second checkpoint",
+      "A scheduled incremental batch job",
+      "Kafka Streams inside the dashboard"
+     ],
+     "ans": 1,
+     "why": "When minutes are fine, a scheduled batch is cheaper and simpler to test and backfill."
+    },
+    "work": [
+     "For each stream job, write the freshness its readers need.",
+     "Move one minutes-fresh job to a scheduled batch."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Owning and paying for stream jobs",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Who pays for three hundred stream jobs that never stop?",
+      "show": {
+       "t": "big",
+       "text": "Always on, always billed",
+       "sub": "Ownership and cost"
+      }
+     },
+     {
+      "say": "A platform team runs the clusters, state storage and deployment path. Domain teams own their jobs, their state size and their service levels.",
+      "show": {
+       "t": "scene",
+       "title": "Who owns *what*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Platform team",
+         "x": 25,
+         "y": 35,
+         "tone": "blue",
+         "sub": "clusters, deploys"
+        },
+        {
+         "id": "d",
+         "label": "Domain team",
+         "x": 75,
+         "y": 35,
+         "tone": "amber",
+         "sub": "jobs, state, SLOs"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "p",
+          "d"
+         ]
+        },
+        {
+         "at": 0.7,
+         "chip": {
+          "text": "Cost shown per job",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Streaming pays for compute every hour of the day, plus checkpoint storage. Show the bill per job so owners see it.",
+      "show": {
+       "t": "points",
+       "title": "Where the money goes",
+       "items": [
+        "Always-on task managers",
+        "Checkpoint and state storage",
+        "Cross-zone traffic"
+       ]
+      }
+     },
+     {
+      "say": "Move off when needs relax to minutes, when a managed service is cheaper than your on-call, or when a streaming table does the job.",
+      "show": {
+       "t": "big",
+       "text": "Know when to leave",
+       "sub": "Minutes, managed or tables"
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does streaming often cost more than batch for the same data?",
+     "opts": [
+      "Its compute runs all day, not only during a run",
+      "It always stores three times more data",
+      "It cannot use object storage at all"
+     ],
+     "ans": 0,
+     "why": "Stream jobs pay for always-on compute; batch jobs pay only while they run."
+    },
+    "work": [
+     "Add a cost per job to your streaming dashboard.",
+     "Name an owner and an SLO for every stream job."
+    ],
+    "part": "2 of 2"
+   }
+  ]
  }
 }
