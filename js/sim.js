@@ -290,7 +290,29 @@ const SIM_SC = [
     q: 'Each order calls a partner API inline. When the partner slows down 10 times, your p99 explodes. Keep p99 under 300 ms.',
     hint: 'Take the partner call off the request path: Service → Queue → Function → Partner API. A queue cuts the wait.',
     goals: { p99: 300, err: 1 },
-    nodes: [['client', 40, 140, { rps: 500 }], ['svc', 260, 140, { n: 2 }], ['pg', 500, 60], ['ext', 500, 220]], edges: [[0, 1], [1, 2], [1, 3]] }
+    nodes: [['client', 40, 140, { rps: 500 }], ['svc', 260, 140, { n: 2 }], ['pg', 500, 60], ['ext', 500, 220]], edges: [[0, 1], [1, 2], [1, 3]] },
+  /* staff scale (module 10.3): each fails at the numbers in the chapter until fixed */
+  { id: 'million', mid: 's10', lvl: 'Staff', t: 'One million events a second', secs: 60,
+    q: '1,000,000 events a second (about 1 GB/s at 1 KB each). The topic has 128 partitions and one stream task reads each, at about 4,000 events (4 MB) a second. Keep freshness under 5 seconds.',
+    hint: 'Per-partition throughput sets the floor: 1,000,000 ÷ 4,000 = 250 partitions at full speed, so about 300 with headroom, and a task for each.',
+    goals: { fresh: 5 },
+    nodes: [['producer', 40, 140, { rps: 1000000, name: 'Apps (1M events/s)' }], ['kafka', 260, 140, { n: 50, parts: 128 }], ['stream', 480, 140, { n: 128 }], ['lake', 700, 140, { n: 60 }]], edges: [[0, 1], [1, 2], [2, 3]] },
+  { id: 'prefix', mid: 's10', lvl: 'Staff', t: 'S3 request rate per prefix', secs: 60,
+    q: 'A backfill writes 20,000 objects a second under one S3 prefix. S3 accepts about 3,500 writes a second per prefix, then answers 503 Slow Down. Keep errors under 1%.',
+    hint: 'S3 scales by prefix: spread the keys over several prefixes (a hash at the start of the key, or date and hour folders), each with its own 3,500 a second.',
+    goals: { err: 1 },
+    nodes: [['files', 40, 140, { rps: 20000, name: 'Backfill writes' }], ['spark', 260, 140, { n: 4 }], ['lake', 480, 140, { n: 1, cap: 3500, name: 'S3 prefix (3,500 writes/s each)' }]], edges: [[0, 1], [1, 2]] },
+  { id: 'petabyte', mid: 's10', lvl: 'Staff', t: 'Backfill on a budget', secs: 60,
+    q: 'A three-year backfill reads 80,000 records a second for days. It runs on 40 on-demand executors that are mostly idle. Keep errors under 1% and the bill under $2,000 a month of runtime.',
+    hint: 'Size to the throughput (80,000 ÷ 8,000 = 10 executors, plus headroom), and run a restartable backfill on spot capacity at about a third of the price.',
+    goals: { err: 1, cost: 2000 },
+    nodes: [['files', 40, 140, { rps: 80000, name: 'Three years of raw files' }], ['spark', 260, 140, { n: 40 }], ['lake', 480, 140, { n: 5 }]], edges: [[0, 1], [1, 2]] },
+  { id: 'region', mid: 's09', lvl: 'Staff', t: 'Lose a region: RPO and RTO', secs: 80,
+    chaos: [{ type: 'lag', on: 'cdc', from: 10, to: 70 }, { type: 'crash', on: 'pg', from: 30, to: 70 }],
+    q: 'Writes go to the primary region and replicate to the second region through CDC. The link slows, then the primary database dies. Promise an RPO under 5 seconds (replica freshness) and an RTO of seconds (errors under 5% over the run, which allows a few seconds of failover).',
+    hint: 'RTO: a hot standby takes over in seconds. RPO: the replica is only as fresh as replication, so give the link enough parallel apply to stay seconds behind even when slowed.',
+    goals: { err: 5, fresh: 5 },
+    nodes: [['client', 40, 140, { rps: 3000 }], ['svc', 240, 140, { n: 6 }], ['pg', 440, 140, { n: 2, name: 'Primary region DB' }], ['cdc', 640, 140, { name: 'Cross-region replication' }], ['kv', 840, 140, { n: 2, name: 'Second region copy' }]], edges: [[0, 1], [1, 2], [2, 3], [3, 4]] }
 ];
 function simFromSc(sc) {
   const ids = sc.nodes.map((x, i) => 'n' + (i + 1));
@@ -334,7 +356,15 @@ const SIM_HINTS = {
   spike: { look: 'From second 20 traffic is 4 times higher: watch the gateway and the service.', idea: 'Auto-scaling handles spikes without paying for peak all day, but every tier must scale, including the edge.', change: 'Auto-scale the service with a high maximum, and a second gateway.',
     fix: [{ set: 'svc', f: 'auto', v: true, why: 'The service adds replicas when it passes 75% load.' }, { set: 'svc', f: 'max', v: 40, why: 'High enough for 16,000 a second.' }, { set: 'gw', f: 'n', v: 2, why: 'One gateway handles 10,000 a second; the spike is 16,000.' }] },
   partner: { look: 'From second 15 the partner API takes 10 times longer and p99 follows it.', idea: 'Do not make users wait for work they do not need right away: hand it to a queue and reply at once.', change: 'Service → Queue → Function → Partner API.',
-    fix: [{ insert: 'queue', a: 'svc', b: 'ext', why: 'The service hands the call to a queue and replies at once.' }, { insert: 'fn', a: 'queue', b: 'ext', why: 'A function calls the partner in the background.' }] }
+    fix: [{ insert: 'queue', a: 'svc', b: 'ext', why: 'The service hands the call to a queue and replies at once.' }, { insert: 'fn', a: 'queue', b: 'ext', why: 'A function calls the partner in the background.' }] },
+  million: { look: 'The stream tasks are all busy and lag grows: there are 128 partitions, so no more than 128 tasks can read.', idea: 'Per-partition throughput: a partition (and the one task reading it) moves a few MB a second, so partitions = peak rate ÷ per-partition rate, with headroom (module 10.3).', change: 'Raise the topic to 300 partitions, then run 300 stream tasks.',
+    fix: [{ set: 'kafka', f: 'parts', v: 300, why: '1,000,000 ÷ 4,000 is 250 partitions; 300 leaves room for peaks.' }, { set: 'stream', f: 'n', v: 300, why: 'One task per partition reads them all.' }] },
+  prefix: { look: 'The S3 box is red and errors are near 80%: 20,000 writes a second against 3,500 for one prefix.', idea: 'S3 request rates are per prefix: about 3,500 writes and 5,500 reads a second each (module 10.3). Spread keys over prefixes.', change: 'Write under 8 hashed prefixes (8 × 3,500 = 28,000 a second).',
+    fix: [{ set: 'lake', f: 'n', v: 8, why: 'Eight hash prefixes at the start of the key give eight times the request rate.' }] },
+  petabyte: { look: 'Cost is far over budget while the Spark load bar is low: 40 executors for work that needs about 10.', idea: 'Unit economics: size compute to the throughput target, and put restartable batch work on spot capacity (module 10.3, unit costs table).', change: 'Run 12 executors on spot pricing.',
+    fix: [{ set: 'spark', f: 'n', v: 12, why: '80,000 ÷ 8,000 is 10 executors; 12 leaves headroom.' }, { set: 'spark', f: 'cost', v: 70, why: 'Spot capacity costs about a third of on-demand; a backfill that redoes one partition on interruption can use it.' }] },
+  region: { look: 'From second 10 the second region falls behind; at second 30 the primary dies and errors jump.', idea: 'RPO is how much data you can lose (how far the replica lags); RTO is how long you are down (how fast you fail over). Design for both numbers (module 10.5).', change: 'A hot standby for the primary, and three parallel replication tasks.',
+    fix: [{ set: 'pg', f: 'standby', v: true, why: 'The standby takes over in 3 seconds: an RTO of seconds.' }, { set: 'cdc', f: 'n', v: 3, why: 'Three apply tasks keep the second region seconds behind even when the link slows: an RPO of seconds.' }] }
 };
 const SIM_HINT_COST = [0, 5, 15, 35, 75]; /* marks lost in an exam after opening hint 1, 2, 3 or Show me */
 /* apply one fix step to a design; returns the id of the box it changed or added */
@@ -726,7 +756,7 @@ function vSim(a, b, c) {
     } else apx(body, el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'Each scenario opens a starting design that fails on purpose. Fix it until Check my design passes. Your edits are kept.' }),
       el('span', { class: 'lbl', text: 'Learn a design box by box' }), el('div', { class: 'simquick' }, SIM_TPL.map(t => el('a', { class: 'simqbtn', href: '#/sim/teach/' + t.id }, [el('b', { text: 'Teach me: ' + t.t }), el('small', { text: t.s })]))));
     const mods = [...new Set(SIM_SC.map(s => s.mid))];
-    apx(body, el('div', { class: 'simchips', role: 'group', 'aria-label': 'Filter scenarios' }, [['all', 'All']].concat(mods.map(x => [x, modLabel(x)]), [['Beginner', 'Beginner'], ['Intermediate', 'Intermediate'], ['Advanced', 'Advanced']]).map(([k, t]) => el('button', { class: 'chip', 'aria-pressed': String(simScFilter === k), onclick: () => { simScFilter = k; panel(); }, text: t }))),
+    apx(body, el('div', { class: 'simchips', role: 'group', 'aria-label': 'Filter scenarios' }, [['all', 'All']].concat(mods.map(x => [x, modLabel(x)]), [['Beginner', 'Beginner'], ['Intermediate', 'Intermediate'], ['Advanced', 'Advanced'], ['Staff', 'Staff scale']]).map(([k, t]) => el('button', { class: 'chip', 'aria-pressed': String(simScFilter === k), onclick: () => { simScFilter = k; panel(); }, text: t }))),
       el('div', { class: 'stack', style: { gap: '8px' } }, SIM_SC.filter(s => s.id !== d.sid && (simScFilter === 'all' || s.mid === simScFilter || s.lvl === simScFilter)).map(s => el('a', { class: 'simsc', href: '#/sim/sc/' + s.id, 'data-sc': s.id }, [el('span', { class: 'grow' }, [el('b', { text: (st.done[s.id] ? '✓ ' : '') + s.t }), el('small', { text: modLabel(s.mid) + ' · ' + modTitle(s.mid) + ' · ' + s.lvl })])]))));
   }
 

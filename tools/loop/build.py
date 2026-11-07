@@ -330,17 +330,17 @@ WEB_TOPICS = [
 
 # data platform designs at real scale (the design round); each ties to modules and simulator challenges
 TOPICS = [
-  {"id": "stream1m", "t": "1 million events a second, exactly once", "tpl": "stream", "mid": "s05", "sc": ["partitions", "hotkey", "dlq"],
+  {"id": "stream1m", "t": "1 million events a second, exactly once", "tpl": "stream", "mid": "s05", "sc": ["million", "partitions", "hotkey", "dlq"],
    "fr": ["Ingest app and device events at 1 million a second at peak", "Enrich and aggregate them within seconds for a serving store", "Land every event in the lake for replay and analytics"], "nfr": ["End to end in under 10 seconds", "No event counted twice or lost (exactly-once results)", "Survive a broker or zone loss"],
    "api": ["Producers write to Kafka with a schema checked by a registry", "Consumers read with their own offsets"], "data": ["Topic keyed by user or device id; about 1 KB an event, so about 1 GB/s in", "Serving store keyed by entity and window; lake tables partitioned by hour"],
    "decide": ["Partitions: a partition handles roughly 10 MB/s, so 1 GB/s needs 100 or more; plan for 2 to 3 times that for peaks and growth", "Exactly once: idempotent producers, transactional or checkpointed writes (Flink two-phase commit) and idempotent upserts in the sink", "Hot keys: salt or pre-aggregate the few huge keys; a DLQ for bad records"],
    "est": {"who": "devices", "users": 100000000, "act": "events", "per": 864, "ws": 1, "wb": 1000, "rb": 2000, "peak": 2, "note": "Each event is about 1 KB, kept in the lake, and read by two consumers."}},
-  {"id": "cdcmr", "t": "Multi-region CDC", "tpl": "cdc", "mid": "s06", "sc": ["cdc", "zone", "failover"],
+  {"id": "cdcmr", "t": "Multi-region CDC", "tpl": "cdc", "mid": "s06", "sc": ["region", "cdc", "zone", "failover"],
    "fr": ["Stream every change from regional OLTP databases into a global lake and a search index", "Keep a current-state copy within a minute", "Rebuild any table from history"], "nfr": ["Within 60 seconds of the source", "No lost or reordered changes per row", "A region outage must not stop the others"],
    "api": ["Debezium reads each database log into a regional Kafka", "Mirroring (MirrorMaker 2 or cluster linking) copies topics to the central region"], "data": ["Change events keyed by primary key, with source region, LSN and operation", "Current-state tables built by MERGE on the key, keeping the highest LSN"],
    "decide": ["Log-based CDC over dual writes or polling (no deletes missed, no load on the app)", "Order per key from the key-based partitioning and the LSN, not arrival time", "Schema changes through a registry; snapshots for new tables; WAL retention sized for connector downtime"],
    "est": {"who": "accounts", "users": 50000000, "act": "row changes", "per": 20, "ws": 1, "wb": 500, "rb": 1500, "peak": 3, "note": "Each change is about 500 bytes, kept as history, and sent to three consumers (lake, search, other regions)."}},
-  {"id": "backfill", "t": "Multi-petabyte batch backfill", "tpl": "batch", "mid": "s03", "sc": ["spark", "budget"],
+  {"id": "backfill", "t": "Multi-petabyte batch backfill", "tpl": "batch", "mid": "s03", "sc": ["petabyte", "prefix", "spark"],
    "fr": ["Recompute three years of a core fact table after a logic fix", "Keep daily jobs and dashboards running while it runs", "Swap the new data in without readers seeing half of it"], "nfr": ["Finish within a week", "Cost within a set budget", "Restartable: a failure redoes only one partition"],
    "api": ["The same job code as the daily run, given a date range", "An orchestrator runs it one partition (day) at a time, with a concurrency limit"], "data": ["About 2.5 PB a year of events: one partition per day, files of 256 MB to 1 GB", "Writes to a new table version, swapped atomically (Iceberg or Delta snapshot) or partition by partition"],
    "decide": ["Idempotent per partition: overwrite a day, never append", "Throttle so the daily SLA keeps priority; use spot capacity with retries", "Validate counts and sums per partition against the old table before the swap"],
