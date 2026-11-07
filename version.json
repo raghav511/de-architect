@@ -1,5 +1,5 @@
 {
-  "version": "1.27.0",
+  "version": "1.28.0",
   "date": "2026-11-07",
   "notes": [
     "Sync no longer drops what you did on your other device (live mocks, reel checks, playbook, ticks, streak days), and stops safely if it cannot read the server first.",
