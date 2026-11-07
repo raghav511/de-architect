@@ -1,8 +1,8 @@
 {
-  "version": "1.32.0",
+  "version": "1.32.1",
   "date": "2026-11-07",
   "notes": [
-    "New in Kafka (5.9): the architect's lens. When to use Kafka and when not, who owns and pays for it, how it fails and scales, and five under-the-hood answers interviewers ask: why it is fast on disk, acks and in-sync replicas, rebalances, exactly-once, KRaft and tiered storage.",
-    "Three new Kafka interview questions and eight reels for the lens."
+    "Sign in with Google is on: tap Sign in at the top right. You stay signed in for 24 hours.",
+    "Your exam app and Data Architect stay separate: a sign-in from one never opens the other's data, and updating Data Architect no longer clears the exam app's offline copy."
   ]
 }

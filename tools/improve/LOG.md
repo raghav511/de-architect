@@ -7,3 +7,4 @@
 - 2026-11-07 · 1.31.0 · user request: Sign in with Google, 24-hour sessions · Q26–Q28 · 28/28 trust, sync/profile/today journeys pass, real Google button loads under CSP
 - 2026-11-07 · 1.31.1 · every-feature smoke test · tools/smoke.js 16 checks both engines, Q29 (fails live, passes) · iOS Simulator: recorded reel plays with sound in Mobile Safari
 - 2026-11-07 · 1.32.0 · Kafka architect's lens · flows lens test extended (7 rows, 5 internals, interview set) · pass
+- 2026-11-07 · 1.32.0 (code, shipped with the Kafka lens) and 1.32.1 (notes) · user request: reuse the exam app's client ID without sharing data · Q30–Q32 (Q30 found the update step deleting the exam app's caches) · 32/32 trust (Q23 flaky once, queued)
