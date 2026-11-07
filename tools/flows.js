@@ -15,6 +15,8 @@ async function ctx(opt) {
 const go = async (p, h, w) => { await p.goto(BASE + h); await p.waitForTimeout(w || 700); };
 const hash = async (p, h, w) => { await p.evaluate(x => { location.hash = x; }, h); await p.waitForTimeout(w || 400); };
 const text = (p, s) => p.$eval(s, e => e.innerText).catch(() => '');
+/* Today's plan parts are tabs: read hidden tabs too (what is in the plan, not only the open tab) */
+const all = (p, s) => p.$eval(s, e => e.textContent).catch(() => '');
 const state = p => p.evaluate(() => JSON.parse(localStorage.getItem('keystone:v1') || '{}'));
 function ok(cond, msg) { if (!cond) throw new Error(msg); }
 /* Profile (avatar, top right): open it on a tab; set a field the way a person does (type, then leave the field) */
@@ -435,7 +437,8 @@ async function T(name, fn, opt) {
     const n = await p.$$eval('.sheetgrid a, .sheetgrid button', x => x.length); ok(n >= 10, 'sheet has ' + n);
     await p.click('.sheetgrid a:has-text("Git lessons")'); await p.waitForTimeout(500);
     ok(/#\/git/.test(p.url()) && !(await p.$('.sheet')), 'sheet link failed or did not close');
-    ok(await p.$('.tabmore[aria-current=page]'), 'More tab not highlighted on a non-tab page');
+    ok(/Practice/.test(await text(p, '.tabbar a[aria-current=page]')) && !(await p.$('.tabmore[aria-current=page]')), 'the Practice tab is not highlighted on a Practice page');
+    await p.click('.tabmore'); await p.click('.sheet a:has-text("Progress")'); await p.waitForTimeout(400); ok(await p.$('.tabmore[aria-current=page]'), 'More tab not highlighted on a page outside the tabs');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
   await T('path: every module is a picture card; the current one is larger with Continue', async p => {
@@ -497,13 +500,13 @@ async function T(name, fn, opt) {
 
   await T('today: later steps fold to a row and open in place', async p => {
     await go(p, '#/today');
-    const n = await p.$$eval('.plan .unit', us => us.length); ok(n >= 2, 'need two steps today, got ' + n);
-    ok(await p.$$eval('.plan .unit.cur', us => us.length) === 1, 'exactly one Up next card expected');
+    const n = await p.$$eval('.plan .unit', us => us.length); ok(n >= 1, 'need a later step today, got ' + n);
+    ok(await p.$$eval('.unit.cur', us => us.length) === 1 && await p.$('.upnext .unit.cur'), 'exactly one Up next card expected, first on the page');
     const row = p.locator('.plan .unit.folded').first();
     ok(!(await row.locator('.goal').isVisible()), 'folded row should hide its details');
     const btn = row.locator('.unfold'); ok((await btn.getAttribute('aria-expanded')) === 'false', 'toggle should start collapsed');
     await btn.click(); await p.waitForTimeout(150);
-    const opened = p.locator('.plan .unit').nth(1);
+    const opened = p.locator('.plan .unit').nth(0);
     ok(await opened.locator('.goal').isVisible() && await opened.locator('.acts .btn.pri').isVisible(), 'details did not open in place');
     ok((await opened.locator('.unfold').getAttribute('aria-expanded')) === 'true', 'aria-expanded not updated');
     await opened.locator('.unfold').click(); await p.waitForTimeout(150);
@@ -630,19 +633,19 @@ async function T(name, fn, opt) {
 
   await T('today: the coding track and interview practice are rows in the plan, and the day is done only when they are', async p => {
     await go(p, '#/today', 1200); await p.waitForSelector('.plan .unit');
-    const t = await text(p, '.plan');
+    const t = await all(p, '.plan');
     ok(/Reading and labs/.test(t) && /Coding track/.test(t) && /Interview practice/.test(t) && /Live mock|Weekend boss/.test(t), 'plan is missing a group: ' + t.slice(0, 300));
     ok(await p.evaluate(() => document.querySelectorAll('.plan .xit').length >= 2), 'no coding or mock rows in the plan');
     ok(await p.evaluate(() => ![...document.querySelectorAll('.grid2 > .stack h2')].some(h => /Coding track/.test(h.textContent))), 'coding track is still a separate card');
     /* tick every hour step: not done for today while coding and the mock are open */
     await p.evaluate(() => { const sc = schedule(); (sc.byDay[sc.today] || []).forEach(u => { S.done[u.uid] = sc.today; }); save(); route(); }); await p.waitForTimeout(500);
-    ok(!/Done for today/.test(await text(p, '.plan')), 'says done for today with coding and the mock open');
+    ok(!/Done for today/.test(await all(p, '.plan')), 'says done for today with coding and the mock open');
     await p.evaluate(() => { S.rq = S.rq || {}; (DATA.recent.items || []).forEach(q => { S.rq[q.id] = 1; }); save(); route(); }); await p.waitForTimeout(400);
     const n = await p.$$eval('.plan .xit .check[aria-pressed=false]', b => b.length);
     for (let i = 0; i < n; i++) { await p.click('.plan .xit .check[aria-pressed=false]'); await p.waitForTimeout(250); }
-    ok(/Done for today/.test(await text(p, '.plan')), 'not done for today after ticking every row');
+    ok(/Done for today/.test(await all(p, '.plan')), 'not done for today after ticking every row');
     ok(await p.evaluate(() => Object.keys((S.xdone || {})[iso(new Date())] || {}).length >= 2), 'manual ticks not saved');
-    await go(p, '#/today/1', 900); ok(/Coding track/.test(await text(p, '.plan')), 'tomorrow has no coding track');
+    await go(p, '#/today/1', 900); ok(/Coding track/.test(await all(p, '.plan')), 'tomorrow has no coding track');
   });
 
   await T('learn: a finished tab turns green, Done next ticks today\'s part, and the module opens on the first unfinished tab', async p => {
@@ -665,20 +668,21 @@ async function T(name, fn, opt) {
       { id: 'rq-t1', mid: 's01', company: 'Uber', level: 'Senior', asked: today, found: today, TAG: 'streaming', Q: 'Design trip events ingestion with exactly-once counts.', A: 'Use a log with keys by trip id, idempotent sink, checkpoints.', src: 'Test', url: 'https://example.com/a' },
       { id: 'rq-t2', mid: 's02', company: 'Google', level: 'L5', asked: today, found: today, TAG: 'sql', Q: 'Find the second highest salary per department.', A: 'DENSE_RANK over a department window, filter rank 2.', src: 'Test', url: 'https://example.com/b' }] };
     await p.route('**/data/recent.json*', r => r.fulfill({ contentType: 'application/json', body: JSON.stringify(R) }));
-    await go(p, '#/today', 1500); await p.waitForSelector('.plan .xit');
-    await p.evaluate(() => { S.rqSeen = ''; save(); route(); }); await p.waitForTimeout(400); /* an existing learner; a new one starts without the notice */
-    ok(/Uber: Design trip events/.test(await text(p, '.plan')) && /Google: Find the second/.test(await text(p, '.plan')), 'no recent question rows on Today');
+    await go(p, '#/today', 1500); await p.waitForSelector('.plan .xit', { state: 'attached' });
+    await p.evaluate(() => { S.rqSeen = ''; save(); route(); }); await p.waitForTimeout(400);
+    await p.click('#tab-grp-interview'); await p.waitForTimeout(200); /* company questions are in the Interview tab */ /* an existing learner; a new one starts without the notice */
+    ok(/Uber: Design trip events/.test(await all(p, '.plan')) && /Google: Find the second/.test(await all(p, '.plan')), 'no recent question rows on Today');
     ok(/2 new interview questions from this week/.test(await text(p, '.whatsnew')), 'What is new does not mention them');
     await p.click('.whatsnew button:has-text("Got it")'); await p.waitForTimeout(500);
     ok(!(await p.$('.whatsnew')), 'Got it did not hide the note');
-    ok(/Uber: Design trip events/.test(await text(p, '.plan')), 'Got it finished the questions');
+    ok(/Uber: Design trip events/.test(await all(p, '.plan')), 'Got it finished the questions');
     const row = p.locator('.plan .xit', { hasText: 'Uber: Design trip events' });
     await row.locator('.check').click(); await p.waitForTimeout(600);
     ok(/#\/recent$/.test(p.url()), 'the row ticked itself instead of opening the questions');
     ok(await p.$$eval('.rq', x => x.length) === 2, 'questions not listed');
     for (let i = 0; i < 2; i++) { await p.click('.rq .check[aria-pressed=false]'); await p.waitForTimeout(300); }
     await go(p, '#/today', 1000);
-    ok(!/Uber: Design trip events|Google: Find the second/.test(await text(p, '.plan')), 'rows still shown after ticking every question');
+    ok(!/Uber: Design trip events|Google: Find the second/.test(await all(p, '.plan')), 'rows still shown after ticking every question');
     await go(p, '#/interview/s01', 1200); ok(/Asked recently at companies/.test(await text(p, '#page')) && /exactly-once counts/.test(await text(p, '#page')), 'module interview page does not show its recent question');
   });
 
@@ -767,7 +771,7 @@ async function T(name, fn, opt) {
 
   await T('fun layer: Today shows level, XP, streak and quests without pushing Up next off a phone screen; the warm-up scores and ticks its quest; a shipped module celebrates once; Progress has a skill map', async p => {
     await go(p, '#/today', 1500); await p.waitForSelector('.gmini');
-    ok(await p.evaluate(() => getComputedStyle(document.querySelector('.gstrip')).display === 'none' && getComputedStyle(document.querySelector('.gmini')).display !== 'none'), 'phone does not swap the strip for the chip');
+    ok(await p.evaluate(() => !document.querySelector('#page .gstrip') && getComputedStyle(document.querySelector('.gmini')).display !== 'none'), 'Today should show the level chip, not the full strip');
     await go(p, '#/progress', 1000); ok(/Intern|Junior|Mid-level|Senior|Staff/.test(await text(p, '.gstrip')) && /XP/.test(await text(p, '.gstrip')), 'level strip missing on Progress'); await go(p, '#/today', 1200);
     const ub = await p.$eval('.unit.cur .acts .btn.pri', e => [Math.round(e.getBoundingClientRect().bottom), Math.round(document.querySelector('.tabbar').getBoundingClientRect().top)]); ok(ub[0] <= ub[1], 'Up next is pushed below the tab bar: ' + ub);
     await p.waitForSelector('.gcard', { timeout: 5000 }); ok(true, '');
@@ -905,7 +909,7 @@ async function T(name, fn, opt) {
     let s = await state(p); ok(s.rev && s.rev.y011 && s.rev.y011.box === 0, 'not queued after opening the solution: ' + JSON.stringify(s.rev));
     await p.evaluate(() => { S.rev.y011.due = iso(new Date()); save(); });
     await hash(p, '#/today', 600);
-    ok(/Review ·/.test(await text(p, '.plan')), 'due review not in the coding track on Today');
+    ok(/Review ·/.test(await all(p, '.plan')), 'due review not in the coding track on Today');
     ok(/Review \(1 due\)/.test(await (async () => { await hash(p, '#/practice/review', 500); return text(p, '.tabs'); })()), 'practice tab has no due count');
     await hash(p, '#/py/y011/review', 700);
     const code = await p.inputValue('textarea.code');
@@ -991,7 +995,7 @@ async function T(name, fn, opt) {
     await p.evaluate(() => { S.settings.syncUrl = ''; S.coach = { generated_at: new Date(Date.now() - 4.5 * 864e5).toISOString(), summary: 'old', focus: [] }; S.quiz = { p01: { sub: true, best: 10 }, p02: { sub: true, best: 90 } }; save(); });
     await p.waitForTimeout(400); /* save() is debounced */
     await hash(p, '#/path', 400); await hash(p, '#/today', 700); /* same-URL goto would not re-render */
-    const t = await text(p, '#page');
+    const t = await all(p, '#page');
     ok(/Sync is not set up/.test(t), 'missing sync not called out on the coach card');
     ok(/This report is 4 days old/.test(t), 'stale coach report not labelled');
     await go(p, '#/progress', 700);
@@ -1155,7 +1159,7 @@ async function T(name, fn, opt) {
   /* ---- persona round 3 fix ---- */
   await T('persona: AI features off: no Sync nag or promise of AI grading on Today, Coach explains', async p => {
     await go(p, '#/today', 1200); await p.evaluate(() => { S.settings.ai = false; applyAi(); save(); route(); }); await p.waitForTimeout(600);
-    const t = await text(p, '#page');
+    const t = await all(p, '#page');
     ok(!/Sync is not set up|grades it tonight|coach grades/i.test(t), 'Today still mentions the AI coach: ' + (t.match(/[^\n]*(Sync is not set up|grades it tonight)[^\n]*/) || [''])[0]);
     ok(/Live mock|Weekend boss/.test(t), "live mock missing");
     await go(p, '#/coach', 1000); ok(/AI features are off/.test(await text(p, '#page')), 'coach page does not explain');

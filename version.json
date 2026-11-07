@@ -1,11 +1,10 @@
 {
-  "version": "1.29.0",
+  "version": "1.30.0",
   "date": "2026-11-07",
   "notes": [
-    "Design simulator challenges now have three modes. Learn opens hints as you go, Practice keeps them free, and Exam scores you out of 100, with marks off for each hint you open (5, 10, 20, 40) and 5 for viewing suggestions.",
-    "Every challenge has a four-step hint ladder: where to look, the idea (with its module), what to change, and Show me, which plays the fix on the canvas step by step with the reason for each change.",
-    "A What is happening line under the numbers explains, in one sentence, what the selected box or wire is doing right now, for every tab, with or without traffic and failures.",
-    "Teach me this design (in the System design studio) builds each module's design with you one box at a time: why it is there, what you could use instead, and its cost. Then you run it, break it, fix it, and get the summary to say in an interview.",
-    "Exams open from the Today card and after module quizzes. Simulator suggestions you open while sketching a live mock answer cost 0.25 on that answer."
+    "Security: nothing private can be committed to the public repository any more (a scan blocks keys, sync URLs, emails and personal details), the app refuses scripts it did not ship, and grader practice runs stay inside their folder.",
+    "Home page: Up next is the first card; Reading, Coding and Interview are tabs in one box; the sidebar groups everything under Learn, Practice, Interview and You; the phone tab bar is Today, Reels, Learn, Practice, Interview, More.",
+    "Your name is no longer built in: add it in Profile \u203a Look for the greeting.",
+    "Reel buttons are readable in dark mode, and more reels are recorded in the Heart voice."
   ]
 }

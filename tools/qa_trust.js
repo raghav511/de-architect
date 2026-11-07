@@ -226,6 +226,18 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
     ok(await p.evaluate(() => window.__spoke.length > 0), 'the reel played silently');
   });
 
+  await T('Q24', 'the page refuses scripts that were not shipped with the app (Content-Security-Policy)', async p => {
+    await boot(p);
+    const r = await p.evaluate(async () => { const s = document.createElement('script'); s.textContent = 'window.__inl = 1'; document.head.appendChild(s); const x = document.createElement('script'); x.src = 'https://example.com/evil.js'; document.head.appendChild(x); await new Promise(r => setTimeout(r, 800)); return [!!document.querySelector('meta[http-equiv="Content-Security-Policy"]'), window.__inl || 0]; });
+    p.errs = p.errs.filter(e => !/Content Security Policy|Refused/.test(e));
+    ok(r[0] && !r[1], 'no policy, or an injected inline script ran: ' + r);
+  });
+
+  await T('Q25', 'the public repository holds no keys, sync URLs or personal data (tools/secret_scan.py --all)', async () => {
+    const r = require('child_process').spawnSync('python3', ['tools/secret_scan.py', '--all'], { encoding: 'utf8' });
+    ok(r.status === 0, (r.stdout || r.stderr).slice(0, 300));
+  });
+
   await browser.close();
   for (const r of results) console.log(r[0].padEnd(5), r[1], r[2], r[3] ? '\n      ' + r[3] : '');
   console.log(results.filter(r => r[0] === 'PASS').length + ' passed, ' + results.filter(r => r[0] === 'FAIL').length + ' failed');

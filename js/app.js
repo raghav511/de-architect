@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.29.0';
+const VERSION = '1.30.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -26,7 +26,7 @@ const I = { reel: '<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M
   update: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>', back: '<path d="M15 18l-6-6 6-6"/>', fwd: '<path d="M9 6l6 6-6 6"/>', dbl_l: '<path d="M18 6l-6 6 6 6M11 6l-6 6 6 6"/>', dbl_r: '<path d="M6 6l6 6-6 6M13 6l6 6-6 6"/>',
   x: '<path d="M18 6L6 18M6 6l12 12"/>', check: '<path d="M5 12l5 5 9-10" stroke="#fff" stroke-width="3"/>', spark: '<path d="M12 3l1.8 4.6L18 9.4l-4.2 1.8L12 16l-1.8-4.8L6 9.4l4.2-1.8z"/><path d="M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
   git: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 7v10M18 11c0 4-6 3-11 7"/>', news: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/>',
-  term: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1.29.0 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'
+  term: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1.30.0 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'
 };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 /* text from the daily refresh (scraped questions, news) and from AI replies is rendered as Markdown, so its HTML is
@@ -187,21 +187,32 @@ function chip(k) { const c = chipFor(k); return el('span', { class: 'chip ' + c[
 
 /* ---------------- shell ---------------- */
 const NAV = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/playbook', 'My playbook', 'book'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/sim', 'Design simulator', 'design'], ['#/git', 'Git lessons', 'git'], ['#/terminal', 'Terminal', 'code'], ['#/news', 'What is new in AI', 'news'], ['#/recent', 'Asked this week', 'quiz'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/mock', 'Mock interview', 'quiz'], ['#/coach', 'Coach', 'spark'], ['#/progress', 'Progress', 'prog']];
-const TABS = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/path', 'Path', 'path'], ['#/practice', 'Coding', 'code'], ['#/projects', 'Projects', 'proj']];
+/* the sidebar and the More sheet group every section under Learn, Practice, Interview and You (Today stays on top) */
+const NAV_GROUPS = [['learn', 'Learn', ['#/path', '#/reels', '#/learn/0', '#/quiz/0']], ['practice', 'Practice', ['#/practice', '#/projects', '#/design', '#/sim', '#/git', '#/terminal']], ['interview', 'Interview', ['#/live', '#/recent', '#/mock', '#/coach']], ['you', 'You', ['#/progress', '#/playbook', '#/news']]];
+const NAV_LIVE = ['#/live', 'Live mock', 'quiz'];
+const navItem = h => h === '#/live' ? NAV_LIVE : NAV.find(x => x[0] === h);
+const navGroupOf = r => (NAV_GROUPS.find(g => g[2].some(h => h.split('/')[1] === r)) || [])[0];
+/* phone tab bar: Today, Reels, then one tab per group (its first page), then More */
+const TABS = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/path', 'Learn', 'path', 'learn'], ['#/practice', 'Practice', 'code', 'practice'], ['#/live', 'Interview', 'quiz', 'interview']];
 function shell(title, eyebrow, body, opts) {
   opts = opts || {};
   const route = location.hash.split('/')[1] || 'today';
   const sc = schedule(), wk = sc.cur, tu = sc.byDay[sc.today] || [], tdone = tu.filter(u => u.isDone).reduce((a, u) => a + u.mins, 0), tall = tu.reduce((a, u) => a + u.mins, 0);
-  const nav = NAV.map(([h, t, ic]) => { const href = h.replace('/0', '/' + wk); return el('a', { class: 'nav', href, 'aria-current': href.split('/')[1] === route ? 'page' : null }, [svg(I[ic]), t]); });
+  const link = ([h, t, ic]) => { const href = h.replace('/0', '/' + wk); return el('a', { class: 'nav', href, 'aria-current': href.split('/')[1] === route ? 'page' : null }, [svg(I[ic]), t]); };
+  const open = S.settings.navOpen || { learn: true }, here = navGroupOf(route);
+  const nav = [link(NAV[0])].concat(...NAV_GROUPS.map(([g, name, hs]) => { const on = !!open[g] || g === here, box = el('div', { class: 'navg', id: 'navg-' + g, hidden: on ? null : '' }, hs.map(h => link(navItem(h))));
+    return [el('button', { class: 'navgh', 'aria-expanded': String(on), 'aria-controls': 'navg-' + g, onclick: e => { const x = e.currentTarget.getAttribute('aria-expanded') !== 'true'; e.currentTarget.setAttribute('aria-expanded', String(x)); e.currentTarget.querySelector('.pm').textContent = x ? '−' : '+'; box.hidden = !x; S.settings.navOpen = Object.assign({}, S.settings.navOpen || { learn: true }, { [g]: x }); save(false); } }, [el('span', { class: 'grow', text: name }), el('span', { 'aria-hidden': 'true', class: 'pm', text: on ? '−' : '+' })]), box]; }));
   const side = el('nav', { class: 'side', 'aria-label': 'Main' }, [el('a', { class: 'brand', href: '#/today' }, [logo(), 'Data Architect'])].concat(nav, [el('a', { class: 'week', href: '#/path/' + wk, style: { color: 'inherit', textDecoration: 'none' } }, [el('span', { class: 'lbl', style: { color: '#9FB0BF' }, text: 'Module ' + modLabel(wk) + ' · week ' + weekOf(sc.today) }), el('b', { style: { color: '#fff' }, text: modTitle(wk) }), el('div', { class: 'bar' }, el('i', { style: { width: (tall ? Math.round(100 * tdone / tall) : 0) + '%' } })), el('span', { style: { fontSize: '13px' }, text: 'Today: ' + tdone + ' of ' + tall + ' min done' })])]));
-  const inTabs = TABS.some(x => x[0].split('/')[1] === route);
+  const tabOf = r => (TABS.find(x => x[0].split('/')[1] === r) || TABS.find(x => x[3] && x[3] === navGroupOf(r)) || [])[0];
+  const inTabs = !!tabOf(route);
   const more = el('button', { class: 'tabmore' + (hasUpdate() ? ' hasdot' : ''), 'aria-label': 'More sections' + (hasUpdate() ? ' (update available)' : ''), 'aria-current': inTabs ? null : 'page', onclick: () => {
     const sc2 = el('div', { class: 'scrim sheetwrap', onclick: e => { if (e.target === sc2) sc2.remove(); } }, [el('div', { class: 'sheet', role: 'dialog', 'aria-label': 'All sections' }, [el('div', { class: 'row' }, [el('h2', { class: 'grow', style: { fontSize: '18px' }, text: 'All sections' }), el('button', { class: 'btn icon sm', 'aria-label': 'Close', onclick: () => sc2.remove(), text: '×' })]),
-      el('div', { class: 'sheetgrid' }, NAV.map(([h, t, ic]) => { const href = h.replace('/0', '/' + wk); return el('a', { href, onclick: () => sc2.remove(), 'aria-current': href.split('/')[1] === route ? 'page' : null }, [svg(I[ic], 22), t]); }).concat([el('button', { onclick: () => { sc2.remove(); doSync(); } }, [svg(I.sync, 22), syncLabel()]), el('a', { href: '#/profile', class: hasUpdate() ? 'hasdot' : '', onclick: () => sc2.remove(), 'aria-current': route === 'profile' ? 'page' : null }, [svg(I.gear, 22), hasUpdate() ? 'Profile · Update to ' + S.newVersion : 'Profile and settings'])]))])]);
+      ...NAV_GROUPS.map(([g, name, hs]) => el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'lbl', text: name }), el('div', { class: 'sheetgrid' }, hs.map(h => { const [hh, tt, ic] = navItem(h), href = hh.replace('/0', '/' + wk); return el('a', { href, onclick: () => sc2.remove(), 'aria-current': href.split('/')[1] === route ? 'page' : null }, [svg(I[ic], 22), tt]); }))])),
+      el('div', { class: 'sheetgrid' }, [].concat([el('button', { onclick: () => { sc2.remove(); doSync(); } }, [svg(I.sync, 22), syncLabel()]), el('a', { href: '#/profile', class: hasUpdate() ? 'hasdot' : '', onclick: () => sc2.remove(), 'aria-current': route === 'profile' ? 'page' : null }, [svg(I.gear, 22), hasUpdate() ? 'Profile · Update to ' + S.newVersion : 'Profile and settings'])]))])]);
     document.body.appendChild(sc2);
     const k = e => { if (e.key === 'Escape') { sc2.remove(); document.removeEventListener('keydown', k); } }; document.addEventListener('keydown', k);
   } }, [svg('<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>', 22), 'More']);
-  const tabbar = el('nav', { class: 'tabbar', 'aria-label': 'Main' }, TABS.map(([h, t, ic]) => el('a', { href: h, 'aria-current': h.split('/')[1] === route ? 'page' : null }, [svg(I[ic], 22), t])).concat([more]));
+  const tabbar = el('nav', { class: 'tabbar', 'aria-label': 'Main' }, TABS.map(([h, t, ic]) => el('a', { href: h, 'aria-current': tabOf(route) === h ? 'page' : null }, [svg(I[ic], 22), t])).concat([more]));
   const top = el('header', { class: 'top' + (opts.extra ? ' hasextra' : '') }, [
     opts.back ? el('a', { class: 'btn icon', href: opts.back, 'aria-label': 'Back', onclick: e => { if (navCount > 0) { e.preventDefault(); history.back(); } } }, svg(I.back)) : null,
     el('div', { class: 'title' }, [eyebrow ? el('span', { class: 'lbl', text: eyebrow }) : null, el('b', { text: title })]),
@@ -909,8 +920,8 @@ function syncLabel() { return S.syncing ? 'Syncing…' : S.lastSync && Date.now(
 const PREF_KEYS = ['capWd', 'capWe', 'codeWd', 'codeWe', 'ivWd', 'ivWe', 'studyTime', 'ai', 'coachVia', 'gradeModel', 'name'];
 /* Settings live on the Profile page (avatar, top right); settings() is kept for the buttons that say "Open settings" */
 function settings(focusId) { if (focusId === 'st_sync') profileTab = 'sync'; if (location.hash !== '#/profile') location.hash = '#/profile'; else route(); if (focusId) setTimeout(() => { const x = document.getElementById(focusId); if (x) x.focus(); }, 150); }
-function userName() { return (S.settings.name || '').trim() || 'Raghavendra'; }
-function avatarBtn(cur) { return el('a', { class: 'avatar' + (hasUpdate() ? ' hasdot' : ''), href: '#/profile', 'aria-label': 'Profile and settings' + (hasUpdate() ? ' (update available)' : ''), 'aria-current': cur ? 'page' : null, title: 'Profile: sync, updates, theme, AI and settings' }, el('span', { 'aria-hidden': 'true', text: userName().slice(0, 1).toUpperCase() })); }
+function userName() { return (S.settings.name || '').trim(); } /* no default name: the repository is public */
+function avatarBtn(cur) { return el('a', { class: 'avatar' + (hasUpdate() ? ' hasdot' : ''), href: '#/profile', 'aria-label': 'Profile and settings' + (hasUpdate() ? ' (update available)' : ''), 'aria-current': cur ? 'page' : null, title: 'Profile: sync, updates, theme, AI and settings' }, el('span', { 'aria-hidden': 'true', text: (userName().slice(0, 1).toUpperCase() || 'Me') })); }
 function saveSettings(body) {
     const g = id => body.querySelector('#' + id).value.trim();
     const su = g('st_sync'); /* trust fix 20: refuse a sync URL that cannot work, warn when it has no key */
@@ -945,7 +956,7 @@ function vProfile() {
   const panels = {
     sync: [f('st_sync', 'Sync URL (Apps Script, ends in ?k=your key)', S.settings.syncUrl, 'url', 'https://script.google.com/macros/s/…/exec?k=…'), note('Your plan, minutes and AI choices sync across devices. Theme, keys and this URL stay on this device.'),
       el('label', { class: 'row', style: { gap: '10px', fontSize: '14.5px' } }, [el('input', { type: 'checkbox', id: 'st_notify', checked: S.settings.notifyUpdates ? 'checked' : null, style: { width: '22px', height: '22px' } }), 'Notify me when an app update is available'])],
-    look: [sel('st_accent', 'Accent colour', S.settings.accent || 'teal', [['teal', 'Teal'], ['blue', 'Blue'], ['plum', 'Plum']]), f('st_name', 'Your name (used in the greeting)', S.settings.name || '', 'text', 'Raghavendra'), sel('st_fun', 'Celebrations (confetti when a module ships or a warm-up goes well)', S.settings.fun === false ? 'off' : 'on', [['on', 'On'], ['off', 'Off']]), sel('st_sound', 'Sounds in the warm-up', S.settings.sound ? 'on' : 'off', [['off', 'Off'], ['on', 'On']])],
+    look: [sel('st_accent', 'Accent colour', S.settings.accent || 'teal', [['teal', 'Teal'], ['blue', 'Blue'], ['plum', 'Plum']]), f('st_name', 'Your name (used in the greeting)', S.settings.name || '', 'text', 'Your first name'), sel('st_fun', 'Celebrations (confetti when a module ships or a warm-up goes well)', S.settings.fun === false ? 'off' : 'on', [['on', 'On'], ['off', 'Off']]), sel('st_sound', 'Sounds in the warm-up', S.settings.sound ? 'on' : 'off', [['off', 'Off'], ['on', 'On']])],
     plan: [f('st_start', 'Week 1 starts (pick any day in that week)', S.start, 'date'), el('div', { class: 'tri' }, [f('st_wd', 'Reading, weekday minutes', S.settings.capWd || 60, 'number'), f('st_we', 'Reading, weekend minutes', S.settings.capWe || 120, 'number'), f('st_time', 'Study time', S.settings.studyTime || '07:00', 'time')]), el('div', { class: 'tri' }, [f('st_cwd', 'Coding, weekday', S.settings.codeWd || 50, 'number'), f('st_cwe', 'Coding, weekend', S.settings.codeWe || 80, 'number')]), el('div', { class: 'tri' }, [f('st_iwd', 'Interview and coaching, weekday', S.settings.ivWd || 30, 'number'), f('st_iwe', 'Interview and coaching, weekend', S.settings.ivWe || 45, 'number')])],
     ai: [sel('st_ai', 'AI features', S.settings.ai === false ? 'off' : 'on', [['on', 'On: instant grading, practice runs and the Claude Code track'], ['off', 'Off: study without AI (self-check with model answers)']]),
       el('div', { class: 'duo' }, [sel('st_coach', 'Coach answers with', S.settings.coachVia || 'mac', [['mac', 'Claude Code on my Mac'], ['key', 'My API key'], ['hints', 'Hints only (no AI)']]), sel('st_grade', 'Grading model', S.settings.gradeModel || 'auto', [['auto', 'Automatic'], ['haiku', 'Haiku (cheapest)'], ['sonnet', 'Sonnet (most thorough)']])]),
@@ -956,9 +967,9 @@ function vProfile() {
   const panelEls = T.map(([k]) => el('div', { class: 'stack', role: 'tabpanel', id: 'pp_' + k, 'aria-labelledby': 'pt_' + k, hidden: k === profileTab ? null : 'hidden' }, panels[k]));
   /* switching tabs changes nothing else on screen, so the page never jumps */
   function pick(k, focusId) { profileTab = k; tabBtns.forEach(b => { const on = b.id === 'pt_' + k; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; }); panelEls.forEach(p => { p.hidden = p.id !== 'pp_' + k; }); if (focusId) { const x = document.getElementById(focusId); if (x) x.focus(); } }
-  const form = el('section', { class: 'card pad stack', onchange: () => { if (saveSettings(form)) { document.querySelectorAll('.avatar span, .avatar.big').forEach(a => { a.textContent = userName().slice(0, 1).toUpperCase(); }); } } }, [tablist].concat(panelEls, [note('Changes save as you make them.')]));
+  const form = el('section', { class: 'card pad stack', onchange: () => { if (saveSettings(form)) { document.querySelectorAll('.avatar span, .avatar.big').forEach(a => { a.textContent = (userName().slice(0, 1).toUpperCase() || 'Me'); }); } } }, [tablist].concat(panelEls, [note('Changes save as you make them.')]));
   const body = el('div', { class: 'stack profile' }, [
-    el('section', { class: 'card pad row phero' }, [el('span', { class: 'avatar big', 'aria-hidden': 'true', text: userName().slice(0, 1).toUpperCase() }), el('div', { class: 'grow stack', style: { gap: '2px', minWidth: 0 } }, [el('h1', { text: userName() }), el('span', { class: 'muted', text: 'Week ' + weekOf(sc.today) + ' · ' + done + ' of ' + sc.units.length + ' steps' + (last ? ' · ends ' + shortDate(last) : '') })])]),
+    el('section', { class: 'card pad row phero' }, [el('span', { class: 'avatar big', 'aria-hidden': 'true', text: (userName().slice(0, 1).toUpperCase() || 'Me') }), el('div', { class: 'grow stack', style: { gap: '2px', minWidth: 0 } }, [el('h1', { text: userName() || 'Your profile' }), el('span', { class: 'muted', text: 'Week ' + weekOf(sc.today) + ' · ' + done + ' of ' + sc.units.length + ' steps' + (last ? ' · ends ' + shortDate(last) : '') })])]),
     quick, form]);
   shell('Profile', 'Sync, updates, theme, AI and settings', body);
 }
