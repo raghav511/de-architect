@@ -1,8 +1,8 @@
 {
-  "version": "1.32.0",
+  "version": "1.33.0",
   "date": "2026-11-07",
   "notes": [
-    "New in Kafka (5.9): the architect's lens. When to use Kafka and when not, who owns and pays for it, how it fails and scales, and five under-the-hood answers interviewers ask: why it is fast on disk, acks and in-sync replicas, rebalances, exactly-once, KRaft and tiered storage.",
-    "Three new Kafka interview questions and eight reels for the lens."
+    "New in Start here (1.9): the architect's lens for Airflow. When an orchestrator fits and when not, who owns it, how it fails and scales, and five under-the-hood answers: data intervals and backfills, why heavy DAG files slow everything, deferrable operators, Celery or Kubernetes executors, and what changed in Airflow 3.",
+    "Three new interview questions; seven reels arrive with the next reel batch."
   ]
 }

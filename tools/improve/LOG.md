@@ -7,3 +7,4 @@
 - 2026-11-07 · 1.31.0 · user request: Sign in with Google, 24-hour sessions · Q26–Q28 · 28/28 trust, sync/profile/today journeys pass, real Google button loads under CSP
 - 2026-11-07 · 1.31.1 · every-feature smoke test · tools/smoke.js 16 checks both engines, Q29 (fails live, passes) · iOS Simulator: recorded reel plays with sound in Mobile Safari
 - 2026-11-07 · 1.32.0 · Kafka architect's lens · flows lens test extended (7 rows, 5 internals, interview set) · pass
+- 2026-11-07 · Airflow architect's lens (1.9) · lens test extended (7 rows, 5 internals, interview set) · pass
