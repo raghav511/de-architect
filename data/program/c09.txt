@@ -4,6 +4,7 @@ n: 9
 title: Headless Claude and loops: scripts, schedules and CI
 goal: Run Claude Code without a human in the loop safely: claude -p in scripts, structured JSON output, turn and budget limits, scheduled jobs and CI, with the same stop conditions you built in AI 1.
 hours: 2
+quiz-same: 1tn7hfy y72mfd
 
 @@tickets
 C901 | learn | 0.5 | Lesson: claude -p, structured output and safe loops | You can write a headless command with restricted tools, a JSON schema and a budget, and explain each flag. | chapter
@@ -97,7 +98,7 @@ TAG: ai
 Q: A headless job summarises logs and must never edit files or run commands. Which setting fits best?
 A) --dangerously-skip-permissions
 B) --tools "" or a read-only tool list such as Read,Grep,Glob
-C) --permission-mode acceptEdits
+C) --permission-mode acceptEdits, so it never stops to ask about edits
 D) No flags; it will ask
 ANS: B
 WHY: Remove the capability rather than hope the model does not use it. In headless mode there is no one to ask.
@@ -105,7 +106,7 @@ WHY: Remove the capability rather than hope the model does not use it. In headle
 TYPE: mcq
 TAG: ai
 Q: In an automated "fix until tests pass" loop, what decides that the loop is done?
-A) The agent saying "done"
+A) The agent saying "done" in its final message once it believes the tests pass
 B) A test or lint command your script runs, plus round and budget limits
 C) A fixed sleep
 D) The model's confidence score

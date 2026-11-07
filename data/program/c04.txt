@@ -4,6 +4,7 @@ n: 4
 title: Debugging with AI: reproduce, prove, fix, review
 goal: Use Claude Code to find bugs faster without trusting guesses: reproduce first, make it rank hypotheses, prove the cause with evidence, fix test-first and review the change like an incident.
 hours: 2
+quiz-same: 1q0c02f 1hyjk7r
 
 @@tickets
 C401 | learn | 0.5 | Lesson: a debugging loop that works with an agent | You can describe the reproduce, hypothesise, prove, fix, review loop and the prompt for each step. | chapter
@@ -73,7 +74,7 @@ TAG: ai
 Q: Claude proposes rounding the totals to fix inflated revenue. What is the problem?
 A) Rounding is slow
 B) It hides the symptom without fixing the cause (wrong parsing), so the data stays wrong
-C) Nothing; the totals look right afterwards
+C) Nothing; the totals look right afterwards, so the rounding has fixed the inflated revenue
 D) Rounding needs a new dependency
 ANS: B
 WHY: A fix must address a proven cause. Hiding the symptom is how silent data corruption ships.
@@ -94,7 +95,7 @@ Q: Why ask for ranked hypotheses with a check for each, before any fix?
 A) It makes the answer longer
 B) It forces evidence-based debugging and avoids the agent locking onto its first guess
 C) It is required by Claude Code
-D) It is cheaper than running tests
+D) It is cheaper than running tests, so the agent can skip the test run once it has ranked them
 ANS: B
 WHY: Cheap checks on several causes beat an expensive fix for the wrong one.
 ---

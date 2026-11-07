@@ -4,6 +4,7 @@ n: 4
 title: LLMs meet the warehouse: text-to-SQL, semantic layers, MCP and AI functions in SQL
 goal: Connect a language model to your data safely. Ground text-to-SQL in a semantic layer, guard every generated query, give agents read-only tools the way an MCP server does, run AI functions over warehouse columns without runaway cost, and prove accuracy with an execution-based eval. Every lab runs in this app against DuckDB in your browser.
 hours: 7
+quiz-same: 1u6xrtz 1ui0uf5
 
 @@tickets
 A401 | learn | 0.75 | Chapter part 1: the AI data stack and text-to-SQL you can trust | You can draw the AI data stack in six layers and name five guardrails for model-written SQL. | chapter:0-1
@@ -149,7 +150,7 @@ Answer each out loud, then check the model answers.
 TYPE: mcq
 TAG: ai
 Q: A model must answer "revenue by city last month", a metric finance already reports. What is the most reliable path?
-A) Send all table schemas and let the model write SQL
+A) Send all table schemas and let the model write fresh SQL for each question
 B) Ask the semantic layer for the revenue metric by city with a date filter
 C) Fine-tune a model on the warehouse
 D) Let the model guess and show the number without SQL
@@ -161,7 +162,7 @@ TAG: ai
 Q: Which check belongs before running model-written SQL?
 A) Counting the words in the question
 B) One read-only statement, tables on an allow list, and a row limit
-C) Asking the model if it is sure
+C) Asking the model if it is sure, and running it only if it says yes
 D) Running it on production first
 ANS: B
 WHY: Guard the query itself, and back it with a read-only database role.
@@ -169,7 +170,7 @@ WHY: Guard the query itself, and back it with a read-only database role.
 TYPE: mcq
 TAG: ai
 Q: How should you score generated SQL in an eval set?
-A) Exact match of the SQL text
+A) Exact match of the SQL text against the gold query, after formatting
 B) Run the gold and generated queries and compare the result rows
 C) Ask the same model to grade it
 D) Count how many tables it uses
@@ -201,7 +202,7 @@ WHY: MCP. The server holds the credentials and rules; the model only sees tool d
 TYPE: mcq
 TAG: ai
 Q: An AI_CLASSIFY backfill over 20 million rows is about to run. Which step saves the most money on reruns?
-A) A bigger warehouse
+A) A bigger warehouse, so the backfill and each rerun finish faster
 B) Caching labels by input hash with the model and prompt version
 C) Higher temperature
 D) Running it twice to compare

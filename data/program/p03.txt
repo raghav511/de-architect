@@ -4,6 +4,7 @@ n: 3
 title: Iterators and generators: process data bigger than memory
 goal: Understand the iteration protocol and write lazy generator pipelines that read, filter, chunk and deduplicate streams in constant memory. This is the Python behind "how would you process a file bigger than RAM", and the mental model for Spark's lazy evaluation and for Kafka consumers.
 hours: 5
+quiz-same: lfuis3 fse8nh
 
 @@tickets
 P301 | learn | 0.75 | Chapter part 1: the iteration protocol and generators | You can explain what a `for` loop does with `iter()` and `next()`, and why a generator uses no memory for values it has not produced yet. | chapter:0-2
@@ -283,7 +284,7 @@ print(list(sq))
 TYPE: mcq
 TAG: py
 Q: What does calling a generator function do?
-A) Runs the whole body and returns a list
+A) Runs the whole body straight away and returns the yielded values as a list
 B) Returns a generator object without running the body
 C) Runs until the first yield
 D) Raises StopIteration
@@ -295,7 +296,7 @@ TAG: py
 Q: You need to process a 50 GB CSV on a laptop with 16 GB of RAM. Which design works?
 A) `rows = list(csv.DictReader(f))`, then process
 B) A generator pipeline: read lines lazily, parse, filter, write in batches
-C) `pandas.read_csv(path)` with default options
+C) `pandas.read_csv(path)` with default options, since pandas compresses the data in memory
 D) Read the file twice to count rows first
 ANS: B
 WHY: Only the lazy pipeline keeps memory independent of the file size. (pandas can work with `chunksize`, which is the same idea.)
@@ -309,7 +310,7 @@ WHY: Slicing with `[:10]` only works on sequences such as lists.
 TYPE: mcq
 TAG: py
 Q: `groupby` on unsorted rows by city gives repeated groups for the same city. Why?
-A) It is a bug in Python
+A) It is a bug in Python's itertools that was fixed in later versions
 B) groupby only groups consecutive items with equal keys
 C) It needs a key function
 D) It sorts in reverse
@@ -319,7 +320,7 @@ WHY: Sort by the key first for SQL-style grouping, or use a dict.
 TYPE: mcq
 TAG: py
 Q: Which Spark behaviour is closest to a Python generator pipeline?
-A) Caching
+A) Caching: Spark keeps each intermediate result in memory so that later steps can reuse it
 B) Lazy evaluation: transformations build a plan and nothing runs until an action
 C) Broadcast joins
 D) Shuffles
@@ -338,7 +339,7 @@ Q: Why insert rows into a database in batches of about 1,000 rather than one at 
 A) Databases reject single rows
 B) Fewer network round trips and transactions; much higher throughput
 C) It uses less disk
-D) It avoids indexes
+D) It avoids indexes, because a batch insert skips index updates until the next rebuild
 ANS: B
 WHY: Per-call overhead dominates single-row inserts. Too large a batch costs memory and bigger retries.
 ---

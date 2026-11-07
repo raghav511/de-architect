@@ -4,6 +4,7 @@ n: 1
 title: Set up Claude Code and run your first real session
 goal: Install Claude Code, open the practice project, and finish one small change the right way: explore, plan, edit, test, review the diff, commit.
 hours: 2
+quiz-same: 1p9y658 ykxcof
 
 @@tickets
 C101 | learn | 0.5 | Lesson: how Claude Code works and how a session flows | You can explain the agent loop inside Claude Code and name five keys or commands you will use every day. | chapter
@@ -112,7 +113,7 @@ Write down three things you noticed (for example: it asked before running the te
 TYPE: mcq
 TAG: ai
 Q: You want Claude Code to investigate a bug without changing any file. What is the most reliable way?
-A) Ask nicely in the prompt not to edit
+A) Ask nicely in the prompt not to edit, and repeat it in CLAUDE.md
 B) Switch to plan mode with Shift+Tab before asking
 C) Use /clear first
 D) Run claude -c
@@ -122,7 +123,7 @@ WHY: Plan mode is enforced by the tool: Claude can read and think but not edit o
 TYPE: mcq
 TAG: ai
 Q: What does starting a line with ! do in a Claude Code session?
-A) Forces Claude to obey the line
+A) Forces Claude to treat the line as a rule it must obey for the rest of the session
 B) Runs the line as a shell command yourself and adds the output to the conversation
 C) Marks the message as urgent
 D) Deletes the last message

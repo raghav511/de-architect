@@ -4,6 +4,7 @@ n: 3
 title: Spark under load
 goal: A nightly enrichment job joins trips to drivers and zones over 30 days of data. You measure it, break it with skewed data, fix it three different ways, and give your agent tools to read the evidence.
 hours: 10
+quiz-same: mp6ipt 1ftrben
 
 @@tickets
 301 | learn | 2 | Chapter 3 and the readings | You can open a stage in the Spark UI and say where the time went and why. | chapter
@@ -367,7 +368,7 @@ WHY: A stage runs one task per partition. The number of executors affects how ma
 TYPE: mcq
 TAG: spark
 Q: A plan contains `Exchange hashpartitioning(city, 200)`. What is happening?
-A) 200 files are being read
+A) 200 files are being read, one per partition, and hashed by `city` on load
 B) Rows are being shuffled into 200 partitions by the hash of `city`
 C) The `city` column is being cached
 D) A broadcast of 200 rows
@@ -390,7 +391,7 @@ Q: In one stage, the median task takes 15 seconds and one task takes 40 minutes.
 A) A slow network
 B) Data skew: one key holds most of the rows
 C) Too many executors
-D) The driver is short of memory
+D) The driver is short of memory and is slow to schedule that task
 ANS: B
 WHY: All rows for a key land in one partition after a shuffle. A hot key makes one task do most of the work. Compare shuffle read sizes across tasks to confirm.
 ---
@@ -407,7 +408,7 @@ WHY: Python workers and off-heap buffers live in the overhead region, outside th
 TYPE: mcq
 TAG: spark
 Q: You have 200 partitions and want 10 output files with the least extra work. Which is correct?
-A) `repartition(10)`, because it avoids a shuffle
+A) `repartition(10)`, because it avoids a shuffle and keeps the data in place
 B) `coalesce(10)`, because it merges partitions without a full shuffle
 C) Both always shuffle
 D) Neither changes the partition count
@@ -417,8 +418,8 @@ WHY: `coalesce` merges existing partitions. `repartition` performs a full shuffl
 TYPE: mcq
 TAG: ai
 Q: A tool hands the model a 60 MB Spark event log and asks which stage was slowest. Why is this a poor design?
-A) Models cannot read JSON
-B) It is costly and unreliable; code should compute a small summary and the model should interpret it
+A) Models cannot read JSON, so the log must first be converted to plain text before any analysis
+B) It is costly and unreliable; code should compute a small summary for the model to interpret
 C) Event logs are confidential
 D) Tools may not return text
 ANS: B
@@ -507,7 +508,7 @@ WHY: The large side's hot rows now carry salts 0 to 9, so every matching row on 
 TYPE: mcq
 TAG: spark
 Q: An executor is killed by Kubernetes for exceeding its memory limit, yet the Java heap was not full. What is the most likely cause?
-A) Too many shuffle partitions
+A) Too many shuffle partitions, each holding its own buffer on the Java heap
 B) Python workers or Arrow buffers used more than memoryOverhead allows
 C) Catalyst chose the wrong join
 D) The driver ran out of memory

@@ -4,6 +4,7 @@ n: 2
 title: Prompts that get the change you want
 goal: Write prompts for coding agents that name the goal, the context, the constraints and how to verify, and see the difference in quality and cost on the practice project.
 hours: 2
+quiz-same: 17dkvhh 9ib683
 
 @@tickets
 C201 | learn | 0.5 | Lesson: the anatomy of a good coding prompt | You can rewrite a vague request into goal, context, constraints, verification and output, and explain each part. | chapter
@@ -83,14 +84,14 @@ Q: Which single addition most improves an agent's chance of finishing a code cha
 A) Saying "please be careful"
 B) A way to verify the result, such as a test that must pass
 C) Asking it to think about the problem
-D) Writing the prompt in capital letters
+D) Writing the prompt in capital letters so the rules stand out more
 ANS: B
 WHY: With a concrete check the agent can detect and correct its own mistakes. Without one it stops when the code looks plausible.
 ---
 TYPE: mcq
 TAG: ai
 Q: You know the job runs on 50 million rows a day. Where does that belong?
-A) Nowhere; the model will figure it out
+A) Nowhere; the model will work out the data volume by reading the code and the table schema
 B) In the prompt (or CLAUDE.md) as context, because it changes which solution is right
 C) Only in the commit message
 D) In a code comment after the change

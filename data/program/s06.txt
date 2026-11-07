@@ -5,6 +5,7 @@ title: Source of truth
 goal: Every insert, update and delete on the orders table in Postgres flows through Debezium and Kafka into an Iceberg table, in order and exactly once in effect. A nightly reconciliation proves the two agree. This sprint ends with your first full mock loop.
 hours: 10
 mockloop: 1
+quiz-same: npa5yv ubj8f6
 
 @@tickets
 601 | learn | 1.75 | Chapter 6 and the readings | You can explain how a row change in Postgres becomes a row in the lake, and name four ways it can go wrong. | chapter
@@ -301,7 +302,7 @@ The last step is the one to remember. A total tells you that something is wrong.
 TYPE: mcq
 TAG: streaming
 Q: What is the main advantage of log-based change data capture over polling for rows with a newer `updated_at`?
-A) It needs no network
+A) It needs no network, because the connector reads the log files straight from the source's disk
 B) It captures deletes and every intermediate change, with little load on the source
 C) It works without primary keys
 D) It makes the source database faster
@@ -321,9 +322,9 @@ WHY: A delete has no new state. `before` carries the last values of the row, sub
 TYPE: mcq
 TAG: streaming
 Q: A Debezium connector for Postgres has been stopped for five days. What is the main risk?
-A) Kafka deletes the topic
-B) The replication slot makes Postgres retain WAL, which can fill the database server's disk
-C) The table is locked for writes
+A) Kafka deletes the topic once its retention period passes with no new writes
+B) The replication slot makes Postgres keep WAL, which can fill the server's disk
+C) The table is locked for writes until the connector reconnects and catches up on the backlog
 D) Primary keys are reset
 ANS: B
 WHY: Postgres keeps all WAL after the slot's confirmed position. An inactive slot retains it without limit unless a maximum is configured.
@@ -333,7 +334,7 @@ TAG: streaming
 Q: Why are change events keyed by the table's primary key?
 A) To compress better
 B) So all changes to one row go to the same partition and stay in order
-C) Because Kafka requires integer keys
+C) Because Kafka requires every message to carry an integer key for routing
 D) So consumers can skip messages
 ANS: B
 WHY: Order is guaranteed only within a partition. Keying by primary key keeps each row's history in sequence and lets compaction keep the latest state per row.
@@ -351,7 +352,7 @@ WHY: A merge source with several rows matching one target row is an error in som
 TYPE: mcq
 TAG: design
 Q: A service saves an order to its database and then publishes an event to Kafka. It crashes between the two steps. Which pattern prevents the resulting inconsistency?
-A) Retry the publish for ever
+A) Retry the publish with exponential backoff until Kafka acknowledges it, keeping the attempts in memory
 B) Transactional outbox: write the event to a table in the same transaction and let CDC publish it
 C) Publish first, then save
 D) Use a larger Kafka cluster
@@ -372,8 +373,8 @@ TYPE: mcq
 TAG: ai
 Q: You want an agent to repair data it finds to be wrong. Which design is safest?
 A) Give it a tool that runs any SQL
-B) Give it a tool that records a proposal; a separate path with different credentials executes it after a person approves
-C) Tell it in the prompt to be careful
+B) Its tool only records a proposal; a separate path with different credentials executes it after a person approves
+C) Tell it in the system prompt to always ask a person for approval and wait for a yes before it runs any change it plans
 D) Let it run changes only at night
 ANS: B
 WHY: Safety comes from what the agent is able to do, not from what it is told. If the agent has no execute tool and no write credentials, no prompt can make it change data.

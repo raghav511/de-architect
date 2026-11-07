@@ -4,6 +4,7 @@ n: 4
 title: Classes and types: model your data, and a first look at low-level design
 goal: Know when a class beats a dict or a function, and write clean ones: dataclasses, properties with validation, special methods, composition over inheritance, Protocols and type hints. This is the bridge to the object-oriented (low-level) design rounds that Uber, Flipkart and Amazon run for senior engineers.
 hours: 5
+quiz-same: 1rj10ms juievv
 
 @@tickets
 P401 | learn | 0.75 | Chapter part 1: classes, dataclasses and properties | You can write a frozen dataclass with a validated field and explain what `@dataclass` generates for you. | chapter:0-3
@@ -305,7 +306,7 @@ Q: Why store money as integer paise rather than a float of rupees?
 A) Integers are faster to print
 B) Floats cannot represent most decimal fractions exactly, so sums drift (0.1 + 0.2 != 0.3)
 C) Databases do not support floats
-D) Python floats are 16-bit
+D) Python floats are only 16-bit, so any amount above about 65,000 rupees overflows and wraps
 ANS: B
 WHY: Use integers in the smallest unit, or `decimal.Decimal`, for money.
 ---
@@ -328,7 +329,7 @@ WHY: Structural typing: the validator depends on the method, not the class. New 
 TYPE: mcq
 TAG: py
 Q: Which problem does composition avoid compared with deep inheritance?
-A) Too many objects
+A) Too many objects, because each subclass creates a hidden copy of its base class
 B) A change in a base class rippling unexpectedly into many subclasses
 C) Slower method calls
 D) Missing `__repr__`
@@ -356,7 +357,7 @@ TAG: py
 Q: What do type hints do at runtime in plain Python?
 A) They raise errors for wrong types
 B) Nothing: they are documentation for people and tools such as mypy (frameworks like Pydantic can choose to read them)
-C) They convert values to the hinted type
+C) They convert each argument to the hinted type when the function is called, so the string "5" becomes 5 for an `int` hint
 D) They make code faster
 ANS: B
 WHY: Python itself ignores them; tools and some libraries use them.

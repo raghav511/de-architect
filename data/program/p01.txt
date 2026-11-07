@@ -4,6 +4,7 @@ n: 1
 title: Core types, and what each operation costs
 goal: Read and write everyday Python with confidence: names and mutability, lists, tuples, dicts and sets, and the collections module. You can say what any line costs in Big-O, which is the first follow-up question in every coding round.
 hours: 5
+quiz-same: 1t485ux 1xaw3sd
 
 @@tickets
 P101 | learn | 0.75 | Chapter part 1: objects, lists and dicts | You can draw what `b = a` does for a list, and say why `x in a_set` is fast and `x in a_list` is not. | chapter:0-3
@@ -367,7 +368,7 @@ TAG: py
 Q: `ids` is a list of 100,000 driver ids, and you loop over 1 million trips checking `t["driver_id"] in ids`. What is the problem and the fix?
 A) Nothing; `in` is always O(1)
 B) Each check scans the list, O(n·m) overall; convert ids to a set first
-C) Python lists are sorted, so `in` uses binary search
+C) Python lists are kept sorted, so `in` uses binary search and needs no change
 D) Use `ids.index()` instead of `in`
 ANS: B
 WHY: Membership in a list is a linear scan. A set or dict makes each check O(1) on average.
@@ -388,7 +389,7 @@ Q: Why can a tuple be a dict key but a list cannot?
 A) Tuples are faster
 B) Keys must be hashable, which requires the value not to change; lists are mutable
 C) Lists are too long
-D) Only strings can be keys
+D) Only strings and numbers can be keys, and a tuple is converted to a string first
 ANS: B
 WHY: If a key could change after insertion, its hash would change and the dict could no longer find it.
 ---

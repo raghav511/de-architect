@@ -4,6 +4,7 @@ n: 12
 title: Build your own agent with the Claude Agent SDK
 goal: Build a small production-minded agent in Python with the Claude Agent SDK: a data-quality investigator with custom tools, permissions, limits, structured output and a test set.
 hours: 2
+quiz-same: 1v27m2v 1h7fjng
 
 @@tickets
 C1201 | learn | 0.5 | Lesson: the Agent SDK, custom tools and production concerns | You can explain how the SDK relates to Claude Code and write a query() call with tools, permissions and limits. | chapter
@@ -109,7 +110,7 @@ WHY: You focus on tools, rules and evaluation instead of rebuilding the loop.
 TYPE: mcq
 TAG: ai
 Q: Your agent should investigate data but never change anything. Which configuration fits?
-A) allowed_tools with Bash and Edit, and a prompt saying "do not change anything"
+A) allowed_tools with Bash and Edit, plus a system prompt that repeats "do not change anything" before every task
 B) allowed_tools limited to read-only tools and your read-only custom tools; the data connection opened read-only
 C) No tools at all and a long prompt
 D) The largest model
@@ -119,7 +120,7 @@ WHY: Remove capabilities and enforce read-only at the data layer.
 TYPE: mcq
 TAG: ai
 Q: Which is the best evidence that a prompt change made your agent better?
-A) The answers sound more confident
+A) The answers sound more confident and the agent asks fewer follow-up questions
 B) Pass rate on a fixed eval set of cases with known answers, plus cost per run
 C) It uses more tools
 D) It writes longer reports

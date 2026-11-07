@@ -4,6 +4,7 @@ n: 3
 title: Context and cost: get more done with fewer credits
 goal: Understand what you pay for in a Claude Code session, see it with /context and real run numbers, and use the habits that cut cost without hurting quality.
 hours: 2
+quiz-same: 139ig2x hqarfi
 
 @@tickets
 C301 | learn | 0.5 | Lesson: where the tokens go and how to spend fewer | You can name the four biggest cost drivers in a session and a habit that cuts each one. | chapter
@@ -72,14 +73,14 @@ Q: Why does a long Claude Code session get more expensive per message over time?
 A) The model gets tired
 B) Each turn re-sends the whole conversation, including files and outputs read earlier
 C) Prices rise during the day
-D) Output tokens get longer automatically
+D) Output tokens get longer automatically, because the model warms up as a session goes on
 ANS: B
 WHY: Context accumulates. /clear between tasks and /compact within a long task keep it small.
 ---
 TYPE: mcq
 TAG: ai
 Q: Which change saves the most tokens when the agent keeps reading large test logs?
-A) Switching to a bigger model
+A) Switching to a bigger model that can read the long logs in one go
 B) Running tests quietly (-q, -x) and tailing the output
 C) Adding more instructions to CLAUDE.md
 D) Turning on more MCP servers

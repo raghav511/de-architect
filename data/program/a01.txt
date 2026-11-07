@@ -4,6 +4,7 @@ n: 1
 title: Loops, harnesses and prompts that pay for themselves
 goal: Build a working agent from scratch: a loop, tools, budgets, a trace, and prompts measured for quality and cost. By Sunday a scheduled automation runs one of your daily tasks without you.
 hours: 8
+quiz-same: 7u1jg7 16486i4
 
 @@tickets
 A101 | learn | 0.75 | Chapter part 1: what an agent is, and the loop | You can draw the agent loop and name its three stop conditions without notes. | chapter:0-1
@@ -190,7 +191,7 @@ Rewrite each prompt using the six-part structure. Then compare with the model an
 TYPE: mcq
 TAG: ai
 Q: In a tool-using agent, who actually executes a tool call?
-A) The model provider's servers
+A) The model provider's servers, which run each tool as the model generates it
 B) Your harness code, after the model returns a structured request
 C) The tool runs itself when its name appears in the text
 D) Nobody; the model predicts the result
@@ -201,7 +202,7 @@ TYPE: mcq
 TAG: ai
 Q: Which is NOT one of the three stop conditions every agent loop needs?
 A) The model answers without a tool call
-B) A step or token budget is reached
+B) A step or token budget set by the harness is reached
 C) The same action repeats with no progress
 D) The model's answer is longer than 100 words
 ANS: D
@@ -210,8 +211,8 @@ WHY: Length is not a stop condition. Done, budget and no-progress are.
 TYPE: mcq
 TAG: ai
 Q: An agent keeps declaring "done" while the tests still fail. Which harness layer fixes this best?
-A) A longer system prompt
-B) Verification: run the tests and only accept "done" with passing evidence
+A) A longer system prompt telling the model not to say done until tests pass
+B) Verification: run the tests and accept "done" only with passing evidence
 C) A bigger model
 D) More tools
 ANS: B
@@ -228,7 +229,7 @@ TAG: ai
 Q: Your prompt starts with "Current time: 10:42:13" and then a 6,000-token schema. Why is prompt caching not saving money?
 A) The schema is too short to cache
 B) The prefix changes every request, so the cache never matches
-C) Caching only works on output tokens
+C) Caching only works on output tokens, so the input schema is always billed in full
 D) Caching needs a bigger model
 ANS: B
 WHY: Caching needs an identical prefix. Put stable content first and the timestamp after the cache breakpoint.
@@ -236,7 +237,7 @@ WHY: Caching needs an identical prefix. Put stable content first and the timesta
 TYPE: mcq
 TAG: ai
 Q: Which change usually cuts cost the most for a high-volume classification step?
-A) Asking the model to think step by step
+A) Asking the model to think step by step before it picks a label
 B) Routing it to the smallest model that passes the eval set
 C) Adding more examples every call
 D) Raising max_tokens
@@ -254,7 +255,7 @@ TAG: ai
 Q: When should you prefer a fixed workflow over an agent?
 A) Never; agents are always better
 B) When the steps are known in advance
-C) Only when there are no tools
+C) Only when there are no tools for the model to call
 D) When the task is long
 ANS: B
 WHY: Workflows are cheaper, faster and easier to test. Use an agent when the next step depends on what it finds.
@@ -286,7 +287,7 @@ WHY: Both are cheap to implement and prevent runaway cost.
 TYPE: mcq
 TAG: ai
 Q: Where should an API key used by a scheduled GitHub Actions workflow live?
-A) In the workflow YAML
+A) In the workflow YAML, as an env value next to the cron schedule
 B) In a repository secret, read as an environment variable
 C) In a commit message
 D) In the prompt

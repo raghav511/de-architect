@@ -4,6 +4,7 @@ n: 5
 title: Vectors, documents and RAG pipelines: unstructured data as a data engineering problem
 goal: Build the pipeline behind retrieval-augmented generation the way you build any pipeline: chunk and embed documents, store and search vectors next to your tables, keep the index fresh with change detection, extract structured rows from text with validation and a dead-letter path, keep personal data out, and measure retrieval before tuning prompts. Every lab runs in this app.
 hours: 7
+quiz-same: 1rcdgud cgcvzu
 
 @@tickets
 A501 | learn | 0.75 | Chapter part 1: RAG is a pipeline; chunking and embeddings | You can draw the ingest and query paths of RAG and choose a chunk size for runbooks. | chapter:0-1
@@ -134,7 +135,7 @@ Open the A5 exercises in the code editor (Path, module A5, the Lab steps). Every
 TYPE: mcq
 TAG: ai
 Q: A RAG assistant gives wrong answers. Retrieval recall at 5 on your labelled set is 40%. What do you fix first?
-A) Use a bigger model
+A) Use a bigger model that reasons better over the retrieved passages
 B) Chunking, filters and search (for example hybrid search)
 C) Raise the temperature
 D) Shorten the prompt
@@ -144,7 +145,7 @@ WHY: The model cannot answer from passages it never sees. Fix retrieval before g
 TYPE: mcq
 TAG: ai
 Q: The cheapest way to keep a vector index fresh is to...
-A) Re-embed every document every night
+A) Re-embed the whole corpus every night, so edits and deleted documents are caught
 B) Embed only new or changed documents (by hash or CDC) and delete removed ones
 C) Never update it
 D) Re-embed only on weekends
@@ -154,7 +155,7 @@ WHY: Change detection embeds what changed and applies deletes, which full refres
 TYPE: mcq
 TAG: ai
 Q: A team with 2 million document chunks already runs Postgres. Where should the vectors live first?
-A) A new dedicated vector database cluster
+A) A new dedicated vector database cluster, sized for the 2 million chunks
 B) Postgres with pgvector, next to the data and its access rules
 C) Spreadsheets
 D) Inside the prompt
@@ -186,7 +187,7 @@ WHY: Bounded retry plus a dead-letter path is the standard ingestion contract fo
 TYPE: mcq
 TAG: ai
 Q: Where should you redact personal data in a RAG system?
-A) In the final answer only
+A) In the final answer only, just before it is shown to the user
 B) At ingestion, before text reaches the model or the index
 C) Nowhere, the model ignores it
 D) Only in logs

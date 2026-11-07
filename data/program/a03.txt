@@ -4,6 +4,7 @@ n: 3
 title: Autonomous agents for data engineering, and what is new
 goal: An agent that runs on its own against your lakehouse: it plans, works in steps with checkpoints, uses tools through MCP, reports with evidence, and asks before anything irreversible. Plus the newest ideas in agents and how to judge them.
 hours: 8
+quiz-same: 1gfpnqy 18jtzln
 
 @@tickets
 A301 | learn | 0.75 | Chapter part 1: long-running agents | You can explain checkpoints, progress files and resumability, and why one change per step matters. | chapter:0-1
@@ -121,7 +122,7 @@ Critique each design, then check the model answers.
 TYPE: mcq
 TAG: ai
 Q: What lets a long-running agent resume after a crash without redoing work?
-A) A longer context window
+A) A longer context window that holds the whole run, so nothing is lost
 B) Plan and progress files plus a commit after each verified sub-task
 C) Running it twice
 D) A bigger model
@@ -133,7 +134,7 @@ TAG: ai
 Q: When do multiple agents beat a single agent?
 A) Always
 B) When parts of the task are independent and can run in parallel
-C) When the task is one tightly coupled SQL model
+C) When the task is one tightly coupled SQL model that has many steps
 D) When you want lower cost
 ANS: B
 WHY: Coupled work loses context in handoffs, and multi-agent runs cost more tokens.
@@ -147,7 +148,7 @@ WHY: An open standard for exposing tools, resources and prompts to agents.
 TYPE: mcq
 TAG: ai
 Q: Which three things can an MCP server expose?
-A) Models, weights and GPUs
+A) Models, weights and GPU servers
 B) Tools, resources and prompts
 C) Users, roles and passwords
 D) Tables, views and indexes
@@ -157,7 +158,7 @@ WHY: Tools are callable, resources are readable data, prompts are templates.
 TYPE: mcq
 TAG: ai
 Q: The on-call agent is confident it found the cause. What should it do next?
-A) Apply the fix and rerun production
+A) Apply the fix in production at once, then rerun the failed job to confirm it
 B) Post the report with evidence and a proposed diff, then wait for approval
 C) Delete the failed run
 D) Keep searching until the budget is used
@@ -169,7 +170,7 @@ TAG: ai
 Q: The same error appears three times in an autonomous run. Best behaviour?
 A) Retry forever
 B) Escalate: write the open question to the progress file and stop
-C) Switch to admin credentials
+C) Switch to admin credentials so the next retry has the access it needs
 D) Delete the logs
 ANS: B
 WHY: Escalate instead of guessing; it is cheaper and safer.
@@ -184,7 +185,7 @@ WHY: Hype filter.
 TYPE: mcq
 TAG: ai
 Q: A good use of a small, cheap, long-context model inside an agent system is...
-A) Final design decisions
+A) Final design decisions, since it can see the whole codebase at once
 B) Reading large inputs and extracting what the big model needs
 C) Approving merges
 D) Writing passwords

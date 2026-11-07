@@ -249,6 +249,14 @@ async function T(name, fn, opt) {
     await go(p, '#/path/a01', 600); await p.reload(); await p.waitForTimeout(800); ok(await p.$('.unit.done:has-text("Quiz A1")'), 'retake should not untick the quiz step');
   });
 
+  await T('quiz: options in a fresh order per attempt; picking every right option by its text scores 100% on mcqs', async p => {
+    await go(p, '#/quiz/s02', 1000);
+    const qs = await p.evaluate(async () => (await sprint('s02')).quiz.map(q => q.TYPE === 'mcq' ? q.ANS : null));
+    for (let i = 0; i < qs.length; i++) { if (!qs[i]) continue; await p.click('.pal button >> nth=' + i); await p.waitForTimeout(80); await p.click('.opt[data-k=' + qs[i] + ']'); }
+    const r = await p.evaluate(async () => { const s = await sprint('s02'), st = S.quiz[qk('s02')]; return { ok: s.quiz.every((q, k) => q.TYPE !== 'mcq' || st.a[k] === q.ANS), labels: [...document.querySelectorAll('.opt b')].map(b => b.textContent).join('') }; });
+    ok(r.ok, 'an mcq answer was not saved as the file letter'); ok(r.labels === 'ABCD', 'screen labels should run A to D: ' + r.labels);
+  });
+
   await T('quiz: reset with undo and leave keeps answers', async p => {
     await go(p, '#/quiz/s01', 1000);
     await p.click('.opt >> nth=1'); await p.waitForTimeout(200);

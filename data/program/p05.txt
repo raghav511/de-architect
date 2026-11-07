@@ -4,6 +4,7 @@ n: 5
 title: Code that survives production: errors, context managers, logging and tests
 goal: Write Python you would be comfortable being paged for: precise exception handling, cleanup that cannot be forgotten, logs that explain failures, tests written with pytest, and a project layout others can install. Interviewers judge seniority by exactly these habits.
 hours: 5
+quiz-same: 1k1b971 1m1l185
 
 @@tickets
 P501 | learn | 0.75 | Chapter part 1: exceptions and context managers | You can explain `raise ... from e`, why a bare `except:` is dangerous, and what `__exit__` receives. | chapter:0-2
@@ -309,7 +310,7 @@ TAG: py
 Q: Why is `except:` (bare) or `except Exception:` around a whole job dangerous?
 A) It is slower
 B) It hides bugs, typos and interrupts, turning crashes into silent wrong data
-C) Python forbids it
+C) Python forbids it outside the main module and raises a SyntaxError at import
 D) It only catches syntax errors
 ANS: B
 WHY: Catch the specific exceptions you can handle; let everything else fail loudly.
@@ -325,7 +326,7 @@ TAG: py
 Q: What does returning `True` from `__exit__` do?
 A) Commits the transaction
 B) Suppresses the exception raised inside the with block
-C) Re-raises the exception
+C) Re-raises the exception after the with block has finished cleaning up
 D) Nothing
 ANS: B
 WHY: Return False or None to let errors propagate.
@@ -333,7 +334,7 @@ WHY: Return False or None to let errors propagate.
 TYPE: mcq
 TAG: py
 Q: Which errors should an API ingestion job retry?
-A) All exceptions
+A) All exceptions, since any error might go away if the job tries again
 B) Transient ones: timeouts, connection errors, HTTP 429 and 5xx
 C) KeyError and TypeError
 D) None; retries are bad practice
@@ -345,7 +346,7 @@ TAG: py
 Q: Why pass `sleep` (or a clock) into a retry function as an argument?
 A) To make it faster in production
 B) So tests can replace it and run instantly while checking the delays
-C) Python requires it
+C) Python requires it for any function that waits, so the interpreter can schedule it
 D) To avoid importing time
 ANS: B
 WHY: Dependency injection makes time-based code testable.
@@ -359,7 +360,7 @@ WHY: Each input becomes its own test case in the report.
 TYPE: mcq
 TAG: py
 Q: Where should a database password used by a pipeline live?
-A) In the source code, in a constants file
+A) In the source code, in a constants file, so that every deploy uses the same tested value
 B) In an environment variable or secret manager, with only a placeholder in `.env.example`
 C) In the README
 D) In a log message for debugging

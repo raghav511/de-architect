@@ -4,6 +4,7 @@ n: 1
 title: The walking skeleton
 goal: One ride event travels from a generator through Kafka, Spark and object storage to a SQL answer, scheduled by Airflow, with an LLM script that can explain a failed run. Thin, but every layer exists.
 hours: 10
+quiz-same: rr5wdn ahf0mv
 
 @@tickets
 101 | learn | 2 | Chapter 1 and the readings | You can draw the skeleton from memory and say what each box does and what it stores. | chapter
@@ -448,15 +449,15 @@ Q: In HDFS, what does the NameNode store?
 A) The file data blocks
 B) The namespace and the location of every block
 C) Only the logs of failed jobs
-D) A full backup of every DataNode
+D) A full backup of every DataNode, so it can rebuild one that fails
 ANS: B
 WHY: The NameNode holds metadata in memory: the directory tree, file-to-block mapping and block locations. DataNodes hold the bytes.
 ---
 TYPE: mcq
 TAG: cloud
 Q: A job writes 5,000 files to a temporary prefix in S3 and then "renames the directory" into place. What actually happens?
-A) One atomic metadata update
-B) A copy and a delete for each of the 5,000 objects, during which readers can see a partial result
+A) One atomic metadata update in the bucket index, so readers see either all 5,000 files or none
+B) A copy and a delete for each of the 5,000 objects, while readers can see a partial result
 C) Nothing; S3 does not allow it
 D) The files are compressed into one object
 ANS: B
@@ -468,7 +469,7 @@ Q: A producer sends every event for trip `t-88213` with key `t-88213`. Where do 
 A) Round-robin across all partitions
 B) The same partition, as long as the partition count does not change
 C) A new partition per event
-D) The partition with the fewest messages
+D) The partition with the fewest messages, chosen by the broker at send time
 ANS: B
 WHY: The default partitioner hashes the key. Same key and same partition count means same partition, which is what preserves per-trip ordering.
 ---
@@ -485,7 +486,7 @@ WHY: Within a group, each partition is read by exactly one consumer. Extra consu
 TYPE: mcq
 TAG: spark
 Q: Which statement about the Spark driver and executors is correct?
-A) Executors build the query plan and the driver runs tasks
+A) Executors build the query plan between them, and the driver runs the tasks and holds cached data
 B) The driver builds the plan and schedules tasks; executors run them on partitions of data
 C) There is one executor per row
 D) The driver stores all shuffle data
@@ -516,8 +517,8 @@ TYPE: mcq
 TAG: ai
 Q: The model's response has `stop_reason` equal to `tool_use`. What must your code do next?
 A) Print the response and exit
-B) Run each requested tool and send back a `tool_result` for each, matched by `tool_use_id`
-C) Call the model again with the same messages
+B) Run each requested tool and return one `tool_result` per call, matched by `tool_use_id`
+C) Call the model again with the same messages so that it can run the requested tools itself
 D) Raise an exception
 ANS: B
 WHY: The model is waiting for results. You append its response, then a user message containing one `tool_result` per `tool_use` block, each carrying the matching id.

@@ -4,6 +4,7 @@ n: 6
 title: Privacy: what leaves your machine, and keeping customer data out
 goal: Know what Claude Code sends where, keep personal and production data out of AI sessions, and use synthetic or masked data to get the same help.
 hours: 2
+quiz-same: ax9css 1onhl3m
 
 @@tickets
 C601 | learn | 0.5 | Lesson: data flows, retention and PII with AI tools | You can draw what leaves your laptop in a session and name four controls for customer data. | chapter
@@ -70,7 +71,7 @@ TAG: ai
 Q: In a Claude Code session, which of these is sent to the model provider?
 A) Only your typed prompt
 B) Your prompts plus files Claude reads and command outputs that enter the conversation
-C) Nothing; everything runs locally
+C) Nothing; the model runs locally, and only anonymous usage statistics leave your machine
 D) Only files you explicitly upload
 ANS: B
 WHY: Whatever becomes context is sent so the model can answer. That includes outputs of queries the agent runs.
@@ -78,7 +79,7 @@ WHY: Whatever becomes context is sent so the model can answer. That includes out
 TYPE: mcq
 TAG: core
 Q: You hash customer emails with SHA-256 before sharing a sample. Is the data now anonymous?
-A) Yes, hashes cannot be reversed
+A) Yes, SHA-256 is a one-way function, so no one can ever recover the original email from any of the hashes
 B) No, it is pseudonymised: the same email always gives the same hash, and common emails can be guessed
 C) Yes, if you also remove names
 D) Only if the file is small

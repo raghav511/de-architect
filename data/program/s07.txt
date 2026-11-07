@@ -4,6 +4,7 @@ n: 7
 title: Move it to the cloud
 goal: The batch path of the platform runs on AWS, created and destroyed by Terraform: S3, the Glue Data Catalog, a Spark job on EMR Serverless, and Athena on top. You can forecast its monthly bill, and your tools are served to any assistant through an MCP server.
 hours: 10
+quiz-same: 1658och 3ty0r3
 
 @@tickets
 701 | learn | 2 | Chapter 7 and the readings | For any pipeline step you can name the AWS service you would use, one alternative, and what drives its cost. | chapter
@@ -316,7 +317,7 @@ Q: Why is AWS Lambda a poor fit for a transformation that takes 40 minutes?
 A) Lambda cannot read from S3
 B) A Lambda invocation can run for at most 15 minutes
 C) Lambda supports only Java
-D) Lambda cannot be scheduled
+D) Lambda cannot be scheduled, so a nightly job would need a server to start it
 ANS: B
 WHY: Lambda is for short, event-driven work. Long transformations belong in Glue, EMR or the warehouse, with Lambda or Step Functions starting them.
 ---
@@ -324,8 +325,8 @@ TYPE: mcq
 TAG: cloud
 Q: In Redshift, what is a distribution key for?
 A) Encrypting a table
-B) Deciding which node each row is stored on, so joins on that key avoid moving data
-C) Ordering rows on disk for block skipping
+B) Deciding which node stores each row, so joins on that key avoid moving data
+C) Ordering rows on disk within each node, so range filters can skip blocks
 D) Setting query priority
 ANS: B
 WHY: Rows with the same distribution key value live on the same node. Two tables distributed on their join key can be joined locally. The sort key is what orders rows on disk.
@@ -343,8 +344,8 @@ WHY: A log-based stream keeps events for a retention period and lets each consum
 TYPE: mcq
 TAG: cloud
 Q: What is Terraform's state file for?
-A) Storing application data
-B) Recording which real resources correspond to the configuration, so Terraform can plan changes
+A) Storing a backup of the application data held in the resources, so it can be restored
+B) Recording which real resources match the configuration, so Terraform can plan changes
 C) Caching provider downloads
 D) Holding passwords in plain text for convenience
 ANS: B
@@ -355,7 +356,7 @@ TAG: ai
 Q: What is the main benefit of exposing your tools through an MCP server?
 A) Models run faster
 B) Tools are written once and can be used by any MCP-capable client
-C) It removes the need for credentials
+C) It removes the need for credentials, because the client's identity is passed to every tool
 D) It guarantees correct answers
 ANS: B
 WHY: MCP standardises how a client discovers and calls tools. Without it, each application needs its own integration.
