@@ -569,8 +569,8 @@ a.srcl:hover{background:var(--teal-l)}
 @media (min-width:560px){.reelv{inset:16px auto !important;left:50% !important;transform:translateX(-50%);width:420px;border-radius:20px;overflow:hidden}}
 @media (prefers-reduced-motion:reduce){.fxin,.fxline,.fxwire{transition:none}.seeking .fxarm{animation:none}}
 .rmode{display:flex;background:rgba(255,255,255,.1);border-radius:999px;padding:3px;backdrop-filter:blur(8px)}.rmode button{border:0;background:none;color:#C9D6E0;font:600 13.5px var(--body);padding:7px 14px;border-radius:999px;min-height:36px;cursor:pointer}.rmode button[aria-selected=true]{background:#fff;color:#05070B}
-.rfilters{position:absolute;top:calc(max(8px,env(safe-area-inset-top)) + 50px);left:0;right:0;z-index:5;display:flex;gap:6px;overflow-x:auto;padding:0 12px;scrollbar-width:none}.rfilters::-webkit-scrollbar{display:none}.rfilters button{flex:none;border:1px solid #33475A;background:rgba(5,7,11,.7);color:#E8F0F7;border-radius:999px;padding:5px 11px;font-size:12.5px;min-height:32px;cursor:pointer}.rfilters button.on{background:#2FD1A8;border-color:#2FD1A8;color:#05070B;font-weight:700}
-.rfilters ~ .rfeed .rslide{padding-top:max(96px,calc(env(safe-area-inset-top) + 92px))}
+.rfilters{position:absolute;top:calc(max(8px,env(safe-area-inset-top)) + 42px);left:0;right:0;z-index:5;display:flex;gap:6px;overflow-x:auto;padding:8px 12px;scrollbar-width:none}.rfilters::-webkit-scrollbar{display:none}.rfilters button{flex:none;border:1px solid #33475A;background:rgba(5,7,11,.7);color:#E8F0F7;border-radius:999px;padding:5px 11px;font-size:12.5px;min-height:32px;cursor:pointer}.rfilters button.on{background:#2FD1A8;border-color:#2FD1A8;color:#05070B;font-weight:700}
+.reelv.hasfilt .rslide{padding-top:max(96px,calc(env(safe-area-inset-top) + 92px))}
 .rlevel{display:inline-block;font:700 11px var(--body);letter-spacing:.06em;text-transform:uppercase;color:#05070B;background:#F5A524;border-radius:6px;padding:2px 7px;margin-bottom:3px}
 .fxnode:not([style*="width"]){min-width:0;max-width:31%;padding:8px 9px}.fxnode b{font-size:13.5px;line-height:1.2}.fxnode small{font-size:10.5px}
 .rslide .rbars{top:calc(max(8px,env(safe-area-inset-top)) + 44px);left:14px;right:14px}
@@ -670,7 +670,6 @@ a.srcl:hover{background:var(--teal-l)}
 .authgate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:var(--bg)}
 .authcard{max-width:460px;width:100%;gap:14px}.authcard h1{font-size:26px;margin:0}
 .authbtn{min-height:44px;display:flex;align-items:center}
-.authtop{white-space:nowrap}
 /* interview loop (#/loop, js/loop.js) */
 .lpgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
 .lpround{text-decoration:none;color:inherit;gap:6px}.lpround:hover{border-color:var(--teal)}
@@ -711,3 +710,10 @@ a.srcl:hover{background:var(--teal-l)}
 .lpsqlbar{align-items:center;gap:6px}.lpsqlbar.over{background:var(--amber-xl);border-color:var(--amber-b)}
 .lpmodel{font-size:15px}
 .lpco summary,.lpweb summary{cursor:pointer;font-weight:600;min-height:32px}
+.authtop{white-space:nowrap}.topbtns .btn.authtop{width:auto;padding:0 12px} /* the Sign in label is text, not an icon: never squeezed to 44px */
+/* 44px touch targets without changing the look: the hit area grows past the pill (crawler, 1.32.1) */
+.seg button,.rmode button,.rfilters button{position:relative}.rfilters button{min-width:44px}
+.seg button::after,.rmode button::after{content:'';position:absolute;inset:-4px 0}.rfilters button::after{content:'';position:absolute;inset:-8px 0}
+label.row:has(> input[type=checkbox]:first-child){min-height:44px;margin-left:-12px;padding-left:12px} /* the whole row, and a little to the left of the box, is the tap target */
+.tlink{display:inline-flex;align-items:center;min-height:44px}
+.gmini,.daynav .btn.icon{position:relative}.gmini::after{content:'';position:absolute;inset:-6px 0}.daynav .btn.icon::after{content:'';position:absolute;inset:-2px}
