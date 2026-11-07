@@ -67,7 +67,7 @@ async function liveQuestions(k) {
     if (weak.length) { prev[1].carriedTo = k; list = weak.concat(list.filter(x => !weak.some(w => w.q === x.q))).slice(0, list.length); } }
   return { qs: list, week, mod: cur };
 }
-function liveAvg(a) { const s = a && a.sc; if (!s) return NaN; const v = LIVE_DIMS.map(d => +s[d[0]] || 0); return v.reduce((x, y) => x + y, 0) / v.length; }
+function liveAvg(a) { const s = a && a.sc; if (!s) return NaN; const v = LIVE_DIMS.map(d => +s[d[0]] || 0); return Math.max(1, v.reduce((x, y) => x + y, 0) / v.length - 0.25 * (+a.simHints || 0)); } /* simulator suggestions opened while sketching cost 0.25 each */
 function liveRouteName() { return !aiOn() ? 'you' : S.settings.aiKey ? 'key' : 'mac'; }
 
 /* one AI turn; returns the reply text or throws */
@@ -169,7 +169,7 @@ function liveQuestion(page, k, m) {
   const body = el('div', { class: 'stack' }), note = el('div', { role: 'status', class: 'muted', style: { fontSize: '14px' } });
   page.appendChild(el('section', { class: 'card pad stack live' }, [
     el('div', { class: 'row wrap' }, [el('span', { class: 'lbl grow', text: (i + 1) + ' of ' + m.qs.length + ' · ' + q.label }), q.carried ? el('span', { class: 'chip c-ai', text: 'from ' + shortDate(q.carried) }) : null, clock]),
-    el('div', { class: 'lq', html: mdi(q.q) }), typeof simSketch === 'function' && /design|scale|architect|pipeline|system|throughput|latency|estimate|migrat|stream|kafka|outage|page|fail|cost|serv/i.test(q.q + ' ' + q.label) ? el('div', { class: 'row' }, [simSketch(q.q)]) : null, body, note]));
+    el('div', { class: 'lq', html: mdi(q.q) }), typeof simSketch === 'function' && /design|scale|architect|pipeline|system|throughput|latency|estimate|migrat|stream|kafka|outage|page|fail|cost|serv/i.test(q.q + ' ' + q.label) ? el('div', { class: 'row wrap' }, [simSketch(q.q, null, { k, i }), x.simHints ? el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'Simulator suggestions viewed: ' + x.simHints + ' (−0.25 each on this answer)' }) : null]) : null, body, note]));
   const next = () => { m.i = i + 1; if (m.i >= m.qs.length) { m.done = Date.now(); gameNote('live'); if (typeof confetti === 'function' && m.kind === 'we') confetti(); } save(); route(); };
   const showScored = () => {
     body.textContent = ''; const av = liveAvg(x);

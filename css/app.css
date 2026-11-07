@@ -638,3 +638,14 @@ a.srcl:hover{background:var(--teal-l)}
 .simqbtn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;min-height:64px;padding:8px 10px;border:1px solid var(--line2);border-radius:10px;background:var(--card);cursor:pointer}
 .simqbtn b{font-size:14.5px}.simqbtn small{color:var(--muted);font-size:12px;line-height:1.3}.simqbtn:hover{background:var(--soft)}
 .simtoday{gap:12px}.simmod{border-color:#D9C6E6}
+.simnar{margin:0;font-size:14.5px;line-height:1.4;background:var(--teal-xl);border:1px solid var(--teal-l);border-left:4px solid var(--teal);border-radius:10px;padding:8px 12px;min-height:42px}
+.simcoach{border-color:var(--plum);border-width:2px;gap:6px;padding:12px 14px}.simct{font:800 17px var(--display)}
+.simdots{display:flex;gap:3px;flex-wrap:wrap}.simdots i{width:8px;height:8px;border-radius:50%;background:var(--line2)}.simdots i.d{background:var(--teal)}.simdots i.c{background:var(--plum);transform:scale(1.3)}
+.simpulse{outline:3px solid var(--amber-b);outline-offset:2px;animation:simpulse 1.2s ease-in-out infinite}
+@keyframes simpulse{50%{outline-color:transparent}}
+@media (prefers-reduced-motion:reduce){.simpulse{animation:none}}
+.simmode{align-self:flex-start}.simhint{display:flex;flex-direction:column;gap:3px;border-left:4px solid var(--blue);background:var(--blue-l);border-radius:8px;padding:8px 10px;font-size:14.5px}
+.simscore{background:var(--plum-l);color:var(--plum-d);border-radius:10px;padding:8px 12px}
+@media (max-width:560px){.simnar{font-size:13.5px;padding:6px 10px}.simcoach p{font-size:15px}}
+.simwhy summary{cursor:pointer;font-size:13.5px;font-weight:700;color:var(--muted)}.simwhy p{margin:4px 0 0;font-size:13.5px;color:var(--muted)}
+@media (max-width:560px){.simcoach{padding:10px 12px}.simcoach .simct{font-size:16px}}
