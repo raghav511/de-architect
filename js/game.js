@@ -22,6 +22,7 @@ function gameXP() {
   xp += 5 * Object.keys(S.rq || {}).length;
   Object.values(S.reels || {}).forEach(r => { if (r.seen) xp += 3; if (r.ok) xp += 2; });
   xp += 25 * Object.keys((S.sim && S.sim.done) || {}).length; /* design simulator challenges passed */
+  if (S.loop) { xp += 15 * Object.values(S.loop.cc || {}).filter(x => x && x.fixed).length + 10 * Object.values(S.loop.stories || {}).filter(x => x && !x.del && x.title).length; } /* interview loop: code fixed, stories written */
   return xp;
 }
 /* the best weekend (boss) round at each level */
