@@ -27,10 +27,12 @@ Top unblocked item goes next. Each item: goal served (1 understand, 2 remember, 
 
 ## Needs approval (do not build until the user approves in chat)
 
-- **Home page reorganization**: grouped sidebar (Learn, Practice, Interview, You), Up next first, Reading/Coding/Interview tabs in one plan box, compact level chip, phone tab bar Today, Reels, Learn, Practice, Interview, More. Shown to the user 2026-11-07.
+- **Rewrite git history** to remove the old Gmail author address and name from past commits (force push to main): only if the user says so.
+- **GitHub secret scanning and push protection**: a repo setting the user turns on.
 - Anything the morning suggestions routine proposes (`tools/insights/`).
 
 ## Done
 
+- 1.29.0: security review (secret scan on commit and ship, profile out of the repo, CSP, private commit email, grader sandbox reads) and the approved home page reorganization.
 - 1.28.1: the 4 long-failing journeys pass (3 outdated tests, 1 real issue: New this week source links did not say they open a new tab).
 - 1.28.0: QA trust release (22 trust tests, 15 confirmed issues fixed) and four-level reels for every section.

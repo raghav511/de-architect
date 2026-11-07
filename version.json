@@ -1,7 +1,10 @@
 {
-  "version": "1.28.2",
+  "version": "1.29.0",
   "date": "2026-11-07",
   "notes": [
-    "Reels play with sound again: any reel not yet recorded in the Heart voice is read by your device's best voice until its recording arrives."
+    "Security: nothing private can be committed to the public repository any more (a scan blocks keys, sync URLs, emails and personal details), the app refuses scripts it did not ship, and grader practice runs stay inside their folder.",
+    "Home page: Up next is the first card; Reading, Coding and Interview are tabs in one box; the sidebar groups everything under Learn, Practice, Interview and You; the phone tab bar is Today, Reels, Learn, Practice, Interview, More.",
+    "Your name is no longer built in: add it in Profile \u203a Look for the greeting.",
+    "Reel buttons are readable in dark mode, and more reels are recorded in the Heart voice."
   ]
 }
