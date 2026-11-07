@@ -50,6 +50,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Tests
 
+- `node tools/smoke.js BASE [filter] [--engine chromium|webkit]`: every feature once, as the learner uses it, on Chromium (Mac) and WebKit (iPhone 13): reel sound and moving on, Python output, quiz score, live mock score, simulator grade, sync merge, every section opening, figures, search, warm-up, profile, offline, terminal. Run it before shipping and against the live site after. Playwright's WebKit cannot decode AAC, route requests under a service worker, or reload offline, so real Safari is checked in the iOS Simulator (`xcrun simctl boot`, then open the live URL; Safari's speaker icon shows the recording playing).
 - `node tools/flows.js BASE [filter]`: user journeys (Playwright; `sim` runs the simulator ones). `node tools/sim/engine_test.js`: simulator scenarios. `node tools/qa_trust.js BASE [filter]`: 23 trust and data-safety cases (Q01–Q23); run it before every ship. `node tools/a11y.js BASE`: axe, light and dark. `node tools/sched_test.js BASE`: scheduler.
 - `node tools/personas/run.js BASE OUT [id]`: 7 simulated users rated 1–10 with P0/P1/P2 issues (needs fake sync and the stub grader; `../qa/round.sh OUT [id]` starts them).
 - `python3 tools/build_bank.py`, `python3 tools/validate.py`: banks and content (need duckdb 1.5.x; 2.0 breaks minispark).
@@ -84,6 +85,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.31.1: a start-up download that stalls shows Still loading with Reload instead of Loading forever (Q29); the every-feature smoke test on Chromium and WebKit; reels confirmed playing the Heart recording in real iPhone Safari (iOS Simulator).
 - 1.31.0: Sign in with Google (top right and Profile): your sync script checks it is your account and gives a 24-hour session; after 24 hours the app asks you to sign in again and continues the same progress.
 - 1.30.0: security review: secret scan on every commit and ship, the learner's name and history moved out of the public repo, private commit email, a Content-Security-Policy, grader practice runs limited to their sandbox (Q24, Q25); home page reorganized: grouped sidebar, Up next first, plan parts as tabs, slim module card, new phone tab bar.
 - 1.29.0: simulator Learn, Practice and Exam modes with a four-step hint ladder (Show me plays the fix), exam scores with marks off per hint, a What is happening line for every view, and Teach me this design walkthroughs that build each module's design box by box.

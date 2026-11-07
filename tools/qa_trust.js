@@ -273,6 +273,12 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
     ok(/Sign in again to continue/.test(await p.$eval('body', e => e.innerText)), 'did not ask to sign in again');
   });
 
+  await T('Q29', 'a download that stalls on start-up shows Still loading with a Reload button, not Loading forever', async (p, c) => {
+    await c.route('**/data/bank/dsa.json*', () => { /* never answers */ });
+    await p.goto(BASE + '#/today'); await p.waitForTimeout(13500);
+    ok(/Still loading/.test(await p.$eval('#root', e => e.innerText)) && await p.$('#root button:has-text("Reload")'), 'still says Loading with nothing to do');
+  });
+
   await browser.close();
   for (const r of results) console.log(r[0].padEnd(5), r[1], r[2], r[3] ? '\n      ' + r[3] : '');
   console.log(results.filter(r => r[0] === 'PASS').length + ' passed, ' + results.filter(r => r[0] === 'FAIL').length + ' failed');
