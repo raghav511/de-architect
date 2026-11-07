@@ -815,7 +815,7 @@ function vDesign(m) {
     el('div', { class: 'grid2' }, [el('section', { class: 'card pad stack' }, [stepBox]),
       el('div', { class: 'stack', style: { gap: '18px' } }, [
         el('section', { class: 'card pad stack' }, [el('h3', { text: 'Back-of-envelope calculator' }), el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '10px' } }, [inp('trips', 'Users or trips per day'), inp('events', 'Events per user'), inp('bytes', 'Bytes per event'), inp('peak', 'Peak ÷ average'), inp('years', 'Years kept'), inp('repl', 'Replication factor')]), out]),
-        el('section', { class: 'card pad row wrap' }, [el('div', { class: 'grow stack', style: { gap: '2px' } }, [el('span', { class: 'lbl', text: 'Round timer' }), clock]), tb, el('button', { class: 'btn', onclick: () => { secs = 0; clock.textContent = '40:00'; }, text: 'Reset' })])])]), gradeCard]);
+        el('section', { class: 'card pad row wrap' }, [el('div', { class: 'grow stack', style: { gap: '2px', minWidth: 'max-content' } }, [el('span', { class: 'lbl', text: 'Round timer' }), clock]), tb, el('button', { class: 'btn', onclick: () => { secs = 0; clock.textContent = '40:00'; }, text: 'Reset' })])])]), gradeCard]);
 }
 
 /* ---------------- Quiz ---------------- */
@@ -862,7 +862,7 @@ async function vQuiz(m) {
       return;
     }
     const q = qs[i];
-    const pal = el('div', { class: 'pal', 'aria-label': 'Jump to a question' }, qs.map((_, k) => el('button', { class: (st.a[k] !== undefined && st.a[k] !== '' ? 'ans ' : '') + (k === i ? 'cur' : ''), 'aria-label': 'Question ' + (k + 1), onclick: () => { i = k; draw(); }, text: String(k + 1) })));
+    const pal = el('div', { class: 'pal', 'aria-label': 'Jump to a question' }, qs.map((_, k) => el('button', { class: (st.a[k] !== undefined && st.a[k] !== '' ? 'ans ' : '') + (k === i ? 'cur' : ''), 'aria-label': 'Question ' + (k + 1), 'aria-current': k === i ? 'step' : null, onclick: () => { i = k; draw(); }, text: String(k + 1) })));
     const card = el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('span', { class: 'lbl grow', text: 'Question ' + (i + 1) + ' of ' + qs.length + ' · ' + (q.TYPE === 'mcq' ? 'multiple choice' : q.TYPE === 'fill' ? 'fill in the blank' : 'short answer') })]), el('div', { style: { fontSize: '17px' }, html: mdi(q.Q) })]);
     if (q.TYPE === 'mcq') optOrder(q, st.seed, i).forEach(([k, t], p) => card.appendChild(el('button', { class: 'opt', 'data-k': k, 'aria-pressed': String(st.a[i] === k), onclick: () => { st.a[i] = k; save(); draw(); } }, [el('b', { text: 'ABCD'[p] }), el('span', { html: mdi(t) })])));
     else if (q.TYPE === 'fill') { const inp = el('input', { type: 'text', value: st.a[i] || '', 'aria-label': 'Your answer', style: { minHeight: '46px', border: '1px solid var(--line2)', borderRadius: '10px', padding: '0 12px' } }); inp.addEventListener('input', () => { st.a[i] = inp.value; save(); }); card.appendChild(inp); }
@@ -896,7 +896,7 @@ async function vInterview(m, focus) {
     page.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row', style: { alignItems: 'flex-start' } }, [tick, el('div', { class: 'grow stack', style: { gap: '4px' } }, [el('b', { style: { fontSize: '16.5px' }, html: mdi(q.Q) }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: [q.TAG ? chipFor(q.TAG)[0] : '', q.SRC].filter(Boolean).join(' · ') })])]), prac, show, ans]));
   });
   const rqs = recentFor(m); if (rqs.length) { page.appendChild(el('h2', { text: 'Asked recently at companies' })); rqs.forEach(q => page.appendChild(rqCard(q))); }
-  if (!s.interview.length && !rqs.length) page.appendChild(el('section', { class: 'card pad' }, [el('p', { style: { margin: 0 }, text: 'This module has no interview set. ' }), el('a', { href: '#/path/' + m, text: 'Back to the module' })]));
+  if (!s.interview.length && !rqs.length) page.appendChild(el('section', { class: 'card pad' }, [el('p', { style: { margin: 0 }, text: 'This module has no interview set. ' }), el('a', { class: 'tlink', href: '#/path/' + m, text: 'Back to the module' })]));
   if (s.raw.mock) { const mk = el('section', { class: 'card pad', id: 'mock' }, [el('h2', { text: 'Mock interview' }), mdEl(s.raw.mock)]); page.appendChild(mk); if (focus === 'mock') setTimeout(() => mk.scrollIntoView({ block: 'start' }), 50); }
 }
 
@@ -1138,14 +1138,14 @@ function coachFab() {
   const wrap = el('div');
   const msgs = el('div', { class: 'msgs', 'aria-live': 'polite' });
   const inp = el('input', { type: 'text', class: 'grow', placeholder: 'Ask about this page…', 'aria-label': 'Message the coach', style: { minHeight: '44px', border: '1px solid var(--line2)', borderRadius: '10px', padding: '0 12px' } });
-  const send = (t, img) => { if (!t && !img) return; msgs.appendChild(el('div', { class: 'm me', text: t || '(photo)' })); inp.value = ''; askCoach(t, { title: document.title, page: ($('.top .title b') || {}).textContent, img }, msgs); };
+  const send = (t, img) => { if (!t && !img) { inp.focus(); return; } /* an empty Send puts you in the box instead of doing nothing */ msgs.appendChild(el('div', { class: 'm me', text: t || '(photo)' })); inp.value = ''; askCoach(t, { title: document.title, page: ($('.top .title b') || {}).textContent, img }, msgs); };
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') send(inp.value); });
   const mic = el('button', { class: 'btn icon', 'aria-label': 'Speak', title: 'Speak', onclick: () => {
     const R = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!R) { toast('Voice input is not available in this browser.'); return; }
-    const r = new R(); r.lang = 'en-IN'; r.interimResults = true; mic.style.background = 'var(--amber-l)';
+    const r = new R(); r.lang = 'en-IN'; r.interimResults = true; mic.style.background = 'var(--amber-l)'; mic.setAttribute('aria-pressed', 'true'); /* screen readers hear that it is listening */
     r.onresult = e => { inp.value = Array.from(e.results).map(x => x[0].transcript).join(' '); };
-    r.onend = () => { mic.style.background = ''; }; r.onerror = () => { mic.style.background = ''; toast('Could not hear you. Check microphone permission.'); };
+    r.onend = () => { mic.style.background = ''; mic.setAttribute('aria-pressed', 'false'); }; r.onerror = () => { mic.style.background = ''; mic.setAttribute('aria-pressed', 'false'); toast('Could not hear you. Check microphone permission.'); };
     r.start();
   } }, svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>', 18));
   const file = el('input', { type: 'file', accept: 'image/*', capture: 'environment', style: { display: 'none' }, onchange: e => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => send(inp.value || 'Explain this image', rd.result); rd.readAsDataURL(f); } });
