@@ -87,7 +87,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
-- VERSION_PLACEHOLDER: Spark lens brought up to Spark 4 (review finding 17): Spark Connect, ANSI mode on by default and what breaks, the VARIANT type, the version each internal applies to, and one interview question on upgrading.
+- 1.35.2: Spark lens brought up to Spark 4 (review finding 17): Spark Connect, ANSI mode on by default and what breaks, the VARIANT type, the version each internal applies to, and one interview question on upgrading.
 - 1.35.1: Spark architect's lens (3.10): when to use Spark over Flink, DuckDB or Polars, warehouse SQL, Dask or Ray and when not, who owns it, how it fails and scales, five internals answers, three interview and three quiz questions, and eight reels.
 - 1.35.0: dbt (4.10) and dimensional modelling (M1.8) architect's lenses with internals answers, five interview questions and fourteen reels (built into data/reels.json by the next reel batch); M102 now includes M1.8.
 - 1.34.1: reel batch: 452 of 1,209 reels fully recorded in the Heart voice, the Airflow lens's 7 reels added.
