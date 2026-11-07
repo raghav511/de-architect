@@ -630,7 +630,7 @@ async function T(name, fn, opt) {
   await T('today: the coding track and interview practice are rows in the plan, and the day is done only when they are', async p => {
     await go(p, '#/today', 1200); await p.waitForSelector('.plan .unit');
     const t = await text(p, '.plan');
-    ok(/Reading and labs/.test(t) && /Coding track/.test(t) && /Interview practice/.test(t) && /Live mock|Weekend live mock/.test(t), 'plan is missing a group: ' + t.slice(0, 300));
+    ok(/Reading and labs/.test(t) && /Coding track/.test(t) && /Interview practice/.test(t) && /Live mock|Weekend boss/.test(t), 'plan is missing a group: ' + t.slice(0, 300));
     ok(await p.evaluate(() => document.querySelectorAll('.plan .xit').length >= 2), 'no coding or mock rows in the plan');
     ok(await p.evaluate(() => ![...document.querySelectorAll('.grid2 > .stack h2')].some(h => /Coding track/.test(h.textContent))), 'coding track is still a separate card');
     /* tick every hour step: not done for today while coding and the mock are open */
@@ -761,6 +761,24 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => document.querySelectorAll('details.fresh .check').length) === 0, 'ticked questions still shown in the chapter');
     await go(p, '#/news', 900); ok(await p.evaluate(() => document.querySelectorAll('#page section.card').length) >= 6, 'What is new page lost its items');
   });
+
+  await T('fun layer: Today shows level, XP, streak and quests without pushing Up next off a phone screen; the warm-up scores and ticks its quest; a shipped module celebrates once; Progress has a skill map', async p => {
+    await go(p, '#/today', 1500); await p.waitForSelector('.gmini');
+    ok(await p.evaluate(() => getComputedStyle(document.querySelector('.gstrip')).display === 'none' && getComputedStyle(document.querySelector('.gmini')).display !== 'none'), 'phone does not swap the strip for the chip');
+    await go(p, '#/progress', 1000); ok(/Intern|Junior|Mid-level|Senior|Staff/.test(await text(p, '.gstrip')) && /XP/.test(await text(p, '.gstrip')), 'level strip missing on Progress'); await go(p, '#/today', 1200);
+    const ub = await p.$eval('.unit.cur .acts .btn.pri', e => [Math.round(e.getBoundingClientRect().bottom), Math.round(document.querySelector('.tabbar').getBoundingClientRect().top)]); ok(ub[0] <= ub[1], 'Up next is pushed below the tab bar: ' + ub);
+    await p.waitForSelector('.gcard', { timeout: 5000 }); ok(true, '');
+    await go(p, '#/warm', 1500); await p.waitForSelector('.gwarm .gq-q');
+    for (let n = 0; n < 3; n++) { if (await p.$('.gwarm .gopt')) await p.click('.gwarm .gopt'); else { await p.fill('.gwarm input', 'x'); await p.click('.gwarm button.pri'); } await p.waitForTimeout(2000); }
+    await p.evaluate(() => window.warmFinish()); await p.waitForTimeout(400);
+    ok(/right/.test(await text(p, '.gwarm')), 'warm-up did not finish after 60 seconds');
+    await go(p, '#/today', 1200); ok(/1\/4/.test(await text(p, '.gmini')), 'warm-up quest not ticked');
+    const sh = await p.evaluate(() => { const sc = schedule(); const m = MODS.find(x => !isCC(x) && sc.span[x] && sc.span[x].n); sc.units.filter(u => u.mid === m).forEach(u => { S.done[u.uid] = 1; S.doneAt[u.uid] = Date.now(); }); delete gameState().shipped[m]; save(); return m; });
+    await go(p, '#/path', 600); await go(p, '#/today', 1500); ok(await p.evaluate(() => !!document.querySelector('.gship')), 'no shipped moment for ' + sh);
+    await p.click('.gship button'); await go(p, '#/path', 600); await go(p, '#/today', 1200); ok(await p.evaluate(() => !document.querySelector('.gship')), 'shipped moment shows twice');
+    await go(p, '#/progress', 1200); ok(await p.evaluate(() => document.querySelectorAll('.gmap .gtile').length > 20 && !!document.querySelector('.gtile.full')), 'skill map missing or not filled');
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'sideways scroll on a phone');
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
   await T('today: one Today box holds reading, quiz, coding, interview practice and coaching, with a summary on top and interview capped at its minutes', async p => {
     await go(p, '#/today', 1200); await p.waitForSelector('.plan .daysum');
@@ -1108,7 +1126,7 @@ async function T(name, fn, opt) {
     await go(p, '#/today', 1200); await p.evaluate(() => { S.settings.ai = false; applyAi(); save(); route(); }); await p.waitForTimeout(600);
     const t = await text(p, '#page');
     ok(!/Sync is not set up|grades it tonight|coach grades/i.test(t), 'Today still mentions the AI coach: ' + (t.match(/[^\n]*(Sync is not set up|grades it tonight)[^\n]*/) || [''])[0]);
-    ok(/Live mock|Weekend live mock/.test(t), "live mock missing");
+    ok(/Live mock|Weekend boss/.test(t), "live mock missing");
     await go(p, '#/coach', 1000); ok(/AI features are off/.test(await text(p, '#page')), 'coach page does not explain');
   });
 

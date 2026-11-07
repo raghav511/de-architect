@@ -1,7 +1,8 @@
 {
-  "version": "1.21.2",
-  "date": "2026-11-06",
+  "version": "1.22.0",
+  "date": "2026-11-07",
   "notes": [
-    "Questions asked at companies this week and What is new items now also appear inside the module section they belong to, folded so they do not get in the way."
+    "Today now shows your level on a career ladder from Intern to Architect, your streak (one missed day a week is forgiven) and four daily quests.",
+    "New: a 60-second warm-up with combos, a card of the day, a Shipped to production moment when you finish a module, and a skill map on Progress. Promotions to Staff and above need a weekend boss round."
   ]
 }

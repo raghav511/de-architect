@@ -1,10 +1,10 @@
 /* Data Architect · live mock interview (#/live/DATE). One question per screen, answered by voice or typing.
    Built from the week's modules: concept, under the hood, architect's lens, one staff-level slot that rotates by
-   weekday (data/staff.json), and recall from an earlier week. Weekends: a 40-minute round in one company's style.
+   weekday (data/staff.json), and recall from an earlier week. Weekends: a 35-minute, 7-question round in one company's style.
    An AI interviewer (API key, else Claude Code on the Mac) asks a follow-up and scores each answer on a rubric;
    with AI off you mark yourself against the model answer. State: S.live[date]. Loaded before app.js. */
 'use strict';
-const LIVE_LEN = { wd: [20, 4], we: [40, 5] }; /* minutes, minutes per question */
+const LIVE_LEN = { wd: [20, 4], we: [35, 5] }; /* minutes, minutes per question */
 const LIVE_ROT = { 1: 'scale', 2: 'page', 3: 'defend', 4: 'metric', 5: 'lead' }; /* Monday to Friday staff slot */
 const LIVE_WE = ['org', 'migrate', 'cost', 'estimate', 'deep'];
 const LIVE_DIMS = [['correct', 'Correctness'], ['depth', 'Depth, internals'], ['trade', 'Trade-offs'], ['clear', 'Structure, clarity']];
@@ -38,6 +38,8 @@ async function liveQuestions(k) {
     const ch = s.raw.chapter || '', at = ch.indexOf('### Under the hood');
     liveDeep(at >= 0 ? ch.slice(at) : '').forEach(x => deep.push(Object.assign(x, { m })));
     liveDeep(s.raw.practice).filter(x => /^(why|how)\b/i.test(x.q)).forEach(x => deep.push(Object.assign(x, { m }))); }
+  /* early in the program a week may have few interview questions: borrow from the next modules, as the written mock does */
+  for (let j = MODS.indexOf(week[week.length - 1]) + 1; j < MODS.length && iv.length < 6; j++) { if (isCC(MODS[j])) continue; const s = await sprint(MODS[j]).catch(() => null); if (s) s.interview.forEach(q => iv.push({ q: q.Q, model: q.A || '', tag: q.TAG || 'core', m: MODS[j] })); }
   const first = MODS.indexOf(week[0]);
   for (const m of MODS.slice(0, Math.max(0, first)).filter(x => !isCC(x))) { const s = await sprint(m).catch(() => null); if (s) s.interview.forEach(q => early.push({ q: q.Q, model: q.A || '', tag: q.TAG || 'core', m })); }
   const staff = ((DATA.staff || {}).items || []), used = new Set();
@@ -48,7 +50,7 @@ async function liveQuestions(k) {
   const concept = () => take(curFirst(free(iv.filter(x => x.tag !== 'arch')))[0]);
   const qs = [];
   qs.push(S2('concept', 'Concept', concept(), 'interview set'));
-  qs.push(S2('deep', 'Under the hood', take(curFirst(free(deep))[0]) || concept(), 'under the hood'));
+  if (!we) qs.push(S2('deep', 'Under the hood', take(curFirst(free(deep))[0]) || concept(), 'under the hood'));
   if (we) LIVE_WE.forEach(kind => { const s = staffFor(kind); qs.push(s && S2(kind, DATA.staff.kinds[kind], s, 'staff-level bank')); });
   else {
     const lens = take(curFirst(free(iv.filter(x => x.tag === 'arch')))[0]) || staffFor('defend');
@@ -166,7 +168,7 @@ function liveQuestion(page, k, m) {
   page.appendChild(el('section', { class: 'card pad stack live' }, [
     el('div', { class: 'row wrap' }, [el('span', { class: 'lbl grow', text: (i + 1) + ' of ' + m.qs.length + ' · ' + q.label }), q.carried ? el('span', { class: 'chip c-ai', text: 'from ' + shortDate(q.carried) }) : null, clock]),
     el('div', { class: 'lq', html: mdi(q.q) }), body, note]));
-  const next = () => { m.i = i + 1; if (m.i >= m.qs.length) { m.done = Date.now(); } save(); route(); };
+  const next = () => { m.i = i + 1; if (m.i >= m.qs.length) { m.done = Date.now(); gameNote('live'); if (typeof confetti === 'function' && m.kind === 'we') confetti(); } save(); route(); };
   const showScored = () => {
     body.textContent = ''; const av = liveAvg(x);
     if (x.a) body.appendChild(el('div', { class: 'lyou' }, [el('b', { text: 'You: ' }), x.a]));
