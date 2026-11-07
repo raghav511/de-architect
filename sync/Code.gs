@@ -7,12 +7,19 @@
  * on every device. The nightly coach and the grader use the same URL.
  * With KEY set, nobody can read or change your data without it, even though access is "Anyone".
  * After changing this file: Deploy → Manage deployments → Edit → Version: New version → Deploy (keeps the same URL).
+ * Sign in with Google (optional): set CLIENT_ID to the app's OAuth client ID and OWNERS to your Gmail address(es).
+ * The app then signs in with Google, this script checks the token is for this app and one of OWNERS, and returns a
+ * session that works for 24 hours. The ?k= key keeps working for the Mac grader and the nightly coach.
+ * Keep your real CLIENT_ID and OWNERS only in your deployed copy (script.google.com), not in the public repository.
  */
 const KEY = ''; // set a long random string here; leave empty only for the old "Only myself" deployment
 const FILE = 'keystone-progress.json'; // name from the Keystone days; kept so existing synced progress is found
 const COACH_FILE = 'data-architect-coach.json';
 const JOBS_FILE = 'data-architect-jobs.json';
 const MAX_JOBS = 200;
+const CLIENT_ID = ''; // the app's Google OAuth client ID, e.g. 1234-abc.apps.googleusercontent.com
+const OWNERS = [];    // the Google accounts allowed to sign in: your Gmail address in quotes
+const SESSION_HOURS = 24;
 
 function file_(name) {
   const it = DriveApp.getFilesByName(name);
@@ -21,6 +28,21 @@ function file_(name) {
 function read_(name) { return JSON.parse(file_(name).getBlob().getDataAsString() || (name === JOBS_FILE ? '[]' : '{}')); }
 function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 function allowed_(e) { return !KEY || (e && e.parameter && e.parameter.k === KEY); }
+/* sessions from Sign in with Google: random ids with an expiry, kept in the script's private properties */
+function sessions_() { const P = PropertiesService.getScriptProperties(); const s = JSON.parse(P.getProperty('sessions') || '{}'), now = Date.now(); Object.keys(s).forEach(k => { if (s[k] < now) delete s[k]; }); return s; }
+function sessionOk_(id) { return !!id && (sessions_()[id] || 0) > Date.now(); }
+function login_(tok) {
+  if (!CLIENT_ID || !OWNERS.length) return { ok: false, error: 'sign-in is not set up in the sync script (CLIENT_ID and OWNERS)' };
+  const r = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(tok || ''), { muteHttpExceptions: true });
+  if (r.getResponseCode() !== 200) return { ok: false, error: 'Google did not accept that sign-in' };
+  const j = JSON.parse(r.getContentText());
+  if (j.aud !== CLIENT_ID) return { ok: false, error: 'that sign-in is for another app' };
+  if (String(j.email_verified) !== 'true' || OWNERS.map(x => x.toLowerCase()).indexOf(String(j.email).toLowerCase()) < 0) return { ok: false, error: 'not allowed: not the owner' };
+  if (+j.exp * 1000 < Date.now()) return { ok: false, error: 'that sign-in has expired' };
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try { const s = sessions_(), id = Utilities.getUuid() + Utilities.getUuid(), exp = Date.now() + SESSION_HOURS * 36e5; s[id] = exp; PropertiesService.getScriptProperties().setProperty('sessions', JSON.stringify(s)); return { ok: true, session: id, exp: exp }; }
+  finally { lock.releaseLock(); }
+}
 /* the job queue is read-modify-write, so changes are serialised with a lock */
 function withJobs_(fn) {
   const lock = LockService.getScriptLock();
@@ -50,8 +72,10 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  if (!allowed_(e)) return out_({ ok: false, error: 'wrong or missing key' });
-  const body = JSON.parse(e.postData.contents || '{}');
+  const body = JSON.parse((e.postData && e.postData.contents) || '{}');
+  if (body.action === 'login') return out_(login_(body.id_token));
+  if (!allowed_(e) && !sessionOk_(body.session)) return out_({ ok: false, error: body.session ? 'session expired: sign in again' : 'wrong or missing key' });
+  if (body.action === 'load') return out_({ ok: true, data: read_(FILE), coach: read_(COACH_FILE) });
   if (body.action === 'save' && body.data) {
     const f = file_(FILE);
     const old = JSON.parse(f.getBlob().getDataAsString() || '{}');

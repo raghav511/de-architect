@@ -238,6 +238,41 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
     ok(r.status === 0, (r.stdout || r.stderr).slice(0, 300));
   });
 
+  /* a stand-in for Google's button: clicking it hands the app an ID token for learner@example.com */
+  const fakeGoogle = () => { const b64 = o => btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); const tok = b64({ alg: 'none' }) + '.' + b64({ email: 'learner@example.com', given_name: 'Sam', aud: 'test-client' }) + '.sig';
+    window.google = { accounts: { id: { initialize: o => { window.__gcb = o.callback; }, renderButton: el => { const b = document.createElement('button'); b.className = 'gsi-fake'; b.textContent = 'Sign in with Google'; b.onclick = () => window.__gcb({ credential: tok }); el.appendChild(b); }, disableAutoSelect: () => { }, prompt: () => { } } } }; };
+  const authStub = async c => { const log = { logins: 0, sess: [] }; await c.route('https://sync.test/**', r => { const b = JSON.parse(r.request().postData() || '{}'); if (b.action === 'login') { log.logins++; return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, session: 'sess' + log.logins, exp: Date.now() + 864e5 }) }); } if (b.session) log.sess.push(b.action + ':' + b.session); if (b.session && log.expired) return r.fulfill({ contentType: 'application/json', body: '{"ok":false,"error":"session expired: sign in again"}' }); return r.fulfill({ contentType: 'application/json', body: JSON.stringify(b.action === 'load' ? { ok: true, data: { start: '2026-10-19', done: { 'other:step': '2026-11-01' }, solved: {}, updated: 1 } } : { ok: true }) }); }); return log; };
+
+  await T('Q26', 'Sign in with Google: the top right offers it, Profile signs in, and sync then uses the 24-hour session', async (p, c) => {
+    await p.addInitScript(fakeGoogle); const log = await authStub(c);
+    await boot(p); await p.evaluate(() => { S.settings.googleClientId = 'test-client'; S.settings.syncUrl = 'https://sync.test/exec'; save(); route(); }); await p.waitForTimeout(300);
+    ok(await p.$('.authtop'), 'no Sign in button at the top right');
+    await p.click('.authtop'); await p.waitForSelector('.authprof .gsi-fake'); await p.click('.authprof .gsi-fake'); await p.waitForTimeout(800);
+    const a = await p.evaluate(() => authGet());
+    ok(a && a.email === 'learner@example.com' && a.session === 'sess1' && a.exp > Date.now() + 23 * 36e5, 'not signed in for 24 hours: ' + JSON.stringify(a));
+    ok(log.sess.includes('load:sess1') && log.sess.includes('save:sess1'), 'sync did not use the session: ' + log.sess);
+    ok(!(await p.$('.authtop')) && /Signed in as learner@example.com/.test(await p.$eval('.authprof', e => e.innerText)), 'Profile does not show who is signed in');
+  });
+
+  await T('Q27', 'after 24 hours the app signs out and asks to sign in; signing in again continues the same progress', async (p, c) => {
+    await p.addInitScript(fakeGoogle); const log = await authStub(c);
+    await boot(p);
+    await seed(p, () => { S.settings.googleClientId = 'test-client'; S.settings.syncUrl = 'https://sync.test/exec'; S.done['s00:S001'] = '2026-11-06'; localStorage.setItem('da:auth', JSON.stringify({ email: 'learner@example.com', session: 'old', exp: Date.now() - 1000, at: Date.now() - 25 * 36e5 })); });
+    ok(/Sign in again to continue/.test(await p.$eval('body', e => e.innerText)) && !(await p.$('.tabbar')), 'no sign-in screen after 24 hours');
+    await p.click('.authgate .gsi-fake'); await p.waitForTimeout(900);
+    const s = await p.evaluate(() => [authLive(), !!S.done['s00:S001'], !!S.done['other:step'], !!document.querySelector('.tabbar')]);
+    ok(s[0] && s[1] && s[2] && s[3], 'after signing in again: live, kept, merged, app shown = ' + s);
+  });
+
+  await T('Q28', 'a session the server no longer accepts signs out without losing progress', async (p, c) => {
+    await p.addInitScript(fakeGoogle); const log = await authStub(c); log.expired = true;
+    await boot(p);
+    await p.evaluate(() => { S.settings.googleClientId = 'test-client'; S.settings.syncUrl = 'https://sync.test/exec'; S.done['s00:S001'] = '2026-11-06'; localStorage.setItem('da:auth', JSON.stringify({ email: 'learner@example.com', session: 'gone', exp: Date.now() + 36e5, at: Date.now() })); save(); return doSync(); });
+    await p.waitForTimeout(600);
+    ok(await p.evaluate(() => !authLive() && !!S.done['s00:S001']), 'still signed in, or progress lost');
+    ok(/Sign in again to continue/.test(await p.$eval('body', e => e.innerText)), 'did not ask to sign in again');
+  });
+
   await browser.close();
   for (const r of results) console.log(r[0].padEnd(5), r[1], r[2], r[3] ? '\n      ' + r[3] : '');
   console.log(results.filter(r => r[0] === 'PASS').length + ' passed, ' + results.filter(r => r[0] === 'FAIL').length + ' failed');
