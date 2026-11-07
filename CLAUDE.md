@@ -140,7 +140,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 - **Improvement loop:** `tools/improve/LOOP.md` is the standing brief (one feature per iteration: build, test, ship, verify live, log); `tools/improve/BACKLOG.md` holds the queue (items marked needs approval wait for the user); `tools/improve/LOG.md` records each iteration.
 
 - Organization modules O1–O5 (user asked 2026-11-06), one PR each: O1 data mesh and data products, O2 golden paths, O3 governance, O4 platform as a product (after s10, in that order), O5 capstone foundation blueprint (after r01). Add each to `BASE_MODS`, `PROGRAM` in sw.js and `mods` in validate.py.
-- One architect's lens per technology, in the week it is taught (done: Python, Kafka, Airflow, Spark; next Iceberg, dbt, Snowflake, Databricks, Debezium, Flink, Postgres…), each with internals questions such as how Kafka is fast while writing to disk.
+- One architect's lens per technology, in the week it is taught (done: Python, Kafka, Airflow, Spark, dbt, dimensional modelling; next Iceberg, Snowflake, Databricks, Debezium, Flink, Postgres…), each with internals questions such as how Kafka is fast while writing to disk.
 
 - Live mock: show live scorecards in the nightly coach digest (`tools/coach/coach.py`); grow `data/staff.json` as modules arrive.
 
