@@ -1,8 +1,11 @@
 {
-  "version": "1.35.2",
+  "version": "1.36.0",
   "date": "2026-11-07",
   "notes": [
-    "The Spark lens (3.10) now covers Spark 4: Spark Connect and what it changes for running Spark, ANSI mode on by default and what breaks on upgrade, and the VARIANT type for JSON-like data. Each internals answer says which Spark version it applies to.",
-    "One new interview question: what changed in Spark 4 and what breaks when you upgrade."
+    "The interview loop is now a data engineering staff loop: nine rounds, with a card showing the typical loop at Meta, Google, Uber and Salesforce.",
+    "New SQL round: Hard problems against a 15-minute clock (shown on the problem page), with your best time per problem, and the eight SQL patterns most live rounds use.",
+    "New data modelling round: model a product (Uber trips, Meta ads, a Salesforce pipeline, orders, music plays) part by part, then compare with the model answer and tick the rubric.",
+    "New product sense and metrics round (Meta style): goal, metrics with a guardrail, events to log, pipeline, the metric in SQL, and diagnosing a drop.",
+    "System design now uses data platforms at real scale: 1 million events a second exactly once, multi-region CDC, a multi-petabyte backfill, a feature store and a lakehouse migration, each with its module, simulator challenges and an estimate. The web designs are still there, folded."
   ]
 }
