@@ -297,6 +297,58 @@ Four details in that code are the difference between a demo and something you ca
 
 These tools only read. Every sprint adds one capability, and the first tool that can change anything arrives in sprint 6 with a human approval step in front of it.
 
+## 1.9 Architect's lens: Airflow and orchestration
+
+The questions an architect is asked about an orchestrator, beyond writing a DAG.
+
+| Question | Short answer for Airflow |
+|---|---|
+| **What problem does it solve?** | Running many batch steps in the right order, on a schedule or when data arrives, with retries, backfills, alerts and a record of every run, so a platform has one place that says what ran, when, and why it failed. |
+| **Why it over the alternatives?** | Against cron: dependencies, retries, backfills, history and a UI. Against Dagster or Prefect: the largest ecosystem of providers and people who know it, and managed versions on every cloud (MWAA, Cloud Composer, Astronomer); Dagster is stronger on asset lineage and local testing. Against a warehouse's own scheduler: it can orchestrate across systems. |
+| **When not to use it?** | Streaming or sub-minute work (use Kafka with Flink or Spark streaming); moving the data itself inside tasks (let Spark, the warehouse or a copy tool do it, and keep tasks thin); a single dbt project that the warehouse or dbt Cloud can schedule on its own. |
+| **Who owns and pays for it?** | A platform team runs Airflow (scheduler, metadata database, workers, upgrades, the deployment path for DAGs). Product teams own their DAGs, their alerts and their on-call. Cost is mostly the workers and the always-on scheduler and database. |
+| **Where does it sit?** | Above the engines: it tells Spark, dbt, the warehouse and copy jobs what to run and when, and checks the result. It is the control plane of batch, not the data plane. |
+| **How does it fail and scale?** | Slow DAG parsing from heavy top-level code, a busy metadata database, too many tiny tasks, pools and concurrency limits that queue work, sensors that hold worker slots, and non-idempotent tasks that double data on a retry or backfill. It scales by more schedulers and workers (Celery or one Kubernetes pod per task), fewer and larger tasks, and deferrable operators. |
+| **When do you move off it?** | When most work becomes event-driven streaming, when an asset-first tool (Dagster) or the warehouse's own pipelines (dbt, Databricks Workflows, Snowflake tasks) cover everything you schedule, or when running Airflow costs more than a managed service. |
+
+### Under the hood
+
+**1. An hourly DAG has its 09:00 to 10:00 run. When does it start, and what does a backfill of last week actually do?**
+<details><summary>Model answer</summary>
+
+It starts just after 10:00, once that hour is complete: a run covers a data interval and runs at its end. The run's logical date is the start of the interval, which is why old code that used `execution_date` as "now" was a classic bug. A backfill creates one run per interval of the range, each with its own data interval, and runs them under the DAG's concurrency limits. Because each run should read and write only its own interval and overwrite its own partition, a backfill rebuilds history without doubling anything. That is idempotency, the same idea as 1.7.
+
+</details>
+
+**2. Why does heavy code at the top of a DAG file slow down the whole Airflow, not just that DAG?**
+<details><summary>Model answer</summary>
+
+The DAG processor parses every DAG file again and again, every 30 seconds by default, to find changes. Code at module level, such as an API call, a database query or a large import, runs on every parse, so one slow file delays the scheduler's view of all DAGs and can hit the parse timeout. Keep the top level to definitions only and do real work inside tasks. Watch the DAG processing duration metric.
+
+</details>
+
+**3. A sensor waits for a file for six hours. What does that cost, and how do deferrable operators fix it?**
+<details><summary>Model answer</summary>
+
+A classic sensor in poke mode holds a worker slot the whole time, so twenty waiting sensors can starve real tasks. Reschedule mode frees the slot between checks. A deferrable operator goes further: it hands the wait to the triggerer, a separate process that runs thousands of waits as lightweight async coroutines, and the task resumes on a worker only when the event arrives. Event-driven scheduling on assets (Airflow 3) removes many sensors altogether: a DAG runs when an upstream task updates the asset.
+
+</details>
+
+**4. Celery executor or Kubernetes executor: how do you choose?**
+<details><summary>Model answer</summary>
+
+Celery keeps warm worker processes that pull tasks from a queue: fast to start, good for many short tasks, but every task shares the workers' image and resources, and you size the worker pool yourself. Kubernetes runs each task in its own pod: isolation, per-task images and resources, and scaling to zero, at the cost of pod start time (seconds or more) per task. Many platforms use both (CeleryKubernetes or multiple executors in Airflow 3): fast, light tasks on Celery and heavy or unusual ones in pods.
+
+</details>
+
+**5. What changed in Airflow 3 that an architect should know?**
+<details><summary>Model answer</summary>
+
+Tasks no longer talk to the metadata database directly: they use the Task SDK through the API server, which is safer and lets tasks run in other environments and languages. DAGs are versioned, so a run keeps the code it started with and the UI shows which version ran. Datasets became assets, with event-driven scheduling and watchers on external events. Backfills are run by the scheduler and visible in the UI. Old patterns such as SubDAGs and `execution_date` are gone, so upgrades need a code pass.
+
+</details>
+
+
 @@lab
 ## In the app: the walking skeleton without Docker (2.5 hours)
 
@@ -775,6 +827,19 @@ TAG: behavioral
 A: Give a method and one real example. A method that works: read the architecture page of the official docs to learn the mental model, build the smallest thing that runs end to end, break it on purpose to see the failure modes, then read one production write-up from a company that runs it at scale. Use AI assistants to speed up the build, and verify what they produce against the docs.
 
 For the example, use the STAR shape: situation, task, action, result. Your move to PySpark on AWS during the 120-workflow migration is a good one. End with the measurable result and what you would do faster next time.
+
+---
+Q: Your team wants every pipeline in Airflow, including a near-real-time fraud feed. What do you say?
+TAG: arch
+A: Batch pipelines with dependencies, retries and backfills, yes: Airflow is the control plane for them. Not the fraud feed: Airflow schedules runs of minutes or more and is not a stream processor, so put fraud on Kafka with Flink or Spark streaming and let Airflow only manage its batch side jobs. Also keep tasks thin, so the engines move the data and Airflow only orders the work.
+---
+Q: A backfill of last month doubled every row. What went wrong, and how do you design DAGs so it cannot happen?
+TAG: core
+A: The tasks were not idempotent: they appended, or used the current time instead of the run's data interval, so each backfilled run wrote extra rows or the wrong window. Each run must read only its own data interval and overwrite its own partition (or MERGE on a key), so running it once or ten times leaves the same result. Test it by running one interval twice and comparing counts.
+---
+Q: Twenty sensors are waiting for files and real tasks are stuck in the queue. Why, and what do you change?
+TAG: core
+A: Poke-mode sensors each hold a worker slot while they wait, so the pool is full of waiting. Switch to deferrable operators so the triggerer does the waiting without worker slots, or reschedule mode; better still, schedule the downstream DAG on the asset the upstream task produces, so nothing waits at all.
 
 @@mock
 ## Mock 1: hiring-manager screen (30 minutes)

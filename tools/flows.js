@@ -732,6 +732,10 @@ async function T(name, fn, opt) {
     await go(p, '#/learn/s05/chapter', 1500); await p.waitForSelector('.lens');
     ok(await p.evaluate(() => document.querySelectorAll('.lens tbody tr').length === 7 && document.querySelectorAll('.lens details').length === 5 && /zero-copy/.test(document.querySelector('.lens').textContent)), 'Kafka lens card incomplete');
     ok(await p.evaluate(async () => { const s = await sprint('s05'); return s.interview.some(q => /fast even though it writes every message to disk/.test(q.Q)); }), 'Kafka lens questions not in the interview set');
+    /* Airflow (s01): five internals answers, and its questions join the module's interview set */
+    await go(p, '#/learn/s01/chapter', 1500); await p.waitForSelector('.lens');
+    ok(await p.evaluate(() => document.querySelectorAll('.lens tbody tr').length === 7 && document.querySelectorAll('.lens details').length === 5 && /deferrable/.test(document.querySelector('.lens').textContent)), 'Airflow lens card incomplete');
+    ok(await p.evaluate(async () => (await sprint('s01')).interview.some(q => /backfill of last month doubled every row/.test(q.Q))), 'Airflow lens questions not in the interview set');
     await go(p, '#/learn/s00/chapter', 900); ok(/From a platform to a data foundation/.test(await text(p, '.prose')), 'Start here has no data foundation section');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 

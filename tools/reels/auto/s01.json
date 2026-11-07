@@ -6170,5 +6170,1108 @@
     ]
    }
   ]
+ },
+ "1.9 Architect's lens: Airflow and orchestration": {
+  "hash": "6940c307506e",
+  "sec": "1.9",
+  "reels": [
+   {
+    "title": "Airflow is the head chef",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "How does a company make sure fifty data jobs run in the right order, every night, without someone watching?",
+      "show": {
+       "t": "big",
+       "text": "50 jobs, one order",
+       "sub": "every night, nobody watching"
+      }
+     },
+     {
+      "say": "Think of a restaurant kitchen. The head chef does not cook. She calls out orders: start the sauce, then plate the fish, and if the oven breaks, tell someone. Airflow is that head chef for data jobs.",
+      "show": {
+       "t": "scene",
+       "title": "The *head chef* calls the orders",
+       "nodes": [
+        {
+         "id": "af",
+         "label": "Airflow",
+         "sub": "head chef",
+         "x": 50,
+         "y": 20,
+         "tone": "blue"
+        },
+        {
+         "id": "a",
+         "label": "Step 1",
+         "sub": "sauce",
+         "x": 25,
+         "y": 55,
+         "tone": "teal"
+        },
+        {
+         "id": "b",
+         "label": "Step 2",
+         "sub": "fish",
+         "x": 75,
+         "y": 55,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "af",
+         "a"
+        ],
+        [
+         "af",
+         "b"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "af"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "af",
+          "a"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "af",
+          "b"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "The cooks are the real engines, like Spark or the warehouse. Airflow only says what runs, when, and in what order. It retries a failed step, sends an alert, and keeps a record of every run.",
+      "show": {
+       "t": "points",
+       "title": "What the chef does",
+       "items": [
+        "Says what runs and when",
+        "Retries a failed step",
+        "Sends an alert",
+        "Keeps a record of every run"
+       ]
+      }
+     },
+     {
+      "say": "Compare that with cron, a plain alarm clock. It rings at a time, but it knows nothing about order, failures or history.",
+      "show": {
+       "t": "scene",
+       "title": "Cron is just an *alarm clock*",
+       "nodes": [
+        {
+         "id": "cron",
+         "label": "Cron",
+         "sub": "rings at a time",
+         "x": 30,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "af",
+         "label": "Airflow",
+         "sub": "order, retries, history",
+         "x": 70,
+         "y": 30,
+         "tone": "blue"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "cron"
+        },
+        {
+         "at": 0.5,
+         "show": "af"
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Order, retries and history",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "In the kitchen picture, what is Airflow's job?",
+     "opts": [
+      "Doing the heavy cooking itself",
+      "Deciding what runs, when, and checking the result",
+      "Only ringing at a fixed time"
+     ],
+     "ans": 1,
+     "why": "Airflow orchestrates: the engines such as Spark or the warehouse do the work, while Airflow handles order, retries, alerts and history."
+    },
+    "work": [
+     "List your nightly jobs and write down which depend on which.",
+     "Find one job still run by cron and note what happens when it fails."
+    ]
+   },
+   {
+    "title": "Intervals, start times and backfills",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "An hourly job covers nine to ten o'clock. When does it actually start?",
+      "show": {
+       "t": "big",
+       "text": "09:00 to 10:00",
+       "sub": "when does the run start?"
+      }
+     },
+     {
+      "say": "Just after ten. A run covers a data interval, and it fires once that interval is finished, because the data is only complete then. Its logical date is the interval start, nine o'clock. Old code treated that date as now, a classic bug.",
+      "show": {
+       "t": "scene",
+       "title": "A run fires at the *end* of its interval",
+       "nodes": [
+        {
+         "id": "iv",
+         "label": "Interval",
+         "sub": "09:00 to 10:00",
+         "x": 30,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "run",
+         "label": "Run",
+         "sub": "starts just after 10:00",
+         "x": 70,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "iv",
+         "run"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "iv"
+        },
+        {
+         "at": 0.4,
+         "show": "run"
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "iv",
+          "run"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Logical date = 09:00, not now",
+          "tone": "amber",
+          "icon": "clock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Now backfill last week. Airflow creates one run per hour, a hundred and sixty eight in all, each with its own interval, and feeds them through the concurrency limits.",
+      "show": {
+       "t": "scene",
+       "title": "Backfill makes *one run per interval*",
+       "nodes": [
+        {
+         "id": "bf",
+         "label": "Backfill",
+         "sub": "last 7 days",
+         "x": 50,
+         "y": 18,
+         "tone": "blue"
+        },
+        {
+         "id": "runs",
+         "label": "168 runs",
+         "sub": "one per hour",
+         "x": 50,
+         "y": 48,
+         "tone": "teal"
+        },
+        {
+         "id": "lim",
+         "label": "Concurrency limit",
+         "sub": "queues the rest",
+         "x": 50,
+         "y": 78,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "bf",
+         "runs"
+        ],
+        [
+         "runs",
+         "lim"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "bf"
+        },
+        {
+         "at": 0.4,
+         "show": "runs"
+        },
+        {
+         "at": 0.5,
+         "count": {
+          "key": "runs",
+          "label": "runs created",
+          "to": 168,
+          "unit": "runs",
+          "tone": "teal"
+         }
+        },
+        {
+         "at": 0.8,
+         "show": "lim"
+        }
+       ]
+      }
+     },
+     {
+      "say": "This is safe only if each run reads and overwrites just its own hour. That is idempotency: rerun it and nothing doubles.",
+      "show": {
+       "t": "points",
+       "title": "Safe backfill rule",
+       "items": [
+        "Read only your own interval",
+        "Overwrite only your own partition",
+        "Rerun gives the same result"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "An hourly DAG's 09:00 to 10:00 run starts when?",
+     "opts": [
+      "At 09:00, when the hour begins",
+      "Just after 10:00, when the interval is complete",
+      "Whenever the scheduler is free, regardless of time"
+     ],
+     "ans": 1,
+     "why": "A run covers a data interval and fires at its end, once the data is complete. The logical date is the interval start."
+    },
+    "work": [
+     "Search your DAGs for execution date used as the current time and replace it with the data interval.",
+     "Make every load overwrite its own partition, then test by rerunning one day twice."
+    ]
+   },
+   {
+    "title": "Why heavy DAG files hurt everyone",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Why can one badly written DAG file slow down every pipeline in Airflow?",
+      "show": {
+       "t": "big",
+       "text": "One file, all DAGs slow",
+       "sub": "how is that possible?"
+      }
+     },
+     {
+      "say": "Because the DAG processor re-reads every DAG file about every thirty seconds, looking for changes. Any code at the top of the file runs on every read.",
+      "show": {
+       "t": "scene",
+       "title": "Every file is *re-parsed* constantly",
+       "nodes": [
+        {
+         "id": "dp",
+         "label": "DAG processor",
+         "sub": "every ~30 s",
+         "x": 30,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "f",
+         "label": "DAG files",
+         "sub": "top-level code runs",
+         "x": 70,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "dp",
+         "f"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "dp"
+        },
+        {
+         "at": 0.3,
+         "show": "f"
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "dp",
+          "f"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Top-level code runs every parse",
+          "tone": "amber",
+          "icon": "repeat"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Say the top calls an API or queries a database. That call now happens thousands of times a day, and a slow one delays how fast the scheduler sees all DAGs, or hits the parse timeout.",
+      "show": {
+       "t": "scene",
+       "title": "A slow call *delays the scheduler's view*",
+       "nodes": [
+        {
+         "id": "f",
+         "label": "Slow DAG file",
+         "sub": "API call at top",
+         "x": 25,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "dp",
+         "label": "DAG processor",
+         "sub": "stuck waiting",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "sch",
+         "label": "Scheduler",
+         "sub": "sees all DAGs late",
+         "x": 50,
+         "y": 70,
+         "tone": "grey"
+        }
+       ],
+       "edges": [
+        [
+         "f",
+         "dp"
+        ],
+        [
+         "dp",
+         "sch"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "f"
+        },
+        {
+         "at": 0.3,
+         "show": "dp"
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "f",
+          "dp"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "sch"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Parse timeout risk",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The fix: keep the top level to definitions only, and do real work inside tasks. Then watch the DAG processing duration metric.",
+      "show": {
+       "t": "points",
+       "title": "The fix",
+       "items": [
+        "Top level: definitions only",
+        "API calls and queries go inside tasks",
+        "Watch DAG processing duration"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Where should a database query for a DAG's config run?",
+     "opts": [
+      "At module level in the DAG file",
+      "Inside a task",
+      "In an import at the top of the file"
+     ],
+     "ans": 1,
+     "why": "Module-level code runs on every parse, about every 30 seconds, for every file. Work inside a task runs only when the task runs."
+    },
+    "work": [
+     "Grep your DAG folder for requests, database connects and big imports at module level.",
+     "Add an alert on DAG processing duration."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Sensors that hog workers",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "A sensor waits six hours for a file. What does that cost?",
+      "show": {
+       "t": "big",
+       "text": "6 hours of waiting",
+       "sub": "what does it cost?"
+      }
+     },
+     {
+      "say": "In poke mode it holds a worker slot the whole time, doing nothing. Twenty waiting sensors can starve the real tasks. Reschedule mode frees the slot between checks.",
+      "show": {
+       "t": "scene",
+       "title": "Poke mode *holds a worker slot*",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "20 sensors",
+         "sub": "poke mode",
+         "x": 30,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "w",
+         "label": "Worker slots",
+         "sub": "all taken",
+         "x": 70,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "t",
+         "label": "Real tasks",
+         "sub": "starved",
+         "x": 50,
+         "y": 70,
+         "tone": "grey"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "w"
+        ],
+        [
+         "w",
+         "t"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "s"
+        },
+        {
+         "at": 0.3,
+         "show": "w"
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "s",
+          "w"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "t"
+        },
+        {
+         "at": 0.9,
+         "dim": "t"
+        }
+       ]
+      }
+     },
+     {
+      "say": "A deferrable operator goes further. It hands the wait to the triggerer, a separate process that runs thousands of waits as lightweight async coroutines. A worker is picked up again only when the event arrives.",
+      "show": {
+       "t": "scene",
+       "title": "The *triggerer* does the waiting",
+       "nodes": [
+        {
+         "id": "op",
+         "label": "Deferrable task",
+         "sub": "hands off the wait",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "tr",
+         "label": "Triggerer",
+         "sub": "thousands of waits",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "w",
+         "label": "Worker",
+         "sub": "resumes on event",
+         "x": 50,
+         "y": 70,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "op",
+         "tr"
+        ],
+        [
+         "tr",
+         "w"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "op"
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "op",
+          "tr"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.5,
+         "show": "tr"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "tr",
+          "w"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Slot used only when needed",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "In Airflow three, assets remove many sensors altogether. A DAG simply runs when an upstream task updates the asset.",
+      "show": {
+       "t": "flow",
+       "title": "Asset-driven run",
+       "steps": [
+        {
+         "label": "Upstream task updates asset"
+        },
+        {
+         "label": "Downstream DAG runs"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why is a deferrable operator better than a poke-mode sensor for a long wait?",
+     "opts": [
+      "It checks the file more often",
+      "It frees the worker slot and waits in the triggerer",
+      "It skips the file check entirely"
+     ],
+     "ans": 1,
+     "why": "The triggerer runs thousands of waits cheaply as async coroutines, and a worker is used only after the event arrives."
+    },
+    "work": [
+     "Count sensors in poke mode and move long waits to deferrable operators.",
+     "Where upstream is another DAG, try asset-based scheduling instead of a sensor."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Celery or Kubernetes executor",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Celery or Kubernetes: how do you pick an Airflow executor, the part that actually runs tasks?",
+      "show": {
+       "t": "big",
+       "text": "Celery or Kubernetes?",
+       "sub": "choosing the executor"
+      }
+     },
+     {
+      "say": "Celery keeps warm worker processes pulling tasks from a queue. Tasks start fast, which suits many short jobs. But all tasks share the workers' image and resources, and you size the pool yourself.",
+      "show": {
+       "t": "scene",
+       "title": "Celery: *warm workers*, shared image",
+       "nodes": [
+        {
+         "id": "q",
+         "label": "Queue",
+         "sub": "tasks wait",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "w",
+         "label": "Warm workers",
+         "sub": "one shared image",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "q",
+         "w"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "q"
+        },
+        {
+         "at": 0.3,
+         "show": "w"
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "q",
+          "w"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Fast start, you size the pool",
+          "tone": "teal",
+          "icon": "bolt"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Kubernetes starts one pod per task. You get isolation, a custom image and resources for each task, and scaling to zero. The price is pod start time, seconds or more, on every task.",
+      "show": {
+       "t": "scene",
+       "title": "Kubernetes: *one pod per task*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Task",
+         "sub": "needs its own image",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "p",
+         "label": "New pod",
+         "sub": "seconds to start",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "p"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "t"
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "t",
+          "p"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": "p"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Isolation, but start-up cost",
+          "tone": "amber",
+          "icon": "clock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Many platforms run both: light, fast tasks on Celery, heavy or unusual ones in pods.",
+      "show": {
+       "t": "points",
+       "title": "Hybrid setup",
+       "items": [
+        "Light, short tasks on Celery",
+        "Heavy or odd tasks in pods"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Which workload fits Celery best?",
+     "opts": [
+      "A few tasks needing custom images and scale to zero",
+      "Thousands of short tasks that share one environment",
+      "A GPU job needing its own container"
+     ],
+     "ans": 1,
+     "why": "Celery's warm workers start tasks fast, ideal for many short, similar tasks. Heavy or special tasks fit pods better."
+    },
+    "work": [
+     "Measure your task duration and pod start time before choosing an executor.",
+     "Move one heavy or oddly-dependent task into its own pod and compare."
+    ],
+    "part": "1 of 3"
+   },
+   {
+    "title": "When to say no to Airflow",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When should an architect say no to Airflow?",
+      "show": {
+       "t": "big",
+       "text": "When is Airflow wrong?",
+       "sub": "know the limits"
+      }
+     },
+     {
+      "say": "Streaming or sub-minute work: use Kafka with Flink or Spark streaming. Moving the data inside tasks: let Spark, the warehouse or a copy tool do it, and keep tasks thin. A lone dbt project: the warehouse or dbt Cloud can schedule it.",
+      "show": {
+       "t": "points",
+       "title": "Skip Airflow for",
+       "items": [
+        "Streaming or sub-minute work",
+        "Moving data inside tasks",
+        "A single dbt project"
+       ]
+      }
+     },
+     {
+      "say": "Airflow is the control plane of batch, not the data plane. It tells engines what to run and checks the result. Its cost is the always-on scheduler, database and workers.",
+      "show": {
+       "t": "scene",
+       "title": "Control plane, *not data plane*",
+       "nodes": [
+        {
+         "id": "af",
+         "label": "Airflow",
+         "sub": "control plane",
+         "x": 50,
+         "y": 18,
+         "tone": "blue"
+        },
+        {
+         "id": "sp",
+         "label": "Spark",
+         "sub": "moves data",
+         "x": 20,
+         "y": 60,
+         "tone": "teal"
+        },
+        {
+         "id": "dbt",
+         "label": "dbt",
+         "sub": "transforms",
+         "x": 50,
+         "y": 60,
+         "tone": "teal"
+        },
+        {
+         "id": "wh",
+         "label": "Warehouse",
+         "sub": "stores data",
+         "x": 80,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "af",
+         "sp"
+        ],
+        [
+         "af",
+         "dbt"
+        ],
+        [
+         "af",
+         "wh"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "af"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "sp",
+          "dbt",
+          "wh"
+         ]
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "af",
+          "sp"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Keep tasks thin",
+          "tone": "blue",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Move off when work turns event-driven, when Dagster or warehouse pipelines cover everything you schedule, or when a managed service is cheaper.",
+      "show": {
+       "t": "points",
+       "title": "Time to move off",
+       "items": [
+        "Work becomes event-driven streaming",
+        "Dagster or warehouse pipelines cover it all",
+        "A managed service costs less"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A team runs one dbt project and nothing else. What is the best call?",
+     "opts": [
+      "Deploy a full Airflow cluster for it",
+      "Let the warehouse or dbt Cloud schedule it",
+      "Replace dbt with Spark tasks"
+     ],
+     "ans": 1,
+     "why": "A single dbt project does not need cross-system orchestration, so a built-in scheduler avoids running an always-on Airflow."
+    },
+    "work": [
+     "Audit your DAGs for tasks that move data themselves and push that work to Spark or the warehouse.",
+     "Estimate the monthly cost of your scheduler, database and workers against a managed option."
+    ],
+    "part": "2 of 3"
+   },
+   {
+    "title": "What Airflow 3 changes",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "What changed in Airflow three that an upgrade plan must cover?",
+      "show": {
+       "t": "big",
+       "text": "Airflow 3",
+       "sub": "what must your upgrade plan cover?"
+      }
+     },
+     {
+      "say": "Tasks no longer talk to the metadata database directly. They go through the Task SDK and an API server, which is safer and lets tasks run in other environments and languages.",
+      "show": {
+       "t": "scene",
+       "title": "Tasks go through the *API server*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Task",
+         "sub": "Task SDK",
+         "x": 20,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "api",
+         "label": "API server",
+         "sub": "gatekeeper",
+         "x": 50,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "db",
+         "label": "Metadata DB",
+         "sub": "no direct access",
+         "x": 80,
+         "y": 35,
+         "tone": "grey",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "api"
+        ],
+        [
+         "api",
+         "db"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "t"
+        },
+        {
+         "at": 0.3,
+         "show": "api"
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "t",
+          "api"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "db"
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "api",
+          "db"
+         ],
+         "n": 1
+        }
+       ]
+      }
+     },
+     {
+      "say": "DAGs are versioned, so a run keeps the code it started with, and the UI shows which version ran. Datasets became assets with event-driven scheduling.",
+      "show": {
+       "t": "points",
+       "title": "New in Airflow 3",
+       "items": [
+        "DAG versions per run",
+        "Datasets became assets",
+        "Event-driven scheduling"
+       ]
+      }
+     },
+     {
+      "say": "SubDAGs and execution date are gone, so budget a code pass before upgrading.",
+      "show": {
+       "t": "big",
+       "text": "Budget a code pass",
+       "sub": "SubDAGs and execution_date are gone"
+      }
+     }
+    ],
+    "check": {
+     "q": "What does DAG versioning in Airflow 3 give you?",
+     "opts": [
+      "Faster parsing of all files",
+      "A run keeps the code version it started with",
+      "Automatic removal of old DAGs"
+     ],
+     "ans": 1,
+     "why": "Each run stays tied to the DAG code it started with, and the UI shows which version ran, which helps debugging."
+    },
+    "work": [
+     "Scan your code for SubDAGs and execution date before planning an upgrade.",
+     "Check whether any task connects straight to the metadata database."
+    ],
+    "part": "3 of 3"
+   }
+  ]
  }
 }
