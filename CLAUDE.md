@@ -86,7 +86,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 ## Recent changes
 
 - 1.33.1: Spark architect's lens (3.10): when to use Spark over Flink, DuckDB or Polars, warehouse SQL, Dask or Ray and when not, who owns it, how it fails and scales, five internals answers, three interview and three quiz questions, and eight reels.
-- Airflow architect's lens (1.9): when to use an orchestrator and when not, who owns it, how it fails and scales, five internals answers, three interview questions and seven reels (built into data/reels.json by the next reel batch).
+- 1.33.0: Airflow architect's lens (1.9): when to use an orchestrator and when not, who owns it, how it fails and scales, five internals answers, three interview questions and seven reels (in the app since 1.33.1).
 - 1.32.0: Kafka architect's lens (5.9): when to use it and when not, who owns it, how it fails and scales, five internals answers, three interview questions and eight reels.
 - 1.31.1: a start-up download that stalls shows Still loading with Reload instead of Loading forever (Q29); the every-feature smoke test on Chromium and WebKit; reels confirmed playing the Heart recording in real iPhone Safari (iOS Simulator).
 - 1.31.0: Sign in with Google (top right and Profile): your sync script checks it is your account and gives a 24-hour session; after 24 hours the app asks you to sign in again and continues the same progress.
