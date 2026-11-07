@@ -1,0 +1,7 @@
+{
+  "note": "Guard budgets for tools/perf/budget.js (fails above budget + 10%). Set just above the speed-baseline branch medians on a busy Mac so a return to the old serial loading fails; the targets to reach are in BASELINE.md. Milliseconds, local server, Fast 4G.",
+  "items": {
+    "chromium": { "today_usable_cold_ms": 7000, "today_usable_warm_ms": 5000, "actions_ms.switch_today_tab": 100 },
+    "webkit": { "today_usable_cold_ms": 13000, "today_usable_warm_ms": 9000, "actions_ms.switch_today_tab": 100 }
+  }
+}

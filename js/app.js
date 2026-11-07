@@ -102,15 +102,15 @@ const MAPS = [
   ['Contracts', 'Tests', 'CI/CD', 'Metrics', 'On-call'], ['Ingest', 'Lake', 'Serving store', 'Cache', 'API'], ['Discovery', 'Metric tree', 'Experiment', 'Dashboard', 'Decision'], ['Design', 'Build', 'Test', 'Demo', 'Loop']
 ];
 const PALETTE = [['#E4ECFA', '#1E3F8F'], ['#FBE7C6', '#7A3E05'], ['#E4ECFA', '#1E3F8F'], ['#DDF1EA', '#0B3D33'], ['#EFE4F5', '#5A2A75']];
+let reelsGo; /* the reel scripts (megabytes) start downloading once the first screen is drawn, so they never share the line with what it needs (unless that screen is Reels) */
 async function loadData() {
-  const [d, q, p] = await Promise.all(['dsa', 'sql', 'spark'].map(n => fetch('data/bank/' + n + '.json').then(r => r.json())));
-  DATA.dsa = d; DATA.sql = q; DATA.spark = p;
-  try { DATA.py = await fetch('data/bank/py.json').then(r => r.json()); } catch (e) { DATA.py = []; }
-  try { DATA.projects = await fetch('data/projects.json').then(r => r.json()); } catch (e) { DATA.projects = []; }
-  DATA.reelsP = fetch('data/reels.json').then(r => r.json()).catch(() => ({})).then(j => DATA.reels = j);  // large: never holds up the first screen
-  try { DATA.staff = await fetch('data/staff.json').then(r => r.json()); } catch (e) { DATA.staff = { kinds: {}, items: [] }; }
-  try { DATA.udemy = await fetch('data/udemy.json').then(r => r.json()); } catch (e) { DATA.udemy = null; }
-  await loadModules();
+  DATA.reelsP = new Promise(r => { reelsGo = r; }).then(() => fetch('data/reels.json')).then(r => r.json()).catch(() => ({})).then(j => DATA.reels = j);
+  if (/^#\/reels/.test(location.hash)) reelsGo(); /* opening straight onto a reel: that screen needs them first */
+  const json = u => fetch(u).then(r => r.json()), soft = (u, d) => json(u).catch(() => d);
+  /* every start-up file downloads at once: one wait instead of a round trip per file */
+  const [[d, q, p], py, projects, staff, udemy] = await Promise.all([Promise.all(['dsa', 'sql', 'spark'].map(n => json('data/bank/' + n + '.json'))),
+    soft('data/bank/py.json', []), soft('data/projects.json', []), soft('data/staff.json', { kinds: {}, items: [] }), soft('data/udemy.json', null), loadModules()]);
+  Object.assign(DATA, { dsa: d, sql: q, spark: p, py, projects, staff, udemy });
 }
 const byWeek = (arr, w) => arr.filter(x => x.w === w);
 const findQ = id => DATA.dsa.find(x => x.id === id) || DATA.sql.find(x => x.id === id) || DATA.spark.find(x => x.id === id) || DATA.py.find(x => x.id === id);
@@ -1218,6 +1218,7 @@ window.addEventListener('keydown', e => { if (e.key === '`' && (e.ctrlKey || e.m
   try { reconcileContent(); } catch (e) { console.error(e); } /* an update never blocks the app */
   booted = true;
   route();
+  reelsGo();
   checkVersion(true);
   setInterval(() => checkVersion(), 30 * 6e4);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });
