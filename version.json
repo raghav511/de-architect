@@ -1,8 +1,8 @@
 {
-  "version": "1.22.1",
+  "version": "1.23.0",
   "date": "2026-11-07",
   "notes": [
-    "16 new interview questions reported this week at Airbnb, Google, ByteDance and DoorDash.",
-    "What is new: 5 items on Airflow 3.4, Snowflake open data sharing, Iceberg backups and MCP, and Databricks AI Functions."
+    "New Reels tab: 30 to 60 second explainers for every reading section, with captions, pictures and an optional voice. Swipe up for the next one.",
+    "Each reel ends with a quick check (missed ones come back in 3, 7 and 21 days) and a Use it at work list you can save to My playbook. Design moved under More."
   ]
 }

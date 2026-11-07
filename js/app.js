@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.22.1';
+const VERSION = '1.23.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -18,7 +18,7 @@ function el(tag, attrs, kids) {
   return e;
 }
 const svg = (d, s = 20) => { const w = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); w.setAttribute('width', s); w.setAttribute('height', s); w.setAttribute('viewBox', '0 0 24 24'); w.setAttribute('fill', 'none'); w.setAttribute('stroke', 'currentColor'); w.setAttribute('stroke-width', '2'); w.setAttribute('stroke-linecap', 'round'); w.setAttribute('stroke-linejoin', 'round'); w.setAttribute('aria-hidden', 'true'); w.innerHTML = d; return w; };
-const I = {
+const I = { reel: '<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 9l4 3-4 3z"/>',
   today: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>', path: '<path d="M4 19c4 0 4-6 8-6s4-6 8-6"/><circle cx="4" cy="19" r="2"/><circle cx="20" cy="7" r="2"/>',
   book: '<path d="M3 5h7a2 2 0 012 2v12a2 2 0 00-2-2H3zM21 5h-7a2 2 0 00-2 2v12a2 2 0 012-2h7z"/>', code: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>',
   db: '<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/>', design: '<rect x="3" y="4" width="7" height="6" rx="1"/><rect x="14" y="14" width="7" height="6" rx="1"/><path d="M10 7h4v10"/>',
@@ -26,7 +26,7 @@ const I = {
   update: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>', back: '<path d="M15 18l-6-6 6-6"/>', fwd: '<path d="M9 6l6 6-6 6"/>', dbl_l: '<path d="M18 6l-6 6 6 6M11 6l-6 6 6 6"/>', dbl_r: '<path d="M6 6l6 6-6 6M13 6l6 6-6 6"/>',
   x: '<path d="M18 6L6 18M6 6l12 12"/>', check: '<path d="M5 12l5 5 9-10" stroke="#fff" stroke-width="3"/>', spark: '<path d="M12 3l1.8 4.6L18 9.4l-4.2 1.8L12 16l-1.8-4.8L6 9.4l4.2-1.8z"/><path d="M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
   git: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 7v10M18 11c0 4-6 3-11 7"/>', news: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/>',
-  term: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1.22.1 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'
+  term: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1.23.0 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'
 };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const md = s => { try { return window.marked ? window.marked.parse(s || '', { gfm: true }) : esc(s); } catch (e) { return esc(s); } };
@@ -82,6 +82,7 @@ async function loadData() {
   DATA.dsa = d; DATA.sql = q; DATA.spark = p;
   try { DATA.py = await fetch('data/bank/py.json').then(r => r.json()); } catch (e) { DATA.py = []; }
   try { DATA.projects = await fetch('data/projects.json').then(r => r.json()); } catch (e) { DATA.projects = []; }
+  try { DATA.reels = await fetch('data/reels.json').then(r => r.json()); } catch (e) { DATA.reels = {}; }
   try { DATA.staff = await fetch('data/staff.json').then(r => r.json()); } catch (e) { DATA.staff = { kinds: {}, items: [] }; }
   try { DATA.udemy = await fetch('data/udemy.json').then(r => r.json()); } catch (e) { DATA.udemy = null; }
   await loadModules();
@@ -167,8 +168,8 @@ function chipFor(k) { return { py: ['Python', 'c-py'], dsa: ['DSA', 'c-dsa'], co
 function chip(k) { const c = chipFor(k); return el('span', { class: 'chip ' + c[1], text: c[0] }); }
 
 /* ---------------- shell ---------------- */
-const NAV = [['#/today', 'Today', 'today'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/git', 'Git lessons', 'git'], ['#/terminal', 'Terminal', 'code'], ['#/news', 'What is new in AI', 'news'], ['#/recent', 'Asked this week', 'quiz'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/mock', 'Mock interview', 'quiz'], ['#/coach', 'Coach', 'spark'], ['#/progress', 'Progress', 'prog']];
-const TABS = [['#/today', 'Today', 'today'], ['#/path', 'Path', 'path'], ['#/practice', 'Coding', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'Design', 'design']];
+const NAV = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/playbook', 'My playbook', 'book'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/git', 'Git lessons', 'git'], ['#/terminal', 'Terminal', 'code'], ['#/news', 'What is new in AI', 'news'], ['#/recent', 'Asked this week', 'quiz'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/mock', 'Mock interview', 'quiz'], ['#/coach', 'Coach', 'spark'], ['#/progress', 'Progress', 'prog']];
+const TABS = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/path', 'Path', 'path'], ['#/practice', 'Coding', 'code'], ['#/projects', 'Projects', 'proj']];
 function shell(title, eyebrow, body, opts) {
   opts = opts || {};
   const route = location.hash.split('/')[1] || 'today';
@@ -226,6 +227,8 @@ function route() {
     else if (r === 'mock') vMock(p[1]);
     else if (r === 'live') vLive(p[1]);
     else if (r === 'warm') vWarm();
+    else if (r === 'reels') vReels(p[1]);
+    else if (r === 'playbook') vPlaybook();
     else if (r === 'coach') vCoach();
     else if (r === 'projects') vProjects();
     else if (r === 'project') vProject(p[1]);

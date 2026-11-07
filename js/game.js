@@ -20,6 +20,7 @@ function gameXP() {
   Object.values(S.mock || {}).forEach(m => { if (m && m.sub) xp += 30; });
   Object.values(g.warm).forEach(w => { xp += 2 * (w.right || 0) + (w.best || 0); });
   xp += 5 * Object.keys(S.rq || {}).length;
+  Object.values(S.reels || {}).forEach(r => { if (r.seen) xp += 3; if (r.ok) xp += 2; });
   return xp;
 }
 /* the best weekend (boss) round at each level */
@@ -36,6 +37,7 @@ function gameDays() {
   Object.entries(S.live || {}).forEach(([k, m]) => { if (m && m.done) days.add(k); });
   Object.entries(S.mock || {}).forEach(([k, m]) => { if (m && m.sub) days.add(k); });
   Object.values(S.rq || {}).forEach(k => { if (typeof k === 'string') days.add(k); });
+  Object.values(S.reels || {}).forEach(r => { if (r.seen) days.add(r.seen); });
   return days;
 }
 function gameStreak() {
