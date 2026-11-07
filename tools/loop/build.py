@@ -1,0 +1,231 @@
+"""Builds data/loop.json, the content of the Interview loop (#/loop, js/loop.js). Run: python3 tools/loop/build.py
+Written for this app in our own words; round names follow the common big-tech loop (recruiter, coding, system design,
+code comprehension, behavioural, leadership with a past-project deep dive). tools/loop/check.py tests the code items."""
+import json, os
+
+ROUNDS = [
+  {"id": "r1", "n": 1, "t": "Recruiter screen", "s": "A short call about your background, the role and the next steps.",
+   "look": [["Introduction", "Who you are, what you do now and what you are best at, in about a minute."], ["Resume", "Two or three projects, the stack and the impact, with numbers."], ["Role and team fit", "Why this role, what you want next, what kind of team suits you."], ["Logistics", "Timeline, location, notice period, other processes, compensation range."]],
+   "prep": ["Write a 60 to 90 second pitch and say it out loud until it sounds natural.", "Pick the two projects you will talk about in every round, with one number each.", "Know your notice period, your timeline and the range you are aiming for before the call.", "Have two questions ready about the team and the process."]},
+  {"id": "r2", "n": 2, "t": "Coding (DSA)", "s": "Solve one or two problems in a shared editor, talking as you go.",
+   "look": [["Data structures and algorithms", "Arrays, strings, hash maps, trees, graphs, heaps, dynamic programming."], ["Problem solving", "Correct, efficient, clean code; you test it yourself."], ["Complexity", "Time and space, said without being asked."], ["Follow-ups", "Edge cases, a faster or smaller version, what changes if the input does not fit in memory."]],
+   "prep": ["Use the same seven steps every time (below) so you never freeze.", "Say the complexity of every solution before the interviewer asks.", "Test with an empty input, one element and a large or tricky case.", "Do one problem a day from the coding track."]},
+  {"id": "r3", "n": 3, "t": "System design", "s": "Design a system end to end, then defend trade-offs and handle failures and scale.",
+   "look": [["Scalable systems", "An end-to-end design for a real problem, from requirements to data flow."], ["APIs, storage and caching", "The API, the data model, SQL or NoSQL, what to cache and how data moves."], ["Trade-offs and bottlenecks", "What you chose, what you rejected and why; where it breaks first."], ["Reliability and scale", "What happens when a box, a zone or a dependency fails, and at ten times the load."]],
+   "prep": ["Start with requirements and a quick estimate (QPS, storage, bandwidth).", "Draw the high-level design first: clients, gateway, services, storage, cache, object storage.", "Go deep on one or two parts the interviewer cares about.", "End with failures, scale and what you would do next."]},
+  {"id": "r4", "n": 4, "t": "Code comprehension", "s": "Read an existing piece of code, find and fix bugs, improve it and explain your changes. An AI assistant may be allowed.",
+   "look": [["Understand the code", "Read it and say what it does before changing anything."], ["Find and debug", "Spot the bug, name the input that shows it, fix it, handle the edge cases."], ["Improve", "Make it clearer or faster without changing what it does."], ["Explain", "Say why each change is right and what you would test. With AI, how you used it matters more than the answer."]],
+   "prep": ["Read top to bottom once, then say in one sentence what the function promises.", "Find the input that breaks it before you fix it: that becomes your first test.", "Change as little as needed to fix it; improve it separately.", "If AI is allowed, give it the code, the failing input and what you expect, then check what it says."]},
+  {"id": "r5", "n": 5, "t": "Behavioural", "s": "Stories from your work that show impact, collaboration, how you handle difficulty and leadership.",
+   "look": [["Impact and ownership", "You saw a problem, took it on and drove it to a result."], ["Collaboration", "How you work with other teams and with people you disagree with."], ["Handling challenges", "Ambiguity, failure, pressure: what you did and what you learned."], ["Leadership mindset", "Influence without a title, mentoring, starting things."], ["Values", "Care for users, doing the right thing long term, including others. Google calls this Googleyness."]],
+   "prep": ["Write 6 to 8 stories in STAR form: Situation, Task, Action, Result.", "Tag each story with what it shows; one story can answer several questions.", "Say I, not we, for your part; end with a number and what you learned.", "Keep each story to about two minutes out loud."]},
+  {"id": "r6", "n": 6, "t": "Leadership and past project", "s": "How you work with others and decide, plus a technical deep dive into a project you led.",
+   "look": [["Collaboration", "Working with different teams and stakeholders."], ["Ownership", "Taking initiative and finishing what you start."], ["Communication", "Explaining complex ideas clearly to different audiences."], ["Decision-making", "How you weigh trade-offs and decide."], ["Technical design discussion", "A project from your resume: the design, why you chose it, the alternatives, how it scaled and what you would do differently."]],
+   "prep": ["Choose one project you know end to end and draw its architecture.", "Write three key decisions, each with the alternative you rejected and why.", "Know its numbers: volume, latency, cost, team size, timeline.", "Have an honest answer to: what would you do differently?"]}
+]
+
+RECRUITER = [
+  {"id": "q1", "c": "Introduction", "q": "Tell me about yourself.", "tip": "Now, before, best win, why this role. 60 to 90 seconds. Use your pitch."},
+  {"id": "q2", "c": "Introduction", "q": "What do you do in your current role, day to day?", "tip": "Scope (team, systems, data volume), what you own, one recent result."},
+  {"id": "q3", "c": "Resume", "q": "Walk me through the project on your resume you are proudest of.", "tip": "Problem, your part, the design in one sentence, the result with a number."},
+  {"id": "q4", "c": "Resume", "q": "What is your strongest technical area, and what are you still building?", "tip": "Be specific; name what you are learning now and how."},
+  {"id": "q5", "c": "Resume", "q": "Which tools and languages have you used most in the last two years?", "tip": "Group them: languages, processing, storage, cloud, orchestration. Say where you went deep."},
+  {"id": "q6", "c": "Role and fit", "q": "Why are you looking to move now?", "tip": "Positive and forward-looking: what you want more of, never complaints."},
+  {"id": "q7", "c": "Role and fit", "q": "Why this company and this role?", "tip": "One thing about the product, one about the scale or the team, one about what you bring."},
+  {"id": "q8", "c": "Role and fit", "q": "What kind of team and manager do you work best with?", "tip": "Concrete habits: design reviews, ownership, clear goals."},
+  {"id": "q9", "c": "Logistics", "q": "What is your notice period, and are you interviewing elsewhere?", "tip": "Honest and short. Mention other processes if they affect the timeline."},
+  {"id": "q10", "c": "Logistics", "q": "What are your compensation expectations?", "tip": "Give a researched range for the level, or ask for theirs first; stay flexible on the mix."},
+  {"id": "q11", "c": "Your questions", "q": "Do you have any questions for me?", "tip": "Always yes: the interview loop, the team's biggest challenge, how success is measured in the first six months."}
+]
+
+DSA_STEPS = [
+  ["Clarify", "Restate the problem. Ask about input size, duplicates, negatives, empty input, and what to return."],
+  ["Examples", "Work one small example by hand, and one edge case."],
+  ["Approach", "Say a brute force first, its complexity, then the better idea. Get a nod before coding."],
+  ["Complexity", "State time and space for the approach you will code."],
+  ["Code", "Write clean code with clear names, talking as you go."],
+  ["Test", "Run your examples through the code line by line; fix bugs calmly."],
+  ["Follow-ups", "Faster, less memory, streaming input, input that does not fit in memory, many machines."]
+]
+
+CX = [
+  {"id": "x1", "code": "def has_dup(nums):\n    seen = set()\n    for x in nums:\n        if x in seen:\n            return True\n        seen.add(x)\n    return False", "ans": "O(n)", "why": "One pass; a set lookup and insert are O(1) on average. Space is O(n) for the set."},
+  {"id": "x2", "code": "def has_dup(nums):\n    for i in range(len(nums)):\n        for j in range(i + 1, len(nums)):\n            if nums[i] == nums[j]:\n                return True\n    return False", "ans": "O(n²)", "why": "Every pair is compared: n(n-1)/2 comparisons. Space O(1)."},
+  {"id": "x3", "code": "def find(sorted_nums, target):\n    lo, hi = 0, len(sorted_nums) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if sorted_nums[mid] == target:\n            return mid\n        if sorted_nums[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1", "ans": "O(log n)", "why": "Binary search halves the range each step."},
+  {"id": "x4", "code": "def top_scores(scores):\n    return sorted(scores, reverse=True)[:10]", "ans": "O(n log n)", "why": "Sorting dominates. A heap of size 10 would make it O(n log 10), which is O(n)."},
+  {"id": "x5", "code": "def first(rows):\n    return rows[0] if rows else None", "ans": "O(1)", "why": "Indexing a Python list is constant time."},
+  {"id": "x6", "code": "def count_words(lines):\n    counts = {}\n    for line in lines:\n        for w in line.split():\n            counts[w] = counts.get(w, 0) + 1\n    return counts", "ans": "O(n)", "why": "n is the total number of words: each is touched once, dict updates are O(1) on average."},
+  {"id": "x7", "code": "def new_ids(ids, known):\n    # known is a list\n    return [i for i in ids if i not in known]", "ans": "O(n²)", "why": "'in' on a list scans it, so n lookups of O(n) each. Turn known into a set to make it O(n)."},
+  {"id": "x8", "code": "import heapq\ndef k_smallest(nums, k):\n    return heapq.nsmallest(k, nums)", "ans": "O(n log k)", "why": "A heap of size k is kept while scanning n items. With k fixed and small this is close to O(n)."},
+  {"id": "x9", "code": "def fib(n):\n    if n < 2:\n        return n\n    return fib(n - 1) + fib(n - 2)", "ans": "O(2ⁿ)", "why": "Each call makes two more, recomputing the same values. Memoise it (or loop) for O(n)."},
+  {"id": "x10", "code": "def prefix_sums(nums):\n    out, total = [], 0\n    for x in nums:\n        total += x\n        out.append(total)\n    return out", "ans": "O(n)", "why": "One pass with O(1) work per item; append is amortised O(1)."},
+  {"id": "x11", "code": "def merge_sorted(a, b):\n    return sorted(a + b)", "ans": "O(n log n)", "why": "Correct but it ignores that a and b are already sorted. A two-pointer merge is O(n)."},
+  {"id": "x12", "code": "def islands(grid):\n    # BFS from every unvisited land cell; each cell is visited once\n    ...", "ans": "O(n)", "why": "With n cells, each is enqueued and visited at most once (O(rows × cols))."}
+]
+CX_CHOICES = ["O(1)", "O(log n)", "O(n)", "O(n log k)", "O(n log n)", "O(n²)", "O(2ⁿ)"]
+
+# Code comprehension: each item fails its tests as written and passes with "fixed" (tools/loop/check.py)
+CC = [
+  {"id": "cc01", "t": "Clean sensor readings", "lv": "Easy", "mid": "p01", "spec": "Keep readings that are zero or more, in order. None means a missing reading and is skipped.",
+   "code": "def clean_readings(readings):\n    result = []\n    for i in range(len(readings)):\n        if readings[i] > 0:\n            result.append(readings[i])\n    return result",
+   "bug": [4], "fixed": "def clean_readings(readings):\n    return [r for r in readings if r is not None and r >= 0]",
+   "tests": [["zeros are kept", "clean_readings([3, 0, -1, 5])", [3, 0, 5]], ["missing readings are skipped", "clean_readings([1, None, 2])", [1, 2]], ["empty", "clean_readings([])", []]],
+   "what": {"q": "What does this function promise?", "c": ["Return the positive readings, sorted", "Return the readings that are zero or more, in order, skipping missing ones", "Remove duplicate readings"], "a": 1},
+   "edge": "A reading of 0 is valid but `> 0` drops it, and a None reading crashes the comparison in Python 3.",
+   "better": {"q": "After the fix, which change makes it clearer without changing behaviour?", "c": ["Loop over the values directly (or use a list comprehension) instead of indexes", "Sort the result", "Catch every exception and return []"], "a": 0, "why": "Iterating over values removes the index bookkeeping, which is where off-by-one bugs hide."}},
+  {"id": "cc02", "t": "Latest row per id", "lv": "Easy", "mid": "s04", "spec": "Keep the most recently updated row for each id (highest updated_at), returned in id order.",
+   "code": "def latest_by_id(rows):\n    best = {}\n    for r in rows:\n        cur = best.get(r[\"id\"])\n        if cur is None or r[\"updated_at\"] < cur[\"updated_at\"]:\n            best[r[\"id\"]] = r\n    return sorted(best.values(), key=lambda r: r[\"id\"])",
+   "bug": [5], "fixed": "def latest_by_id(rows):\n    best = {}\n    for r in rows:\n        cur = best.get(r[\"id\"])\n        if cur is None or r[\"updated_at\"] > cur[\"updated_at\"]:\n            best[r[\"id\"]] = r\n    return sorted(best.values(), key=lambda r: r[\"id\"])",
+   "tests": [["newer wins", "[r['v'] for r in latest_by_id([{'id': 1, 'updated_at': 1, 'v': 'old'}, {'id': 1, 'updated_at': 2, 'v': 'new'}])]", ["new"]], ["newer first still wins", "[r['v'] for r in latest_by_id([{'id': 1, 'updated_at': 5, 'v': 'new'}, {'id': 1, 'updated_at': 2, 'v': 'old'}])]", ["new"]], ["ordered by id", "[r['id'] for r in latest_by_id([{'id': 2, 'updated_at': 1}, {'id': 1, 'updated_at': 1}])]", [1, 2]]],
+   "what": {"q": "What is this, in data engineering terms?", "c": ["A deduplication that keeps the latest version of each row", "A join of two tables", "A running total"], "a": 0},
+   "edge": "The comparison is reversed, so it keeps the oldest row. Ties on updated_at keep the first one seen; say whether that is acceptable.",
+   "better": {"q": "This runs on 500 million rows nightly. What would you do?", "c": ["Do it in the engine: ROW_NUMBER() OVER (PARTITION BY id ORDER BY updated_at DESC) = 1, or a MERGE", "Add more RAM to the machine", "Sort the rows in Python first"], "a": 0, "why": "The warehouse or Spark does this in parallel; a Python dict of every id may not fit in memory."}},
+  {"id": "cc03", "t": "Batch a list", "lv": "Easy", "mid": "p03", "spec": "Split items into batches of n. The last batch may be smaller.",
+   "code": "def batches(items, n):\n    out = []\n    for i in range(0, len(items) - n + 1, n):\n        out.append(items[i:i + n])\n    return out",
+   "bug": [3], "fixed": "def batches(items, n):\n    return [items[i:i + n] for i in range(0, len(items), n)]",
+   "tests": [["exact batches", "batches([1, 2, 3, 4], 2)", [[1, 2], [3, 4]]], ["last batch kept", "batches([1, 2, 3, 4, 5], 2)", [[1, 2], [3, 4], [5]]], ["fewer than n", "batches([1], 3)", [[1]]]],
+   "what": {"q": "What does it return for 5 items and n = 2 today?", "c": ["Three batches: [1,2], [3,4], [5]", "Two batches: the fifth item is silently dropped", "An error"], "a": 1},
+   "edge": "The range stops before a partial batch, so the tail of the data is lost without any error: the worst kind of data bug.",
+   "better": {"q": "The input is a 50 GB file streamed line by line. What changes?", "c": ["Make it a generator that yields each batch, so it works on any iterable without holding it all", "Read the file into a list first", "Use bigger batches"], "a": 0, "why": "A generator (or itertools.batched in Python 3.12) keeps memory constant."}},
+  {"id": "cc04", "t": "Tags for an event", "lv": "Easy", "mid": "p02", "spec": "Return a new list holding the event's type, added to the tags passed in (none by default).",
+   "code": "def add_tag(event, tags=[]):\n    tags.append(event[\"type\"])\n    return tags",
+   "bug": [1], "fixed": "def add_tag(event, tags=None):\n    return list(tags or []) + [event[\"type\"]]",
+   "tests": [["one call", "add_tag({'type': 'click'})", ["click"]], ["calls do not leak", "add_tag({'type': 'a'})\nadd_tag({'type': 'b'})", ["b"]], ["caller's list untouched", "t = ['x']\nadd_tag({'type': 'y'}, t)\nt", ["x"]]],
+   "what": {"q": "What happens on the second call with no tags?", "c": ["It returns only the second type", "It returns both types: the default list is shared between calls", "It raises an error"], "a": 1},
+   "edge": "A default list is created once, when the function is defined, so every call shares it. The function also changes the caller's list.",
+   "better": {"q": "How do you stop this class of bug coming back?", "c": ["A linter rule (for example ruff B006) and a test that calls it twice", "Comments asking people not to do it", "Never use default arguments"], "a": 0, "why": "Tools catch it on every change; a comment does not."}},
+  {"id": "cc05", "t": "Average latency", "lv": "Easy", "mid": "p05", "spec": "Return the mean of the latencies, or None when there are none.",
+   "code": "def avg_latency(ms):\n    total = 0\n    for x in ms:\n        total += x\n    return total / len(ms)",
+   "bug": [5], "fixed": "def avg_latency(ms):\n    return sum(ms) / len(ms) if ms else None",
+   "tests": [["mean", "avg_latency([10, 20, 30])", 20.0], ["empty", "avg_latency([])", None]],
+   "what": {"q": "What breaks first in production?", "c": ["A minute with no requests: division by zero", "Large numbers overflow", "Negative latencies"], "a": 0},
+   "edge": "An empty window is normal (a quiet minute), and it crashes the job.",
+   "better": {"q": "The dashboard shows this average and users still complain about slowness. Why?", "c": ["An average hides the slow tail; report p95 or p99 too", "The average is computed wrongly", "Latency cannot be measured"], "a": 0, "why": "A few very slow requests barely move the mean but are what users feel."}},
+  {"id": "cc06", "t": "Count sessions", "lv": "Medium", "mid": "s05", "spec": "Timestamps are minutes. A gap of more than 30 minutes starts a new session. Return how many sessions there are.",
+   "code": "def count_sessions(ts):\n    if not ts:\n        return 0\n    ts = sorted(ts)\n    sessions = 1\n    for a, b in zip(ts, ts[1:]):\n        if b - a >= 30:\n            sessions += 1\n    return sessions",
+   "bug": [7], "fixed": "def count_sessions(ts):\n    if not ts:\n        return 0\n    ts = sorted(ts)\n    sessions = 1\n    for a, b in zip(ts, ts[1:]):\n        if b - a > 30:\n            sessions += 1\n    return sessions",
+   "tests": [["exactly 30 is the same session", "count_sessions([0, 30])", 1], ["31 starts a new one", "count_sessions([0, 31])", 2], ["unsorted input", "count_sessions([100, 0, 10])", 2], ["empty", "count_sessions([])", 0]],
+   "what": {"q": "Which input shows the bug?", "c": ["Two events exactly 30 minutes apart", "Unsorted timestamps", "An empty list"], "a": 0},
+   "edge": "The boundary: the spec says more than 30, the code says 30 or more. Always test the exact boundary.",
+   "better": {"q": "Events arrive late from phones that were offline. What changes in a streaming job?", "c": ["Use event time with a watermark and allowed lateness, and merge sessions when a late event bridges a gap", "Use the time the event arrived", "Drop late events"], "a": 0, "why": "Session windows in Flink or Spark merge when late data closes a gap."}},
+  {"id": "cc07", "t": "Enrich orders", "lv": "Medium", "mid": "m02", "spec": "Add each order's customer country; use \"unknown\" when the customer is missing. Keep every order.",
+   "code": "def enrich(orders, customers):\n    by_id = {c[\"id\"]: c for c in customers}\n    out = []\n    for o in orders:\n        c = by_id[o[\"customer_id\"]]\n        out.append({**o, \"country\": c[\"country\"]})\n    return out",
+   "bug": [5, 6], "fixed": "def enrich(orders, customers):\n    by_id = {c[\"id\"]: c for c in customers}\n    out = []\n    for o in orders:\n        c = by_id.get(o[\"customer_id\"])\n        out.append({**o, \"country\": c[\"country\"] if c else \"unknown\"})\n    return out",
+   "tests": [["known customer", "[o['country'] for o in enrich([{'id': 1, 'customer_id': 7}], [{'id': 7, 'country': 'IN'}])]", ["IN"]], ["missing customer kept", "[o['country'] for o in enrich([{'id': 1, 'customer_id': 9}], [])]", ["unknown"]]],
+   "what": {"q": "In SQL terms this should be…", "c": ["An inner join", "A left join from orders to customers", "A cross join"], "a": 1},
+   "edge": "A late-arriving customer (the order came before the customer row) raises KeyError and stops the whole batch.",
+   "better": {"q": "In a star schema, how do you handle the missing customer?", "c": ["Point the fact at an 'unknown' member of the dimension and fix it up when the customer arrives", "Drop the order", "Wait until the customer exists"], "a": 0, "why": "Facts are never lost and totals stay right; a later pass re-points the key."}},
+  {"id": "cc08", "t": "Stats from a generator", "lv": "Medium", "mid": "p03", "spec": "Ignore None values; return how many values there are and their total.",
+   "code": "def stats(values):\n    vals = (v for v in values if v is not None)\n    count = sum(1 for _ in vals)\n    total = sum(vals)\n    return {\"count\": count, \"total\": total}",
+   "bug": [2], "fixed": "def stats(values):\n    count = total = 0\n    for v in values:\n        if v is not None:\n            count += 1\n            total += v\n    return {\"count\": count, \"total\": total}",
+   "tests": [["count and total", "stats([1, 2, None, 3])", {"count": 3, "total": 6}], ["empty", "stats([])", {"count": 0, "total": 0}]],
+   "what": {"q": "Why is total always 0?", "c": ["sum() ignores numbers", "A generator can be read only once; counting used it up", "None values make it 0"], "a": 1},
+   "edge": "No error, just a wrong number: the generator is exhausted after the first pass.",
+   "better": {"q": "Which fix keeps memory constant for a huge input?", "c": ["One loop that counts and sums together", "list() the generator, then use it twice", "Call stats twice"], "a": 0, "why": "A list works but holds everything in memory; one pass does not."}},
+  {"id": "cc09", "t": "Drop empty fields", "lv": "Easy", "mid": "p01", "spec": "Remove keys whose value is None or an empty string, and return the record.",
+   "code": "def drop_empty(record):\n    for k in record:\n        if record[k] in (None, \"\"):\n            del record[k]\n    return record",
+   "bug": [2], "fixed": "def drop_empty(record):\n    return {k: v for k, v in record.items() if v not in (None, \"\")}",
+   "tests": [["drops empty", "drop_empty({'a': 1, 'b': None, 'c': ''})", {"a": 1}], ["keeps zero and False", "drop_empty({'a': 0, 'b': False})", {"a": 0, "b": False}]],
+   "what": {"q": "What happens when a field is empty?", "c": ["It is removed", "RuntimeError: dictionary changed size during iteration", "Nothing"], "a": 1},
+   "edge": "Deleting from a dict while looping over it raises. Note also: 0 and False must be kept, so do not test truthiness.",
+   "better": {"q": "Should the function change the caller's dict?", "c": ["Better to return a new dict, so callers are not surprised", "Yes, always change inputs in place", "It does not matter"], "a": 0, "why": "Pure functions are easier to test and safe to retry."}},
+  {"id": "cc10", "t": "Retry a call", "lv": "Medium", "mid": "p05", "spec": "Call fetch up to `tries` times. Return the first success; if every try fails, raise the last error.",
+   "code": "def fetch_with_retry(fetch, tries=3):\n    for attempt in range(tries):\n        try:\n            return fetch()\n        except Exception:\n            if attempt == tries:\n                raise\n    return None",
+   "bug": [6], "fixed": "def fetch_with_retry(fetch, tries=3):\n    for attempt in range(tries):\n        try:\n            return fetch()\n        except Exception:\n            if attempt == tries - 1:\n                raise",
+   "tests": [["succeeds on a later try", "calls = []\ndef f():\n    calls.append(1)\n    if len(calls) < 2:\n        raise ValueError('down')\n    return 'ok'\nfetch_with_retry(f)", "ok"], ["raises after the last try", "def bad():\n    raise ValueError('down')\ntry:\n    fetch_with_retry(bad)\n    r = 'no error'\nexcept ValueError:\n    r = 'raised'\nr", "raised"]],
+   "what": {"q": "What does it do when the service is down for good?", "c": ["Raises the error after 3 tries", "Returns None silently: callers think it worked", "Retries forever"], "a": 1},
+   "edge": "attempt runs 0 to tries - 1, so attempt == tries is never true and failures are swallowed.",
+   "better": {"q": "What else does a production retry need?", "c": ["Exponential backoff with jitter, retry only errors that can pass, and an idempotent call", "More tries", "A shorter timeout only"], "a": 0, "why": "Without backoff, retries from many clients make an outage worse (a thundering herd)."}},
+  {"id": "cc11", "t": "Top pages", "lv": "Easy", "mid": "s10", "spec": "Return the k most viewed pages, most viewed first.",
+   "code": "def top_pages(views, k):\n    counts = {}\n    for page in views:\n        counts[page] = counts.get(page, 0) + 1\n    ranked = sorted(counts.items(), key=lambda kv: kv[1])\n    return [p for p, _ in ranked[:k]]",
+   "bug": [5], "fixed": "def top_pages(views, k):\n    counts = {}\n    for page in views:\n        counts[page] = counts.get(page, 0) + 1\n    ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))\n    return [p for p, _ in ranked[:k]]",
+   "tests": [["most viewed first", "top_pages(['a', 'b', 'a', 'c', 'a', 'b'], 2)", ["a", "b"]], ["k larger than pages", "top_pages(['x'], 3)", ["x"]]],
+   "what": {"q": "What does it return today?", "c": ["The k most viewed pages", "The k least viewed pages", "Pages in alphabetical order"], "a": 1},
+   "edge": "sorted() is ascending by default. Also decide how ties are ordered so results are stable.",
+   "better": {"q": "Views are a never-ending stream of billions. What would you use?", "c": ["A count-min sketch with a small heap (approximate top k), or windowed counts in a stream processor", "Keep a dict of every page forever", "Sort all views every minute"], "a": 0, "why": "Exact counts of everything do not fit; approximate top k uses fixed memory."}},
+  {"id": "cc12", "t": "Page through results", "lv": "Easy", "mid": "s10", "spec": "Pages are numbered from 1. Return the rows on page page_no with `size` rows per page.",
+   "code": "def page(rows, page_no, size):\n    start = page_no * size\n    return rows[start:start + size]",
+   "bug": [2], "fixed": "def page(rows, page_no, size):\n    start = (page_no - 1) * size\n    return rows[start:start + size]",
+   "tests": [["first page", "page(list(range(10)), 1, 3)", [0, 1, 2]], ["second page", "page(list(range(10)), 2, 3)", [3, 4, 5]], ["past the end", "page([1, 2], 5, 3)", []]],
+   "what": {"q": "What does page 1 return today?", "c": ["The first rows", "The second page: the first rows are never shown", "Nothing"], "a": 1},
+   "edge": "Off by one: pages start at 1 but the offset assumes 0.",
+   "better": {"q": "The API pages through a table that changes while users scroll. What is safer?", "c": ["Keyset (cursor) pagination: WHERE id > last_seen ORDER BY id LIMIT size", "Bigger pages", "OFFSET with a cache"], "a": 0, "why": "Offsets skip or repeat rows when rows are inserted, and get slower deep into the table."}}
+]
+
+# how to use an AI assistant well in this round (one per item, by position)
+AIQ = [
+  {"q": "You may use an AI assistant. What do you give it first?", "c": ["The function, the spec, the input that fails and what you expected", "Just 'fix this code'", "Nothing: read the answer from it and paste it in"], "a": 0, "why": "Specific context gets a specific answer; you stay in charge of the reasoning."},
+  {"q": "The assistant suggests rewriting the whole function. What do you do?", "c": ["Ask for the smallest change that fixes the failing case, then decide", "Accept it: it is probably right", "Ignore the assistant"], "a": 0, "why": "Small changes are easier to review and less likely to break other behaviour."},
+  {"q": "The assistant's fix passes your one test. Are you done?", "c": ["No: run the edge cases too (empty, boundary, missing data) and read the diff", "Yes", "Ask the assistant if it is right"], "a": 0, "why": "Interviewers watch whether you verify, not whether you trust."},
+  {"q": "How do you talk about the AI's help to the interviewer?", "c": ["Say what you asked, what it got right, what you changed and why", "Hide that you used it", "Say the AI did it"], "a": 0, "why": "They assess how you use the tool: judgement, checking and ownership."}
+]
+
+BEH_C = [["impact", "Impact and ownership"], ["collab", "Collaboration"], ["challenge", "Handling challenges"], ["lead", "Leadership"], ["values", "Values and users"]]
+BEH = [
+  {"id": "b1", "q": "Tell me about the most challenging project you have worked on.", "tags": ["challenge", "impact"]},
+  {"id": "b2", "q": "Tell me about a time you worked with a difficult colleague.", "tags": ["collab"]},
+  {"id": "b3", "q": "How did you prioritise when several stakeholders wanted conflicting things?", "tags": ["collab", "lead"]},
+  {"id": "b4", "q": "Tell me about a time you failed. What did you learn?", "tags": ["challenge"]},
+  {"id": "b5", "q": "How have you shown leadership without the title?", "tags": ["lead"]},
+  {"id": "b6", "q": "Tell me about a time you took ownership of something outside your job.", "tags": ["impact", "lead"]},
+  {"id": "b7", "q": "Describe a decision you made with incomplete information.", "tags": ["challenge"]},
+  {"id": "b8", "q": "Tell me about a time you disagreed with your manager.", "tags": ["collab", "values"]},
+  {"id": "b9", "q": "Tell me about a time you put the user first, even when it cost you.", "tags": ["values"]},
+  {"id": "b10", "q": "Tell me about a time you mentored someone or helped a teammate grow.", "tags": ["lead"]},
+  {"id": "b11", "q": "Describe a production incident you handled. What changed afterwards?", "tags": ["challenge", "impact"]},
+  {"id": "b12", "q": "Tell me about something you improved that nobody asked you to.", "tags": ["impact", "values"]},
+  {"id": "b13", "q": "Tell me about a time you had to deliver bad news to a stakeholder.", "tags": ["collab", "values"]},
+  {"id": "b14", "q": "How did you make someone feel included on your team?", "tags": ["values", "collab"]},
+  {"id": "b15", "q": "Tell me about a deadline you were about to miss.", "tags": ["challenge", "impact"]},
+  {"id": "b16", "q": "Tell me about a time you changed your mind after hearing feedback.", "tags": ["values", "collab"]},
+  {"id": "b17", "q": "What is the biggest impact you have had, measured in numbers?", "tags": ["impact"]},
+  {"id": "b18", "q": "Tell me about a time you simplified something complex for a non-technical audience.", "tags": ["collab", "lead"]}
+]
+STAR = [["s", "Situation", "Where and when; what was at stake. One or two sentences."], ["t", "Task", "What you had to do, and why it was hard."], ["a", "Action", "What you did, step by step. Say I, not we. Most of the story goes here."], ["r", "Result", "What changed, with a number, and what you learned."]]
+
+LEAD = [
+  {"id": "l1", "q": "Tell me about a time you had to get several teams to agree on a technical direction.", "tags": ["collab", "lead"]},
+  {"id": "l2", "q": "Describe a project you drove from idea to production.", "tags": ["impact"]},
+  {"id": "l3", "q": "Explain a complex system you built to me as if I were a product manager.", "tags": ["collab"]},
+  {"id": "l4", "q": "Tell me about a trade-off you made that you would make differently today.", "tags": ["challenge"]},
+  {"id": "l5", "q": "How do you decide when to build something yourself versus buy or reuse it?", "tags": ["lead"]},
+  {"id": "l6", "q": "Tell me about a time you raised the quality bar for your team.", "tags": ["lead", "impact"]},
+  {"id": "l7", "q": "How do you handle a stakeholder who keeps changing the requirements?", "tags": ["collab"]},
+  {"id": "l8", "q": "What is something you learned from a past project that changed how you work?", "tags": ["values"]}
+]
+PROJ = [["name", "Project", "One line: what it is.", 1], ["ctx", "Problem and context", "Who had the problem, what it cost them, the numbers (volume, latency, money).", 3],
+        ["role", "Your role", "What you owned: design, build, team, decisions. Be exact.", 2], ["arch", "Architecture", "The data or request flow from source to user, in a few lines. Draw it in the simulator.", 4],
+        ["d1", "Decision 1", "What you chose, the alternative you rejected, and why.", 2], ["d2", "Decision 2", "What you chose, the alternative you rejected, and why.", 2], ["d3", "Decision 3", "What you chose, the alternative you rejected, and why.", 2],
+        ["scale", "Scale and results", "Before and after numbers. What happens at ten times the load?", 2], ["fail", "Failures", "What broke, how you found out, what you changed.", 2], ["diff", "What you would do differently", "Honest, specific, and what you learned.", 2]]
+FOLLOW = [
+  "Why did you choose that over the obvious alternative?", "What was the hardest technical problem, and how did you solve it?", "What happens at ten times the data volume?",
+  "Where is the single point of failure?", "How did you know it was working? What did you measure?", "What did it cost to run, and how could it cost less?",
+  "What was your part, and what did others do?", "How did you test it before production?", "Tell me about an incident with this system.", "How did you get other teams to adopt it?",
+  "If you started again tomorrow, what would you change?", "What would you hand to a new engineer first to understand it?", "How did you handle schema changes or late data?",
+  "What did you decide not to build, and why?", "How did the design change from the first version to now?", "What would break first if a zone went down?"
+]
+
+TOPICS = [
+  {"id": "url", "t": "URL shortener", "tpl": "url", "fr": ["Create a short link for a long URL", "Redirect a short link to the long URL", "Optional: custom alias, expiry, click counts"], "nfr": ["Redirects in under 50 ms", "Very read-heavy (about 100 reads per write)", "Links must never collide or disappear"],
+   "api": ["POST /links {url} -> {code}", "GET /{code} -> 302 Location: url"], "data": ["links(code PK, url, owner, created_at, expires_at)", "clicks are an event stream, counted separately"],
+   "decide": ["Code generation: base62 of a counter (no collisions, guessable) or a hash with a collision check", "301 (cached by browsers, no counts) or 302 (every click counted)", "Cache the hottest codes; size the store for a cold cache"],
+   "est": {"users": 20000000, "act": "link clicks", "per": 5, "ws": 0.01, "wb": 500, "rb": 500, "peak": 3, "note": "1 in 100 requests creates a link (about 500 bytes stored); a redirect sends about 500 bytes."}},
+  {"id": "chat", "t": "Chat system", "tpl": "chat", "fr": ["One-to-one and group messages", "Online status and read receipts", "History synced across devices"], "nfr": ["Delivered in under a second", "Messages in order within a conversation", "No message lost"],
+   "api": ["WebSocket: send {conv, text, client_msg_id}", "GET /conv/{id}/messages?before=..."], "data": ["messages(conv_id, ts, msg_id, sender, text) partitioned by conv_id", "presence in a cache with a short expiry"],
+   "decide": ["WebSockets (push) over polling", "Order per conversation: Kafka key = conversation id", "Fan-out on write for small groups, on read for huge ones"],
+   "est": {"users": 50000000, "act": "messages sent", "per": 40, "ws": 1, "wb": 200, "rb": 400, "peak": 3, "note": "Every message is stored (about 200 bytes) and delivered to two devices on average (400 bytes out)."}},
+  {"id": "ride", "t": "Ride-hailing service", "tpl": "ride", "fr": ["Drivers share their location", "Riders see nearby drivers and request a ride", "Match a rider to a driver and track the trip"], "nfr": ["Matching in a few seconds", "Locations fresh within seconds", "Trips and payments never lost"],
+   "api": ["POST /drivers/{id}/location {lat, lng} every 4 s", "POST /rides {from, to} -> ride id", "WebSocket for trip updates"], "data": ["geo index: cell -> drivers (in memory, expires fast)", "trips(id, rider, driver, state, times) in a database"],
+   "decide": ["Geo cells (geohash or H3) in a key-value store, not a SQL range query", "Location updates are disposable; trips are durable: two different stores", "Partition by city or region"],
+   "est": {"users": 1000000, "act": "driver location updates", "per": 900, "ws": 1, "wb": 100, "rb": 100, "peak": 2, "note": "Users here are drivers, sending a location every 4 seconds for an hour a day; each update is about 100 bytes, kept and served once."}},
+  {"id": "video", "t": "Video streaming platform", "tpl": "video", "fr": ["Upload a video", "Watch it on any device at the right quality", "Search and recommendations (mention, do not design)"], "nfr": ["Playback starts in under 2 seconds", "Smooth on slow networks", "Uploads processed within minutes"],
+   "api": ["POST /uploads -> signed URL to object storage", "GET /videos/{id}/manifest -> chunk list per quality"], "data": ["videos(id, owner, title, status)", "chunks in object storage: video/quality/segment"],
+   "decide": ["Adaptive bitrate: many qualities, small chunks", "CDN for delivery; object storage as origin with a shield cache", "Queue and workers for transcoding"],
+   "est": {"users": 10000000, "act": "video views", "per": 5, "ws": 0.01, "wb": 500000000, "rb": 100000000, "peak": 3, "note": "1 in 100 views is matched by an upload of about 500 MB across all qualities; a view streams about 100 MB."}}
+]
+
+out = {"rounds": ROUNDS, "recruiter": RECRUITER, "dsaSteps": DSA_STEPS, "cx": CX, "cxChoices": CX_CHOICES, "cc": CC, "aiq": AIQ,
+       "behC": BEH_C, "beh": BEH, "star": STAR, "lead": LEAD, "proj": PROJ, "follow": FOLLOW, "topics": TOPICS}
+p = os.path.join(os.path.dirname(__file__), '../../data/loop.json')
+json.dump(out, open(p, 'w'), ensure_ascii=False, indent=1)
+print('wrote data/loop.json:', len(CC), 'code items,', len(CX), 'complexity,', len(BEH) + len(LEAD), 'behavioural and leadership,', len(TOPICS), 'design topics')

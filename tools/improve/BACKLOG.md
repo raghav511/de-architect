@@ -30,7 +30,7 @@ Top unblocked item goes next. Each item: goal served (1 understand, 2 remember, 
 
 ## Done
 
-- 1.33.2: Iceberg architect's lens (2.9, linked from 8.5) with 5 internals answers, 3 interview and 3 quiz questions, 8 reels.
+- 1.34.1: Iceberg architect's lens (2.9, linked from 8.5) with 5 internals answers, 3 interview and 3 quiz questions, 8 reels.
 - 1.32.0: Kafka architect's lens (5.9) with 5 internals answers, 3 interview questions, 8 reels.
 - 1.32.0: sign-in turned on with the exam app's client ID, sign-ins bound to Data Architect (nonce), cache clean-up limited to this app (user request: no data shared with the exam app).
 - 1.31.1: `tools/smoke.js` (16 checks, Chromium and WebKit; 1 real issue found and fixed: start-up stuck on Loading when a download stalls) and a real-Safari reel check in the iOS Simulator.
