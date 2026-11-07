@@ -53,7 +53,6 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 - `python3 tools/build_bank.py`, `python3 tools/validate.py`: banks and content (need duckdb 1.5.x; 2.0 breaks minispark).
 - `node tools/vm/labs_test.mjs`: boots the in-app Linux headless and passes all 16 Git labs.
 - `../qa/checks.js BASE`: red team, broken-state recovery, offline, speed and size budget against `../qa/perf_baseline.json` (use the gzip server on 8812 for realistic sizes).
-- Known failing: `persona: Python runtime unreachable shows a clear error` (pre-existing).
 
 ## Key mechanisms
 
@@ -81,6 +80,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.28.1: all 106 journeys pass again: three tests updated to the current app (quiz label, week number from today's date, a stand-in worker for the offline Python error); source links on New this week boxes say they open a new tab; the improvement loop files.
 - 1.28.0: QA trust release: 15 confirmed issues fixed (sync dropped the other device's live mocks, reel checks, playbook, ticks and streak days; a failed download still uploaded; a stale tab overwrote another's save; backups held the API key and sync URL; scraped and AI text could run code; old questions labelled this week; rewritten reels lost their reviews; old answers shown on new questions; blocked notifications stayed on silently; partial AI scores became 1s; no AI caveat), plus every section as a four-level reel series (1,194 reels) loading in the background and recordings cached once.
 - 1.27.0: design simulator: draw a data system, run traffic, break it (19 failures), read p99, errors, lag and cost; 16 challenges tied to modules (Kafka partitions, hot keys, DLQ, schema changes, CDC catch-up, serving, failover, zone loss, budget, spikes, RAG rate limits); quick-start templates and sketch buttons from design problems and live mock questions; works by touch on iPhone and iPad.
 - 1.26.0: Reels as a Shorts-style swipe feed with animated scenes (Kafka 5.2 as a four-level series, 5.3 choreographed), Shuffle by default with My week and filters, teaching-only reels, one voice at a time; usage totals for the morning suggestions; daily reel review and morning suggestions routines.
@@ -117,6 +117,8 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 - 1.9.0: modules A4 (LLMs meet the warehouse) and A5 (vectors and RAG pipelines), 13 in-browser labs.
 
 ## Next
+
+- **Improvement loop:** `tools/improve/LOOP.md` is the standing brief (one feature per iteration: build, test, ship, verify live, log); `tools/improve/BACKLOG.md` holds the queue (items marked needs approval wait for the user); `tools/improve/LOG.md` records each iteration.
 
 - Organization modules O1–O5 (user asked 2026-11-06), one PR each: O1 data mesh and data products, O2 golden paths, O3 governance, O4 platform as a product (after s10, in that order), O5 capstone foundation blueprint (after r01). Add each to `BASE_MODS`, `PROGRAM` in sw.js and `mods` in validate.py.
 - One architect's lens per technology, in the week it is taught (Kafka, Spark, Iceberg, Airflow, dbt, Snowflake, Databricks, Debezium, Flink, Postgres…), each with internals questions such as how Kafka is fast while writing to disk.

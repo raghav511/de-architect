@@ -1,12 +1,8 @@
 {
-  "version": "1.28.0",
+  "version": "1.28.1",
   "date": "2026-11-07",
   "notes": [
-    "Sync no longer drops what you did on your other device (live mocks, reel checks, playbook, ticks, streak days), and stops safely if it cannot read the server first.",
-    "Two open tabs no longer overwrite each other's progress.",
-    "Backups leave out your API key and sync URL; restoring keeps this device's.",
-    "Questions and AI replies can no longer run code in the app; older questions show the day they were found.",
-    "AI scores say they can be wrong, and an incomplete AI reply lets you mark yourself instead of scoring 1.",
-    "Every section now has reels at four levels: new to it, how it works, inside and caveats, architect."
+    "Source links on New this week boxes now say they open a new tab.",
+    "Behind the scenes: every app test passes again, and a standing improvement loop keeps shipping one improvement at a time."
   ]
 }

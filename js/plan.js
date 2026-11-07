@@ -538,7 +538,7 @@ function rqCard(q) {
   const fresh = !dn && q.found >= iso(new Date(Date.now() - 14 * 864e5));
   return el('section', { class: 'card pad stack rq' }, [el('div', { class: 'row', style: { alignItems: 'flex-start' } }, [tick, el('div', { class: 'grow stack', style: { gap: '4px' } }, [
     el('div', { class: 'row wrap', style: { gap: '6px' } }, [fresh ? el('span', { class: 'chip c-dsa', text: 'New' }) : null, q.TAG ? chip(q.TAG) : null, el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: [q.company, q.level, q.asked ? 'asked ' + shortDate(q.asked) : ''].filter(Boolean).join(' · ') }),
-      /^https:\/\//.test(q.url || '') ? el('a', { href: q.url, target: '_blank', rel: 'noopener', 'aria-label': 'Where this was reported: ' + (q.src || 'source'), title: q.src || 'Source', text: 'ⓘ' }) : null]),
+      /^https:\/\//.test(q.url || '') ? el('a', { class: 'srcl', href: q.url, target: '_blank', rel: 'noopener', 'aria-label': 'Where this was reported: ' + (q.src || 'source') + ' (opens in a new tab)', title: q.src || 'Source', text: 'ⓘ' }) : null]),
     el('b', { style: { fontSize: '16.5px' }, html: mdi(q.Q) })])]), el('div', { class: 'row wrap' }, [show, q.mid && MOD[q.mid] ? el('a', { class: 'btn sm', href: '#/learn/' + q.mid, text: 'Module ' + modLabel(q.mid) }) : null]), ans]);
 }
 function vRecent() {

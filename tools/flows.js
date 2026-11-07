@@ -411,7 +411,7 @@ async function T(name, fn, opt) {
     await go(p, '#/today');
     await p.evaluate(() => { saveT && clearTimeout(saveT); saveT = null; localStorage.setItem('keystone:v1', JSON.stringify({ start: '2026-10-12', done: { w1d0les1: 1, w1d0dsa: 1 }, quiz: { 1: { a: { 0: 'A' }, sub: true, i: 0 } }, iv: { 1: { 0: true } }, solved: { d011: 1 }, settings: { syncUrl: '' }, week: 2, dayPick: 1 })); }); await p.reload(); await p.waitForTimeout(800);
     for (const h of ['#/today', '#/path', '#/progress', '#/quiz/s01', '#/interview/1', '#/learn/1', '#/path/3']) { await go(p, h, 600); ok(!(/Something went wrong/.test(await text(p, '.top'))), h + ' broke'); }
-    await go(p, '#/path/s01', 600); ok(await p.$('.unit.done:has-text("Quiz 1")'), 'old submitted quiz 1 should count as done');
+    await go(p, '#/path/s01', 600); ok(await p.$('.unit.done:has-text("Quiz")'), 'old submitted quiz 1 should count as done');
   });
 
   await T('storage blocked: app still renders', async p => {
@@ -469,7 +469,8 @@ async function T(name, fn, opt) {
   await T('path: make this week 1 asks first and updates week numbers', async p => {
     await go(p, '#/path');
     await p.evaluate(() => { S.start = '2026-09-07'; save(); route(); }); await p.waitForTimeout(400);
-    ok(/Weeks? 8/.test(await text(p, '#page')), 'old start not reflected');
+    const wk = await p.evaluate(() => Math.floor((new Date(iso(new Date()) + 'T00:00:00') - new Date('2026-09-07T00:00:00')) / 864e5 / 7) + 1);
+    ok(new RegExp('Weeks? ' + wk + '\\b').test(await text(p, '#page')), 'old start not reflected (expected week ' + wk + ')');
     await p.click('button:has-text("Make this week 1")'); await p.click('.dialog button:has-text("Make this week 1")'); await p.waitForTimeout(400);
     ok(/Weeks? 1/.test(await text(p, '#page')), 'week numbers not reset');
   });
@@ -571,7 +572,7 @@ async function T(name, fn, opt) {
     for (const m of mods) for (const tab of ['readings', 'chapter']) {
       await hash(p, '#/learn/' + m + '/' + tab, 250);
       const a = await p.$$eval('#page a[href^="http"]', xs => xs.map(x => ({ c: x.className, t: x.target, r: x.rel, l: x.getAttribute('aria-label') || '' })));
-      a.forEach(x => { if (x.c !== 'srcl' || x.t !== '_blank' || !/noopener/.test(x.r) || !/new tab/.test(x.l)) bad.push(m + '/' + tab); else src++; });
+      a.forEach(x => { if (/\bulink\b/.test(x.c) && x.t === '_blank' && /noopener/.test(x.r) && /new tab/.test(x.l)) return; /* the learner's own Udemy lectures, folded under ▶ Watch on Udemy */ if (x.c !== 'srcl' || x.t !== '_blank' || !/noopener/.test(x.r) || !/new tab/.test(x.l)) bad.push(m + '/' + tab); else src++; });
     }
     ok(!bad.length, 'links out that are not small source links: ' + [...new Set(bad)].slice(0, 5).join(', '));
     ok(src >= 130, 'expected the source links on the reading notes, found ' + src);
@@ -1071,7 +1072,8 @@ async function T(name, fn, opt) {
 
   /* ---- persona round 1 fixes ---- */
   await T('persona: Python runtime unreachable shows a clear error, not an endless Running', async (p, c) => {
-    await c.route(/cdn\.jsdelivr\.net\/pyodide/, r => r.abort());
+    /* Playwright cannot block a Web Worker's own downloads, so stand in a worker that cannot fetch the runtime */
+    await p.addInitScript(() => { window.Worker = class { constructor() { setTimeout(() => this.onmessage && this.onmessage({ data: { type: 'fatal', text: 'the Python runtime could not be downloaded (you seem to be offline)' } }), 200); } postMessage() { } terminate() { } }; });
     await go(p, '#/dsa/' + 'd011', 1500);
     await p.locator('button', { hasText: /^Run/ }).first().click();
     let t = ''; for (let i = 0; i < 20 && !/Could not start Python/.test(t); i++) { await p.waitForTimeout(500); t = await p.evaluate(() => document.body.innerText); }
