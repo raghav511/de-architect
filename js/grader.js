@@ -3,7 +3,10 @@
    directly at 127.0.0.1:8765 when this page runs on that Mac, otherwise through the sync script's job queue
    (works on iPhone and iPad while the Mac is awake). Grades are kept in S.grades and synced. */
 const GRADER = 'http://127.0.0.1:8765';
-const GRADE_POLL_MS = 4000, GRADE_WAIT_MS = 150000, GRADE_EXPIRE_MS = 3 * 864e5;
+/* each check reads a Drive file through your sync script (Google quotas), so checks back off: 5, 10, 20, 40 s, then
+   each minute, at most 8 per answer even across reopening the app, and none while this tab is hidden (review 11) */
+const GRADE_BACKOFF = [5000, 10000, 20000, 40000, 60000, 60000, 60000, 60000], GRADE_MAX_CHECKS = GRADE_BACKOFF.length;
+const GRADE_WAIT_MS = GRADE_BACKOFF.reduce((a, b) => a + b, 0), GRADE_EXPIRE_MS = 3 * 864e5;
 const gradeWatch = {}, gradeInflight = {};
 /* Settings → AI features: off hides grading, practice runs and the Claude Code track (for studying without AI) */
 function aiOn() { return S.settings.ai !== false; }
@@ -28,6 +31,17 @@ async function relayAsk(id, kind, payload) {
   const r = await fetch(S.settings.syncUrl, { method: 'POST', body: JSON.stringify({ action: 'ask', job: { id, kind, payload } }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
   const j = await r.json().catch(() => null);
   if (!r.ok || (j && j.ok === false)) throw new Error((j && j.error) || 'the sync script refused the job');
+}
+function waitVisible() { return !document.hidden ? Promise.resolve() : new Promise(r => { const f = () => { if (!document.hidden) { document.removeEventListener('visibilitychange', f); r(); } }; document.addEventListener('visibilitychange', f); }); }
+/* waits for a relayed job: at most `left` checks on the back-off schedule; onCheck(i) returning false stops early */
+async function relayWait(id, left, onCheck) {
+  for (let i = 0; i < Math.min(left, GRADE_MAX_CHECKS); i++) {
+    await new Promise(r => setTimeout(r, GRADE_BACKOFF[i])); await waitVisible();
+    if (onCheck && onCheck(i) === false) return null;
+    let res = null; try { res = await relayResult(id); } catch (e) { /* offline for a moment */ }
+    if (res && res.status === 'done') return res;
+  }
+  return null;
 }
 async function relayResult(id) {
   const j = await fetch(relayUrl('action=results&ids=' + encodeURIComponent(id)), { cache: 'no-store' }).then(r => r.json());
@@ -60,16 +74,15 @@ async function pollGrade(key) {
   const g = S.grades[key];
   if (!g || g.s !== 'pending' || !g.job || gradeWatch[key]) return g;
   gradeWatch[key] = true;
-  const until = Date.now() + GRADE_WAIT_MS;
   try {
-    while (Date.now() < until && S.grades[key] === g) {
-      await new Promise(r => setTimeout(r, GRADE_POLL_MS));
-      let res = null; try { res = await relayResult(g.job); } catch (e) { /* offline for a moment: keep trying */ }
-      if (res && res.status === 'done') {
-        if (res.result && res.result.error) { g.s = 'error'; g.err = res.result.error; } else { g.s = 'done'; g.r = res.result; }
-        g.at = Date.now(); save(); break;
-      }
-      if (Date.now() - g.at > GRADE_EXPIRE_MS) { g.s = 'error'; g.err = 'expired'; save(); break; }
+    if (Date.now() - g.at > GRADE_EXPIRE_MS) { g.s = 'error'; g.err = 'expired'; save(); return g; }
+    /* after its 8 checks, an answer gets one more check when the app opens it again */
+    if ((g.checks || 0) >= GRADE_MAX_CHECKS && Date.now() - (g.lastCheck || 0) < 6e5) return g; /* and at most one every 10 minutes */
+    const left = (g.checks || 0) < GRADE_MAX_CHECKS ? GRADE_MAX_CHECKS - (g.checks || 0) : 1;
+    const res = await relayWait(g.job, left, () => { if (S.grades[key] !== g) return false; g.checks = (g.checks || 0) + 1; g.lastCheck = Date.now(); save(false); });
+    if (res && S.grades[key] === g) {
+      if (res.result && res.result.error) { g.s = 'error'; g.err = res.result.error; } else { g.s = 'done'; g.r = res.result; }
+      g.at = Date.now(); save();
     }
   } finally { delete gradeWatch[key]; }
   return g;
@@ -134,13 +147,8 @@ async function macCall(kind, payload, onWait) {
   if (await graderHealthy()) return gradeDirect(kind, payload);
   if (!S.settings.syncUrl) throw new Error('nograder');
   const id = gradeId(); await relayAsk(id, kind, payload);
-  const until = Date.now() + GRADE_WAIT_MS; let warned = false;
-  while (Date.now() < until) {
-    await new Promise(r => setTimeout(r, GRADE_POLL_MS));
-    let res = null; try { res = await relayResult(id); } catch (e) { }
-    if (res && res.status === 'done') { if (res.result && res.result.error) throw new Error(res.result.error); return res.result; }
-    if (!warned && Date.now() > until - GRADE_WAIT_MS + 20000 && onWait) { warned = true; onWait(); }
-  }
+  const res = await relayWait(id, GRADE_MAX_CHECKS, i => { if (i === 2 && onWait) onWait(); });
+  if (res) { if (res.result && res.result.error) throw new Error(res.result.error); return res.result; }
   throw new Error('timeout');
 }
 

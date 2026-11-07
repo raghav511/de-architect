@@ -23,7 +23,7 @@ async function run(engine) {
     if (FILTER && !name.toLowerCase().includes(FILTER)) return;
     if (extra && extra.only && extra.only !== engine) return;
     /* Playwright's WebKit cannot route requests made under a service worker, so stubbed checks there run without it */
-    const c = await browser.newContext(Object.assign({}, opt, engine === 'webkit' && extra && extra.stub ? { serviceWorkers: 'block' } : {})); await c.route('http://127.0.0.1:8765/**', r => r.abort());
+    const c = await browser.newContext(Object.assign({ bypassCSP: true }, opt, engine === 'webkit' && extra && extra.stub ? { serviceWorkers: 'block' } : {})); /* stub hosts are outside the app's CSP */ await c.route('http://127.0.0.1:8765/**', r => r.abort());
     await c.route('https://api.anthropic.com/**', AI);
     const p = await c.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => { errs.push('native dialog'); d.dismiss(); });
     await p.addInitScript(SOUND);

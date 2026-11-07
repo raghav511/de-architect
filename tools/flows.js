@@ -6,7 +6,7 @@ const FILTER = process.argv.find(a => !/^http/.test(a) && a !== process.argv[0] 
 const results = [];
 let browser;
 async function ctx(opt) {
-  const c = await browser.newContext(Object.assign({ viewport: { width: 1440, height: 900 }, acceptDownloads: true }, opt || {})); await c.route('http://127.0.0.1:8765/**', r => r.abort()); /* never reach a real grader installed on this Mac */
+  const c = await browser.newContext(Object.assign({ viewport: { width: 1440, height: 900 }, acceptDownloads: true, bypassCSP: true }, opt || {})); /* stub hosts (https://sync.test) are outside the app's CSP */ await c.route('http://127.0.0.1:8765/**', r => r.abort()); /* never reach a real grader installed on this Mac */
   const p = await c.newPage(); p.errs = [];
   p.on('pageerror', e => p.errs.push(e.message));
   p.on('dialog', d => { p.errs.push('native dialog: ' + d.message()); d.dismiss(); });
@@ -1043,7 +1043,7 @@ async function T(name, fn, opt) {
     await p.waitForTimeout(400);
     ok(/not a Data Architect backup/.test(await text(p, '.toast')), 'unrelated JSON accepted as a backup');
     await profile(p, 'sync'); await setField(p, '#st_sync', 'ftp://example.com/x'); await p.waitForTimeout(200);
-    ok(/not valid/.test(await text(p, '.toast')) && !(await state(p)).settings.syncUrl, 'invalid sync URL saved');
+    ok(/not a Google Apps Script web app/.test(await text(p, '.toast')) && !(await state(p)).settings.syncUrl, 'invalid sync URL saved');
     await p.route('https://script.google.com/**', route => route.request().method() === 'POST' ? route.fulfill({ contentType: 'application/json', body: '{"ok": false, "error": "quota exceeded"}' }) : route.fulfill({ contentType: 'application/json', body: '{"ok": true, "data": {}, "coach": {}}' }));
     await p.evaluate(() => { S.settings.syncUrl = 'https://script.google.com/macros/s/x/exec?k=a'; save(); });
     await p.evaluate(() => doSync()); await p.waitForTimeout(700);

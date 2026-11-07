@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.36.2';
+const VERSION = '1.36.4';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -927,7 +927,7 @@ function avatarBtn(cur) { return el('a', { class: 'avatar' + (hasUpdate() ? ' ha
 function saveSettings(body) {
     const g = id => body.querySelector('#' + id).value.trim();
     const su = g('st_sync'); /* trust fix 20: refuse a sync URL that cannot work, warn when it has no key */
-    if (su && !/^https:\/\/|^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(su)) { toast('That sync URL is not valid: it must start with https://. Settings were not saved.', null, 6000); return false; }
+    if (su && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/(exec|dev)([?#]|$)|^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(su)) { toast('That sync URL is not a Google Apps Script web app (https://script.google.com/macros/s/…/exec). Your progress only syncs to your own script, so settings were not saved.', null, 7000); return false; } /* security review 13 */
     if (su && /script\.google\.com/.test(su) && !/[?&]k=/.test(su)) setTimeout(() => toast('Saved. This sync URL has no ?k= key: anyone with the URL could read your progress.', null, 7000), 400);
     const st0 = g('st_start'); if (/^\d{4}-\d\d-\d\d$/.test(st0)) { const d = new Date(st0 + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); if (iso(d) !== S.start) S.since = iso(new Date()); S.start = iso(d); } S.settings.syncUrl = su; S.settings.googleClientId = g('st_gcid'); S.settings.aiKey = g('st_key'); S.settings.aiModel = g('st_model') || 'claude-haiku-5-5';
     const wd = Math.round(+g('st_wd')), we = Math.round(+g('st_we')); S.settings.capWd = wd >= 15 && wd <= 600 ? wd : 60; S.settings.capWe = we >= 15 && we <= 720 ? we : 120; const nb = (id, lo, hi, def) => { const v = Math.round(+g(id)); return v >= lo && v <= hi ? v : def; }; S.settings.codeWd = nb('st_cwd', 0, 300, 50); S.settings.codeWe = nb('st_cwe', 0, 300, 80); S.settings.ivWd = nb('st_iwd', 15, 300, 30); S.settings.ivWe = nb('st_iwe', 15, 300, 45); S.settings.studyTime = g('st_time') || '07:00'; S.settings.accent = g('st_accent') || 'teal'; S.settings.name = g('st_name'); applyTheme(); S.settings.ai = g('st_ai') !== 'off'; applyAi();
@@ -962,7 +962,7 @@ function vProfile() {
     plan: [f('st_start', 'Week 1 starts (pick any day in that week)', S.start, 'date'), el('div', { class: 'tri' }, [f('st_wd', 'Reading, weekday minutes', S.settings.capWd || 60, 'number'), f('st_we', 'Reading, weekend minutes', S.settings.capWe || 120, 'number'), f('st_time', 'Study time', S.settings.studyTime || '07:00', 'time')]), el('div', { class: 'tri' }, [f('st_cwd', 'Coding, weekday', S.settings.codeWd || 50, 'number'), f('st_cwe', 'Coding, weekend', S.settings.codeWe || 80, 'number')]), el('div', { class: 'tri' }, [f('st_iwd', 'Interview and coaching, weekday', S.settings.ivWd || 30, 'number'), f('st_iwe', 'Interview and coaching, weekend', S.settings.ivWe || 45, 'number')])],
     ai: [sel('st_ai', 'AI features', S.settings.ai === false ? 'off' : 'on', [['on', 'On: instant grading, practice runs and the Claude Code track'], ['off', 'Off: study without AI (self-check with model answers)']]),
       el('div', { class: 'duo' }, [sel('st_coach', 'Coach answers with', S.settings.coachVia || 'mac', [['mac', 'Claude Code on my Mac'], ['key', 'My API key'], ['hints', 'Hints only (no AI)']]), sel('st_grade', 'Grading model', S.settings.gradeModel || 'auto', [['auto', 'Automatic'], ['haiku', 'Haiku (cheapest)'], ['sonnet', 'Sonnet (most thorough)']])]),
-      el('div', { class: 'duo' }, [f('st_key', 'API key (Anthropic, only on this device)', S.settings.aiKey, 'password', 'sk-ant-…'), f('st_model', 'Coach model', S.settings.aiModel || 'claude-haiku-5-5', 'text')]), graderStatus()],
+      el('div', { class: 'duo' }, [f('st_key', 'API key (Anthropic, only on this device)', S.settings.aiKey, 'password', 'sk-ant-…'), f('st_model', 'Coach model', S.settings.aiModel || 'claude-haiku-5-5', 'text')]), note('The key is kept in this browser for raghav511.github.io, where other pages of the same account also run. Use a key with a monthly spend limit.'), graderStatus()],
     data: [note('Back up your progress to a file or restore it, without cloud sync.'), el('a', { class: 'btn', href: '#/progress', style: { alignSelf: 'flex-start' }, text: 'Back up or restore' })] };
   const tabBtns = T.map(([k, t]) => el('button', { role: 'tab', id: 'pt_' + k, 'aria-controls': 'pp_' + k, 'aria-selected': String(k === profileTab), tabindex: k === profileTab ? '0' : '-1', onclick: () => pick(k), text: t }));
   const tablist = el('div', { class: 'tabs ptabs', role: 'tablist', 'aria-label': 'Settings', onkeydown: e => { const i = T.findIndex(x => x[0] === profileTab), n = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (n) { e.preventDefault(); pick(T[(i + n + T.length) % T.length][0]); $('#pt_' + profileTab).focus(); } } }, tabBtns);
@@ -1006,7 +1006,7 @@ async function doSync() {
     const pj = await pr.json().catch(() => null);
     if (pj && pj.ok === false) throw new Error(pj.error || 'upload refused');
     S.lastSync = Date.now(); S.syncing = false; save(false); toast('Progress synced.' + coachMsg, null, coachMsg ? 6000 : 3500); route();
-  } catch (e) { S.syncing = false; toast(/key/.test(e && e.message || '') ? 'Sync refused: the key at the end of your Sync URL (?k=…) does not match the one in the sync script.' : 'Sync failed. Your progress is safe on this device; try again.', null, 6000); if (b) b.querySelector('.t').textContent = 'Sync progress'; }
+  } catch (e) { S.syncing = false; toast(/no KEY set/.test(e && e.message || '') ? 'Your sync script has no key set, so it refuses every request. Set KEY at the top of Code.gs and deploy a new version (see sync/Code.gs).' : /key/.test(e && e.message || '') ? 'Sync refused: the key at the end of your Sync URL (?k=…) does not match the one in the sync script.' : 'Sync failed. Your progress is safe on this device; try again.', null, 6000); if (b) b.querySelector('.t').textContent = 'Sync progress'; }
 }
 function mergeState(a, b) {
   const out = Object.assign({}, a, b);
