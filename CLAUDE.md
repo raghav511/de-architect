@@ -88,6 +88,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 ## Recent changes
 
 - 1.35.0: dbt (4.10) and dimensional modelling (M1.8) architect's lenses with internals answers, five interview questions and fourteen reels (built into data/reels.json by the next reel batch); M102 now includes M1.8.
+- 1.34.1: reel batch: 452 of 1,209 reels fully recorded in the Heart voice, the Airflow lens's 7 reels added.
 - 1.34.0: Interview loop (`#/loop`): the six rounds of a big-tech loop with practice for each (recruiter pitch and questions, complexity drill, design topics and estimates, code comprehension with real tests, STAR stories, project deep dive and follow-ups); four classic web design walkthroughs in the simulator; a Today drill by weekday.
 - 1.33.1: Sign in with Google turned on (client ID shared with the exam app, sign-ins bound to this app); updates no longer delete the exam app's offline caches.
 - 1.33.0: Airflow architect's lens (1.9): when to use an orchestrator and when not, who owns it, how it fails and scales, five internals answers, three interview questions and seven reels (built into data/reels.json by the next reel batch).
