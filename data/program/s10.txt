@@ -4,6 +4,7 @@ n: 10
 title: Design at scale
 goal: You can design a data system out loud in 45 minutes: clarify, estimate, draw, go deep, break it, and scale it. Eight designs are written down as one-page documents, and you can review AI-written pipeline code for the mistakes it typically makes.
 hours: 10
+quiz-same: 5t1rff zxoc99
 
 @@tickets
 1001 | learn | 2 | Chapter 10 and the readings | You can run the six-step method on an unfamiliar prompt and do the capacity arithmetic without a calculator. | chapter
@@ -286,14 +287,14 @@ Q: 5,000 people watch a dashboard of the top ten zones by demand over the last f
 A) The data warehouse
 B) A real-time OLAP store such as Pinot, Druid or ClickHouse
 C) An S3 bucket
-D) The OLTP database behind the app
+D) The OLTP database behind the app, with an index on zone and time
 ANS: B
 WHY: Real-time OLAP stores ingest from streams and answer aggregation queries in under a second at high concurrency. Warehouses handle many concurrent small queries poorly, and the app's database must not carry analytics.
 ---
 TYPE: mcq
 TAG: design
 Q: What is the main rule for modelling data in Cassandra?
-A) Normalise everything into third normal form
+A) Normalise everything into third normal form, then join tables at query time to avoid duplicating data
 B) Design one table per query, with the partition key chosen for how the data will be read
 C) Use joins for flexibility
 D) Avoid primary keys
@@ -306,14 +307,14 @@ Q: A service recovers from an outage and thousands of clients retry at the same 
 A) Retrying immediately and repeatedly
 B) Exponential backoff with random jitter
 C) Disabling retries
-D) A larger timeout
+D) A larger timeout, so each client waits longer before giving up
 ANS: B
 WHY: Backoff reduces the rate of retries over time, and jitter spreads clients out so they do not retry in synchrony.
 ---
 TYPE: mcq
 TAG: design
 Q: What does RPO measure?
-A) How long a system may be down
+A) How long a system may be down before service must be restored
 B) How much data, measured in time, may be lost in a failure
 C) Requests per operation
 D) Read performance under load

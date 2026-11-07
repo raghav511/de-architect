@@ -4,6 +4,7 @@ n: 8
 title: Hooks: guardrails that always run
 goal: Use hooks to enforce what instructions only suggest: block dangerous commands and secret access, format and test after edits, and log what the agent did.
 hours: 2
+quiz-same: aefpox 1o6o8b9
 
 @@tickets
 C801 | learn | 0.5 | Lesson: hook events, inputs and how to block | You can name the main hook events, what a hook receives and how it blocks an action. | chapter
@@ -102,7 +103,7 @@ TAG: ai
 Q: Why use a hook instead of a CLAUDE.md line to stop edits to .env?
 A) Hooks are cheaper
 B) A hook is enforced by the harness every time; CLAUDE.md is guidance the model can miss
-C) CLAUDE.md cannot mention files
+C) CLAUDE.md cannot mention file names, so the model never learns which paths are off limits
 D) Hooks make the model smarter
 ANS: B
 WHY: Enforcement for must-never rules; guidance for conventions.
@@ -110,7 +111,7 @@ WHY: Enforcement for must-never rules; guidance for conventions.
 TYPE: mcq
 TAG: ai
 Q: A PreToolUse hook exits with code 2 and prints a reason on stderr. What happens?
-A) The tool runs and the reason is logged
+A) The tool runs anyway and the reason is only written to the debug log
 B) The tool call is blocked and the reason is shown to Claude
 C) Claude Code crashes
 D) The session ends

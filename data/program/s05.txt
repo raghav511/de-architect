@@ -4,6 +4,7 @@ n: 5
 title: Real time
 goal: Trip demand per zone, fresh to within 30 seconds, flowing from Kafka through Spark Structured Streaming into an Iceberg table. The stream survives a restart without duplicates, a poison message without stalling, and a schema change without breaking consumers.
 hours: 10
+quiz-same: 13qqw24 d4sgbg
 
 @@tickets
 501 | learn | 2 | Chapter 5 and the readings | You can draw one message's path from producer to committed offset, and say exactly what a watermark decides. | chapter
@@ -389,7 +390,7 @@ Q: Which of these triggers a consumer group rebalance?
 A) A producer sending a large batch
 B) A consumer taking longer than `max.poll.interval.ms` between polls
 C) A message exceeding retention
-D) A consumer committing an offset
+D) A consumer committing an offset, which asks the coordinator to reassign its partitions
 ANS: B
 WHY: A consumer that does not poll in time is considered failed and removed from the group, and its partitions are reassigned. Slow processing per batch is a common hidden cause.
 ---
@@ -407,7 +408,7 @@ TYPE: mcq
 TAG: streaming
 Q: A windowed aggregation uses a watermark and append output mode. When is a window's row written to the sink?
 A) As soon as its first event arrives
-B) On every micro-batch
+B) On every micro-batch, with the latest partial count for each open window
 C) Once the watermark has passed the end of the window
 D) Only when the job stops
 ANS: C
@@ -416,8 +417,8 @@ WHY: Append mode writes each row once, so the engine waits until the window can 
 TYPE: mcq
 TAG: streaming
 Q: A topic's compatibility mode is BACKWARD. What does that guarantee?
-A) Old consumers can read data written with the new schema
-B) Consumers using the new schema can read data written with the previous schema
+A) Old consumers still on the previous schema can read data written with the new schema
+B) Consumers on the new schema can read data written with the previous one
 C) No schema changes are allowed
 D) Fields can be renamed freely
 ANS: B

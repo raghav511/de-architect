@@ -4,6 +4,7 @@ n: 2
 title: Functions you can reuse: arguments, closures, comprehensions and decorators
 goal: Write small functions that compose: the right argument style, closures that remember state, comprehensions that stay readable, multi-key sorts, and decorators such as retry and timing. These are the building blocks of every agent harness in AI 1 and every pipeline step after it.
 hours: 5
+quiz-same: 98mqq5 7unymm
 
 @@tickets
 P201 | learn | 0.75 | Chapter part 1: functions as values, arguments, scope | You can explain the mutable default argument trap and what `nonlocal` is for. | chapter:0-2
@@ -325,7 +326,7 @@ Q: What does `def f(x, items=[])` risk?
 A) Nothing; a new list is made on every call
 B) The same list is shared by every call that uses the default, so data leaks between calls
 C) A syntax error
-D) The list is copied on every call, which is slow
+D) The list is copied afresh on every call, which gets slow once the default list grows large
 ANS: B
 WHY: Defaults are evaluated once at definition time. Use `items=None` and create the list inside.
 ---
@@ -340,7 +341,7 @@ TAG: py
 Q: Why use `functools.wraps` in a decorator?
 A) It makes the function faster
 B) It keeps the wrapped function's name, docstring and other metadata
-C) It is required for decorators to work at all
+C) It is required for decorators to work at all; without it the wrapper is never called
 D) It retries the function
 ANS: B
 WHY: Otherwise logs, tracebacks and framework task names all show "wrapper".
@@ -384,7 +385,7 @@ WHY: A generator expression feeds `sum` one value at a time, with no intermediat
 TYPE: mcq
 TAG: py
 Q: Why are pure functions valuable in data pipelines?
-A) They run faster
+A) They run faster, because the interpreter caches their results automatically without any decorator
 B) They can be rerun, tested and parallelised safely because they change nothing outside themselves
 C) Python requires them
 D) They use less memory

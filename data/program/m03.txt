@@ -4,6 +4,7 @@ n: 3
 title: The right model for every stage: raw to serving, Data Vault, OBT, semantic layers and AI-ready data
 goal: Choose and defend a data model for each layer of a platform: event logs for raw data, normalised or Data Vault for the cleaned layer, stars, wide tables and cumulative tables for the business layer, and key-value stores, feature stores, semantic layers and vector tables for serving. Then run a 45-minute data modelling interview with a repeatable method.
 hours: 5
+quiz-same: 1d1gthd u592na
 
 @@tickets
 M301 | learn | 0.75 | Chapter part 1: the stages, raw and cleaned layers, Data Vault, the business layer | You can fill in the stage-by-model table from memory and explain hubs, links and satellites. | chapter:0-3
@@ -185,7 +186,7 @@ Q: When is Data Vault a better choice than modelling Kimball stars directly in t
 A) For a small startup with one source
 B) When many sources feed the same entities and auditability and adding sources without rework matter
 C) When analysts query it directly
-D) When you need the fastest dashboards
+D) When you need the fastest dashboards, since splitting data into hubs and links makes BI queries cheaper
 ANS: B
 WHY: It is insert-only and source-traceable, at the cost of many joins; you still build stars on top.
 ---
@@ -195,7 +196,7 @@ Q: A churn model uses each rider's lifetime trip count, computed today, as a fea
 A) Nothing
 B) Data leakage: the feature includes trips after the prediction time
 C) The feature should be a string
-D) It should use a median
+D) It should use a median of trips per month instead of a lifetime count
 ANS: B
 WHY: Features must be point-in-time correct: only data known before each example.
 ---
@@ -209,18 +210,18 @@ TYPE: mcq
 TAG: modeling
 Q: What does a semantic layer give a text-to-SQL agent?
 A) Faster storage
-B) Named metrics, dimensions and joins defined once, so the agent picks from them instead of guessing SQL on raw tables
+B) Metrics, dimensions and joins defined once, so the agent picks them instead of guessing SQL on raw tables
 C) Embeddings
-D) A larger context window
+D) A larger context window, so the agent can load every raw table schema at once and work out the joins itself
 ANS: B
 WHY: Consistent numbers and far fewer wrong joins.
 ---
 TYPE: mcq
 TAG: modeling
 Q: Building an OBT, you join trips to payments and revenue doubles for some trips. Why?
-A) Payments has more than one row per trip, so the join fans out; aggregate payments to the trip grain first
+A) Payments has several rows per trip, so the join fans out; aggregate payments to trip grain first
 B) The fare column is wrong
-C) LEFT JOIN always duplicates
+C) LEFT JOIN always duplicates rows; switching to an INNER JOIN on trip_id would stop revenue doubling
 D) Columnar storage
 ANS: A
 WHY: Join only tables already at (or above) the target grain.
@@ -228,7 +229,7 @@ WHY: Join only tables already at (or above) the target grain.
 TYPE: mcq
 TAG: modeling
 Q: Which metadata matters most on a vector (embedding) table for RAG?
-A) None; only the embedding matters
+A) None; only the embedding vector matters, because search ranks by similarity alone
 B) Source, owner, date, access level, version and a content hash
 C) The model's temperature
 D) The number of dimensions only

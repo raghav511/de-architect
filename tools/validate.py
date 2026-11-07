@@ -25,6 +25,16 @@ def heads(t):
         elif not fence and l.startswith('## '): out.append(l[3:].strip())
     return out
 
+LONGEST_MAX = 0.4
+def quiz_opts(text):
+    """(ANS letter, {letter: option text}) per question; {} for questions without options"""
+    res = []
+    for blk in re.split(r'\n---[ \t]*(?=\n|$)', text or ''):
+        if not blk.strip(): continue
+        a = re.search(r'^ANS:\s?(.*)$', blk, re.M)
+        res.append(((a.group(1).strip() if a else ''), dict(re.findall(r'^([A-D])\)\s(.*)$', blk, re.M))))
+    return res
+
 def blocks(text, keys, letters):
     res, b, f, fence = [], None, None, False
     rx = re.compile('^(' + '|'.join(keys) + r'):\s?(.*)$')
@@ -105,6 +115,16 @@ for m in mods:
         if ty == 'fill' and not x.get('ANS', '').strip(): err(m, 'quiz', i + 1, 'fill without ANS')
         if ty == 'short' and not (x.get('MODEL') or x.get('ANS')): err(m, 'quiz', i + 1, 'short without MODEL')
         if not x.get('WHY', '').strip() and ty != 'short': warn(m, 'quiz', i + 1, 'no WHY')
+    # unguessable answers: in at most 40% of a module's multiple-choice questions may the right option be the longest
+    mcq = [x for x in quiz_opts(s.get('quiz')) if x[1]]
+    tells = [k for k, (ans, opts) in enumerate(mcq) if ans in opts and all(len(opts[ans]) > len(v) for l, v in opts.items() if l != ans)]
+    if mcq and len(tells) > LONGEST_MAX * len(mcq):
+        err(m, 'quiz: the right option is the longest in %d of %d multiple-choice questions (at most %d%%); reword options to similar length' % (len(tells), len(mcq), int(LONGEST_MAX * 100)))
+    short = [k for k, (ans, opts) in enumerate(mcq) if ans in opts and all(len(opts[ans]) < len(v) for l, v in opts.items() if l != ans)]
+    if mcq and len(short) > LONGEST_MAX * len(mcq):
+        err(m, 'quiz: the right option is the shortest in %d of %d multiple-choice questions (at most %d%%)' % (len(short), len(mcq), int(LONGEST_MAX * 100)))
+    qs_meta = meta.get('quiz-same', '')
+    if qs_meta and not re.match(r'^[0-9a-z]+( [0-9a-z]+)*$', qs_meta): err(m, 'quiz-same must be fingerprints separated by spaces (written by tools/quiz/same.py)')
     iv = blocks(s.get('interview'), ['Q', 'SRC', 'TAG', 'A'], False)
     if len(iv) < 5 and m != 's00': err(m, 'only', len(iv), 'interview questions')
     for i, x in enumerate(iv):

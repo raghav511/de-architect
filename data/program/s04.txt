@@ -4,6 +4,7 @@ n: 4
 title: A warehouse people trust
 goal: A star schema for trips, built with dbt on Snowflake and orchestrated by Airflow. Operations and Finance get the same number for the same question, history is kept when a driver moves city, and a backfill changes nothing it should not.
 hours: 10
+quiz-same: 16ee9ry ncqogr
 
 @@tickets
 401 | learn | 2 | Chapter 4 and the readings | You can state the grain of every fact table you design and choose an SCD type with a reason. | chapter
@@ -364,9 +365,9 @@ TYPE: mcq
 TAG: modeling
 Q: Which is the strongest reason to use surrogate keys in dimensions?
 A) They sort faster than strings
-B) They let one natural key have several versioned rows and insulate the warehouse from source key changes
-C) They are required by SQL
-D) They compress better
+B) They let one natural key have several versioned rows and shield the warehouse from source key changes
+C) They are required by SQL, because a foreign key can only reference an integer column
+D) They let you drop the natural key column from the dimension, which saves storage and hides source ids
 ANS: B
 WHY: Type 2 history needs a key that differs between versions of the same driver. Surrogate keys also survive source systems reusing or changing ids.
 ---
@@ -403,7 +404,7 @@ WHY: Merge matches on the unique key, updating matches and inserting the rest. W
 TYPE: mcq
 TAG: ai
 Q: What is the most reliable way to score a text-to-SQL system against a reference answer?
-A) Compare the SQL strings character by character
+A) Compare the SQL strings character by character after normalising case and whitespace
 B) Ask the model whether it is confident
 C) Execute both queries and compare the result sets
 D) Count the number of joins

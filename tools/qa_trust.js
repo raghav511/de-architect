@@ -344,6 +344,54 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
     await p.fill('#st_sync', 'https://script.google.com/macros/s/AKfycbTEST123/exec?k=abc'); await p.dispatchEvent('#st_sync', 'change'); await p.waitForTimeout(400);
     ok(await p.evaluate(() => /script\.google\.com/.test(S.settings.syncUrl || '')), 'a real Apps Script URL was refused');
   }, { bypassCSP: false });
+  /* unguessable answers (1.36): options in a fresh order per attempt, answers saved by the option's letter in the module file */
+  await T('Q36', 'a quiz answer saved before 1.36 (a screen letter) still points at the same option text after the update', async p => {
+    await boot(p);
+    const k = await p.evaluate(async () => { const s = await sprint('s05'); return s.quiz.findIndex(q => q.TYPE === 'mcq' && q.opts.every(o => o[1].length > 8)); });
+    const old = await p.evaluate(async k => { const q = (await sprint('s05')).quiz[k]; return 'ABCD'.split('').find(l => legacyQuizLetter('s05', k, l) === q.ANS); }, k);
+    await seed(p, ([k, l]) => { S.quiz[qk('s05')] = { a: { [k]: l }, sub: false, i: k }; }, [k, old]);
+    await p.evaluate(() => { location.hash = '#/quiz/s05'; }); await p.waitForSelector('.opt'); await p.waitForTimeout(300);
+    const r = await p.evaluate(async k => { const q = (await sprint('s05')).quiz[k], st = S.quiz[qk('s05')], b = document.querySelector('.opt[aria-pressed=true]');
+      return { v: st.v, a: st.a[k], ans: q.ANS, pressed: b && b.querySelector('span').textContent, right: q.opts.find(o => o[0] === q.ANS)[1] }; }, k);
+    ok(r.v === 2 && r.a === r.ans, 'not migrated to the file letter: ' + JSON.stringify(r));
+    ok(r.pressed && r.right.replace(/`/g, '').includes(r.pressed.slice(0, 20)), 'the pressed option is not the one answered: ' + JSON.stringify(r));
+  });
+
+  await T('Q37', 'a retake shows the options in a new order, and the right option is graded by what it says, not where it is', async p => {
+    await boot(p, '#/quiz/s05'); await p.waitForSelector('.opt');
+    const order = () => p.evaluate(async () => { const s = await sprint('s05'); const st = S.quiz[qk('s05')]; return s.quiz.map((q, k) => q.TYPE === 'mcq' ? optOrder(q, st.seed, k).map(o => o[0]).join('') : '').join('|'); });
+    const a = await order();
+    await p.evaluate(() => { S.quiz[qk('s05')] = { a: {}, sub: false, i: 0, v: 2, seed: newSeed() }; save(); }); const b = await order();
+    ok(a !== b, 'same order on a new attempt: ' + a);
+    ok(!/^(ABCD\|?)+$/.test(a.replace(/\|+/g, '|').replace(/^\||\|$/g, '')), 'options shown in file order');
+    await p.evaluate(() => { location.hash = '#/today'; }); await p.waitForTimeout(200); await p.evaluate(() => { location.hash = '#/quiz/s05'; }); await p.waitForSelector('.opt');
+    const right = await p.evaluate(async () => { const q = (await sprint('s05')).quiz[0]; return q.TYPE === 'mcq' ? q.ANS : null; });
+    if (right) { await p.click('.opt[data-k=' + right + ']'); await p.waitForTimeout(200); }
+    const saved = await p.evaluate(() => S.quiz[qk('s05')].a[0]);
+    ok(!right || saved === right, 'saved ' + saved + ' for the right option ' + right);
+  });
+
+  await T('Q38', 'a reel check shows its options in a new order each time and still saves and marks the right one', async p => {
+    await boot(p);
+    const r = await p.evaluate(async () => { const r = (await reelsFor('s05')).find(x => x.check && x.check.opts.length >= 3); const seen = new Set();
+      for (let n = 0; n < 12; n++) { const d = document.createElement('div'); d.append(...reelEnd(r, () => {}, () => {})); seen.add([...d.querySelectorAll('.ropt')].map(b => b.dataset.i).join('')); }
+      const d = document.createElement('div'); document.body.append(d); d.append(...reelEnd(r, () => {}, () => {}));
+      d.querySelector('.ropt[data-i="' + r.check.ans + '"]').click(); const y = S.reels[r.id]; const ok = d.querySelector('.ropt.ok'); d.remove();
+      return { orders: seen.size, ans: y.ans, want: r.check.ans, right: y.ok, okText: ok && ok.textContent, text: r.check.opts[r.check.ans] }; });
+    ok(r.orders > 1, 'always the same order');
+    ok(r.ans === r.want && r.right && r.okText === r.text, 'wrong option saved or marked: ' + JSON.stringify(r));
+  });
+
+  await T('Q39', 'a quiz you finished stays finished when only its answer options were reworded (quiz-same)', async p => {
+    await boot(p);
+    const info = await p.evaluate(async () => { for (const m of MODS_ALL) await sprint(m); const m = MODS_ALL.find(x => quizSame(x).length >= 2); if (!m) return null;
+      const u = modUnits(m).find(x => x.kind === 'quiz'); return { m, uid: u.uid, old: quizSame(m), now: unitHash(u) }; });
+    ok(info, 'no module has quiz-same fingerprints');
+    await seed(p, i => { const t = iso(new Date()); S.done[i.uid] = t; S.doneAt[i.uid] = Date.now(); S.cv = S.cv || { units: {}, ex: {}, known: {} }; S.cv.units[i.uid] = i.old[0]; S.tabs = S.tabs || {}; S.tabs[i.m + ':quiz'] = { at: t, h: i.old[1] }; }, info);
+    await p.waitForTimeout(500);
+    const r = await p.evaluate(i => ({ done: !!S.done[i.uid], cv: S.cv.units[i.uid], tab: tabDone(i.m, 'quiz', { units: [] }), updated: openUpdates().some(x => x.items.some(y => y.uid === i.uid)) }), info);
+    ok(r.done && r.cv === info.now && r.tab && !r.updated, 'reopened or flagged as updated: ' + JSON.stringify(r));
+  });
 
   await browser.close();
   for (const r of results) console.log(r[0].padEnd(5), r[1], r[2], r[3] ? '\n      ' + r[3] : '');

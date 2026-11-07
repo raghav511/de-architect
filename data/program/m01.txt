@@ -4,6 +4,7 @@ n: 1
 title: Dimensional modelling: grain, dimensions, history, cumulative tables and graphs
 goal: Design dimensions the way senior interviewers expect: state the grain, choose keys, pick the right slowly changing dimension type for each attribute, build and query SCD2 correctly, keep history cheaply with cumulative tables and complex types, and know when a graph model beats a relational one.
 hours: 5
+quiz-same: 17ixssv 171zyua
 
 @@tickets
 M101 | learn | 0.75 | Chapter part 1: why model, the Kimball steps, keys and dimension types | You can state the four Kimball steps, the grain of a trips fact, and explain conformed, role-playing and junk dimensions. | chapter:0-2
@@ -267,7 +268,7 @@ Either as boolean columns in the fact (simple, fine on columnar engines) or as a
 TYPE: mcq
 TAG: modeling
 Q: What should you decide first when designing a fact table?
-A) The partition column
+A) The partition column, since it decides how queries scan
 B) The grain: what exactly one row represents
 C) The list of dimensions
 D) The surrogate key format
@@ -296,7 +297,7 @@ Q: Why does joining facts to an SCD2 dimension on `is_current = true` give wrong
 A) It is slower
 B) It labels every past fact with today's attribute values
 C) It drops current rows
-D) It creates duplicates
+D) It creates duplicates for every key that has more than one version
 ANS: B
 WHY: Use an as-of join on the key and the date inside the validity window.
 ---
@@ -331,7 +332,7 @@ TAG: modeling
 Q: In a referral graph, what must a recursive query guard against?
 A) NULL dates
 B) Cycles, with a depth limit or a visited set
-C) Too few edges
+C) Too few edges, which leave the recursion with nothing to join
 D) Sorting
 ANS: B
 WHY: A cycle makes naive recursion run forever.

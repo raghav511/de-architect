@@ -5,6 +5,7 @@ title: Loops
 goal: Five full mock loops in the style of the tier-1 companies in your bank, a demonstrable capstone, a rewritten resume and an application plan. You finish the program interviewing, not studying.
 hours: 10
 mockloop: 3
+quiz-same: ce5gpe 18ay3pv
 
 @@tickets
 1201 | learn | 1 | Chapter 12: the loops and the search | You know the round structure of your five target loops and have asked each recruiter about AI rules. | chapter
@@ -138,7 +139,7 @@ TAG: spark
 Q: A job's slowest stage has a median task time of 10 seconds and a maximum of 25 minutes. What do you check first?
 A) Driver memory
 B) Whether one key holds most of the rows after the shuffle
-C) The number of executors
+C) The number of executors, in case the stage is short of cores
 D) The Parquet compression codec
 ANS: B
 WHY: A long tail in one stage is the signature of skew. Confirm with shuffle read per task and row counts per key.
@@ -146,7 +147,7 @@ WHY: A long tail in one stage is the signature of skew. Confirm with shuffle rea
 TYPE: mcq
 TAG: streaming
 Q: Which combination gives an exactly-once result from Kafka into a table?
-A) Auto-commit and append
+A) Auto-commit of consumer offsets, and a plain append to the table whenever each batch arrives
 B) A replayable source, progress in a checkpoint, and an idempotent or transactional sink
 C) Disabling retries
 D) Using one partition only
@@ -159,14 +160,14 @@ Q: A fact table's totals are too high after a new join was added. What is the mo
 A) Compression
 B) The join changed the grain, multiplying rows
 C) Partition pruning
-D) A missing index
+D) A missing index on the join key of the new table
 ANS: B
 WHY: Joining to a table with several rows per key repeats fact rows. Aggregate the other table to the key first, or join at the correct grain.
 ---
 TYPE: mcq
 TAG: spark
 Q: After deleting a person's rows from an Iceberg table, what else is needed before the data is physically gone?
-A) Nothing
+A) Nothing, because the delete itself rewrites the affected data files and removes the old ones
 B) Expiring old snapshots and removing the files they referenced, once retention allows
 C) Renaming the table
 D) Adding a partition
@@ -179,14 +180,14 @@ Q: Which design change cuts Athena cost the most for a table queried by date?
 A) Converting row-format JSON to partitioned Parquet
 B) Adding more columns
 C) Running queries at night
-D) Using a larger instance
+D) Using a larger instance so each query scans data faster
 ANS: A
 WHY: Athena charges for bytes scanned. Columnar files and partition pruning on date reduce scanned bytes by orders of magnitude.
 ---
 TYPE: mcq
 TAG: design
 Q: In the first minutes of a design round, what matters most?
-A) Naming as many technologies as possible
+A) Naming as many technologies as possible, to show breadth before the interviewer asks
 B) Clarifying requirements and estimating scale, then writing them down
 C) Drawing the database schema
 D) Discussing cost in detail
@@ -196,7 +197,7 @@ WHY: Every later choice should be justified by the requirements and numbers you 
 TYPE: mcq
 TAG: ai
 Q: Your agent can investigate pipeline failures. Which control matters most for safety?
-A) A polite system prompt
+A) A firm system prompt telling it never to change data, never run destructive commands and always ask first
 B) It has no tool or credential that can change data; changes go through a separate path a person approves
 C) Running it only at night
 D) Using the largest model

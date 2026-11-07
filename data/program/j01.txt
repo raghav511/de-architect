@@ -4,6 +4,7 @@ n: 1
 title: Read Scala, understand the JVM, and run data platforms on Kubernetes
 goal: Read and review Scala and Java Spark code, explain what the JVM does to your jobs (heap, off-heap, garbage collection, the two kinds of out-of-memory), and know enough Kubernetes to run Spark and Flink for many teams on a shared platform. In the tier-1 postings this module was built from, Scala or Java appear in about 43%, Kubernetes in 14–29%, and Hadoop or Hive in 40% of the Bengaluru postings on LinkedIn (Walmart, Visa and others still run them).
 hours: 4.5
+quiz-same: 1m12rhv 1h8yk1
 
 @@tickets
 J101 | learn | 0.75 | Chapter part 1: why the JVM matters, Scala for Python engineers, the Spark Scala API | You can read a Scala Spark job aloud and say what each line does, including case classes, Option and Dataset[T]. | chapter:0-2
@@ -245,7 +246,7 @@ TAG: core
 Q: In PySpark, where does the work of a DataFrame transformation actually run?
 A) In the Python process on your laptop
 B) In JVM executors; Python only sends the plan, except for Python UDFs
-C) In a Python process on every executor, always
+C) In a Python process on every executor, always, since PySpark code is Python
 D) In the Kafka brokers
 ANS: B
 WHY: Built-in functions run inside the JVM. Python UDFs force rows into Python worker processes.
@@ -263,7 +264,7 @@ WHY: `===` builds a Column comparison; `==` and `equals` compare objects and ret
 TYPE: mcq
 TAG: core
 Q: An executor pod on Kubernetes is OOMKilled while the Spark UI shows the heap was not full. What is the most likely fix?
-A) Increase spark.executor.memory only
+A) Increase spark.executor.memory only, so the heap has more room before the limit
 B) Increase spark.executor.memoryOverhead (off-heap, Python workers, buffers)
 C) Use more partitions only
 D) Disable garbage collection
@@ -273,7 +274,7 @@ WHY: The container limit covers heap plus overhead; native and Python memory liv
 TYPE: mcq
 TAG: core
 Q: What does a Kubernetes memory request do?
-A) Caps the container's memory
+A) Caps the container's memory, killing it if usage goes above that amount
 B) Reserves that much on a node when scheduling the pod
 C) Sets the JVM heap size
 D) Nothing
@@ -285,7 +286,7 @@ TAG: core
 Q: Why are typed Dataset lambdas such as `ds.filter(_.fare > 100)` often slower than `ds.filter($"fare" > 100)`?
 A) Scala is slower than Python
 B) The optimiser cannot see inside the lambda, so it cannot push the filter down or prune columns
-C) Lambdas run on the driver
+C) Lambdas run on the driver, so every row has to be collected there before the filter is applied
 D) They use more partitions
 ANS: B
 WHY: Column expressions are visible to Catalyst; arbitrary code is not.
@@ -326,7 +327,7 @@ TAG: core
 Q: Why do millions of small files hurt an HDFS cluster in particular?
 A) HDFS cannot store files under 128 MB
 B) Every file and block is metadata held in the NameNode's memory, which runs out
-C) Small files are replicated more times
+C) Small files are replicated more times, so each one uses several times its own size on disk
 D) YARN refuses small files
 ANS: B
 WHY: The fix is compaction into large files, the same as on a lakehouse.

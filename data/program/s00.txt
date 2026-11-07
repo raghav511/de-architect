@@ -4,6 +4,7 @@ n: 0
 title: Start here: diagnostic
 goal: Find out where you stand before sprint 1, set up your machine, and learn how a sprint works. The scores you record here replace the guesses made from your resume.
 hours: 2.5
+quiz-same: 16pie4x jaojgw
 
 @@tickets
 001 | learn | 0.5 | Read how the program works | You can name the steps a module contains, the daily time budget, and the two rules about using AI. | chapter
@@ -165,7 +166,7 @@ WHY: `COUNT(*)` counts rows. `COUNT(column)` counts only non-NULL values of that
 TYPE: mcq
 TAG: sql
 Q: `SELECT ... FROM riders r LEFT JOIN trips t ON t.rider_id = r.rider_id WHERE t.status = 'completed'`. What happens to riders who have no trips?
-A) They appear with NULL trip columns
+A) They still appear once, with NULL trip columns, because it is a LEFT JOIN
 B) They are removed, so the query behaves like an inner join
 C) The query fails
 D) They appear once per status value
@@ -207,7 +208,7 @@ WHY: Grouping needs all rows with the same key on the same partition, so data mu
 TYPE: mcq
 TAG: spark
 Q: You write five DataFrame transformations and nothing runs. Why?
-A) Spark is waiting for more memory
+A) Spark is waiting for enough free executor memory before it starts
 B) Transformations are lazy and only an action triggers execution
 C) The driver is down
 D) DataFrames must be cached first
@@ -217,7 +218,7 @@ WHY: Spark builds a plan from transformations and executes it only when an actio
 TYPE: mcq
 TAG: spark
 Q: When is a broadcast join the right choice?
-A) Both tables are very large
+A) Both tables are very large and already partitioned on the join key
 B) One table is small enough to be copied to every executor
 C) The join key is skewed on both sides
 D) Only for outer joins
@@ -244,8 +245,8 @@ TYPE: mcq
 TAG: streaming
 Q: In stream processing, what is a watermark for?
 A) Encrypting messages
-B) Deciding how long to wait for late events before finalising a window and dropping its state
-C) Marking the last committed offset
+B) Deciding how long to wait for late events before closing a window and dropping its state
+C) Marking the last committed offset, so a restarted job knows where to resume reading the stream
 D) Limiting producer throughput
 ANS: B
 WHY: A watermark is the engine's estimate of how far event time has progressed. It bounds lateness so that state does not grow forever.
@@ -273,7 +274,7 @@ WHY: Declaring the grain, such as one row per completed trip, is the first decis
 TYPE: mcq
 TAG: spark
 Q: Why is Parquet preferred over CSV for analytics?
-A) It is human-readable
+A) It is human-readable, so analysts can inspect files without special tools
 B) It is columnar, so a query reads only the columns and row groups it needs
 C) It needs no schema
 D) It cannot be compressed
@@ -283,7 +284,7 @@ WHY: Columnar layout with per-column statistics allows column pruning and predic
 TYPE: mcq
 TAG: cloud
 Q: What makes a pipeline task idempotent?
-A) It runs only once
+A) It runs exactly once per schedule interval and is never retried
 B) Running it again for the same input leaves the same result
 C) It has no dependencies
 D) It never fails
@@ -299,7 +300,7 @@ WHY: With `catchup=True` the scheduler creates a run for every missed interval. 
 TYPE: mcq
 TAG: design
 Q: How do production systems usually achieve an exactly-once result end to end?
-A) By using a network that never fails
+A) By using a network that never drops or duplicates a message between services
 B) At-least-once delivery combined with an idempotent or transactional sink
 C) By disabling retries
 D) By sending each message twice
@@ -309,7 +310,7 @@ WHY: Delivery can always be retried, so duplicates are possible. The result is m
 TYPE: mcq
 TAG: ai
 Q: In a tool-using agent, what happens when the model decides to call a tool?
-A) The model executes the tool on its own servers
+A) The model executes the tool itself on its own servers, then folds the output into its next reply
 B) The model returns a structured request, your code runs the tool, and you send the result back
 C) The conversation ends
 D) The tool result is guessed by the model
@@ -319,7 +320,7 @@ WHY: The model only asks. Your program executes the call and returns the output 
 TYPE: mcq
 TAG: ai
 Q: What is retrieval-augmented generation mainly for?
-A) Training a new model
+A) Training a new model on your documents so it can answer from memory without any lookups
 B) Fetching relevant documents at question time and giving them to the model as context
 C) Making responses shorter
 D) Replacing the database

@@ -4,6 +4,7 @@ n: 10
 title: MCP: connect Claude to your data tools, read-only first
 goal: Connect Claude Code to tools through MCP, build a tiny read-only warehouse server in Python, and apply least privilege to every connection.
 hours: 2
+quiz-same: 1g2uh00 5pf6f
 
 @@tickets
 C1001 | learn | 0.5 | Lesson: what MCP is, scopes, and safe connections | You can explain MCP servers, tools and scopes, and why a database connection should be read-only. | chapter
@@ -100,7 +101,7 @@ In ~/cc-sandbox (with Python 3.10 or newer):
 TYPE: mcq
 TAG: ai
 Q: Where should "this agent can only read the warehouse" be enforced?
-A) In the tool description text
+A) In the tool description text, which tells the model to run only SELECT queries
 B) In the database connection or role (read-only mode, SELECT-only grants)
 C) In CLAUDE.md
 D) In the prompt
@@ -121,8 +122,8 @@ TYPE: mcq
 TAG: ai
 Q: Why connect only the MCP servers you actually use?
 A) Servers slow down your Mac
-B) Every server's tool descriptions are added to the context, costing tokens and attention in each session
-C) Claude Code allows only one server
+B) Each server's tool descriptions fill the context, costing tokens and attention every session
+C) Claude Code allows only one connected server per project, and any extra ones are silently ignored
 D) MCP servers expire
 ANS: B
 WHY: Fixed context overhead adds up across every session.

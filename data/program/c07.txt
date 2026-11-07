@@ -4,6 +4,7 @@ n: 7
 title: Set up projects for AI: CLAUDE.md, slash commands and skills
 goal: Make a repo AI-ready: a lean CLAUDE.md, shared settings, and reusable slash commands and skills for the workflows your team repeats.
 hours: 2
+quiz-same: qrsqz2 6ncsmn
 
 @@tickets
 C701 | learn | 0.5 | Lesson: project memory and reusable workflows | You can say what belongs in CLAUDE.md, a slash command and a skill, and where each file lives. | chapter
@@ -98,7 +99,7 @@ TAG: ai
 Q: Which belongs in a project's CLAUDE.md?
 A) A summary of PEP 8
 B) "EU amounts use a decimal comma; keep the US format working"
-C) "Always write high-quality code"
+C) "Always write high-quality code that follows best practices and is well tested"
 D) The full history of the project since 2019
 ANS: B
 WHY: A specific, non-obvious project fact that changes what Claude does. The others are generic, known, or irrelevant to decisions.
@@ -116,7 +117,7 @@ WHY: /review-pipeline pipeline/load.py puts pipeline/load.py where $ARGUMENTS ap
 TYPE: mcq
 TAG: ai
 Q: How does Claude decide to use a skill you did not name?
-A) It loads every skill fully at the start of each session
+A) It loads the full body of every installed skill into the context at the start of each new session
 B) It matches the task against the skill's name and description, then loads the body when relevant
 C) Only when you type /skills
 D) Randomly

@@ -4,6 +4,7 @@ n: 8
 title: Two platforms, one set of tables
 goal: The same trip data is worked on in Databricks and in Snowflake. You know how each stores and prunes data, what each costs, how one table can serve both, and how to delete one rider's data from everywhere when the law requires it.
 hours: 10
+quiz-same: 1uv1hmu 1i99a05
 
 @@tickets
 801 | learn | 2 | Chapter 8 and the readings | You can explain how Delta and Snowflake each store a table, and what really happens to the bytes when a row is deleted. | chapter
@@ -280,9 +281,9 @@ The skill here is refusing a false choice politely and replacing it with a decis
 TYPE: mcq
 TAG: spark
 Q: What gives a Delta table atomic commits on object storage?
-A) Parquet's footer
-B) An ordered transaction log in `_delta_log`, where each commit lists files added and removed
-C) Locks held on the bucket
+A) Parquet's footer, which records which row groups belong to each committed write
+B) An ordered transaction log in `_delta_log`; each commit lists files added and removed
+C) A lock file each writer creates in the table folder first, and deletes once its data files are written
 D) The Hive Metastore
 ANS: B
 WHY: Readers reconstruct the table from the log. A write becomes visible only when its commit file is created, and only one writer can create a given commit number.
@@ -291,8 +292,8 @@ TYPE: mcq
 TAG: spark
 Q: You run `VACUUM` on a Delta table with the default settings. What is the effect?
 A) All data is deleted
-B) Files no longer referenced by any version within the last 7 days are physically removed, ending time travel beyond that
-C) Small files are merged
+B) Files not referenced by any version from the last 7 days are deleted, ending time travel beyond that
+C) Small files are merged into larger ones, while the replaced files stay on storage for 7 more days for time travel
 D) Statistics are refreshed
 ANS: B
 WHY: `VACUUM` removes unreferenced files older than the retention period, which defaults to 7 days. Merging small files is `OPTIMIZE`.
@@ -301,8 +302,8 @@ TYPE: mcq
 TAG: spark
 Q: What does Z-ordering optimise?
 A) Write throughput
-B) Data skipping, by placing rows with nearby values of the chosen columns in the same files
-C) The size of the transaction log
+B) Data skipping, by keeping rows with close values of chosen columns in the same files
+C) The size of the transaction log, by merging many small commit files into a single larger file
 D) Join order
 ANS: B
 WHY: Co-locating related values tightens each file's min and max range for those columns, so filters skip more files.
@@ -310,7 +311,7 @@ WHY: Co-locating related values tightens each file's min and max range for those
 TYPE: mcq
 TAG: cloud
 Q: Which compute should a nightly production job use on Databricks?
-A) An all-purpose cluster shared with notebooks
+A) An all-purpose cluster shared with notebooks, so it is already warm when the job starts
 B) A job cluster created for the run and terminated afterwards
 C) A developer's laptop
 D) A SQL warehouse of the largest size, always on
@@ -320,8 +321,8 @@ WHY: Job clusters are isolated, start clean, stop when the run ends, and are bil
 TYPE: mcq
 TAG: cloud
 Q: What does `CREATE TABLE trips_test CLONE trips` do in Snowflake?
-A) Copies all data to new storage immediately
-B) Creates a new table whose metadata points to the same micro-partitions; storage is used only as the tables diverge
+A) Copies all micro-partitions to new storage straight away, so changes to `trips` cannot reach the clone
+B) Creates a table whose metadata points to the same micro-partitions; storage grows only as they diverge
 C) Creates a view
 D) Exports the table to a stage
 ANS: B
@@ -330,7 +331,7 @@ WHY: Zero-copy cloning is a metadata operation. Micro-partitions are immutable, 
 TYPE: mcq
 TAG: cloud
 Q: At 9 a.m., many Snowflake users run short queries and they queue. Each query is fast once it starts. What is the right fix?
-A) A larger warehouse size
+A) A larger warehouse size, so that each queued query gets more memory and threads
 B) A multi-cluster warehouse that adds clusters under concurrency
 C) A clustering key
 D) More Time Travel retention
@@ -341,16 +342,16 @@ TYPE: mcq
 TAG: modeling
 Q: A rider's rows are removed from a Delta table with `DELETE`. Is the data physically gone?
 A) Yes, immediately
-B) No. Older data files still hold the rows until `VACUUM` removes them after the retention period
-C) Yes, once the cluster restarts
-D) Only if the table is partitioned
+B) No. Older data files still hold the rows until `VACUUM` removes them after retention
+C) Yes, once the cluster restarts and the cached copies of the deleted files are cleared
+D) Only if the table is partitioned, because the delete then drops whole partition folders
 ANS: B
 WHY: A delete creates a new table version. Previous files remain for time travel until they are vacuumed, so erasure is not complete until then.
 ---
 TYPE: mcq
 TAG: ai
 Q: A nightly job classifies two million text values with a language model. Which change reduces cost the most?
-A) A longer prompt
+A) A longer prompt with more examples, so the model gets each answer right first time
 B) Processing only new rows and calling the model once per distinct input
 C) Running it twice to be sure
 D) Returning longer explanations

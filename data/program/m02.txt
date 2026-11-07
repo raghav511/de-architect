@@ -4,6 +4,7 @@ n: 2
 title: Fact modelling: grain, the four fact types, correctness at scale and reduced facts
 goal: Design fact tables that stay correct and cheap at billions of rows: the right fact type for each question, additive and non-additive measures, deduplication and idempotent loads, ledgers for money, and reduced facts and date lists that cut data volume and shuffles by an order of magnitude.
 hours: 5
+quiz-same: 1ghr6qn j68zcn
 
 @@tickets
 M201 | learn | 0.75 | Chapter part 1: what a fact is, the four fact types, getting facts right | You can name the four fact types with an example each, and classify a measure as additive, semi-additive or non-additive. | chapter:0-2
@@ -221,7 +222,7 @@ WHY: Starting from activity would silently drop the zero days.
 TYPE: mcq
 TAG: modeling
 Q: Which daily load is idempotent?
-A) INSERT INTO fact SELECT the day's rows
+A) INSERT INTO fact SELECT the day's rows, filtered on the load date
 B) INSERT OVERWRITE the day's partition, or MERGE on the grain key
 C) Appending to a CSV
 D) Running the job only once
@@ -231,7 +232,7 @@ WHY: Reruns replace or match existing rows instead of adding copies.
 TYPE: mcq
 TAG: modeling
 Q: In a ledger, how is a disputed charge recorded?
-A) Update the original amount to 0
+A) Update the original amount to 0 and note the dispute date
 B) Delete the original row
 C) Append a reversing entry referencing the original
 D) Ignore it
@@ -241,7 +242,7 @@ WHY: Append-only keeps an audit trail and reproducible history.
 TYPE: mcq
 TAG: modeling
 Q: What does a reduced (monthly array) fact mainly save?
-A) Dimension joins
+A) Dimension joins, by copying every attribute into the array
 B) Rows scanned and data shuffled for long-window queries
 C) The need for dates
 D) Compression

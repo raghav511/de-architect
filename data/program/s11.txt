@@ -5,6 +5,7 @@ title: In front of the customer
 goal: You can take a vague business problem, break it down, build the smallest useful thing on real data in a day, and explain it to someone who is not an engineer. Your stories, your resume and your product sense are ready for the non-technical half of every loop. The sprint ends with your second full mock loop.
 hours: 10
 mockloop: 2
+quiz-same: 1kzl5gy 1icg1cf
 
 @@tickets
 1101 | learn | 1.75 | Chapter 11 and the readings | You can run the decomposition method on a new prompt and explain the three common shapes of a forward deployed interview loop. | chapter
@@ -204,14 +205,14 @@ Q: In a decomposition round you are asked "why are deliveries running late?" Wha
 A) Draw a streaming architecture
 B) Clarify who is asking, what decision the answer will drive, and how "late" is defined
 C) Propose a machine learning model
-D) Ask which cloud provider they use
+D) Ask which cloud provider and warehouse they use, so you know which managed services you can draw on
 ANS: B
 WHY: The round is weighted toward structured thinking about the user and the problem. Jumping to technology is the most commonly reported way to fail it.
 ---
 TYPE: mcq
 TAG: behavioral
 Q: What is the smallest valuable build for a customer engagement?
-A) A general platform that can answer any future question
+A) A general platform that can answer any future question, so nothing has to be rebuilt later
 B) The narrowest thing that gives one user what they need for one decision, on real data
 C) A slide deck of the planned architecture
 D) Whatever can be built without talking to the customer
@@ -224,7 +225,7 @@ Q: What does the ratio of daily active users to monthly active users measure?
 A) Revenue per user
 B) Stickiness: how often monthly users come back
 C) Conversion rate
-D) Churn rate
+D) Churn rate: the share of last month's users who did not return this month
 ANS: B
 WHY: A ratio near 1 means monthly users use the product almost daily. Near 0.1 means they come about three days a month.
 ---
@@ -234,7 +235,7 @@ Q: After a recommendation change, click-through rate rises 10% and conversion pe
 A) Click-through rate
 B) Conversion per click
 C) Purchases, or revenue, per impression
-D) Number of recommendations shown
+D) Number of recommendations shown to each user per session
 ANS: C
 WHY: Per-click conversion can fall simply because more low-intent users click. Outcomes per impression combine both effects into the one that matters.
 ---
@@ -242,8 +243,8 @@ TYPE: mcq
 TAG: modeling
 Q: A test was planned as a 50/50 split. With a million users, the observed split is 53/47. What should you conclude?
 A) Variant B is better
-B) There is a sample ratio mismatch, so assignment or logging is broken and the results cannot be trusted yet
-C) Nothing; small differences are normal
+B) A sample ratio mismatch: assignment or logging is broken, so the results cannot be trusted yet
+C) Nothing; small differences between arms are normal and a 3-point gap is within chance at this size
 D) Extend the test by a week
 ANS: B
 WHY: At that sample size a 3-point imbalance is far outside chance. Something is excluding or duplicating users in one arm, which biases every metric.
@@ -252,8 +253,8 @@ TYPE: mcq
 TAG: modeling
 Q: An analyst checks an A/B test every day and stops it the first day the p-value drops below 0.05. What is the problem?
 A) None
-B) Repeated checking with early stopping greatly increases the chance of a false positive
-C) The p-value cannot be computed daily
+B) Repeated checking with early stopping greatly raises the chance of a false positive
+C) The p-value cannot be computed daily, only once the full planned sample has been collected
 D) Tests must run for exactly one day
 ANS: B
 WHY: Each look is another chance for noise to cross the threshold. Fix the sample size or duration in advance, or use a method designed for sequential testing.

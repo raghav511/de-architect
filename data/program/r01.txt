@@ -4,6 +4,7 @@ n: 1
 title: Leading as an architect: strategy, design docs, migrations, cost and influence
 goal: Do the parts of a staff or architect job that tier-1 postings ask for most and the earlier modules only touch: write the design doc and the multi-year strategy, run a migration with proof that the numbers match, own reliability and cost across teams, lead without authority, mentor, and tell those stories well in the behavioural and hiring-manager rounds.
 hours: 5
+quiz-same: 1s7otpf 1wgzd89
 
 @@tickets
 R101 | learn | 0.75 | Chapter part 1: what changes at staff level, writing that moves decisions, migrations | You can outline a design doc and an ADR from memory and list the six phases of a safe migration. | chapter:0-2
@@ -173,7 +174,7 @@ Q: Which section most distinguishes a strong design doc from a weak one?
 A) A long background section
 B) Alternatives considered, with why each was rejected, and explicit non-goals
 C) Many diagrams
-D) A list of every technology used
+D) A complete list of every technology used, with the version and licence of each one
 ANS: B
 WHY: Reviewers need to see the trade-offs and the boundaries of the decision.
 ---
@@ -183,7 +184,7 @@ Q: What is the gate for cutting a consumer over to a migrated table?
 A) The new pipeline has run once
 B) Reconciliation within an agreed tolerance for a sustained period, with every difference explained
 C) The old table is deleted
-D) The team lead approves verbally
+D) The team lead approves verbally once the new table has been shown in a demo and nobody has objected
 ANS: B
 WHY: Numbers that match, with differences explained, are what stakeholders can sign off on.
 ---
@@ -216,7 +217,7 @@ WHY: Recovery point objective is data loss; recovery time objective is downtime.
 TYPE: mcq
 TAG: arch
 Q: The warehouse bill grew 40% in a quarter. What do you do first?
-A) Ask every team to cut usage by 40%
+A) Ask every team to cut usage by 40% so the bill returns to last quarter's level
 B) Attribute cost to teams, tables and jobs, and look at the top spenders
 C) Move to another cloud
 D) Delete old tables at random

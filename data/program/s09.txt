@@ -4,6 +4,7 @@ n: 9
 title: Reliability
 goal: Failures stop being silent. Contracts, tests and observability catch bad data before anyone reads it, CI checks every change, and the capstone begins: an on-call agent that reads an Airflow failure, gathers evidence and reports a diagnosis to Slack.
 hours: 10
+quiz-same: 1p5irtv uzjizb
 
 @@tickets
 901 | learn | 1.75 | Chapter 9 and the readings | You can name the five ways data fails silently and the check that catches each. | chapter
@@ -277,7 +278,7 @@ Q: Which problem would a `not_null` and `unique` test on `trip_id` fail to catch
 A) Duplicate trip ids
 B) Null trip ids
 C) 12% of yesterday's trips missing entirely
-D) A trip id appearing twice in one load
+D) A trip id appearing twice in one load, with different fares
 ANS: C
 WHY: The rows that remain are still unique and not null. Missing data needs a volume check against an expected range or against the source.
 ---
@@ -286,7 +287,7 @@ TAG: cloud
 Q: In a write-audit-publish pipeline, the audit step fails. What do consumers see?
 A) The new, failed data
 B) The previous published data, unchanged
-C) An empty table
+C) An empty table until the audit is rerun and passes
 D) Half of the new data
 ANS: B
 WHY: New data is written where consumers cannot see it and published only after the audit passes. A failed audit leaves the last good version in place.
@@ -307,7 +308,7 @@ Q: A dbt project has 900 models. A pull request changes one. What keeps CI fast?
 A) Skipping tests
 B) Building only modified models and their descendants, reading unchanged parents from production
 C) Running CI weekly
-D) Building everything on a larger warehouse
+D) Building all 900 models on every pull request, on a larger warehouse so the full run finishes sooner
 ANS: B
 WHY: State comparison selects the changed models and everything downstream of them. Unchanged upstream models are referenced from production, so they need not be rebuilt.
 ---
@@ -336,7 +337,7 @@ TAG: cloud
 Q: The objective is "the trips mart is complete by 07:00 on 99% of days". In a 30-day month it was late on 2 days. What does that mean?
 A) The objective was met
 B) The error budget of about 0.3 late days was exceeded
-C) The objective does not apply to months
+C) The objective does not apply to months, only to a full year of runs
 D) Nothing; two days is noise
 ANS: B
 WHY: 1% of 30 days is 0.3 days, so even one late day exceeds the budget. That is a signal to prioritise reliability work over new features.
@@ -345,9 +346,9 @@ TYPE: mcq
 TAG: ai
 Q: What is the best evaluation set for your on-call agent?
 A) A few made-up error messages
-B) Your past incidents with known root causes, plus healthy runs where the correct answer is that nothing is wrong
+B) Your past incidents with known root causes, plus healthy runs where the agent should find nothing wrong
 C) Whatever failures happen next week
-D) A public benchmark of programming questions
+D) A public benchmark of programming questions, because it is large, scored automatically and easy to compare
 ANS: B
 WHY: Real incidents with known answers measure what matters. Healthy runs catch an agent that invents problems, which is the most common failure of diagnostic agents.
 ---

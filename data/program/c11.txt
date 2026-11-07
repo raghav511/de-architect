@@ -4,6 +4,7 @@ n: 11
 title: Subagents and parallel work: agentic patterns in practice
 goal: Use subagents to keep context small and get focused expertise, run independent work in parallel with git worktrees, and choose the right agentic pattern for a task.
 hours: 2
+quiz-same: 7i0qhf 1cm0crb
 
 @@tickets
 C1101 | learn | 0.5 | Lesson: subagents, worktrees and orchestration patterns | You can explain when a subagent helps, how to define one, and three multi-agent patterns with their costs. | chapter
@@ -90,7 +91,7 @@ TAG: ai
 Q: What is the main context benefit of delegating a broad code search to a subagent?
 A) The subagent is a smarter model
 B) The search happens in the subagent's own context; only a summary returns to the main conversation
-C) Subagents are free
+C) Subagents are free, because the tokens they use are not counted against your usage or plan limits
 D) It disables permissions
 ANS: B
 WHY: Your main context, re-sent every turn, stays small.
@@ -108,7 +109,7 @@ WHY: Independent files and no dependency between results.
 TYPE: mcq
 TAG: ai
 Q: A reviewer subagent's definition should usually...
-A) Have every tool, including Edit and Write
+A) Have every tool, including Edit and Write, so it can fix any problem it finds during the review
 B) Have read-only tools plus the test command, and a concrete review checklist and output format
 C) Have no description
 D) Use the largest model always

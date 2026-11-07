@@ -4,6 +4,7 @@ n: 6
 title: Concurrency and performance: threads, processes, asyncio, and measuring first
 goal: Choose the right concurrency model for a job (threads for waiting, processes for computing, asyncio for thousands of API calls), respect rate limits, split and merge work, and find the slow part by measuring rather than guessing.
 hours: 5
+quiz-same: qtg7e4 1n8y973
 
 @@tickets
 P601 | learn | 0.75 | Chapter part 1: I/O versus CPU, threads, the GIL, processes | You can say which model fits an API crawl, a CPU-heavy parse and a mix, and what the GIL does and does not block. | chapter:0-3
@@ -287,14 +288,14 @@ Q: A job makes 5,000 HTTP calls, each waiting about 200 ms for the server. What 
 A) A ProcessPoolExecutor with 5,000 processes
 B) Threads or asyncio with a concurrency limit
 C) A faster CPU
-D) A single loop; concurrency cannot help
+D) A single loop; concurrency cannot help with network calls in Python
 ANS: B
 WHY: The work is waiting, not computing; overlap the waits. Cap concurrency to respect the server's limits.
 ---
 TYPE: mcq
 TAG: py
 Q: What does the GIL prevent in standard CPython?
-A) Running more than one process
+A) Running more than one Python process on the same machine at the same time
 B) More than one thread executing Python bytecode at the same instant
 C) Network calls from threads
 D) Using more than 4 GB of memory
@@ -320,7 +321,7 @@ WHY: Blocking calls freeze the single thread. Use async libraries or `asyncio.to
 TYPE: mcq
 TAG: py
 Q: Parsing 200 large JSON files in pure Python is CPU-bound. What speeds it up on an 8-core machine?
-A) ThreadPoolExecutor
+A) ThreadPoolExecutor, since threads share memory and avoid copying the parsed data
 B) ProcessPoolExecutor, sending file paths and returning small summaries
 C) asyncio
 D) More logging
@@ -330,7 +331,7 @@ WHY: Processes bypass the GIL. Better still, a vectorised engine (DuckDB or Pola
 TYPE: mcq
 TAG: py
 Q: What does a token bucket's capacity control?
-A) The average rate
+A) The average rate: a larger capacity lets more calls through per second in the long run
 B) How large a burst is allowed before calls are limited to the refill rate
 C) The number of threads
 D) The timeout

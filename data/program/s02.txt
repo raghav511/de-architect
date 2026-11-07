@@ -4,6 +4,7 @@ n: 2
 title: Storage that survives growth
 goal: Raw trip events move from loose Parquet files into an Iceberg table that Spark writes and Trino reads. You measure a query before and after partitioning and compaction, and an Airflow DAG keeps the table healthy.
 hours: 10
+quiz-same: uiz267 g89f0g jo389j 1sxtzhk
 
 @@tickets
 201 | learn | 2 | Chapter 2 and the readings | You can explain, step by step, how a query finds its files in a Hive table and in an Iceberg table. | chapter
@@ -371,8 +372,8 @@ Notice that every question has a number for an answer. A forward deployed engine
 TYPE: mcq
 TAG: spark
 Q: Where does a Parquet reader find the statistics that let it skip data?
-A) In a separate `.stats` file next to the data
-B) In the file footer, which holds min, max and null count for each column chunk of each row group
+A) In a separate `.stats` file written next to each data file, which the reader must open first
+B) In the file footer, which holds min, max and null count per column chunk of each row group
 C) In the first row of each column
 D) Only in the Hive Metastore
 ANS: B
@@ -401,7 +402,7 @@ WHY: Avro is row-based with compact binary encoding and well-defined schema reso
 TYPE: mcq
 TAG: spark
 Q: Someone proposes partitioning the trips table by `rider_id`. There are five million riders. What is the problem?
-A) Partition columns must be dates
+A) Partition columns must be dates, so an id column cannot be used to partition
 B) It creates millions of partitions, each holding tiny files
 C) Riders cannot be hashed
 D) No problem; this is ideal
@@ -411,7 +412,7 @@ WHY: High-cardinality partition columns produce huge numbers of small files and 
 TYPE: mcq
 TAG: spark
 Q: You run `DROP TABLE` on a Hive **external** table. What happens?
-A) Data files and metadata are both deleted
+A) Data files and metadata are both deleted, as for a managed table
 B) Only the metastore entry is removed; the files stay
 C) The files are moved to trash
 D) The command fails
@@ -423,7 +424,7 @@ TAG: spark
 Q: What makes an Iceberg commit atomic?
 A) All data files are written in one HTTP request
 B) The catalog swaps the table's pointer from the old metadata file to the new one in a single operation
-C) Readers are blocked while a write is in progress
+C) Readers are blocked by a table-level lock while a write is in progress, so they never see a partial commit
 D) Files are renamed from a temporary directory
 ANS: B
 WHY: New data and metadata files are written first and are invisible. The commit is one compare-and-swap of the pointer. If another writer got there first, the swap fails and the writer retries.
@@ -442,8 +443,8 @@ TYPE: mcq
 TAG: ai
 Q: You asked a model to return JSON and it has done so correctly a hundred times. Why validate the output against a schema anyway?
 A) Validation makes the model faster
-B) Model output is untrusted input, and validation turns a silent format error into an explicit failure you can retry or route
-C) The API requires it
+B) Model output is untrusted input; validation turns a silent format error into an explicit failure to retry or route
+C) The API requires it, and rejects your next request if the previous JSON reply was not checked against a schema first
 D) It reduces token cost
 ANS: B
 WHY: A pipeline that assumes the shape will fail somewhere unrelated, later. Validation at the boundary fails early, with a message you can send back to the model for one corrected attempt.
@@ -462,17 +463,17 @@ TYPE: mcq
 TAG: spark
 Q: A merge-on-read Iceberg table receives CDC updates every minute. Queries on it get slower every day. What is the most likely cause?
 A) The snapshot pointer is swapped too often
-B) Delete files pile up and every read must merge them with the data files until compaction folds them in
+B) Delete files pile up, and every read merges them with the data files until compaction
 C) Merge-on-read tables cannot use column statistics
-D) Hidden partitioning stops working after many commits
+D) Hidden partitioning stops working after many commits, so every query scans the whole table
 ANS: B
 WHY: Merge-on-read makes writes cheap by deferring work to readers. Without regular compaction (`rewrite_data_files`), each query applies more and more delete files.
 ---
 TYPE: mcq
 TAG: spark
 Q: You compact a table full of small files, but the bucket's storage does not go down. Why?
-A) Compaction only rewrites manifests, not data files
-B) The old small files are still referenced by older snapshots, so they stay until those snapshots are expired
+A) Compaction only rewrites the manifests and leaves every data file in place, so nothing is removed
+B) Older snapshots still reference the small files, so they stay until those snapshots are expired
 C) Object storage never frees space for deleted files
 D) Compaction writes duplicates on purpose for safety
 ANS: B

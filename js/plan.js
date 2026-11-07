@@ -414,9 +414,11 @@ function vPath(m) {
 /* a module tab is finished when you tapped "Done, next" on it, or when every plan step that opens it is ticked */
 const TABS2 = [['chapter', 'Chapter'], ['readings', 'Readings'], ['lab', 'Labs'], ['practice', 'Warm-ups']];
 function tabUnits(m, tab, sc) { return (sc || schedule()).units.filter(u => u.mid === m && (u.href === '#/learn/' + m + '/' + tab || u.href.startsWith('#/learn/' + m + '/' + tab + '/'))); }
+/* earlier fingerprints of a module's quiz that differ only in the wording of wrong options (`quiz-same:` in @@meta, checked by tools/validate.py); a quiz you finished stays finished */
+function quizSame(m) { return String((((DATA.sprints[m] || {}).meta) || {})['quiz-same'] || '').split(/\s+/).filter(Boolean); }
 function tabHash(m, tab) { const R = (DATA.sprints[m] || {}).raw || {}; return fnv(R[tab === 'lab' ? 'lab' : tab] || ''); }
 /* a tab you finished whose text changed since is not finished any more */
-function tabDone(m, tab, sc) { const f = (S.tabs || {})[m + ':' + tab]; if (f && (!f.h || f.h === tabHash(m, tab))) return true; const us = tabUnits(m, tab, sc); return us.length > 0 && us.every(u => u.isDone); }
+function tabDone(m, tab, sc) { const f = (S.tabs || {})[m + ':' + tab]; if (f && (!f.h || f.h === tabHash(m, tab) || (tab === 'quiz' && quizSame(m).includes(f.h)))) return true; const us = tabUnits(m, tab, sc); return us.length > 0 && us.every(u => u.isDone); }
 async function vLearn(m, tab, range) {
   m = MOD[midOf(m)] ? midOf(m) : curMid();
   const sc = schedule();
@@ -698,6 +700,7 @@ function reconcileContent() {
   units.forEach(u => {
     const h = cv.units[u.uid]; if (!h || !tracked(u)) return;
     const now = unitHash(u); if (now === h) return;
+    if (u.kind === 'quiz' && quizSame(u.mid).includes(h)) { cv.units[u.uid] = now; return; }
     delete cv.units[u.uid];
     if (!doneDate(u) && !S.done[u.uid]) return;
     S.archive.done[u.uid] = { at: S.done[u.uid] || today, h, when: Date.now() };
