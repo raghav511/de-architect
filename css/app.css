@@ -671,3 +671,40 @@ a.srcl:hover{background:var(--teal-l)}
 .authcard{max-width:460px;width:100%;gap:14px}.authcard h1{font-size:26px;margin:0}
 .authbtn{min-height:44px;display:flex;align-items:center}
 .authtop{white-space:nowrap}
+/* interview loop (#/loop, js/loop.js) */
+.lpgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.lpround{text-decoration:none;color:inherit;gap:6px}.lpround:hover{border-color:var(--teal)}
+.lpround .lpt{font-family:var(--display);font-size:18px}
+.lpbar{height:8px;border-radius:99px;background:var(--line);overflow:hidden}.lpbar i{display:block;height:100%;background:var(--teal);border-radius:99px}
+.lplook{display:flex;flex-direction:column;gap:2px;padding:8px 0;border-top:1px solid var(--line)}.lplook:first-child{border-top:0;padding-top:0}
+.lpta{min-height:84px;border:1px solid var(--line2);border-radius:10px;font-family:var(--body);font-size:16px;padding:10px;width:100%;background:var(--card);color:var(--ink)}
+.lpans .lpta{min-height:140px}
+.lpq{font-size:17px}
+.lpf{gap:4px}
+.lptimer{font-variant-numeric:tabular-nums}.lptimer.over{border-color:var(--amber-b);color:var(--amber-d);background:var(--amber-xl)}
+.lpchecks{display:flex;flex-wrap:wrap;gap:6px 14px}.lpchk{display:inline-flex;align-items:center;gap:6px;min-height:36px;font-size:15px}.lpchk input{width:20px;height:20px;accent-color:var(--teal)}
+.lppitch{font-size:17px;line-height:1.55;white-space:pre-wrap;padding:12px;border-radius:10px;background:var(--soft);border:1px solid var(--line)}
+.lpcode{font-family:var(--mono);font-size:13.5px;line-height:1.5;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:10px;margin:0;overflow-x:auto;white-space:pre;color:var(--ink)}
+.lpcode.bad{color:var(--red-d);background:var(--red-l)}
+.lplines{display:flex;flex-direction:column;padding:6px 0}
+.lpln{display:flex;gap:10px;align-items:baseline;min-width:100%;width:max-content;min-height:32px;padding:3px 10px;border:0;border-left:3px solid transparent;background:transparent;font:inherit;color:inherit;text-align:left;white-space:pre;cursor:pointer}
+.lpln:not([disabled]):hover{background:var(--blue-l)}.lpln[disabled]{cursor:default;color:inherit;opacity:1}
+.lpln.hit{background:var(--red-l);border-left-color:var(--red)}.lpln.miss{background:var(--amber-xl);border-left-color:var(--amber-b)}
+.lpno{color:var(--muted);min-width:1.6em;text-align:right;user-select:none}
+.lpfix{min-height:180px;font-family:var(--mono);font-size:14px;white-space:pre;overflow-x:auto;border:1px solid var(--line2);border-radius:10px;padding:10px;width:100%;tab-size:4;background:var(--card);color:var(--ink)}
+.lptest{font-size:14.5px}.lptest.ok b{color:var(--teal-d)}.lptest.bad b{color:var(--red-d)}
+.lpopt{justify-content:flex-start;text-align:left;white-space:normal;height:auto;min-height:44px;padding:8px 14px;width:100%}
+.lpopt.ok,.lpopt.ok[disabled]{background:var(--teal-l);border-color:var(--teal);color:var(--teal-d);opacity:1}
+.lpopt.bad,.lpopt.bad[disabled]{background:var(--red-l);border-color:var(--red);color:var(--red-d);opacity:1}
+.lpsteps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
+.lptopic summary{display:flex;gap:8px;align-items:center;cursor:pointer;font-size:17px;min-height:32px}
+.lpestrow{gap:8px;padding:6px 0;border-top:1px solid var(--line)}
+.lpnum{width:9em;justify-content:flex-start;font-variant-numeric:tabular-nums}.lpnum.ok{border-color:var(--teal);background:var(--teal-xl)}.lpnum.bad{border-color:var(--red);background:var(--red-l)}
+.lpunit{min-width:5em}
+.lpcov{display:flex;flex-wrap:wrap;gap:6px}
+.lpstory{width:100%;background:var(--card);text-align:left;font:inherit;color:inherit;cursor:pointer}
+.lptitle{width:100%;justify-content:flex-start;font-size:16px}
+.lptag[aria-pressed=true]{background:var(--navy);border-color:var(--navy);color:var(--bg)}
+.lpfit summary{cursor:pointer;font-weight:600}
+.lpnav{position:sticky;top:0;z-index:2;background:var(--bg);padding:4px 0}
+@media (max-width:560px){.lpgrid{grid-template-columns:1fr}.lpnum{width:7em}.lpcode{font-size:12.5px}}
