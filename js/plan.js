@@ -102,7 +102,16 @@ function modUnits(m) {
   return U;
 }
 function doneDate(u) { const v = S.done[u.uid]; if (typeof v === 'string') return v; if (v) return '0000-00-00'; return u.auto && u.auto() ? '0000-00-00' : null; }
+/* the schedule is computed once per screen and per change: route() and save() clear the cache (schedFlush) */
+let SCHED = null, SCHED_DAY = '';
+function schedFlush() { SCHED = null; }
 function schedule() {
+  /* the key also covers ticks and plan settings changed without save(), so a stale plan is never shown */
+  const st = S.settings || {}, day = iso(new Date()) + '|' + S.start + '|' + S.since + '|' + st.capWd + '|' + st.capWe + '|' + JSON.stringify(S.done || {}) + '|' + Object.keys(S.doneAt || {}).length + '|' + JSON.stringify(S.quiz || {}).length + '|' + Object.keys(S.solved || {}).length + '|' + MODS.length;
+  if (SCHED && SCHED_DAY === day) return SCHED;
+  SCHED_DAY = day; return (SCHED = scheduleNow());
+}
+function scheduleNow() {
   const units = [].concat(...MODS.map(modUnits));
   const t = new Date(); t.setHours(0, 0, 0, 0);
   const byDay = {}, used = {};
