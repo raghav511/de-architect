@@ -12,7 +12,7 @@
  * session that works for 24 hours. The ?k= key keeps working for the Mac grader and the nightly coach.
  * Keep your real CLIENT_ID and OWNERS only in your deployed copy (script.google.com), not in the public repository.
  */
-const KEY = ''; // set a long random string here; leave empty only for the old "Only myself" deployment
+const KEY = ''; // set a long random string here: with no KEY this script refuses every request that has no valid sign-in session
 const FILE = 'keystone-progress.json'; // name from the Keystone days; kept so existing synced progress is found
 const COACH_FILE = 'data-architect-coach.json';
 const JOBS_FILE = 'data-architect-jobs.json';
@@ -27,10 +27,15 @@ function file_(name) {
 }
 function read_(name) { return JSON.parse(file_(name).getBlob().getDataAsString() || (name === JOBS_FILE ? '[]' : '{}')); }
 function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
-function allowed_(e) { return !KEY || (e && e.parameter && e.parameter.k === KEY); }
+/* no KEY means no open door: only a matching ?k= key or a valid session gets in (security review 12) */
+function allowed_(e) { return !!KEY && !!(e && e.parameter && e.parameter.k === KEY); }
+const NO_KEY = 'the sync script has no KEY set: set one at the top of Code.gs and deploy a new version';
+function refused_(session) { return out_({ ok: false, error: !KEY && !session ? NO_KEY : session ? 'session expired: sign in again' : 'wrong or missing key' }); }
 /* sessions from Sign in with Google: random ids with an expiry, kept in the script's private properties */
 function sessions_() { const P = PropertiesService.getScriptProperties(); const s = JSON.parse(P.getProperty('sessions') || '{}'), now = Date.now(); Object.keys(s).forEach(k => { if (s[k] < now) delete s[k]; }); return s; }
 function sessionOk_(id) { return !!id && (sessions_()[id] || 0) > Date.now(); }
+/* run once from the Apps Script editor (Run › authorize) only to grant the one-time UrlFetch permission sign-in needs */
+function authorize() { UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=authorize', { muteHttpExceptions: true }); }
 function login_(tok) {
   if (!CLIENT_ID || !OWNERS.length) return { ok: false, error: 'sign-in is not set up in the sync script (CLIENT_ID and OWNERS)' };
   const r = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(tok || ''), { muteHttpExceptions: true });
@@ -61,7 +66,7 @@ function withJobs_(fn) {
 }
 
 function doGet(e) {
-  if (!allowed_(e)) return out_({ ok: false, error: 'wrong or missing key' });
+  if (!allowed_(e)) return refused_('');
   const a = (e.parameter || {}).action || 'load';
   if (a === 'jobs') return out_({ ok: true, jobs: read_(JOBS_FILE).filter(j => j.status === 'pending') });
   if (a === 'results') {
@@ -76,7 +81,7 @@ function doGet(e) {
 function doPost(e) {
   const body = JSON.parse((e.postData && e.postData.contents) || '{}');
   if (body.action === 'login') return out_(login_(body.id_token));
-  if (!allowed_(e) && !sessionOk_(body.session)) return out_({ ok: false, error: body.session ? 'session expired: sign in again' : 'wrong or missing key' });
+  if (!allowed_(e) && !sessionOk_(body.session)) return refused_(body.session);
   if (body.action === 'load') return out_({ ok: true, data: read_(FILE), coach: read_(COACH_FILE) });
   if (body.action === 'save' && body.data) {
     const f = file_(FILE);

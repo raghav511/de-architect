@@ -1,9 +1,10 @@
 {
-  "version": "1.36.1",
+  "version": "1.36.2",
   "date": "2026-11-07",
   "notes": [
-    "On iPhone the Sign in button shows its whole label, and a reel's title is no longer hidden under the Shuffle filters.",
-    "About 250 written reels whose diagrams used a newer format no longer stop with an error; their diagrams now play.",
-    "Reel filters, My week and Shuffle, the Mode buttons, the day arrows, the level chip and the small \u203a links on Today are easier to tap on a phone."
+    "Grading through your sync script now checks for results on a gentle back-off (at most 8 checks per answer) and pauses while the app is in the background, so it no longer uses up Google quotas.",
+    "Your sync script refuses every request when it has no key set, unless you are signed in, and the app tells you why.",
+    "The app may now only talk to the services it needs (your sync script, Google sign-in, the AI API and the Python download), and Settings accepts only Google Apps Script sync URLs.",
+    "Profile \u203a AI warns that your key is kept in a browser address shared with your other pages, and suggests a spend-limited key."
   ]
 }
