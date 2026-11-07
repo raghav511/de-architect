@@ -1,5 +1,5 @@
 {
-  "version": "1.29.0",
+  "version": "1.30.0",
   "date": "2026-11-07",
   "notes": [
     "Security: nothing private can be committed to the public repository any more (a scan blocks keys, sync URLs, emails and personal details), the app refuses scripts it did not ship, and grader practice runs stay inside their folder.",
