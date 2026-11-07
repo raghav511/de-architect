@@ -4,7 +4,7 @@ n: 2
 title: Storage that survives growth
 goal: Raw trip events move from loose Parquet files into an Iceberg table that Spark writes and Trino reads. You measure a query before and after partitioning and compaction, and an Airflow DAG keeps the table healthy.
 hours: 10
-quiz-same: uiz267 g89f0g
+quiz-same: uiz267 g89f0g jo389j 1sxtzhk
 
 @@tickets
 201 | learn | 2 | Chapter 2 and the readings | You can explain, step by step, how a query finds its files in a Hive table and in an Iceberg table. | chapter
@@ -463,17 +463,17 @@ TYPE: mcq
 TAG: spark
 Q: A merge-on-read Iceberg table receives CDC updates every minute. Queries on it get slower every day. What is the most likely cause?
 A) The snapshot pointer is swapped too often
-B) Delete files pile up and every read must merge them with the data files until compaction folds them in
+B) Delete files pile up, and every read merges them with the data files until compaction
 C) Merge-on-read tables cannot use column statistics
-D) Hidden partitioning stops working after many commits
+D) Hidden partitioning stops working after many commits, so every query scans the whole table
 ANS: B
 WHY: Merge-on-read makes writes cheap by deferring work to readers. Without regular compaction (`rewrite_data_files`), each query applies more and more delete files.
 ---
 TYPE: mcq
 TAG: spark
 Q: You compact a table full of small files, but the bucket's storage does not go down. Why?
-A) Compaction only rewrites manifests, not data files
-B) The old small files are still referenced by older snapshots, so they stay until those snapshots are expired
+A) Compaction only rewrites the manifests and leaves every data file in place, so nothing is removed
+B) Older snapshots still reference the small files, so they stay until those snapshots are expired
 C) Object storage never frees space for deleted files
 D) Compaction writes duplicates on purpose for safety
 ANS: B
