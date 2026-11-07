@@ -96,7 +96,9 @@ async function liveScore(m, q, x) {
   const t = await liveAsk(liveSystem(m), 'Question: ' + q.q + '\nWhat a strong answer covers: ' + (q.points.length ? q.points.join('; ') : q.model.slice(0, 1200)) + '\nCandidate answer: ' + (x.a || '(no answer)') + (x.fu ? '\nFollow-up: ' + x.fu + '\nCandidate answer to the follow-up: ' + (x.fa || '(no answer)') : '') +
     '\n\nScore 1 to 4 (1 weak, 2 below the bar, 3 at the bar, 4 strong) at the ' + m.level + ' level on: correct (correctness), depth (internals and why), trade (trade-offs and alternatives), clear (structure and clarity). Also say whether the candidate named an alternative they rejected (rejected), said where the design stops scaling (limits), and said how they would run it in production: alerts, on-call, cost (operate). JSON: {"scores":{"correct":n,"depth":n,"trade":n,"clear":n},"rejected":bool,"limits":bool,"operate":bool,"feedback":"at most 60 words, the one thing to fix first","better":"a stronger answer in at most 120 words"}');
   const j = liveJSON(t); if (!j || !j.scores) throw new Error('The interviewer\'s scores could not be read.');
-  const c = v => Math.max(1, Math.min(4, Math.round(+v) || 1));
+  /* QA fix 12: a reply missing a score is unreadable (you mark yourself), never a silent 1 of 4 */
+  if (LIVE_DIMS.some(([d]) => !(+j.scores[d] >= 1 && +j.scores[d] <= 4))) throw new Error('The interviewer\'s scores were incomplete.');
+  const c = v => Math.max(1, Math.min(4, Math.round(+v)));
   return { sc: { correct: c(j.scores.correct), depth: c(j.scores.depth), trade: c(j.scores.trade), clear: c(j.scores.clear) }, checks: { rejected: !!j.rejected, limits: !!j.limits, operate: !!j.operate }, fb: String(j.feedback || ''), better: String(j.better || '') };
 }
 function liveHire(avg, m) {
@@ -227,6 +229,7 @@ function liveCard(page, k, m) {
   page.appendChild(el('section', { class: 'card pad stack live' }, [
     el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Scorecard · ' + shortDate(k) }), el('b', { text: all.toFixed(1) + ' of 4' })]),
     el('div', { class: 'lhire', text: liveHire(all, m) }),
+    done.some(([, a]) => a.fb) ? el('p', { class: 'muted', style: { margin: 0, fontSize: '13px' }, text: 'Scored by an AI interviewer, which can be wrong. Check each answer against the model answer below before you trust a score.' }) : null, /* QA fix 13 */
     el('div', { class: 'lscore' }, dim.map(([t, v]) => el('div', { class: 'row' }, [el('span', { class: 'grow', text: t }), el('b', { text: v ? v.toFixed(1) : '–' })]))),
     el('div', { class: 'lscore' }, checks.map(([t, n]) => el('div', { class: 'row' }, [el('span', { class: 'grow', text: t }), el('b', { text: n + ' of ' + m.qs.length })]))),
     weakest && weakest[1] ? el('div', { class: 'why' }, [el('b', { text: 'Weakest: ' }), weakest[0].toLowerCase() + '. ', weak ? weak + (weak === 1 ? ' answer opens' : ' answers open') + ' your next live mock on this module.' : 'Nothing carries over.']) : null,

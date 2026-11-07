@@ -219,11 +219,11 @@ function interviewItems(off, k, cur) {
   const mock = { id: 'mock', chip: 'test', t: (we ? 'Weekend boss: a ' + LIVE_STYLES[Math.floor(new Date(k + 'T00:00:00').getTime() / 864e5 / 7) % LIVE_STYLES.length] + '-style round' : 'Live mock') + ' · ' + (we ? 7 : 5) + ' questions', sub: 'Spoken or typed, built from this week\'s modules: concept, under the hood, ' + (we ? 'a staff-level round' : 'architect\'s lens, a staff-level question') + ' and recall. ' + (aiOn() ? 'An AI interviewer asks follow-ups and scores each answer.' : 'You mark yourself against the model answers.'), mins, href: '#/live/' + k, auto: !!((lk && lk.done) || (mk && mk.sub)) };
   const coach = []; if (!off && aiOn()) { const c = coachData(); (c.focus || []).forEach((f, i) => coach.push({ id: 'coach' + i + ':' + (c.generated_at || ''), chip: 'ai', t: f.title, sub: 'From your coach' + (f.why ? ' · ' + f.why : ''), mins: Math.min(15, +f.mins || 10), href: /^#\//.test(f.href || '') ? f.href : '#/coach', auto: focusDone(f, c) })); }
   /* company questions: this module's first, newest first; each ticked on its own page */
-  const rq = off ? [] : recentOpen().sort((a, b) => (b.mid === cur) - (a.mid === cur) || (b.found || '').localeCompare(a.found || '')).map(q => ({ id: 'rq:' + q.id, chip: q.TAG || 'talk', t: q.company + ': ' + q.Q.replace(/\*\*/g, '').slice(0, 90) + (q.Q.length > 90 ? '…' : ''), sub: 'Asked this week' + (q.mid === cur ? ' · this module' : ''), mins: 5, href: '#/recent', auto: false, lock: true }));
+  const rq = off ? [] : recentOpen().sort((a, b) => (b.mid === cur) - (a.mid === cur) || (b.found || '').localeCompare(a.found || '')).map(q => ({ id: 'rq:' + q.id, chip: q.TAG || 'talk', t: q.company + ': ' + q.Q.replace(/\*\*/g, '').slice(0, 90) + (q.Q.length > 90 ? '…' : ''), sub: (q.found >= iso(new Date(Date.now() - 7 * 864e5)) ? 'Asked this week' : 'Found ' + shortDate(q.found)) + (q.mid === cur ? ' · this module' : ''), mins: 5, href: '#/recent', auto: false, lock: true }));
   const [now, later] = fill([mock].concat(coach.filter(x => !x.auto), coach.filter(x => x.auto), rq), cap);
   return { iv: now.filter(x => x.id === 'mock' || x.id.startsWith('rq:')), coach: now.filter(x => x.id.startsWith('coach')), later, laterQ: later.filter(x => x.id.startsWith('rq:')).length, laterC: later.filter(x => x.id.startsWith('coach')).length };
 }
-function xDone(k, x) { return x.auto || !!((S.xdone || {})[k] || {})[x.id]; }
+function xDone(k, x) { return x.auto || +(((S.xdone || {})[k] || {})[x.id] || 0) > 0; } /* a tick is its time, an untick minus its time, so sync keeps the later one */
 function xGroup(k, title, note, items, id, extra, foot) {
   const mins = items.reduce((a, x) => a + x.mins, 0), dm = items.filter(x => xDone(k, x)).reduce((a, x) => a + x.mins, 0);
   return el('div', { class: 'xgroup stack', id, style: { gap: '8px' } }, [
@@ -233,7 +233,7 @@ function xGroup(k, title, note, items, id, extra, foot) {
       el('button', { class: 'check', 'aria-pressed': String(dn), 'aria-label': (dn ? 'Mark not done: ' : 'Mark done: ') + x.t, onclick: () => {
         if (x.auto) { toast('This one ticks itself when you solve or submit it.'); return; }
         if (x.lock) { toast('Tick this question on its page when you can answer it out loud.'); location.hash = x.href; return; }
-        const m = (S.xdone = S.xdone || {})[k] = S.xdone[k] || {}; if (m[x.id]) delete m[x.id]; else m[x.id] = 1; save(); route(); } }, dn ? svg(I.check, 16) : null),
+        const m = (S.xdone = S.xdone || {})[k] = S.xdone[k] || {}; m[x.id] = +(m[x.id] || 0) > 0 ? -Date.now() : Date.now(); save(); route(); } }, dn ? svg(I.check, 16) : null),
       el('a', { class: 'grow xlink', href: x.href }, [el('span', { class: 'row wrap', style: { gap: '6px' } }, [chip(x.chip), x.from ? el('span', { class: 'chip c-ai', text: 'from ' + x.from }) : null, el('span', { class: 't', text: x.t })]), el('span', { class: 's', text: x.mins + ' min · ' + x.sub })]),
       el('a', { class: 'btn sm', href: x.href, text: dn ? 'Open' : 'Start' })]); }), foot ? [foot] : []));
 }
@@ -503,7 +503,7 @@ function newsAge() { const t = Date.parse((DATA.news || {}).updated || ''); retu
 function vNews() {
   const N = DATA.news || { items: [] };
   const sc = schedule(), u = sc.units.find(x => x.kind === 'news' && x.mid === sc.cur);
-  shell('What is new in AI', 'Updated ' + (N.updated || '') + ' · refreshed weekly', [
+  shell('What is new in AI', 'Updated ' + (N.updated || '') + ' · refreshed daily', [
     newsAge() > 10 ? el('div', { class: 'hint', style: { background: 'var(--amber-l)', borderColor: 'var(--amber-b)' } }, [el('b', { text: 'These items are ' + newsAge() + ' days old. ' }), 'The weekly refresh has not run since; treat "new" with care and check the sources.']) : null, /* trust fix 22 */
     el('section', { class: 'card pad stack' }, [el('p', { style: { margin: 0 }, text: N.note || '' }), u ? el('button', { class: 'btn', style: { alignSelf: 'flex-start' }, onclick: () => toggleUnit(u), text: u.isDone ? 'Mark not done' : 'Mark this week\'s reading done' }) : null]),
     el('div', { class: 'stack' }, N.items.map(x => newsCard(x)))], { back: '#/today' });
@@ -544,9 +544,9 @@ function rqCard(q) {
 function vRecent() {
   const R = DATA.recent || { items: [] }, qs = (R.items || []).slice().sort((a, b) => (b.found || '').localeCompare(a.found || '') || (a.company || '').localeCompare(b.company || ''));
   const open = recentOpen().length;
-  shell('Asked this week', R.updated ? 'Updated ' + shortDate(R.updated) + ' · refreshed weekly' : 'Refreshed weekly', [
+  shell('Asked this week', R.updated ? 'Updated ' + shortDate(R.updated) + ' · refreshed daily' : 'Refreshed daily', [
     el('section', { class: 'card pad stack' }, [el('p', { style: { margin: 0 }, text: R.note || '' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: open ? open + ' new to work through. Tick a question only when you can answer it out loud; your plan keeps showing them until then.' : 'Nothing new to work through.' })]),
-    qs.length ? el('div', { class: 'stack' }, qs.map(rqCard)) : el('section', { class: 'card pad' }, [el('p', { style: { margin: 0 }, text: 'No questions yet. The weekly research task adds them here.' })])], { back: '#/today' });
+    qs.length ? el('div', { class: 'stack' }, qs.map(rqCard)) : el('section', { class: 'card pad' }, [el('p', { style: { margin: 0 }, text: 'No questions yet. The daily research task adds them here.' })])], { back: '#/today' });
 }
 
 /* ---------------- Search (⌘K or /) ---------------- */

@@ -39,6 +39,7 @@ const REEL_META = /^(?:[A-Z]?\d+(?:\.\d+)?\s+)?(how this (program|track) works|w
 async function reelsFor(m) {
   if (m === 's00') return [];
   if (reelCache[m]) return reelCache[m];
+  await DATA.reelsP;
   const s = await sprint(m).catch(() => null); if (!s) return [];
   const hand = ((DATA.reels || {})[m] || []), parts = (s.raw.chapter || '').split(/\n(?=## )/), out = [];
   parts.forEach((p, i) => {
@@ -46,7 +47,16 @@ async function reelsFor(m) {
     const h = hand.filter(r => r.sec === head.split(' ')[0] || r.sec === head).map(r => Object.assign({ head, m }, r));
     (h.length ? h : autoReels(m, head, p.replace(/^## .+\n/, ''), i)).forEach(r => out.push(r));
   });
+  reelCarry(m, out);
   return (reelCache[m] = out);
+}
+/* a section's reels are rewritten with new ids (a four-level series replaces an older single reel): carry each old
+   reel's history, such as a review due after a missed check, to the first new reel of the same section (QA fix 9) */
+function reelCarry(m, list) {
+  if (!((DATA.reels || {})[m] || []).length) return; /* scripts not loaded (offline): move nothing */
+  const R = S.reels || {}, ids = new Set(list.map(r => r.id)), base = id => id.replace(/-w?\d+$/, ''); let moved = 0;
+  for (const id of Object.keys(R)) { if (ids.has(id) || reelMid(id) !== m) continue; const to = list.find(r => base(r.id) === base(id) && !R[r.id]); if (to) { R[to.id] = Object.assign({}, R[id]); delete R[to.id].ans; delete R[to.id].q; delete R[id]; moved++; } }
+  if (moved) save(false);
 }
 function reelDue(id) { const r = (S.reels || {})[id]; return r && r.due && r.due <= iso(new Date()); }
 /* the feed: today's reading first, then the rest of this week's modules, then reels due for review */
@@ -136,7 +146,8 @@ function reelPlayer(q, at, feedMode) {
       el('button', { class: 'rbtn rsm', 'aria-label': 'Choose a voice', onclick: () => { const was = playing; pause(); ov.appendChild(reelVoiceSheet(() => { if (was) play(); })); } }, S.settings.reelVoice === false ? 'Muted' : 'Voice')]);
     slide.textContent = ''; slide.append(bars, head, stage, cap, rail, hint);
     function paintBars() { bars.textContent = ''; r.beats.concat([null]).forEach((_, k) => bars.appendChild(el('i', { class: k < bi ? 'on' : k === bi ? 'cur' : '' }))); }
-    function stop() { tok++; clearTimeout(timer); timer = null; if (audio) { audio.onended = audio.onerror = audio.onloadedmetadata = null; audio.pause(); audio = null; } try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { } if (fx) fx.stop(); }
+    let wd = null; /* watchdog: a recording that stops arriving falls back to captions (QA fix 8) */
+    function stop() { tok++; clearTimeout(timer); timer = null; clearInterval(wd); wd = null; if (audio) { audio.onended = audio.onerror = audio.onloadedmetadata = null; audio.pause(); audio = null; } try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { } if (fx) fx.stop(); }
     function render() {
       paintBars(); stage.textContent = '';
       if (bi >= r.beats.length) { cap.textContent = ''; stage.append(...reelEnd(r, () => go(i + 1), () => { bi = 0; play(); })); return null; }
@@ -153,6 +164,7 @@ function reelPlayer(q, at, feedMode) {
         audio.onloadedmetadata = () => go2(audio.duration * 1000 / speed());
         audio.onended = next; audio.onerror = () => { if (my === tok) { audio = null; viaVoice(); } };
         audio.play().then(() => setTimeout(() => go2(est), 250)).catch(() => { if (my === tok) { audio = null; viaVoice(); } });
+        let last = -1, still = 0; wd = setInterval(() => { if (my !== tok || !audio) return clearInterval(wd); if (audio.paused && started) return; const ct = audio.currentTime; still = ct === last ? still + 1 : 0; last = ct; if (still >= 6) { clearInterval(wd); wd = null; const a0 = audio; audio = null; a0.onended = a0.onerror = null; a0.pause(); go2(est); timer = setTimeout(next, Math.max(1500, est - ct * 1000)); } }, 1000);
       } else if (S.settings.reelVoice === false) { fx.start(est); timer = setTimeout(next, est); }
       else viaVoice();
     }
@@ -189,11 +201,11 @@ function reelPlayer(q, at, feedMode) {
 function reelDone(r) { S.reels = S.reels || {}; const x = S.reels[r.id] = S.reels[r.id] || {}; if (typeof mEvent === 'function') mEvent('reel_finish'); if (!x.seen) { x.seen = iso(new Date()); if (typeof gameNote === 'function') gameNote('reel'); } save(); }
 /* the end card: a quick check that schedules reviews, then the work checklist */
 function reelEnd(r, next, replay) {
-  const x = (S.reels || {})[r.id] || {}, kids = [];
+  const x0 = (S.reels || {})[r.id] || {}, x = r.check && x0.q && x0.q !== r.check.q ? Object.assign({}, x0, { ans: undefined }) : x0, kids = []; /* an answer to an older version of the question is not shown (QA fix 10) */
   if (r.check) {
     const c = r.check, res = el('div', { role: 'status' });
     const opts = el('div', { class: 'stack', style: { gap: '6px' } }, c.opts.map((o, i) => el('button', { class: 'btn ropt' + (x.ans === i ? (i === c.ans ? ' ok' : ' no') : ''), onclick: () => {
-      S.reels = S.reels || {}; const y = S.reels[r.id] = S.reels[r.id] || {}, ok = i === c.ans, wasDue = reelDue(r.id); y.ans = i; y.ok = ok; mEvent(ok ? 'check_right' : 'check_wrong');
+      S.reels = S.reels || {}; const y = S.reels[r.id] = S.reels[r.id] || {}, ok = i === c.ans, wasDue = reelDue(r.id); y.ans = i; y.ok = ok; y.q = c.q; y.at = Date.now(); mEvent(ok ? 'check_right' : 'check_wrong');
       if (!ok) { y.box = 0; y.due = iso(new Date(Date.now() + REEL_GAPS[0] * 864e5)); }
       else if (wasDue || y.box) { y.box = (y.box || 0) + 1; y.due = y.box < REEL_GAPS.length ? iso(new Date(Date.now() + REEL_GAPS[y.box] * 864e5)) : null; }
       else if (!wasDue) y.due = y.due && y.due > iso(new Date()) ? y.due : null;

@@ -72,8 +72,9 @@ def sections(mid):
 def hand_secs(mid):
     p = os.path.join(os.path.dirname(__file__), 'r_%s.py' % mid)
     if not os.path.exists(p): return set()
-    import runpy
-    return {r['sec'] for r in runpy.run_path(p)['REELS']}
+    import runpy  # only a hand-written series with all four levels stops the writer; a single older reel is rewritten
+    rs = runpy.run_path(p)['REELS']
+    return {s for s in {r['sec'] for r in rs} if all(r.get('level') for r in rs if r['sec'] == s)}
 
 
 def words(r): return sum(len(b['say'].split()) for b in r['beats'])

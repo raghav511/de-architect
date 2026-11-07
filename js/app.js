@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.27.0';
+const VERSION = '1.28.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -26,15 +26,24 @@ const I = { reel: '<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M
   update: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>', back: '<path d="M15 18l-6-6 6-6"/>', fwd: '<path d="M9 6l6 6-6 6"/>', dbl_l: '<path d="M18 6l-6 6 6 6M11 6l-6 6 6 6"/>', dbl_r: '<path d="M6 6l6 6-6 6M13 6l6 6-6 6"/>',
   x: '<path d="M18 6L6 18M6 6l12 12"/>', check: '<path d="M5 12l5 5 9-10" stroke="#fff" stroke-width="3"/>', spark: '<path d="M12 3l1.8 4.6L18 9.4l-4.2 1.8L12 16l-1.8-4.8L6 9.4l4.2-1.8z"/><path d="M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
   git: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 7v10M18 11c0 4-6 3-11 7"/>', news: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/>',
-  term: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1.27.0 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'
+  term: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1.28.0 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'
 };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const md = s => { try { return window.marked ? window.marked.parse(s || '', { gfm: true }) : esc(s); } catch (e) { return esc(s); } };
-const mdi = s => { try { return window.marked ? window.marked.parseInline(s || '', { gfm: true }) : esc(s); } catch (e) { return esc(s); } };
+/* text from the daily refresh (scraped questions, news) and from AI replies is rendered as Markdown, so its HTML is
+   cleaned first: no scripts, frames, forms or styles, no on* handlers, no javascript: links (QA fix 6) */
+function clean(h) {
+  const t = document.createElement('template'); t.innerHTML = h;
+  t.content.querySelectorAll('script,iframe,object,embed,style,link,meta,form,base,frame,frameset').forEach(n => n.remove());
+  t.content.querySelectorAll('*').forEach(n => [...n.attributes].forEach(a => { if (/^on/i.test(a.name) || (/^(href|src|xlink:href|action|formaction|srcdoc)$/i.test(a.name) && /^\s*(javascript|vbscript|data:text\/html)/i.test(a.value)) || a.name === 'srcdoc') n.removeAttribute(a.name); }));
+  return t.innerHTML;
+}
+const md = s => { try { return window.marked ? clean(window.marked.parse(s || '', { gfm: true })) : esc(s); } catch (e) { return esc(s); } };
+const mdi = s => { try { return window.marked ? clean(window.marked.parseInline(s || '', { gfm: true })) : esc(s); } catch (e) { return esc(s); } };
 
 /* ---------------- state ---------------- */
 const KEY = 'keystone:v1'; /* the app was called Keystone; the key stays so saved progress is kept */
 let S = load();
+
 function load() {
   let s = {};
   try { s = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { s = {}; }
@@ -42,13 +51,21 @@ function load() {
 }
 let saveT = null;
 /* a change made just before the tab closes or the phone locks is written at once, not lost with the 150 ms timer */
-function flushSave() { if (!saveT) return; clearTimeout(saveT); saveT = null; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+/* every write first checks whether another tab saved since this one last did; if so, it merges that copy in, so a
+   stale tab never writes over newer work (QA fix 3) */
+let lastWrite = (() => { try { return localStorage.getItem(KEY); } catch (e) { return null; } })();
+function writeState() {
+  const cur = localStorage.getItem(KEY);
+  if (lastWrite !== null && cur && cur !== lastWrite && typeof mergeState === 'function') { try { const o = JSON.parse(cur), keep = S.settings; S = Object.assign(load(), mergeState(o, S), { settings: Object.assign({}, o.settings, keep) }); } catch (e) { } }
+  const s = JSON.stringify(S); localStorage.setItem(KEY, s); lastWrite = s;
+}
+function flushSave() { if (!saveT) return; clearTimeout(saveT); saveT = null; try { writeState(); } catch (e) {} }
 addEventListener('pagehide', flushSave); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSave(); });
 function save(touch = true) {
   if (typeof schedFlush === 'function') schedFlush();
   if (touch) S.updated = Date.now();
   clearTimeout(saveT);
-  saveT = setTimeout(() => { saveT = null; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Could not save in this browser (storage full or private mode).'); } }, 150);
+  saveT = setTimeout(() => { saveT = null; try { writeState(); } catch (e) { toast('Could not save in this browser (storage full or private mode).'); } }, 150);
 }
 if (!S.start) { const d = new Date(); const m = (d.getDay() + 6) % 7; d.setDate(d.getDate() - m); S.start = iso(d); S.since = iso(new Date()); save(); } /* since: missed days count from the day you began, not from the Monday the calendar snaps to */
 function iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
@@ -83,7 +100,7 @@ async function loadData() {
   DATA.dsa = d; DATA.sql = q; DATA.spark = p;
   try { DATA.py = await fetch('data/bank/py.json').then(r => r.json()); } catch (e) { DATA.py = []; }
   try { DATA.projects = await fetch('data/projects.json').then(r => r.json()); } catch (e) { DATA.projects = []; }
-  try { DATA.reels = await fetch('data/reels.json').then(r => r.json()); } catch (e) { DATA.reels = {}; }
+  DATA.reelsP = fetch('data/reels.json').then(r => r.json()).catch(() => ({})).then(j => DATA.reels = j);  // large: never holds up the first screen
   try { DATA.staff = await fetch('data/staff.json').then(r => r.json()); } catch (e) { DATA.staff = { kinds: {}, items: [] }; }
   try { DATA.udemy = await fetch('data/udemy.json').then(r => r.json()); } catch (e) { DATA.udemy = null; }
   await loadModules();
@@ -877,8 +894,9 @@ function vProgress() {
       el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('span', { class: 'lbl grow', text: 'DSA ladder · 84 days' }), el('b', { text: DATA.dsa.filter(x => S.solved[x.id]).length + ' solved' })]), grid, el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Each row is two weeks. Tap a square to open that problem.' })])]),
     el('section', { class: 'card pad stack' }, [el('h3', { text: 'Sync across MacBook, iPad and iPhone' }), el('p', { style: { margin: 0 }, text: S.settings.syncUrl ? 'Sync is set up. Tap Sync progress at the top on each device.' : 'Sync is not set up yet. Open Settings (gear icon) and paste your Google Apps Script URL. The repo has the script in sync/Code.gs and the steps in README.md.' }), el('div', { class: 'row wrap' }, [el('button', { class: 'btn', onclick: settings, text: 'Open settings' }), el('button', { class: 'btn', onclick: exportProgress, text: 'Download a backup' }), el('label', { class: 'btn' }, ['Restore a backup', el('input', { type: 'file', accept: 'application/json', style: { display: 'none' }, onchange: importProgress })])]), el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Last change: ' + (S.updated ? new Date(S.updated).toLocaleString() : 'never') + (S.lastSync ? ' · last sync: ' + new Date(S.lastSync).toLocaleString() : '') })])]);
 }
-function exportProgress() { const b = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' }); const a = el('a', { href: URL.createObjectURL(b), download: 'data-architect-progress-' + iso(new Date()) + '.json' }); document.body.appendChild(a); a.click(); a.remove(); }
-function importProgress(e) { const f = e.target.files[0]; if (!f) return; f.text().then(t => { const old = JSON.stringify(S); try { const j = JSON.parse(t); if (!j || typeof j !== 'object' || Array.isArray(j) || !j.start || !('solved' in j || 'done' in j)) throw new Error('not a backup'); /* trust fix 19 */ S = Object.assign(load(), j); save(); toast('Backup restored', () => { S = JSON.parse(old); save(); route(); }); route(); } catch (x) { toast('That file is not a Data Architect backup.'); } }); }
+const SECRET_KEYS = ['aiKey', 'syncUrl', 'openaiKey']; /* only on this device: never in a backup file (QA fix 4) */
+function exportProgress() { const out = JSON.parse(JSON.stringify(S)); out.settings = Object.assign({}, out.settings); SECRET_KEYS.forEach(k => delete out.settings[k]); delete out.syncing; const b = new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' }); const a = el('a', { href: URL.createObjectURL(b), download: 'data-architect-progress-' + iso(new Date()) + '.json' }); document.body.appendChild(a); a.click(); a.remove(); }
+function importProgress(e) { const f = e.target.files[0]; if (!f) return; f.text().then(t => { const old = JSON.stringify(S); try { const j = JSON.parse(t); if (!j || typeof j !== 'object' || Array.isArray(j) || !j.start || !('solved' in j || 'done' in j)) throw new Error('not a backup'); /* trust fix 19 */ const mine = {}; SECRET_KEYS.forEach(k => { if (S.settings[k]) mine[k] = S.settings[k]; }); S = Object.assign(load(), j); S.settings = Object.assign({}, S.settings, mine); /* QA fix 5: keep this device's key and sync URL */ e.target.value = ''; save(); toast('Backup restored', () => { S = JSON.parse(old); save(); route(); }); route(); } catch (x) { toast('That file is not a Data Architect backup.'); } }); }
 
 /* ---------------- Settings, sync, update ---------------- */
 function graderStatus() {
@@ -903,6 +921,7 @@ function saveSettings(body) {
     S.settings.fun = g('st_fun') !== 'off'; S.settings.sound = g('st_sound') === 'on';
     S.settings.coachVia = g('st_coach') || 'mac'; S.settings.gradeModel = g('st_grade') || 'auto'; S.settings.prefsAt = Date.now(); /* newest preferences win when devices sync */
     const nt = body.querySelector('#st_notify').checked; S.settings.notifyUpdates = nt;
+    if (nt && window.Notification && Notification.permission === 'denied') { S.settings.notifyUpdates = false; save(false); setTimeout(() => toast('Notifications are blocked for this site in the browser settings, so update alerts stay in the app.', null, 7000), 400); body.querySelector('#st_notify').checked = false; } /* QA fix 11 */
     if (nt && window.Notification && Notification.permission === 'default') Notification.requestPermission().then(r => { if (r !== 'granted') { S.settings.notifyUpdates = false; save(false); toast('Notifications were not allowed, so update alerts stay in the app.', null, 6000); } });
     if (nt && !window.Notification) setTimeout(() => toast('This browser cannot show notifications here (on iPhone, add the app to the Home Screen first). You will still see update alerts in the app.', null, 8000), 400);
     S.updated = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Could not save settings in this browser.'); return false; }
@@ -948,7 +967,9 @@ async function doSync() {
   if (!url) { toast('Set up sync first: paste your sync URL on your profile.'); settings('st_sync'); return; }
   S.syncing = true; const b = $('#syncBtn'); if (b) b.querySelector('.t').textContent = 'Syncing…';
   try {
-    const remote = await fetch(url + (url.includes('?') ? '&' : '?') + 'action=load', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
+    /* QA fix 2: if the server's copy cannot be read, stop: uploading now would replace it with this device's copy alone */
+    const remote = await fetch(url + (url.includes('?') ? '&' : '?') + 'action=load', { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error('download failed (' + r.status + ')'); return r.json(); });
+    if (!remote || typeof remote !== 'object') throw new Error('download unreadable');
     if (remote && remote.ok === false) throw new Error(remote.error || 'sync refused');
     const local = JSON.parse(JSON.stringify(S));
     let merged = local;
@@ -997,12 +1018,29 @@ function mergeState(a, b) {
   /* instant grades: a finished grade beats a pending one for the same job, otherwise the newer wins */
   out.grades = Object.assign({}, a.grades || {}, b.grades || {});
   for (const k in out.grades) { const x = (a.grades || {})[k], y = (b.grades || {})[k]; out.grades[k] = !x ? y : !y ? x : x.job && x.job === y.job && (x.s === 'done') !== (y.s === 'done') ? (x.s === 'done' ? x : y) : (x.at || 0) >= (y.at || 0) ? x : y; }
+  /* QA fix 1: newer features are merged entry by entry, so neither device's live mocks, reel checks, playbook,
+     ticks, finished tabs, Git labs or streak days are dropped */
+  const by = (k, pick) => { const x = a[k] || {}, y = b[k] || {}; out[k] = Object.assign({}, x, y); for (const id in out[k]) if (id in x && id in y) out[k][id] = pick(x[id], y[id]); };
+  const when = v => v && typeof v === 'object' ? (v.at || v.t || 0) : 0;
+  by('live', (x, y) => !!x.done !== !!y.done ? (x.done ? x : y) : Object.keys(x.ans || {}).length !== Object.keys(y.ans || {}).length ? (Object.keys(x.ans || {}).length > Object.keys(y.ans || {}).length ? x : y) : when(x) > when(y) ? x : y);
+  by('reels', (x, y) => when(x) > when(y) ? Object.assign({}, y, x) : Object.assign({}, x, y));
+  ['playbook', 'tabs', 'gitlab', 'rq', 'planned', 'metrics'].forEach(k => by(k, (x, y) => y));
+  /* a manual tick is a time, an untick minus the time: the later one wins (QA fix 21) */
+  by('xdone', (x, y) => { const o = Object.assign({}, x, y); for (const id in o) if (id in x && id in y) o[id] = Math.abs(+x[id] || 0) > Math.abs(+y[id] || 0) ? x[id] : y[id]; return o; });
+  if (a.game || b.game) { const x = a.game || {}, y = b.game || {}; out.game = Object.assign({}, x, y, { shipped: Object.assign({}, x.shipped, y.shipped), warm: Object.assign({}, x.warm, y.warm), days: Object.assign({}, x.days, y.days) });
+    for (const d in out.game.days) if ((x.days || {})[d] && (y.days || {})[d]) { const o = Object.assign({}, x.days[d]); for (const kd in y.days[d]) o[kd] = Math.max(o[kd] || 0, y.days[d][kd] || 0); out.game.days[d] = o; } }
+  out.rqSeen = [a.rqSeen, b.rqSeen].filter(Boolean).sort().pop();
   /* design simulator: designs merge one by one and the newer edit wins; a removed design keeps a dated marker, so sync never drops or revives one by accident */
   const sa = a.sim || {}, sb = b.sim || {}; out.sim = Object.assign({}, sa, sb, { d: Object.assign({}, sa.d || {}, sb.d || {}), done: Object.assign({}, sa.done || {}, sb.done || {}) });
   for (const id in out.sim.d) { const x = (sa.d || {})[id], y = (sb.d || {})[id]; out.sim.d[id] = !x ? y : !y ? x : (x.at || 0) > (y.at || 0) ? x : y; }
   out.updated = Math.max(a.updated || 0, b.updated || 0);
   return out;
 }
+/* two open tabs: when the other tab saves, merge its copy in, so a stale tab cannot write over newer work (QA fix 3) */
+addEventListener('storage', e => {
+  if (e.key !== KEY || !e.newValue) return;
+  try { const o = JSON.parse(e.newValue), keep = S.settings; S = Object.assign(load(), mergeState(o, S), { settings: Object.assign({}, keep, o.settings) }); if (typeof schedFlush === 'function') schedFlush(); } catch (x) { }
+});
 /* ---------------- versions and updates ----------------
    version.json holds the published version, its date and what is new. The app checks it at start, every 30 minutes
    while open and when you come back to it; a newer version shows a banner, a toast, a dot on Update app, and (if you
