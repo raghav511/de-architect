@@ -17,7 +17,7 @@ and for **building a production-grade data foundation for an organization** at w
 
 ## One iteration
 
-1. **Sync**: `git checkout main && git pull`. Read `tools/improve/BACKLOG.md` and the last 10 lines of `tools/improve/LOG.md`.
+1. **Sync**: `git fetch && git checkout --detach origin/main` (another session may hold `main` in its worktree). Read `tools/improve/BACKLOG.md` and the last 10 lines of `tools/improve/LOG.md`.
 2. **Pick** the top unblocked item. If the backlog has no unblocked item, run the **audit** below to refill it; if the
    audit finds nothing worth doing, write "Nothing left to improve" in LOG.md and stop the loop.
 3. **Branch** `improve/<slug>`. **Build** it the way CLAUDE.md says (self-contained, fewest taps, phone first screen keeps
