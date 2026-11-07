@@ -199,5 +199,7 @@ const FIGS = (() => {
     return wrap;
   }
   function mount(root) { root.querySelectorAll('div[data-fig]').forEach(d => { const f = build(d.dataset.fig); if (f) d.replaceWith(f); }); }
-  return { mount, build, names: Object.keys(DEF) };
+  /* one step of a figure as a static SVG string (for reels) */
+  function svgOf(name, i) { const f = cache[name] || (cache[name] = DEF[name] && DEF[name]()); if (!f) return ''; const st = f.steps[Math.max(0, Math.min(i || 0, f.steps.length - 1))]; return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${X(st[1]).replace(/"/g, '&quot;')}">${st[0]}</svg>`; }
+  return { mount, build, svgOf, names: Object.keys(DEF) };
 })();

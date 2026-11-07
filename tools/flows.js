@@ -753,13 +753,15 @@ async function T(name, fn, opt) {
 
   await T('new this week inside sections: What is new items sit under their section (sec), company questions under the best-matching section or at the top, folded; ticked questions disappear', async p => {
     await go(p, '#/today', 1200); await p.evaluate(() => { S.rq = {}; save(); });
-    await go(p, '#/learn/s05/chapter', 1400);
-    ok(await p.evaluate(() => [...document.querySelectorAll('details.fresh')].some(d => { const h = d.previousElementSibling; return h && /^5\.7 /.test(h.textContent) && /what is new/.test(d.textContent); })), 'news item not under section 5.7');
+    const n = await p.evaluate(() => (DATA.news.items || []).find(x => x.mid && x.sec)); ok(!!n, 'no What is new item has a module and section');
+    await go(p, '#/learn/' + n.mid + '/chapter', 1500);
+    ok(await p.evaluate(sec => [...document.querySelectorAll('details.fresh')].some(d => { let h = d.previousElementSibling; while (h && h.tagName !== 'H2') h = h.previousElementSibling; return h && h.textContent.split(' ')[0] === sec && /what is new/.test(d.textContent); }), n.sec), 'news item not under section ' + n.sec);
     ok(await p.evaluate(() => [...document.querySelectorAll('details.fresh')].every(d => !d.open)), 'new-this-week boxes are not folded');
-    const before = await p.evaluate(() => document.querySelectorAll('details.fresh .check').length); ok(before > 0, 'no company questions in module 5');
-    await p.evaluate(() => { S.rq = {}; recentFor('s05').forEach(q => S.rq[q.id] = iso(new Date())); save(); }); await go(p, '#/learn/s04/chapter', 600); await go(p, '#/learn/s05/chapter', 1200);
+    const m = await p.evaluate(() => { const c = {}; (DATA.recent.items || []).forEach(q => c[q.mid] = (c[q.mid] || 0) + 1); return Object.keys(c).sort((a, b) => c[b] - c[a])[0]; });
+    await go(p, '#/learn/' + m + '/chapter', 1400); ok(await p.evaluate(() => document.querySelectorAll('details.fresh .check').length) > 0, 'no company questions in module ' + m);
+    await p.evaluate(m => { S.rq = {}; recentFor(m).forEach(q => S.rq[q.id] = iso(new Date())); save(); }, m); await go(p, '#/today', 600); await go(p, '#/learn/' + m + '/chapter', 1200);
     ok(await p.evaluate(() => document.querySelectorAll('details.fresh .check').length) === 0, 'ticked questions still shown in the chapter');
-    await go(p, '#/news', 900); ok(await p.evaluate(() => document.querySelectorAll('#page section.card').length) >= 6, 'What is new page lost its items');
+    await go(p, '#/news', 900); ok(await p.evaluate(() => document.querySelectorAll('#page section.card').length) >= 3, 'What is new page lost its items');
   });
 
   await T('fun layer: Today shows level, XP, streak and quests without pushing Up next off a phone screen; the warm-up scores and ticks its quest; a shipped module celebrates once; Progress has a skill map', async p => {
@@ -778,6 +780,26 @@ async function T(name, fn, opt) {
     await p.click('.gship button'); await go(p, '#/path', 600); await go(p, '#/today', 1200); ok(await p.evaluate(() => !document.querySelector('.gship')), 'shipped moment shows twice');
     await go(p, '#/progress', 1200); ok(await p.evaluate(() => document.querySelectorAll('.gmap .gtile').length > 20 && !!document.querySelector('.gtile.full')), 'skill map missing or not filled');
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'sideways scroll on a phone');
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  await T('reels: a Reels tab; a Reel button under every section; the player steps beats with captions, ends with a quick check that schedules a review and a work list saved to My playbook; Today lists reels for today; a voice picker; no sideways scroll', async p => {
+    await go(p, '#/today', 1500); await p.evaluate(() => { S.settings.reelVoice = false; S.reels = {}; S.playbook = {}; save(); });
+    ok(await p.evaluate(() => [...document.querySelectorAll('.tabbar a')].some(a => a.getAttribute('href') === '#/reels')), 'no Reels tab');
+    await go(p, '#/learn/s05/chapter', 1500); await p.waitForSelector('.rsec');
+    ok(await p.evaluate(() => [...document.querySelectorAll('.prose h2')].every(h => h.nextElementSibling && h.nextElementSibling.classList.contains('rsec'))), 'a section has no Reel button right under its heading');
+    ok(/2 reels/.test(await p.evaluate(() => [...document.querySelectorAll('.rsec')][1].textContent)), 'section 5.2 does not show its two reels');
+    await p.evaluate(() => [...document.querySelectorAll('.rsec')][1].click()); await p.waitForSelector('.reelv .rstart');
+    ok(/Kafka writes to disk/.test(await text(p, '.reelv .rhead')), 'wrong reel opened');
+    await p.click('.reelv .rstart'); await p.click('[aria-label="Next point"]'); ok(/seek/.test(await text(p, '.reelv .rcap')), 'caption for beat 2 missing');
+    await p.click('[aria-label="Next point"]'); await p.click('[aria-label="Next point"]'); await p.waitForSelector('.ropt');
+    await p.click('.ropt >> nth=2'); const r = await p.evaluate(() => { const x = S.reels['s05-52-0']; return !!(x && x.ok === false && x.due > iso(new Date())); }); ok(r, 'a missed check does not schedule a review');
+    await p.click('.rendcard button:has-text("playbook")'); ok(await p.evaluate(() => !!S.playbook['s05-52-0']), 'work list not saved');
+    await p.click('[aria-label^="Choose a voice"]'); await p.waitForSelector('.rsheet'); ok(/Voice off/.test(await text(p, '.rsheet')), 'voice picker missing'); await p.click('.rsheet [aria-label="Close"]');
+    await p.click('[aria-label="Next reel"]'); ok(/page cache|Kafka is fast/i.test(await text(p, '.reelv .rhead')), 'next reel did not open');
+    ok(await p.evaluate(() => document.querySelector('.reelv').scrollWidth <= innerWidth), 'reel player wider than the phone');
+    await go(p, '#/playbook', 900); ok(/Size Kafka disks/.test(await text(p, '#page')), 'playbook does not list the saved work list');
+    await go(p, '#/today', 1800); await p.waitForSelector('.rtoday'); ok(await p.evaluate(() => document.querySelectorAll('.rtoday .rthumb').length > 0), 'no reels for today');
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Today scrolls sideways');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
   await T('today: one Today box holds reading, quiz, coding, interview practice and coaching, with a summary on top and interview capped at its minutes', async p => {

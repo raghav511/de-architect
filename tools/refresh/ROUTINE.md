@@ -82,3 +82,13 @@ The app's update tracker marks the edited steps "Updated" and returns them to no
 ## Placement of What is new items
 
 Every item in `data/news.json` also gets `mid` (the module it belongs to, from `BASE_MODS` in `js/plan.js`) and `sec` (the section number, as above). The app shows each item inside that section of the module's chapter as well as on the What is new page. Nothing is marked done for the learner.
+
+## Reels for next week's reading
+
+Find the modules on the learner's plan for the coming week (the next modules in `BASE_MODS` after the current one; the coach digest names the current module). For each chapter section of those modules that has no hand-written reel yet, add one or more reels to `tools/reels/r_<mid>.py` (copy the shape of `r_p01.py`), then run `python3 tools/reels/build.py`, which writes `data/reels.json` and refuses any reel outside 30 to 60 seconds (70 to 150 words).
+
+- One idea per reel. A point that does not fit goes into the next reel (`'part': '2 of 2'`).
+- Explain cause and effect in plain words: never "the disk never seeks" alone, but what a seek is, why it is slow, and what Kafka does instead.
+- Beats: a hook question, two or three ideas, each with a picture (`big`, `points`, `flow`, `bars`, `code`, `disk`, `shift`, or `fig` with a figure name from `js/figs.js`).
+- End with a `check` (one multiple-choice question with `why`) and a `work` list of two or three things to do at work.
+- Write everything yourself from the module's chapter; never copy course or article text.
