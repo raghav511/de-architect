@@ -1,5 +1,5 @@
 {
-  "version": "1.36.1",
+  "version": "1.36.2",
   "date": "2026-11-07",
   "notes": [
     "Grading through your sync script now checks for results on a gentle back-off (at most 8 checks per answer) and pauses while the app is in the background, so it no longer uses up Google quotas.",

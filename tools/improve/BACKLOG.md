@@ -27,6 +27,7 @@ Top unblocked item goes next. Each item: goal served (1 understand, 2 remember, 
 - **Rewrite git history** to remove the old Gmail author address and name from past commits (force push to main): only if the user says so.
 - **GitHub secret scanning and push protection**: a repo setting the user turns on.
 - Anything the morning suggestions routine proposes (`tools/insights/`).
+- **UX proposals from the Mobbin benchmark** (`tools/crawl/UX.md`, 2026-11-07), each needs a yes before building: (1) Up next shows two section names and "+N more"; (2) a week strip of streak days on the level chip; (3) one primary button on Up next; (4) reel title and module at the bottom above the caption; (5) reel filters folded into one chip; (6) no 1/1175 counter in Shuffle; (7) one progress line for reels with many beats; (8) right or wrong right after each practice-quiz answer with a one-line why; (9) one Continue button in quizzes; (10) live mock Start and level on the first iPhone screen; (11) one way out of a quiz (Back or ✕, not both).
 
 ## Done
 

@@ -61,12 +61,14 @@ const FX = (() => {
   function legacy(s) {
     const t = s.t || 'big';
     if (t === 'scene') return s;
+    /* written reels sometimes describe a flow as steps [{label, sub}] or nodes [{label}] instead of items */
+    if (!Array.isArray(s.items)) s = Object.assign({}, s, { items: (s.steps || s.nodes || []).map(x => typeof x === 'string' ? x : x.label || x.text || '').filter(Boolean) });
     if (t === 'big') return { title: s.text, kicker: s.sub, steps: [] };
     if (t === 'points') return { steps: (s.items || []).map((x, i) => ({ at: 0.08 + i * (0.8 / Math.max(1, s.items.length)), chip: { text: x, tone: ['teal', 'blue', 'plum', 'amber'][i % 4], icon: '●' } })) };
     if (t === 'flow') { const n = s.items.length, nodes = s.items.map((x, i) => ({ id: 'n' + i, label: x, x: 50, y: n === 1 ? 50 : 10 + i * (80 / (n - 1)), tone: ['blue', 'teal', 'plum', 'amber', 'teal'][i % 5], w: 74 }));
       const steps = []; nodes.forEach((nd, i) => { steps.push({ at: i * (0.75 / n), show: nd.id }); if (i) steps.push({ at: i * (0.75 / n) + 0.04, packet: ['n' + (i - 1), nd.id], n: 2, ms: 700 }); });
       if (s.note) steps.push({ at: 0.85, chip: { text: s.note, tone: 'amber', icon: '!' } });
-      return { nodes, edges: nodes.slice(1).map((nd, i) => ['n' + i, nd.id]), steps, tall: true }; }
+      return { title: s.title, nodes, edges: nodes.slice(1).map((nd, i) => ['n' + i, nd.id]), steps, tall: true }; }
     if (t === 'bars') { const mx = Math.max(...s.items.map(x => x[1])), mn = Math.min(...s.items.map(x => x[1])); return { steps: [{ at: 0.05, race: { items: s.items.map((x, i) => [x[0], x[1], i === s.items.length - 1 ? 'teal' : 'red']), unit: s.unit, log: mx / Math.max(1e-9, mn) > 1000 } }].concat(s.items.filter(x => x[2]).map((x, i) => ({ at: 0.55 + i * 0.15, chip: { text: x[0] + ': ' + x[2], tone: i === s.items.length - 1 ? 'teal' : 'red' } }))) }; }
     if (t === 'code') return { code: s.text, steps: [] };
     if (t === 'disk') return { nodes: [{ id: 'd', label: 'Disk', sub: s.mode === 'seq' ? 'arm stays put' : 'arm jumps for every write', kind: 'disk', x: 50, y: 45, tone: 'amber' }], steps: [{ at: 0, show: 'd' }, { at: 0.15, seek: 'd', on: s.mode !== 'seq' }, { at: 0.5, chip: { text: s.mode === 'seq' ? 'One continuous run' : 'Each move ≈ 10 ms', tone: s.mode === 'seq' ? 'teal' : 'red', icon: s.mode === 'seq' ? '✓' : '✕' } }] };
