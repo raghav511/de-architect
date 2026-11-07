@@ -6679,5 +6679,1158 @@
     "part": "2 of 2"
    }
   ]
+ },
+ "3.10 Architect's lens: Spark in a data platform": {
+  "hash": "2397fa8331e0",
+  "sec": "3.10",
+  "reels": [
+   {
+    "title": "Spark as a kitchen brigade",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "How do you cook ten thousand meals in an hour? Not with one faster chef.",
+      "show": {
+       "t": "big",
+       "text": "Many cooks, one plan",
+       "sub": "The idea behind Spark"
+      }
+     },
+     {
+      "say": "Picture a big kitchen. A head chef reads the order, writes the plan, and splits it into small jobs for many cooks at their own stations.",
+      "show": {
+       "t": "scene",
+       "title": "One head chef, many *cooks*",
+       "nodes": [
+        {
+         "id": "h",
+         "label": "Head chef",
+         "sub": "the driver",
+         "x": 50,
+         "y": 15,
+         "tone": "amber"
+        },
+        {
+         "id": "a",
+         "label": "Cook",
+         "sub": "executor",
+         "x": 20,
+         "y": 60,
+         "tone": "teal"
+        },
+        {
+         "id": "b",
+         "label": "Cook",
+         "sub": "executor",
+         "x": 50,
+         "y": 60,
+         "tone": "teal"
+        },
+        {
+         "id": "c",
+         "label": "Cook",
+         "sub": "executor",
+         "x": 80,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "h",
+         "a"
+        ],
+        [
+         "h",
+         "b"
+        ],
+        [
+         "h",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "h"
+         ]
+        },
+        {
+         "at": 0.35,
+         "show": [
+          "a",
+          "b",
+          "c"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "h",
+          "a"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "h",
+          "c"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Work split into small jobs",
+          "tone": "teal",
+          "icon": "⇉"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Chopping happens at every station without talking. But when all the onions must go to one pot, cooks stop and carry them across the room. That carrying is slow.",
+      "show": {
+       "t": "scene",
+       "title": "Carrying is the slow *part*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Station A",
+         "sub": "chops",
+         "x": 20,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "b",
+         "label": "Station B",
+         "sub": "chops",
+         "x": 80,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "p",
+         "label": "One pot",
+         "sub": "per dish",
+         "x": 50,
+         "y": 70,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "p"
+        ],
+        [
+         "b",
+         "p"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "at": 0.45,
+         "show": "p"
+        },
+        {
+         "at": 0.55,
+         "packet": [
+          "a",
+          "p"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.65,
+         "packet": [
+          "b",
+          "p"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Moving food = a shuffle",
+          "tone": "red",
+          "icon": "→"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "That kitchen is Spark. The head chef is the driver, the cooks are executors, and carrying food between stations is a shuffle. Good plans carry as little as possible.",
+      "show": {
+       "t": "points",
+       "title": "Spark in one line",
+       "items": [
+        "Driver plans the work",
+        "Executors do it in parallel",
+        "Moving data is the cost"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "In this picture, what makes a big Spark job slow?",
+     "opts": [
+      "The head chef reading the order",
+      "Carrying food between stations",
+      "Having many cooks"
+     ],
+     "ans": 1,
+     "why": "Moving data between machines, a shuffle, is the costly step; work done in place is cheap."
+    },
+    "work": [
+     "Look at one slow job and count how many times its data moves between machines.",
+     "Ask whether the data would fit on one machine before reaching for a cluster."
+    ]
+   },
+   {
+    "title": "Driver, stages and tasks",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "You write ten lines of Spark and nothing runs. Why?",
+      "show": {
+       "t": "big",
+       "text": "Lazy until an action",
+       "sub": "How a job starts"
+      }
+     },
+     {
+      "say": "Transformations only build a plan. When you call an action such as write or count, the driver optimizes the plan and cuts it into stages, at every point where data must be shuffled.",
+      "show": {
+       "t": "scene",
+       "title": "Cut at each *shuffle*",
+       "nodes": [
+        {
+         "id": "d",
+         "label": "Driver",
+         "sub": "plans",
+         "x": 50,
+         "y": 12,
+         "tone": "amber"
+        },
+        {
+         "id": "s1",
+         "label": "Stage 1",
+         "sub": "read, filter",
+         "x": 25,
+         "y": 55,
+         "tone": "blue"
+        },
+        {
+         "id": "s2",
+         "label": "Stage 2",
+         "sub": "join, write",
+         "x": 75,
+         "y": 55,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "d",
+         "s1"
+        ],
+        [
+         "s1",
+         "s2"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "d"
+        },
+        {
+         "at": 0.45,
+         "show": [
+          "s1",
+          "s2"
+         ]
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "s1",
+          "s2"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Stage boundary = shuffle",
+          "tone": "blue",
+          "icon": "⇉"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Inside a stage, filters and selects are chained, and one task runs per partition. Four hundred eighty partitions means four hundred eighty tasks, spread over the executor cores.",
+      "show": {
+       "t": "bars",
+       "title": "Tasks in one stage",
+       "unit": "tasks",
+       "items": [
+        [
+         "",
+         1,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "If a task fails, the driver retries it. If an executor dies and takes its shuffle files with it, the parent stage reruns. So: one action, stages between shuffles, a task per partition.",
+      "show": {
+       "t": "points",
+       "title": "Remember",
+       "items": [
+        "Job: one action",
+        "Stage: work between shuffles",
+        "Task: one partition on one core"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A stage reads 300 partitions with only narrow steps. How many tasks does it run?",
+     "opts": [
+      "One per executor",
+      "300",
+      "200, the shuffle default"
+     ],
+     "ans": 1,
+     "why": "A stage runs one task per partition; executors only decide how many run at the same time."
+    },
+    "work": [
+     "Open the Spark UI for a job and match each stage to an exchange in the plan.",
+     "Check task counts against partition counts for your widest stage."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Shuffles, broadcasts and AQE",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Why does a join on two big tables cost so much more than a filter?",
+      "show": {
+       "t": "big",
+       "text": "The price of a shuffle",
+       "sub": "And two ways around it"
+      }
+     },
+     {
+      "say": "A shuffle sends every row to the partition that owns its key. Map tasks write their output to local disk, reducers fetch it over the network, and the next stage waits for all of it.",
+      "show": {
+       "t": "scene",
+       "title": "Every row *moves*",
+       "nodes": [
+        {
+         "id": "m",
+         "label": "Map tasks",
+         "sub": "write to disk",
+         "x": 25,
+         "y": 25,
+         "tone": "blue",
+         "kind": "disk"
+        },
+        {
+         "id": "r",
+         "label": "Reduce tasks",
+         "sub": "fetch over network",
+         "x": 75,
+         "y": 25,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "m",
+         "r"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "m",
+          "r"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "m",
+          "r"
+         ],
+         "n": 5
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Disk, network, and a wait",
+          "tone": "red",
+          "icon": "⏱"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A broadcast join skips it. The small table is copied to every executor as a lookup map, so the big table is read in place and never moves.",
+      "show": {
+       "t": "scene",
+       "title": "Ship the small *side*",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Small table",
+         "sub": "8 MB",
+         "x": 50,
+         "y": 12,
+         "tone": "teal"
+        },
+        {
+         "id": "e1",
+         "label": "Executor",
+         "sub": "big rows stay",
+         "x": 25,
+         "y": 60,
+         "tone": "blue"
+        },
+        {
+         "id": "e2",
+         "label": "Executor",
+         "sub": "big rows stay",
+         "x": 75,
+         "y": 60,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "e1"
+        ],
+        [
+         "s",
+         "e2"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "s"
+        },
+        {
+         "at": 0.35,
+         "show": [
+          "e1",
+          "e2"
+         ]
+        },
+        {
+         "at": 0.55,
+         "packet": [
+          "s",
+          "e1"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "s",
+          "e2"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "No shuffle of the big side",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Adaptive query execution re-plans at each stage boundary using real sizes. It turns a join into a broadcast when one side proves small, and merges tiny partitions.",
+      "show": {
+       "t": "points",
+       "title": "Adaptive execution",
+       "items": [
+        "Real sizes, not guesses",
+        "Switches to broadcast",
+        "Merges and splits partitions"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does a broadcast join avoid shuffling the large table?",
+     "opts": [
+      "It compresses the large table",
+      "Every executor gets the small table, so large rows are joined where they are",
+      "It sorts both tables first"
+     ],
+     "ans": 1,
+     "why": "With the small side copied everywhere, each large partition can be joined in place."
+    },
+    "work": [
+     "Find a sort-merge join in one of your plans and check whether one side is small after filters.",
+     "Confirm adaptive execution is on and look for coalesced partitions in the SQL tab."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Skew and salting",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your job has nine hundred tasks. Eight hundred ninety nine finish in ten seconds. One takes thirty minutes. Why?",
+      "show": {
+       "t": "big",
+       "text": "One task, thirty minutes",
+       "sub": "That is skew"
+      }
+     },
+     {
+      "say": "One key, say one big city, holds most of the rows. After the shuffle, all of them land in one partition, and one task must read them alone.",
+      "show": {
+       "t": "bars",
+       "title": "Rows per partition",
+       "unit": "million rows",
+       "items": [
+        [
+         "",
+         1,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Try adaptive skew join first: it splits a partition bigger than five times the median. If that is not enough, salt. Add a random number, zero to nine, to the hot key, and copy the small side ten times, once per salt.",
+      "show": {
+       "t": "scene",
+       "title": "Spread the hot *key*",
+       "nodes": [
+        {
+         "id": "h",
+         "label": "Hot key",
+         "sub": "one partition",
+         "x": 50,
+         "y": 12,
+         "tone": "red"
+        },
+        {
+         "id": "a",
+         "label": "Salt 0",
+         "sub": "task",
+         "x": 20,
+         "y": 60,
+         "tone": "teal"
+        },
+        {
+         "id": "b",
+         "label": "Salt 5",
+         "sub": "task",
+         "x": 50,
+         "y": 60,
+         "tone": "teal"
+        },
+        {
+         "id": "c",
+         "label": "Salt 9",
+         "sub": "task",
+         "x": 80,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "h",
+         "a"
+        ],
+        [
+         "h",
+         "b"
+        ],
+        [
+         "h",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "h"
+        },
+        {
+         "at": 0.5,
+         "show": [
+          "a",
+          "b",
+          "c"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "h",
+          "a"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.65,
+         "packet": [
+          "h",
+          "c"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Ten tasks share the load",
+          "tone": "teal",
+          "icon": "⇉"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The cost is a small side ten times larger, so salt only the hot keys, and size the salt from what you measured.",
+      "show": {
+       "t": "points",
+       "title": "Salting rules",
+       "items": [
+        "Measure the skew first",
+        "Salt only hot keys",
+        "Copy the other side per salt"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "After salting a hot key with ten values, why must the other side be copied ten times?",
+     "opts": [
+      "To make it broadcastable",
+      "So every salted row still finds its match",
+      "To balance memory"
+     ],
+     "ans": 1,
+     "why": "Each salted hot row carries one of ten salts, so the other side must exist with every salt for the join to match."
+    },
+    "work": [
+     "Sort a slow stage by task duration and compare the maximum to the median.",
+     "Count rows per join key and list the top ten before choosing a fix."
+    ],
+    "part": "1 of 3"
+   },
+   {
+    "title": "Memory, spill and out of memory",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Spilling to disk keeps a job alive. So why do jobs still die of out of memory?",
+      "show": {
+       "t": "big",
+       "text": "Spill survives, OOM kills",
+       "sub": "Know the difference"
+      }
+     },
+     {
+      "say": "After a small reserved slice, sixty percent of the executor heap is shared by execution, meaning joins, sorts and shuffles, and storage for cached data. Execution can push the cache out, but only down to a protected half.",
+      "show": {
+       "t": "bars",
+       "title": "Executor heap",
+       "unit": "percent",
+       "items": [
+        [
+         "",
+         1,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "When a sort runs out of room, Spark writes sorted runs to disk and merges them later. Slower, but safe. Out of memory comes from things that cannot spill: a giant skewed or exploded partition, an oversized broadcast, or collect on the driver.",
+      "show": {
+       "t": "scene",
+       "title": "What cannot *spill*",
+       "nodes": [
+        {
+         "id": "e",
+         "label": "Executor",
+         "sub": "heap full",
+         "x": 25,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "d",
+         "label": "Local disk",
+         "sub": "spill",
+         "x": 75,
+         "y": 30,
+         "tone": "blue",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "e",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "e",
+          "d"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "e",
+          "d"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Huge rows and broadcasts cannot spill",
+          "tone": "red",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "And Python workers live outside the heap, in memory overhead. Past that limit, Kubernetes or YARN kills the container.",
+      "show": {
+       "t": "points",
+       "title": "Usual OOM causes",
+       "items": [
+        "Skewed or exploded partition",
+        "Broadcast too big",
+        "Python past the overhead"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A container is killed for memory while its Java heap is half empty. What is the likely cause?",
+     "opts": [
+      "Too much spill",
+      "Python or off heap buffers exceeded memory overhead",
+      "Too many shuffle partitions"
+     ],
+     "ans": 1,
+     "why": "Python workers and Arrow buffers use memoryOverhead outside the heap; exceeding it gets the container killed."
+    },
+    "work": [
+     "Read spill and garbage collection time for your largest stage.",
+     "Check memoryOverhead on any job that runs Python UDFs."
+    ],
+    "part": "2 of 3"
+   },
+   {
+    "title": "Catalyst and whole-stage codegen",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "The same logic as a DataFrame often runs many times faster than a Python UDF. Where does the speed come from?",
+      "show": {
+       "t": "big",
+       "text": "Optimizer plus compiler",
+       "sub": "Catalyst and Tungsten"
+      }
+     },
+     {
+      "say": "Catalyst is the optimizer. It checks names against the catalog, pushes filters down to the file scan, drops unused columns, then picks a physical plan, such as broadcast or sort merge, from size statistics.",
+      "show": {
+       "t": "points",
+       "title": "Catalyst steps",
+       "items": [
+        "Analyze names",
+        "Rewrite with rules",
+        "Pick a physical plan"
+       ]
+      }
+     },
+     {
+      "say": "Tungsten runs it. Rows sit in a compact binary form with little garbage collection, and whole-stage code generation fuses scan, filter and project into one tight generated loop, instead of one function call per row per operator.",
+      "show": {
+       "t": "scene",
+       "title": "Fuse into one *loop*",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Scan",
+         "sub": "",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "f",
+         "label": "Filter",
+         "sub": "",
+         "x": 50,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "p",
+         "label": "Project",
+         "sub": "",
+         "x": 80,
+         "y": 30,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "f"
+        ],
+        [
+         "f",
+         "p"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "s",
+          "f",
+          "p"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "s",
+          "p"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "One generated function",
+          "tone": "teal",
+          "icon": "⚡"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A Python UDF is a black box to both. Filters cannot pass through it, and rows must leave the binary format. Prefer built in functions, or pandas UDFs over Arrow.",
+      "show": {
+       "t": "code",
+       "title": "Codegen in explain",
+       "text": "*(2) Project\n+- *(2) Filter\n   +- *(2) ColumnarToRow"
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does a plain Python UDF slow a Spark query?",
+     "opts": [
+      "Catalyst cannot see inside it and rows must be converted for Python",
+      "It forces a shuffle",
+      "It disables the driver"
+     ],
+     "ans": 0,
+     "why": "The UDF is opaque to the optimizer and breaks the binary row format and code generation."
+    },
+    "work": [
+     "Run explain on a slow query and look for operators without a star.",
+     "Replace one Python UDF with a built in function and compare run time."
+    ],
+    "part": "3 of 3"
+   },
+   {
+    "title": "Should we use Spark at all?",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "A team wants Spark for a fifty gigabyte daily job. Is that the right call?",
+      "show": {
+       "t": "big",
+       "text": "Cluster or one machine?",
+       "sub": "Choose by size and shape"
+      }
+     },
+     {
+      "say": "Under a few hundred gigabytes, DuckDB or Polars on one machine often finishes before a cluster even starts, at a fraction of the cost.",
+      "show": {
+       "t": "bars",
+       "title": "Minutes for a 50 GB job",
+       "unit": "minutes",
+       "items": [
+        [
+         "",
+         1,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Spark earns its place on terabytes of joins and backfills over the lake, with SQL and Python side by side and open table formats. Flink wins for low latency stateful streams. The warehouse wins for plain SQL. Ray wins for GPU training.",
+      "show": {
+       "t": "scene",
+       "title": "Pick by *workload*",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Spark",
+         "sub": "big batch",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "f",
+         "label": "Flink",
+         "sub": "low latency",
+         "x": 50,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "w",
+         "label": "Warehouse",
+         "sub": "plain SQL",
+         "x": 80,
+         "y": 30,
+         "tone": "plum"
+        },
+        {
+         "id": "d",
+         "label": "DuckDB",
+         "sub": "one machine",
+         "x": 35,
+         "y": 70,
+         "tone": "amber"
+        },
+        {
+         "id": "r",
+         "label": "Ray",
+         "sub": "GPU, Python",
+         "x": 65,
+         "y": 70,
+         "tone": "grey"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "s"
+        },
+        {
+         "at": 0.35,
+         "show": "f"
+        },
+        {
+         "at": 0.5,
+         "show": "w"
+        },
+        {
+         "at": 0.65,
+         "show": [
+          "d",
+          "r"
+         ]
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Match the engine to the job",
+          "tone": "blue",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So ask three things first: how big, how fast, and who will own it.",
+      "show": {
+       "t": "points",
+       "title": "Before saying yes",
+       "items": [
+        "How big is the data?",
+        "How fresh must it be?",
+        "Who owns cost and sizing?"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A daily job reads 40 GB and needs results in an hour. What is often the cheaper choice?",
+     "opts": [
+      "A large Spark cluster",
+      "A single-node engine such as DuckDB or Polars",
+      "Flink"
+     ],
+     "ans": 1,
+     "why": "Data that fits on one machine is usually faster and cheaper without a cluster."
+    },
+    "work": [
+     "List your Spark jobs by input size and flag any under a hundred gigabytes.",
+     "For one streaming job, write down the latency it truly needs."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Owning, paying and leaving Spark",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Who gets paged when a Spark job runs out of memory at three in the morning?",
+      "show": {
+       "t": "big",
+       "text": "Who owns Spark?",
+       "sub": "Platform versus pipelines"
+      }
+     },
+     {
+      "say": "A platform team owns the runtime, versions, cluster policies, and cost guardrails such as auto termination and spot instances. Pipeline teams own their jobs, their sizing and their skew.",
+      "show": {
+       "t": "scene",
+       "title": "Split the *ownership*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Platform team",
+         "sub": "runtime, policies",
+         "x": 25,
+         "y": 30,
+         "tone": "plum"
+        },
+        {
+         "id": "t",
+         "label": "Pipeline team",
+         "sub": "jobs, sizing",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "t"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "p"
+        },
+        {
+         "at": 0.4,
+         "show": "t"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "p",
+          "t"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Tag cost per job and team",
+          "tone": "plum",
+          "icon": "#"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "It fails as stragglers from skew, out of memory, lost spot executors breaking shuffles, a driver choking on millions of small files, and a bill that grows faster than the data.",
+      "show": {
+       "t": "points",
+       "title": "How Spark fails",
+       "items": [
+        "Skew stragglers",
+        "OOM and container kills",
+        "Shuffle fetch failures",
+        "Small files and driver load"
+       ]
+      }
+     },
+     {
+      "say": "Move off when data shrinks to one machine, when work becomes low latency streaming, or when the warehouse runs the SQL cheaper.",
+      "show": {
+       "t": "points",
+       "title": "When to move off",
+       "items": [
+        "Fits on one machine",
+        "Needs millisecond streams",
+        "Plain SQL in the warehouse"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Which belongs to the platform team rather than the pipeline team?",
+     "opts": [
+      "Fixing skew in one job",
+      "Cluster policies and auto termination",
+      "Choosing a join key"
+     ],
+     "ans": 1,
+     "why": "The platform owns the runtime and guardrails; pipeline teams own their jobs, sizing and data shape."
+    },
+    "work": [
+     "Check that every cluster has auto termination and a cost tag.",
+     "Write a one-page owner map for Spark: platform, pipelines, on-call."
+    ],
+    "part": "2 of 2"
+   }
+  ]
  }
 }
