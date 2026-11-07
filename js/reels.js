@@ -205,14 +205,16 @@ function reelEnd(r, next, replay) {
   const x0 = (S.reels || {})[r.id] || {}, x = r.check && x0.q && x0.q !== r.check.q ? Object.assign({}, x0, { ans: undefined }) : x0, kids = []; /* an answer to an older version of the question is not shown (QA fix 10) */
   if (r.check) {
     const c = r.check, res = el('div', { role: 'status' });
-    const opts = el('div', { class: 'stack', style: { gap: '6px' } }, c.opts.map((o, i) => el('button', { class: 'btn ropt' + (x.ans === i ? (i === c.ans ? ' ok' : ' no') : ''), onclick: () => {
+    /* a fresh order on every showing; y.ans stays the option's index in the reel file (unguessable answers, 1.36) */
+    const order = seeded(c.opts.map((o, i) => i), newSeed());
+    const opts = el('div', { class: 'stack', style: { gap: '6px' } }, order.map(i => el('button', { class: 'btn ropt' + (x.ans === i ? (i === c.ans ? ' ok' : ' no') : ''), 'data-i': i, onclick: () => {
       S.reels = S.reels || {}; const y = S.reels[r.id] = S.reels[r.id] || {}, ok = i === c.ans, wasDue = reelDue(r.id); y.ans = i; y.ok = ok; y.q = c.q; y.at = Date.now(); mEvent(ok ? 'check_right' : 'check_wrong');
       if (!ok) { y.box = 0; y.due = iso(new Date(Date.now() + REEL_GAPS[0] * 864e5)); }
       else if (wasDue || y.box) { y.box = (y.box || 0) + 1; y.due = y.box < REEL_GAPS.length ? iso(new Date(Date.now() + REEL_GAPS[y.box] * 864e5)) : null; }
       else if (!wasDue) y.due = y.due && y.due > iso(new Date()) ? y.due : null;
       if (ok && typeof blip === 'function') blip(true);
-      save(); opts.querySelectorAll('button').forEach((b, j) => { b.classList.toggle('ok', j === c.ans); b.classList.toggle('no', j === i && !ok); });
-      res.textContent = (ok ? 'Right. ' : 'Not quite: this reel comes back in 3 days. ') + c.why; } }, o)));
+      save(); opts.querySelectorAll('button').forEach(b => { const j = +b.dataset.i; b.classList.toggle('ok', j === c.ans); b.classList.toggle('no', j === i && !ok); });
+      res.textContent = (ok ? 'Right. ' : 'Not quite: this reel comes back in 3 days. ') + c.why; } }, c.opts[i])));
     kids.push(el('b', { class: 'rq', text: 'Quick check: ' + c.q }), opts, res);
   }
   if (r.work && r.work.length) {

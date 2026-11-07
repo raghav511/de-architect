@@ -141,19 +141,31 @@ function blocks(text, keys, letters) {
   res.forEach(x => { for (const k in x) if (typeof x[k] === 'string') x[k] = x[k].trim(); });
   return res;
 }
+/* Unguessable answers: each attempt shows the options in its own order, and an answer is saved as the option's letter in the
+   module file (its identity), never as its place on screen. */
+function newSeed() { return (Math.floor(Math.random() * 4294967295) >>> 0) || 1; }
+function seeded(list, seed) {
+  let h = (seed >>> 0) || 1; const rnd = () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return (h >>> 0) / 4294967296; };
+  const a = list.slice(); for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(rnd() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; } return a;
+}
+function optOrder(q, seed, k) { return seeded(q.opts || [], Math.imul((seed >>> 0) ^ 0x9e3779b9, 2654435761) + k * 40503); }
+/* before 1.36 the screen letter of a fixed per-module shuffle was saved; this maps it back to the file's letter */
+function legacyQuizLetter(mid, k, a) {
+  let h = 2166136261; for (const ch of mid + ':' + k) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  const rnd = () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 1000) / 1000; };
+  const idx = [0, 1, 2, 3]; for (let j = idx.length - 1; j > 0; j--) { const r = Math.floor(rnd() * (j + 1)); [idx[j], idx[r]] = [idx[r], idx[j]]; }
+  const p = 'ABCD'.indexOf(a); return p < 0 ? a : 'ABCD'[idx[p]];
+}
+function quizMigrate(st, m, qs) {
+  if (st.v === 2) return false;
+  qs.forEach((q, k) => { if (q.TYPE === 'mcq' && typeof st.a[k] === 'string' && st.a[k]) st.a[k] = legacyQuizLetter(m, k, st.a[k]); });
+  st.v = 2; st.seed = st.seed || newSeed(); return true;
+}
 function parseSprint(text) {
   const s = splitSections(text), o = { raw: s, meta: {} };
   (s.meta || '').split('\n').forEach(l => { const i = l.indexOf(':'); if (i > 0) o.meta[l.slice(0, i).trim()] = l.slice(i + 1).trim(); });
   o.quiz = blocks(s.quiz, ['TYPE', 'TAG', 'Q', 'ANS', 'WHY', 'MODEL'], true);
-  /* the source files put most right answers at B; shuffle options per question (stable per module) so the letter gives nothing away */
-  o.quiz.forEach((q, i) => {
-    if (q.TYPE !== 'mcq' || !q.opts) return;
-    let h = 2166136261; for (const ch of (o.meta.id || '') + ':' + i) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
-    const rnd = () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 1000) / 1000; };
-    const texts = q.opts.map(x => x[1]), right = texts[q.opts.findIndex(x => x[0] === q.ANS)];
-    for (let k = texts.length - 1; k > 0; k--) { const j = Math.floor(rnd() * (k + 1)); [texts[k], texts[j]] = [texts[j], texts[k]]; }
-    q.opts = texts.map((t, k) => ['ABCD'[k], t]); q.ANS = 'ABCD'[texts.indexOf(right)];
-  });
+  /* options stay in file order with their own letters (q.ANS is the file's letter); screens show them in a fresh order per attempt (optOrder) */
   o.coding = blocks(s.coding, ['TITLE', 'KIND', 'MIN', 'TAG', 'SRC', 'PROBLEM', 'SOLUTION'], false).map(c => {
     const m = /<!--test\n?([\s\S]*?)-->/.exec(c.SOLUTION || ''); c.TEST = m ? m[1] : ''; c.SOLUTION = (c.SOLUTION || '').replace(/<!--test[\s\S]*?-->/, '').trim();
     const f = /```(?:\w+)?\n([\s\S]*?)```/.exec(c.SOLUTION); c.CODE = f ? f[1] : ''; return c;
@@ -811,7 +823,8 @@ async function vQuiz(m) {
   m = MOD[midOf(m)] ? midOf(m) : curMid(); const w = qk(m);
   shell('Module quiz', 'Module ' + modLabel(m) + ' · ' + modTitle(m), [el('p', { class: 'muted', text: 'Loading…' })], { back: '#/today' });
   let s; try { s = await sprint(m); } catch (e) { $('#page').textContent = 'Could not load this quiz.'; return; }
-  const qs = s.quiz; const st = S.quiz[w] = S.quiz[w] || { a: {}, sub: false, i: 0 };
+  const qs = s.quiz; const st = S.quiz[w] = S.quiz[w] || { a: {}, sub: false, i: 0, v: 2, seed: newSeed() };
+  if (quizMigrate(st, m, qs)) save(false);
   const page = $('#page'); let i = Math.min(st.i || 0, qs.length - 1);
   const weekSel = el('select', { class: 'btn sm', 'aria-label': 'Module', onchange: e => { location.hash = '#/quiz/' + e.target.value; } }, MODS.map(x => el('option', { value: x, selected: x === m ? 'selected' : null, text: modLabel(x) + ' · ' + modTitle(x) })));
   const grade = (q, a) => { if (a == null || a === '') return 0; if (q.TYPE === 'mcq') return a === q.ANS ? 1 : 0; if (q.TYPE === 'fill') { const nz = x => String(x).toLowerCase().replace(/^\s*(the|a|an)\s+/, '').replace(/[^a-z0-9]/g, '').replace(/s$/, ''); const ok = q.ANS.split('|').map(nz); return nz(a) !== '' && ok.includes(nz(a)) ? 1 : 0; } /* trust fix 16: an answer of only punctuation never matches */ return a.self || 0; };
@@ -819,7 +832,7 @@ async function vQuiz(m) {
     page.textContent = '';
     st.i = i; save(false);
     const answered = qs.filter((q, k) => st.a[k] !== undefined && st.a[k] !== '').length;
-    const reset = el('button', { class: 'btn sm quiet-warn', onclick: async () => { const v = await confirmBox('Reset this quiz?', 'All answers for module ' + modLabel(m) + ' are cleared. Undo is available for 10 seconds.', [{ t: 'Reset and exit', cls: 'warn', v: 1 }, { t: 'Cancel', v: null }]); if (v) { const snap = JSON.stringify(st); S.quiz[w] = { a: {}, sub: false, i: 0 }; save(); location.hash = '#/today'; setTimeout(() => toast('Quiz reset', () => { S.quiz[w] = JSON.parse(snap); save(); }), 50); } }, text: 'Reset and exit' });
+    const reset = el('button', { class: 'btn sm quiet-warn', onclick: async () => { const v = await confirmBox('Reset this quiz?', 'All answers for module ' + modLabel(m) + ' are cleared. Undo is available for 10 seconds.', [{ t: 'Reset and exit', cls: 'warn', v: 1 }, { t: 'Cancel', v: null }]); if (v) { const snap = JSON.stringify(st); S.quiz[w] = { a: {}, sub: false, i: 0, v: 2, seed: newSeed() }; save(); location.hash = '#/today'; setTimeout(() => toast('Quiz reset', () => { S.quiz[w] = JSON.parse(snap); save(); }), 50); } }, text: 'Reset and exit' });
     /* top: ✕ (Leave) and answered progress; Reset sits with the question numbers, away from the main buttons */
     page.appendChild(el('div', { class: 'qtop' }, [
       el('button', { class: 'btn icon sm', 'aria-label': 'Leave', onclick: async () => { const v = await confirmBox('Leave the quiz?', 'Your answers are kept. You can come back and finish later.', [{ t: 'Leave, keep answers', cls: 'pri', v: 1 }, { t: 'Stay', v: null }]); if (v) location.hash = '#/today'; } }, [svg(I.x, 18), el('span', { class: 'sr', text: 'Leave' })]),
@@ -837,12 +850,12 @@ async function vQuiz(m) {
       const toMark = qs.filter((q, k) => q.TYPE === 'short' && st.a[k] && st.a[k].t && st.a[k].self === undefined).length;
       page.appendChild(el('section', { class: 'card pad stack' }, [el('h2', { text: 'Score: ' + score + ' of ' + qs.length + ' (' + pct + '%)' }), el('span', { class: 'muted', text: (st.best ? 'Best: ' + st.best + '% · ' : '') + (pct >= 80 ? 'Pass mark reached (80%).' : 'The pass mark is 80%. Review the ones marked Review, then retake.') + (toMark ? ' ' + toMark + ' short answer' + (toMark > 1 ? 's' : '') + ' still to mark yourself below.' : '') }), el('div', { class: 'row wrap' }, [el('button', { class: 'btn pri', onclick: () => { S.quiz[w] = { a: {}, sub: false, i: 0, best: st.best }; save(); vQuiz(m); }, text: 'Retake' }), el('a', { class: 'btn', href: '#/today', text: 'Back to Today' })])]));
       if (typeof simCard === 'function') { const c = simCard(m, { title: 'Prove it in the simulator: exam', exam: true }); if (c) page.appendChild(c); }
-      const yours = (q, a) => a == null || a === '' ? 'no answer' : q.TYPE === 'mcq' ? a + ') ' + ((q.opts || []).find(o => o[0] === a) || ['', ''])[1] : q.TYPE === 'fill' ? String(a) : (a.t || 'no answer');
+      const yours = (q, a) => a == null || a === '' ? 'no answer' : q.TYPE === 'mcq' ? ((q.opts || []).find(o => o[0] === a) || ['', 'an option no longer offered'])[1] : q.TYPE === 'fill' ? String(a) : (a.t || 'no answer');
       qs.forEach((q, k) => {
         const g = grade(q, st.a[k]), sh = q.TYPE === 'short' && st.a[k] && st.a[k].t;
         page.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('span', { class: 'lbl grow', text: 'Q' + (k + 1) }), el('span', { class: 'badge ' + (g ? 'b-ok' : sh && st.a[k].self === undefined ? 'b-warn' : 'b-bad'), text: g ? 'Right' : sh && st.a[k].self === undefined ? 'Mark yourself' : 'Review' })]), el('div', { html: mdi(q.Q) }),
           el('div', { style: { fontSize: '14.5px' } }, [el('b', { text: 'Your answer: ' }), el('span', { html: mdi(yours(q, st.a[k])) })]),
-          el('div', { class: 'muted', html: '<b>' + (q.TYPE === 'short' ? 'Model answer' : 'Answer') + ':</b> ' + mdi(q.TYPE === 'mcq' ? q.ANS + ') ' + ((q.opts || []).find(o => o[0] === q.ANS) || ['', ''])[1] : q.TYPE === 'fill' ? q.ANS.split('|')[0] : (q.MODEL || q.ANS || '')) }), q.WHY ? el('div', { class: 'why', html: mdi(q.WHY) }) : null,
+          el('div', { class: 'muted', html: '<b>' + (q.TYPE === 'short' ? 'Model answer' : 'Answer') + ':</b> ' + mdi(q.TYPE === 'mcq' ? ((q.opts || []).find(o => o[0] === q.ANS) || ['', ''])[1] : q.TYPE === 'fill' ? q.ANS.split('|')[0] : (q.MODEL || q.ANS || '')) }), q.WHY ? el('div', { class: 'why', html: mdi(q.WHY) }) : null,
           sh ? gradeBox({ kind: 'answer', key: 'quiz:' + w + ':' + k, title: q.Q, label: 'Grade my answer', text: () => st.a[k].t, payload: () => ({ question: q.Q, model_answer: q.MODEL || q.ANS || '', answer: st.a[k].t }), onResult: g => { if (st.a[k].self === undefined) { st.a[k].self = g.r.score >= 4 ? 1 : 0; save(); draw(); } } }) : null,
           sh ? el('div', { class: 'row wrap' }, [el('span', { class: 'muted', text: 'Compare with the model answer (the grade marks it for you; you can change it):' }), el('button', { class: 'btn sm', 'aria-pressed': String(st.a[k].self === 1), onclick: () => { st.a[k].self = 1; save(); draw(); }, text: 'I got it' }), el('button', { class: 'btn sm', 'aria-pressed': String(st.a[k].self === 0), onclick: () => { st.a[k].self = 0; save(); draw(); }, text: 'Not yet' })]) : null]));
       });
@@ -851,7 +864,7 @@ async function vQuiz(m) {
     const q = qs[i];
     const pal = el('div', { class: 'pal', 'aria-label': 'Jump to a question' }, qs.map((_, k) => el('button', { class: (st.a[k] !== undefined && st.a[k] !== '' ? 'ans ' : '') + (k === i ? 'cur' : ''), 'aria-label': 'Question ' + (k + 1), onclick: () => { i = k; draw(); }, text: String(k + 1) })));
     const card = el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('span', { class: 'lbl grow', text: 'Question ' + (i + 1) + ' of ' + qs.length + ' · ' + (q.TYPE === 'mcq' ? 'multiple choice' : q.TYPE === 'fill' ? 'fill in the blank' : 'short answer') })]), el('div', { style: { fontSize: '17px' }, html: mdi(q.Q) })]);
-    if (q.TYPE === 'mcq') (q.opts || []).forEach(([k, t]) => card.appendChild(el('button', { class: 'opt', 'aria-pressed': String(st.a[i] === k), onclick: () => { st.a[i] = k; save(); draw(); } }, [el('b', { text: k }), el('span', { html: mdi(t) })])));
+    if (q.TYPE === 'mcq') optOrder(q, st.seed, i).forEach(([k, t], p) => card.appendChild(el('button', { class: 'opt', 'data-k': k, 'aria-pressed': String(st.a[i] === k), onclick: () => { st.a[i] = k; save(); draw(); } }, [el('b', { text: 'ABCD'[p] }), el('span', { html: mdi(t) })])));
     else if (q.TYPE === 'fill') { const inp = el('input', { type: 'text', value: st.a[i] || '', 'aria-label': 'Your answer', style: { minHeight: '46px', border: '1px solid var(--line2)', borderRadius: '10px', padding: '0 12px' } }); inp.addEventListener('input', () => { st.a[i] = inp.value; save(); }); card.appendChild(inp); }
     else { const ta = el('textarea', { class: 'code', style: { minHeight: '140px', border: '1px solid var(--line2)', borderRadius: '10px', fontFamily: 'var(--body)', fontSize: '16px' }, 'aria-label': 'Your answer' }); ta.value = (st.a[i] && st.a[i].t) || ''; ta.addEventListener('input', () => { st.a[i] = Object.assign({}, st.a[i] || {}, { t: ta.value }); save(); }); card.appendChild(ta);
       card.appendChild(el('div', { class: 'row wrap' }, [el('span', { class: 'muted', text: 'After you submit, Claude grades this answer (score, what to fix and a stronger answer) and you compare with the model answer.' })])); }

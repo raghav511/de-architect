@@ -152,7 +152,7 @@ async function vWarm() {
     if (i >= deck.length) return finish();
     const q = deck[i]; card.textContent = '';
     card.appendChild(el('div', { class: 'gq-q', html: mdi(q.Q) }));
-    if (q.TYPE === 'mcq') card.appendChild(el('div', { class: 'stack', style: { gap: '6px' } }, q.opts.map(([l, tx]) => el('button', { class: 'btn gopt', onclick: () => answer(l === q.ANS, q.WHY), html: mdi(tx) }))));
+    if (q.TYPE === 'mcq') card.appendChild(el('div', { class: 'stack', style: { gap: '6px' } }, seeded(q.opts, newSeed()).map(([l, tx]) => el('button', { class: 'btn gopt', onclick: () => answer(l === q.ANS, q.WHY), html: mdi(tx) }))));
     else { const inp = el('input', { class: 'btn', style: { justifyContent: 'flex-start', width: '100%' }, 'aria-label': 'Your answer', autocomplete: 'off', autocapitalize: 'off' });
       const go = () => { const v = inp.value.trim().toLowerCase(); answer(!!v && q.ANS.split('|').map(s => s.trim().toLowerCase()).includes(v), 'Answer: ' + q.ANS.split('|')[0].trim() + '. ' + (q.WHY || '')); };
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
