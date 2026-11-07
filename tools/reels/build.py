@@ -15,5 +15,13 @@ for f in sorted(glob.glob(os.path.join(os.path.dirname(__file__), 'r_*.py'))):
         if c and not 0 <= c['ans'] < len(c['opts']): errs.append(r['id'] + ': check answer out of range')
     out[mid] = reels
 if errs: sys.exit('\n'.join(errs))
+# keep links to recordings that already match the text (tools/reels/voice.py records the rest)
+import hashlib
+for reels in out.values():
+    for r in reels:
+        for i, b in enumerate(r['beats']):
+            h = hashlib.sha1(('kokoro|af_heart||' + b['say']).encode()).hexdigest()[:10]
+            f = 'audio/reels/%s-%d-%s.m4a' % (r['id'], i, h)
+            if os.path.exists(f): b['audio'] = f
 json.dump(out, open('data/reels.json', 'w'), ensure_ascii=False, separators=(',', ':'))
 print(sum(len(v) for v in out.values()), 'reels in', len(out), 'modules')
