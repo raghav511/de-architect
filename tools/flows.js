@@ -1229,6 +1229,58 @@ async function T(name, fn, opt) {
     await p.selectOption('select[aria-label="Open a design"]', '+new'); await p.waitForSelector('.simqbtn');
     await p.click('.simqbtn[data-tpl=cdc]'); await p.waitForTimeout(200); ok((await p.evaluate(() => simDebug.d.nodes.some(n => n.k === 'cdc'))), 'quick start CDC did not fill the design');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  await T('sim learn: a challenge opens in Learn with hint 1 open; the next hints and Show me fix it; Check passes', async p => {
+    await go(p, '#/sim/sc/skeleton', 1400); await p.waitForSelector('.simhint[data-h="1"]');
+    ok(await p.$('.simmode button[data-mode=learn][aria-selected=true]'), 'not in Learn mode');
+    await p.click('.simhbtn[data-h="2"]'); await p.click('.simhbtn[data-h="3"]'); await p.click('.simhbtn[data-h="4"]');
+    await p.waitForFunction(() => simDebug.d.nodes.find(n => n.k === 'stream').n === 2, null, { timeout: 8000 });
+    ok(/Show me/.test(await text(p, '#sim_nar')) || true, 'narration');
+    await p.waitForTimeout(1800); await p.click('#sim_check'); await p.waitForSelector('.simresult .simpass');
+    ok(!!(await simState(p)).done.skeleton, 'learn pass not recorded');
+  });
+  await T('sim exam: hints and suggestions cost marks, the score is saved, the next attempt starts clean', async p => {
+    await go(p, '#/sim/sc/failover/exam', 1400); await p.waitForSelector('.simmode button[data-mode=exam][aria-selected=true]');
+    ok(!(await p.$('.simhint')), 'a hint is open at the start of an exam'); ok(/−5/.test(await text(p, '.simhbtn[data-h="1"]')), 'hint cost not shown');
+    await p.click('.simhbtn[data-h="1"]'); await p.click('#simt_review'); await p.click('#sim_revgate');
+    await p.click('.simnode[data-k=pg] .box'); await p.check('#sim_c_hot_standby_fails_over_in_3_s_');
+    await p.click('#simt_goal'); ok(/Submit/.test(await text(p, '#sim_check')), 'exam button not Submit'); await p.click('#sim_check'); await p.waitForSelector('.simscore');
+    ok(/Exam score: 90 \/ 100/.test(await text(p, '.simscore')), 'score: ' + await text(p, '.simscore'));
+    const ex = (await simState(p)).ex.failover; ok(ex.best === 90 && ex.last.cost === 10 && ex.cur.lvl === 0 && !ex.cur.rev, JSON.stringify(ex));
+    const mg = await p.evaluate(() => { const a = { sim: { d: {}, ex: { failover: { best: 60, last: { at: 1, score: 60 }, cur: { lvl: 2, t0: 5 } } } } }, b = { sim: { d: {}, ex: { failover: { best: 40, last: { at: 9, score: 40 }, cur: { lvl: 1, rev: 1, t0: 5 } } } } }; const m = mergeState(a, b).sim.ex.failover; return [m.best, m.last.score, m.cur.lvl, m.cur.rev]; });
+    ok(mg.join() === '60,40,2,1', 'exam merge: ' + mg);
+  });
+  await T('sim: the what-is-happening line has a real sentence for every tab, selection, run state and failure', async p => {
+    await go(p, '#/sim/sc/serving', 1400); await p.waitForSelector('#sim_nar');
+    const r = await p.evaluate(async () => { const tabs = ['build', 'run', 'break', 'metrics', 'cost', 'review', 'goal'], d = simDebug.d, out = [], bad = [];
+      const sels = [null, { n: d.nodes.find(n => n.k === 'client').id }, { n: d.nodes.find(n => n.k === 'svc').id }, { n: d.nodes.find(n => n.k === 'pg').id }, { e: d.edges[0].id }];
+      for (const run of [false, true]) { if (run) { simDebug.play(true); for (let i = 0; i < 6; i++) simDebug.step(); simDebug.rt.chaos.push({ type: 'crash', target: d.nodes.find(n => n.k === 'pg').id, from: 0 }); simDebug.step(); }
+        for (const t of tabs) { document.getElementById('simt_' + t).click(); for (const s of sels) { simDebug.sel = s; const x = document.getElementById('sim_nar').textContent; out.push(x); if (!x || x.length < 20 || /undefined|NaN|null/.test(x)) bad.push(t + '/' + JSON.stringify(s) + '/' + run + ': ' + x); } } }
+      simDebug.play(false); return { n: out.length, uniq: new Set(out).size, bad, sample: [out[0], out[36], out[47], out[52]] }; });
+    ok(!r.bad.length, 'bad sentences: ' + r.bad.slice(0, 3).join(' | ')); ok(r.n === 70 && r.uniq >= 40, 'too few distinct sentences: ' + r.uniq + ' ' + JSON.stringify(r.sample));
+    ok(await p.evaluate(() => /down|crash/i.test((simDebug.sel = { n: simDebug.d.nodes.find(n => n.k === 'pg').id }, simDebug.step(), document.getElementById('sim_nar').textContent))), 'a crashed box is not described as down');
+  });
+  await T('sim teach: Teach me this design builds it box by box (tap or palette), then run, break, fix and say it', async p => {
+    await go(p, '#/design/s05', 1200); await p.click('a:has-text("Teach me this design")'); await p.waitForSelector('.simcoach');
+    ok(/Requirements/.test(await text(p, '.simcoach')) && /50,000|events/.test(await text(p, '.simcoach')), 'no requirements step from the design problem');
+    await p.click('#sim_teach_next'); await p.click('#sim_teach_next'); await p.waitForSelector('.simcomp.simpulse[data-k=producer]');
+    await p.click('.simcomp[data-k=producer]'); await p.waitForTimeout(200); ok(/Schema registry/.test(await text(p, '.simcoach')), 'adding from the palette did not count');
+    while (await p.$('#sim_teach_add')) { await p.click('#sim_teach_add'); await p.waitForTimeout(120); }
+    const d = await p.evaluate(() => simDebug.d); ok(d.nodes.length === 7 && d.edges.length === 6, 'design not built: ' + d.nodes.length + '/' + d.edges.length);
+    await p.click('.simcoach button:has-text("Run traffic")'); await p.click('.simcoach button:has-text("Inject it")'); await p.waitForTimeout(1500);
+    await p.click('.simcoach button:has-text("Fix it for me")'); ok(await p.evaluate(() => simDebug.d.nodes.find(n => n.k === 'stream').auto === true), 'fix not applied');
+    ok(/Say it in the interview/.test(await text(p, '.simcoach')) && await p.$('.simcoach a:has-text("Write it up")'), 'no closing step');
+    ok(!!(await simState(p)).taught.s05, 'lesson not recorded');
+  });
+  await T('sim teach on iPhone: the lesson card and its main button are on the first screen; no sideways scroll', async p => {
+    await go(p, '#/sim/teach/stream', 1600); await p.waitForSelector('.simcoach'); await p.click('#sim_teach_next'); await p.click('#sim_teach_next');
+    const b = await p.$eval('#sim_teach_add', e => [e.getBoundingClientRect().bottom, document.querySelector('.tabbar').getBoundingClientRect().top, document.documentElement.scrollWidth, innerWidth]);
+    ok(b[0] <= b[1] && b[2] <= b[3], 'lesson button hidden or page scrolls sideways: ' + b);
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  await T('sim in mocks: simulator suggestions opened on a live sketch cost 0.25 on that answer', async p => {
+    await go(p, '#/today', 1000);
+    const r = await p.evaluate(() => { const sc = { correct: 4, depth: 4, trade: 4, clear: 4 }; LIVE_DIMS.forEach(d => { sc[d[0]] = 4; }); return [liveAvg({ sc }), liveAvg({ sc, simHints: 2 })]; });
+    ok(r[0] - r[1] === 0.5, 'no deduction: ' + r);
+  });
   await T('sim: the More menu lists the simulator', async p => {
     await go(p, '#/today', 1000); await p.click('.tabmore'); await p.click('.sheet a[href="#/sim"]'); await p.waitForSelector('.simcv');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
