@@ -91,6 +91,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.36.8: Design at real scale (review 8); Staff questions to 80.
 - 1.36.7: Unguessable quizzes (review 3).
 - 1.36.6: second crawler batch: lesson pages no longer pan sideways on iPhone (a long module name in the picker, and WebKit counting wide code blocks); Today's "This week" and the design round timer no longer overlap; 44 px touch targets on phones for folded answers, reel buttons under headings, Progress quests and links, loop and simulator chips, simulator tools, editor pane tabs and the day arrows; an empty Send or Run line puts the cursor in its box; the quiz palette marks the current question for screen readers; the coach mic says when it is listening.
 - 1.36.5: release.

@@ -1,3 +1,0 @@
-# Staff questions to 80
-- The live mock's staff-level bank grows from 38 to 80 questions, eight of each kind (what breaks at scale, the 3 a.m. page, pick and defend, metric then model, fix the organization, cut the cost, migrate live, estimate it, project deep dive, lead and influence).
-- The new questions lean on data engineering loops at Uber, Meta, Google and Salesforce: CDC and WAL incidents, Flink checkpoints, S3 throttling, lakehouse versus warehouse, BigQuery and storage bills, Oracle and Kafka migrations, ads and embedding estimates, and leading across teams; each has five answer points to compare with.
