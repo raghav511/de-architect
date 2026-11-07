@@ -321,6 +321,7 @@ function vToday(off) {
     off === 0 ? whatsNewCard() : null,
     el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [modCard, desCard])]),
     off === 0 ? el('div', { id: 'rtodayslot' }) : null,
+    off === 0 && typeof simToday === 'function' ? simToday() : null,
     off === 0 ? el('div', { id: 'gcardslot' }) : null,
     el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'This week' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'minutes planned / budget · tap a day to see it' }), el('button', { class: 'btn sm', onclick: exportIcs, text: 'Add to calendar' })]), weekStrip(sc, k)])]);
   if (off === 0) { reelToday().then(c => { const s = document.getElementById('rtodayslot'); if (c && s) s.replaceWith(c); }); gameCard().then(c => { const s = document.getElementById('gcardslot'); if (c && s) s.replaceWith(c); }); gameShipCheck(); }
@@ -453,6 +454,7 @@ async function vLearn(m, tab, range) {
   }
   if (tab === 'readings') { body.appendChild(el('section', { class: 'card pad stack' }, [el('h2', { text: 'Read deeper' }), isS(m) && +m.slice(1) > 0 ? el('p', { class: 'muted', style: { margin: 0 }, text: 'Books: ' + WEEKS[+m.slice(1) - 1][5] }) : null, ch])); if (isS(m)) body.appendChild(videoCard(+m.slice(1))); }
   else body.appendChild(el('article', { class: 'card pad' }, ch));
+  if ((tab === 'chapter' || tab === 'lab') && typeof simCard === 'function') { const c = simCard(m); if (c) body.appendChild(c); } /* this module's design simulator challenges (js/sim.js) */
   /* Claude Code modules: try prompts for real from any page of the lesson */
   if (isCC(m) && (tab === 'chapter' || tab === 'lab')) body.appendChild(runBox({ key: m + '_' + tab, title: tab === 'lab' ? 'Practise here: run a prompt in Claude Code' : 'Try what you just read', claudeMd: true, placeholder: 'For example: Find where amounts are parsed and explain what goes wrong for EU files. Answer in 5 lines.' }));
   if (isCC(m) && tab === 'lab' && (s.tasks || []).length) body.appendChild(el('a', { class: 'btn pri', style: { alignSelf: 'flex-start' }, href: '#/cc/' + m + '/1', text: 'Take the test: ' + s.tasks.length + ' graded tasks' }));

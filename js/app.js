@@ -186,7 +186,7 @@ function chipFor(k) { return { py: ['Python', 'c-py'], dsa: ['DSA', 'c-dsa'], co
 function chip(k) { const c = chipFor(k); return el('span', { class: 'chip ' + c[1], text: c[0] }); }
 
 /* ---------------- shell ---------------- */
-const NAV = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/playbook', 'My playbook', 'book'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/git', 'Git lessons', 'git'], ['#/terminal', 'Terminal', 'code'], ['#/news', 'What is new in AI', 'news'], ['#/recent', 'Asked this week', 'quiz'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/mock', 'Mock interview', 'quiz'], ['#/coach', 'Coach', 'spark'], ['#/progress', 'Progress', 'prog']];
+const NAV = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/playbook', 'My playbook', 'book'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/sim', 'Design simulator', 'design'], ['#/git', 'Git lessons', 'git'], ['#/terminal', 'Terminal', 'code'], ['#/news', 'What is new in AI', 'news'], ['#/recent', 'Asked this week', 'quiz'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/mock', 'Mock interview', 'quiz'], ['#/coach', 'Coach', 'spark'], ['#/progress', 'Progress', 'prog']];
 const TABS = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/path', 'Path', 'path'], ['#/practice', 'Coding', 'code'], ['#/projects', 'Projects', 'proj']];
 function shell(title, eyebrow, body, opts) {
   opts = opts || {};
@@ -239,6 +239,7 @@ function route() {
     else if (r === 'test') vWork('test', midOf(p[1]) + '/' + p[2]);
     else if (r === 'practice') vPractice(p[1] || 'all');
     else if (r === 'design') vDesign(p[1]);
+    else if (r === 'sim') vSim(p[1], p[2]);
     else if (r === 'quiz') vQuiz(p[1]);
     else if (r === 'interview') vInterview(p[1], p[2]);
     else if (r === 'progress') vProgress();
@@ -780,11 +781,12 @@ function vDesign(m) {
     el('div', { class: 'stack', style: { gap: '4px' } }, [el('span', { class: 'lbl', text: 'Problem statement' }), el('p', { style: { margin: 0, fontSize: '16.5px' }, text: D.prompt })]),
     el('div', { class: 'stack', style: { gap: '4px' } }, [el('span', { class: 'lbl', text: 'What you hand in' }), el('p', { style: { margin: 0 }, text: D.deliverable })]),
     el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Work through the six steps below in one sitting, writing your answer in each box. Then tap Grade my design at the bottom for an interviewer\'s grade.' }),
-    du ? el('button', { class: 'btn', style: { alignSelf: 'flex-start' }, onclick: () => toggleUnit(du), text: du.isDone ? 'Mark not done' : 'Mark this design done' }) : null]);
+    el('div', { class: 'row wrap', style: { gap: '8px' } }, [du ? el('button', { class: 'btn', onclick: () => toggleUnit(du), text: du.isDone ? 'Mark not done' : 'Mark this design done' }) : null,
+      typeof simSketch === 'function' ? simSketch(D.title + ' ' + D.prompt, 'Sketch it in the simulator') : null])]);
   const notesAll = () => STEPS.map((x, i) => (S.code['design_' + m + '_' + i] || '').trim() ? '## ' + (i + 1) + '. ' + x[0] + '\n' + S.code['design_' + m + '_' + i].trim() : '').filter(Boolean).join('\n\n');
   const gradeCard = el('section', { class: 'card pad stack' }, [el('h3', { text: 'Grade my design' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'When you have written all six steps, get an interviewer\'s grade on the whole design: requirements, estimates, trade-offs, failure handling and cost.' }),
     gradeBox({ kind: 'design', key: 'design:' + m, title: D.title, label: 'Grade my design', text: notesAll, payload: () => ({ prompt: D.prompt, deliverable: D.deliverable, notes: notesAll() }) })]);
-  shell('System design studio', 'Design problem · module ' + modLabel(m), [problem, tabs,
+  shell('System design studio', 'Design problem · module ' + modLabel(m), [problem, typeof simCard === 'function' ? simCard(m, { title: 'Then test it under load' }) : null, tabs,
     el('div', { class: 'grid2' }, [el('section', { class: 'card pad stack' }, [stepBox]),
       el('div', { class: 'stack', style: { gap: '18px' } }, [
         el('section', { class: 'card pad stack' }, [el('h3', { text: 'Back-of-envelope calculator' }), el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '10px' } }, [inp('trips', 'Users or trips per day'), inp('events', 'Events per user'), inp('bytes', 'Bytes per event'), inp('peak', 'Peak ÷ average'), inp('years', 'Years kept'), inp('repl', 'Replication factor')]), out]),
@@ -821,6 +823,7 @@ async function vQuiz(m) {
       if (st.last !== pct || JSON.stringify(st.miss) !== JSON.stringify(miss)) { st.last = pct; st.miss = miss; st.at = Date.now(); save(); }
       const toMark = qs.filter((q, k) => q.TYPE === 'short' && st.a[k] && st.a[k].t && st.a[k].self === undefined).length;
       page.appendChild(el('section', { class: 'card pad stack' }, [el('h2', { text: 'Score: ' + score + ' of ' + qs.length + ' (' + pct + '%)' }), el('span', { class: 'muted', text: (st.best ? 'Best: ' + st.best + '% · ' : '') + (pct >= 80 ? 'Pass mark reached (80%).' : 'The pass mark is 80%. Review the ones marked Review, then retake.') + (toMark ? ' ' + toMark + ' short answer' + (toMark > 1 ? 's' : '') + ' still to mark yourself below.' : '') }), el('div', { class: 'row wrap' }, [el('button', { class: 'btn pri', onclick: () => { S.quiz[w] = { a: {}, sub: false, i: 0, best: st.best }; save(); vQuiz(m); }, text: 'Retake' }), el('a', { class: 'btn', href: '#/today', text: 'Back to Today' })])]));
+      if (typeof simCard === 'function') { const c = simCard(m, { title: 'Prove it in the simulator' }); if (c) page.appendChild(c); }
       const yours = (q, a) => a == null || a === '' ? 'no answer' : q.TYPE === 'mcq' ? a + ') ' + ((q.opts || []).find(o => o[0] === a) || ['', ''])[1] : q.TYPE === 'fill' ? String(a) : (a.t || 'no answer');
       qs.forEach((q, k) => {
         const g = grade(q, st.a[k]), sh = q.TYPE === 'short' && st.a[k] && st.a[k].t;
@@ -1027,6 +1030,9 @@ function mergeState(a, b) {
   if (a.game || b.game) { const x = a.game || {}, y = b.game || {}; out.game = Object.assign({}, x, y, { shipped: Object.assign({}, x.shipped, y.shipped), warm: Object.assign({}, x.warm, y.warm), days: Object.assign({}, x.days, y.days) });
     for (const d in out.game.days) if ((x.days || {})[d] && (y.days || {})[d]) { const o = Object.assign({}, x.days[d]); for (const kd in y.days[d]) o[kd] = Math.max(o[kd] || 0, y.days[d][kd] || 0); out.game.days[d] = o; } }
   out.rqSeen = [a.rqSeen, b.rqSeen].filter(Boolean).sort().pop();
+  /* design simulator: designs merge one by one and the newer edit wins; a removed design keeps a dated marker, so sync never drops or revives one by accident */
+  const sa = a.sim || {}, sb = b.sim || {}; out.sim = Object.assign({}, sa, sb, { d: Object.assign({}, sa.d || {}, sb.d || {}), done: Object.assign({}, sa.done || {}, sb.done || {}) });
+  for (const id in out.sim.d) { const x = (sa.d || {})[id], y = (sb.d || {})[id]; out.sim.d[id] = !x ? y : !y ? x : (x.at || 0) > (y.at || 0) ? x : y; }
   out.updated = Math.max(a.updated || 0, b.updated || 0);
   return out;
 }
