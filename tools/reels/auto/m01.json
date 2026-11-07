@@ -5745,5 +5745,887 @@
     ]
    }
   ]
+ },
+ "M1.8 Architect's lens: dimensional modelling": {
+  "hash": "be4be42233e5",
+  "sec": "M1.8",
+  "reels": [
+   {
+    "title": "Why everyone's numbers match",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Why do two teams ask for trips by city last week and get different answers?",
+      "show": {
+       "t": "big",
+       "text": "Same question, two answers?",
+       "sub": "Trips by city, last week"
+      }
+     },
+     {
+      "say": "Imagine a receipt book. Each line is one trip, and you write down one rule: one line per trip, nothing else. That rule is called the grain. It means what one row stands for.",
+      "show": {
+       "t": "scene",
+       "title": "One line per *trip*",
+       "nodes": [
+        {
+         "id": "f",
+         "label": "Trips",
+         "sub": "one row = one trip",
+         "x": 50,
+         "y": 40,
+         "tone": "blue"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "f"
+        },
+        {
+         "at": 0.6,
+         "chip": {
+          "text": "Grain = what one row means",
+          "tone": "amber",
+          "icon": "ruler"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Now add shared lookup cards: one for city, one for date, one for customer. Every team reads the same card, so a city means the same thing everywhere. Those cards are dimensions. The receipts are facts.",
+      "show": {
+       "t": "scene",
+       "title": "Facts and shared *cards*",
+       "nodes": [
+        {
+         "id": "f",
+         "label": "Trips",
+         "sub": "fact",
+         "x": 50,
+         "y": 50,
+         "tone": "blue"
+        },
+        {
+         "id": "c",
+         "label": "City",
+         "sub": "dimension",
+         "x": 15,
+         "y": 20,
+         "tone": "teal"
+        },
+        {
+         "id": "d",
+         "label": "Date",
+         "sub": "dimension",
+         "x": 50,
+         "y": 20,
+         "tone": "teal"
+        },
+        {
+         "id": "u",
+         "label": "Customer",
+         "sub": "dimension",
+         "x": 85,
+         "y": 20,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "f",
+         "c"
+        ],
+        [
+         "f",
+         "d"
+        ],
+        [
+         "f",
+         "u"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "f"
+        },
+        {
+         "at": 0.3,
+         "show": [
+          "c",
+          "d",
+          "u"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "c",
+          "f"
+         ],
+         "n": 3
+        }
+       ]
+      }
+     },
+     {
+      "say": "Same receipts, same cards, same answer. That is the whole point: anyone can slice by anything and still agree.",
+      "show": {
+       "t": "big",
+       "text": "Same data, same meaning",
+       "sub": "Slice by anything and still agree"
+      }
+     }
+    ],
+    "check": {
+     "q": "What does declaring the grain of a fact table tell you?",
+     "opts": [
+      "Which database stores it",
+      "What exactly one row represents",
+      "How many columns it has"
+     ],
+     "ans": 1,
+     "why": "Grain is the definition of one row, such as one trip. Without it, counts and joins become ambiguous."
+    },
+    "work": [
+     "Write the grain of your three busiest tables as one sentence each.",
+     "Find a metric two teams calculate differently and trace which dimension they disagree on."
+    ]
+   },
+   {
+    "title": "Why a star runs fast",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How can a star schema be fast when it needs joins?",
+      "show": {
+       "t": "big",
+       "text": "Joins, yet fast?",
+       "sub": "Star schema in a columnar warehouse"
+      }
+     },
+     {
+      "say": "The dimensions are small. Say the city table has two hundred rows. The engine copies it to every worker, so the giant fact table with a billion rows never has to move across the network. Moving data like that is called a shuffle, and it is slow.",
+      "show": {
+       "t": "scene",
+       "title": "Broadcast the *small* side",
+       "nodes": [
+        {
+         "id": "d",
+         "label": "City dim",
+         "sub": "200 rows",
+         "x": 50,
+         "y": 15,
+         "tone": "teal"
+        },
+        {
+         "id": "w1",
+         "label": "Worker 1",
+         "sub": "fact slice",
+         "x": 25,
+         "y": 55,
+         "tone": "blue"
+        },
+        {
+         "id": "w2",
+         "label": "Worker 2",
+         "sub": "fact slice",
+         "x": 75,
+         "y": 55,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "d",
+         "w1"
+        ],
+        [
+         "d",
+         "w2"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "d"
+        },
+        {
+         "at": 0.3,
+         "show": [
+          "w1",
+          "w2"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "d",
+          "w1"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "d",
+          "w2"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "No shuffle of 1 billion rows",
+          "tone": "teal",
+          "icon": "bolt"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The fact is narrow: just keys and numbers. Columnar storage reads only the three columns a query needs, not all forty. And a filter like city equals Lisbon becomes a filter on city keys, so whole files can be skipped.",
+      "show": {
+       "t": "bars",
+       "title": "Columns read",
+       "unit": "of 40",
+       "items": [
+        [
+         "Row store",
+         40,
+         ""
+        ],
+        [
+         "Columnar star",
+         3,
+         "only needed columns"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Third normal form needs many more joins between big tables, and those shuffle. A single wide table skips joins, but must be rebuilt whenever a dimension changes.",
+      "show": {
+       "t": "points",
+       "title": "Compared",
+       "items": [
+        "Third normal form: many big joins, shuffles",
+        "Star: few joins, small side broadcast",
+        "Wide table: no joins, costly rebuilds"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does a star schema avoid shuffling the large fact table?",
+     "opts": [
+      "Facts are stored in memory",
+      "Small dimensions are broadcast to every worker",
+      "Dimensions are joined before loading the fact"
+     ],
+     "ans": 1,
+     "why": "Dimensions are small enough to copy to each worker, so the big fact stays where it is."
+    },
+    "work": [
+     "Check a query plan for a broadcast join on your dimension tables.",
+     "Confirm your fact tables are partitioned or clustered on keys that filters hit."
+    ]
+   },
+   {
+    "title": "Revenue doubled after a join",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "You join orders to shipments on customer, and revenue suddenly doubles. Why?",
+      "show": {
+       "t": "big",
+       "text": "Revenue doubled",
+       "sub": "Orders joined to shipments on customer"
+      }
+     },
+     {
+      "say": "Both tables have many rows per customer. Customer seven has two orders and two shipments. The join pairs every order with every shipment, giving four rows, so each order amount is counted twice. This is a fan trap.",
+      "show": {
+       "t": "scene",
+       "title": "The *fan* trap",
+       "nodes": [
+        {
+         "id": "o",
+         "label": "Orders",
+         "sub": "2 rows",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "s",
+         "label": "Shipments",
+         "sub": "2 rows",
+         "x": 80,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "j",
+         "label": "Joined",
+         "sub": "4 rows",
+         "x": 50,
+         "y": 65,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "o",
+         "j"
+        ],
+        [
+         "s",
+         "j"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "o",
+          "s"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "o",
+          "j"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "s",
+          "j"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "j"
+        },
+        {
+         "at": 0.9,
+         "count": {
+          "key": "rev",
+          "label": "Revenue multiplier",
+          "to": 2,
+          "unit": "x",
+          "tone": "red"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The fix: never join two facts directly. Either total each fact up to the shared grain first, then join. Or drill across: query each fact on its own by the shared dimensions, and combine the results.",
+      "show": {
+       "t": "flow",
+       "title": "Drill across",
+       "steps": [
+        {
+         "label": "Orders by customer"
+        },
+        {
+         "label": "Shipments by customer"
+        },
+        {
+         "label": "Combine on dimension"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Writing down each fact's grain makes this visible in review before it hits a dashboard.",
+      "show": {
+       "t": "big",
+       "text": "Declare every grain",
+       "sub": "Catch fan-out in review"
+      }
+     }
+    ],
+    "check": {
+     "q": "Two fact tables each have many rows per customer. What is the safe way to combine them?",
+     "opts": [
+      "Join them directly on customer",
+      "Aggregate each to customer grain, then join or drill across",
+      "Add DISTINCT to the join"
+     ],
+     "ans": 1,
+     "why": "Aggregating to a shared grain first removes the row multiplication. DISTINCT can hide duplicates but also drop legitimate repeated values."
+    },
+    "work": [
+     "Add a test comparing total revenue before and after each join in key models.",
+     "Document the grain in each fact table's description."
+    ],
+    "part": "1 of 3"
+   },
+   {
+    "title": "A fact with no dimension row",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "A trip arrives for a driver who is not in your driver table yet. Do you drop it?",
+      "show": {
+       "t": "big",
+       "text": "Trip for an unknown driver",
+       "sub": "Drop it? Block the load?"
+      }
+     },
+     {
+      "say": "No. Dropping the row makes your trip counts wrong, and blocking the load makes everyone wait. Instead, insert a placeholder driver row with the real driver id and a fresh surrogate key, flagged as inferred.",
+      "show": {
+       "t": "scene",
+       "title": "Insert an *inferred* member",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Trip fact",
+         "sub": "driver 88",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "d",
+         "label": "Driver dim",
+         "sub": "no row for 88",
+         "x": 80,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "p",
+         "label": "Placeholder",
+         "sub": "key 9001, inferred",
+         "x": 50,
+         "y": 70,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "d"
+        ],
+        [
+         "d",
+         "p"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "t",
+          "d"
+         ]
+        },
+        {
+         "at": 0.4,
+         "glow": "d"
+        },
+        {
+         "at": 0.6,
+         "show": "p"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "d",
+          "p"
+         ],
+         "n": 1
+        }
+       ]
+      }
+     },
+     {
+      "say": "The fact points at that placeholder, so counts stay right. When the real driver record lands, you update that same row. You do not add a new history version, because the placeholder was never a real past state.",
+      "show": {
+       "t": "points",
+       "title": "When the real record lands",
+       "items": [
+        "Update the same row",
+        "Keep the same surrogate key",
+        "No new SCD2 version"
+       ]
+      }
+     },
+     {
+      "say": "Add a test that tracks how many inferred members you have. A rising number means a source is running late.",
+      "show": {
+       "t": "big",
+       "text": "Monitor inferred members",
+       "sub": "A rising count means a late source"
+      }
+     }
+    ],
+    "check": {
+     "q": "When the real attributes for an inferred driver arrive, what should happen?",
+     "opts": [
+      "Add a new SCD2 version",
+      "Update the placeholder row in place",
+      "Delete the fact rows and reload"
+     ],
+     "ans": 1,
+     "why": "The placeholder was never a true historical state, so it is completed in place and facts keep pointing at the same key."
+    },
+    "work": [
+     "Check whether your fact load joins with inner joins that silently drop rows.",
+     "Add an inferred flag column and a daily count alert."
+    ],
+    "part": "2 of 3"
+   },
+   {
+    "title": "Point-in-time joins for history",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "A driver changes city in March. How does an old trip still show the old city?",
+      "show": {
+       "t": "big",
+       "text": "Old trip, old city",
+       "sub": "History in a slowly changing dimension"
+      }
+     },
+     {
+      "say": "The driver id alone no longer names one row, because it now has two versions. So each version gets its own surrogate key, which identifies exactly one version.",
+      "show": {
+       "t": "scene",
+       "title": "One driver, two *versions*",
+       "nodes": [
+        {
+         "id": "v1",
+         "label": "Version 1",
+         "sub": "Lisbon, key 11",
+         "x": 25,
+         "y": 40,
+         "tone": "teal"
+        },
+        {
+         "id": "v2",
+         "label": "Version 2",
+         "sub": "Porto, key 52",
+         "x": 75,
+         "y": 40,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "v1",
+         "v2"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "v1"
+        },
+        {
+         "at": 0.5,
+         "show": "v2"
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Surrogate key = one version",
+          "tone": "amber",
+          "icon": "key"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Option one: the fact stores the surrogate key chosen at load time. Option two: join on driver id plus time. The trip time must be at or after valid from, and strictly before valid to.",
+      "show": {
+       "t": "code",
+       "title": "Point-in-time join",
+       "text": "fact.event_time >= dim.valid_from\nand fact.event_time < dim.valid_to"
+      }
+     },
+     {
+      "say": "That half open range means a trip at the exact boundary instant matches one version, not two. But overlaps or gaps in the ranges break it, so test for both.",
+      "show": {
+       "t": "points",
+       "title": "Test the dimension",
+       "items": [
+        "No overlapping ranges",
+        "No gaps between versions",
+        "Half open: from inclusive, to exclusive"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why use a half open range for valid_from and valid_to?",
+     "opts": [
+      "It makes the query faster",
+      "A boundary instant matches exactly one version",
+      "It removes the need for surrogate keys"
+     ],
+     "ans": 1,
+     "why": "With from inclusive and to exclusive, a timestamp equal to the boundary belongs only to the new version."
+    },
+    "work": [
+     "Write a test that finds overlapping or gapped SCD2 ranges per natural key.",
+     "Decide per fact whether to store the surrogate key at load time or join by time."
+    ],
+    "part": "3 of 3"
+   },
+   {
+    "title": "When not to use it",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When would you not build a dimensional model?",
+      "show": {
+       "t": "big",
+       "text": "When not a star?",
+       "sub": "Know the limits"
+      }
+     },
+     {
+      "say": "Not for raw landing of many changing sources. Keep those close to source, or use Data Vault, which is better as an auditable integration layer underneath. Not for event logs or machine learning features that are naturally wide or nested.",
+      "show": {
+       "t": "scene",
+       "title": "Where it *fits*",
+       "nodes": [
+        {
+         "id": "r",
+         "label": "Raw landing",
+         "sub": "close to source / Vault",
+         "x": 20,
+         "y": 25,
+         "tone": "grey"
+        },
+        {
+         "id": "g",
+         "label": "Gold star",
+         "sub": "dimensional model",
+         "x": 80,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "m",
+         "label": "Event logs, ML features",
+         "sub": "wide or nested",
+         "x": 50,
+         "y": 70,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "r",
+         "g"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "r"
+        },
+        {
+         "at": 0.4,
+         "show": "g"
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "r",
+          "g"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "m"
+        },
+        {
+         "at": 0.9,
+         "dim": "m"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Everywhere else it wins. Against third normal form, you get far fewer joins and business names. Against one big table, dimensions are reused and history lives in one place. For one hot dashboard, build the wide table from the star.",
+      "show": {
+       "t": "points",
+       "title": "Why the star wins",
+       "items": [
+        "Versus 3NF: fewer joins, business names",
+        "Versus one big table: reuse, one home for history",
+        "Hot dashboard: derive a wide table from the star"
+       ]
+      }
+     },
+     {
+      "say": "The real cost is ownership. Domain teams own facts, but shared dimensions like customer and date need one owner and a change process, because every fact depends on them.",
+      "show": {
+       "t": "big",
+       "text": "Conformed dimensions need an owner",
+       "sub": "Every fact depends on them"
+      }
+     }
+    ],
+    "check": {
+     "q": "A team needs one very fast dashboard. What fits best?",
+     "opts": [
+      "Replace the star with third normal form",
+      "Build a wide table derived from the star",
+      "Query raw landing tables directly"
+     ],
+     "ans": 1,
+     "why": "A derived wide table gives speed for the one dashboard while the star stays the shared, reusable model."
+    },
+    "work": [
+     "Name an owner and a change process for each conformed dimension.",
+     "List which datasets should stay raw or Vault style rather than modelled as stars."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Splitting dimensions that explode",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "A customer dimension has sixty columns and some change daily. What happens to history?",
+      "show": {
+       "t": "big",
+       "text": "60 columns, daily changes",
+       "sub": "What happens to history?"
+      }
+     },
+     {
+      "say": "Every change copies the full row, so history explodes. Ten million customers with one score changing daily adds over three and a half billion rows a year.",
+      "show": {
+       "t": "bars",
+       "title": "SCD2 rows added per year",
+       "unit": "billion",
+       "items": [
+        [
+         "Daily score change",
+         3.65,
+         "10M customers"
+        ],
+        [
+         "Stable attributes only",
+         0.01,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Split the fast changing columns into a small mini dimension, such as score bands. The fact points at both, and the big customer table stays stable.",
+      "show": {
+       "t": "scene",
+       "title": "Mini-*dimension*",
+       "nodes": [
+        {
+         "id": "f",
+         "label": "Fact",
+         "sub": "two keys",
+         "x": 50,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "c",
+         "label": "Customer",
+         "sub": "stable",
+         "x": 20,
+         "y": 70,
+         "tone": "teal"
+        },
+        {
+         "id": "b",
+         "label": "Score band",
+         "sub": "few rows",
+         "x": 80,
+         "y": 70,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "f",
+         "c"
+        ],
+        [
+         "f",
+         "b"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "f"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "c",
+          "b"
+         ]
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "f",
+          "b"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "You rarely move off the model. You add around it: aggregates for speed, a semantic layer for shared metrics, and a lakehouse table format underneath.",
+      "show": {
+       "t": "points",
+       "title": "Add around it",
+       "items": [
+        "Aggregates or wide tables for speed",
+        "Semantic layer for shared metrics",
+        "Lakehouse table format underneath"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A dimension has one attribute that changes daily. What is the best response?",
+     "opts": [
+      "Version the whole row with SCD2 every day",
+      "Move that attribute to a mini-dimension",
+      "Drop history for the whole dimension"
+     ],
+     "ans": 1,
+     "why": "A mini-dimension holds the fast-changing values in a few rows, so the large dimension does not multiply."
+    },
+    "work": [
+     "Find dimensions with the most SCD2 versions per key and check which columns drive them.",
+     "Pick one slow dashboard and test an aggregate or wide table built from the star."
+    ],
+    "part": "2 of 2"
+   }
+  ]
  }
 }

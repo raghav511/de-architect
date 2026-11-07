@@ -736,12 +736,19 @@ async function T(name, fn, opt) {
     await go(p, '#/learn/s01/chapter', 1500); await p.waitForSelector('.lens');
     ok(await p.evaluate(() => document.querySelectorAll('.lens tbody tr').length === 7 && document.querySelectorAll('.lens details').length === 5 && /deferrable/.test(document.querySelector('.lens').textContent)), 'Airflow lens card incomplete');
     ok(await p.evaluate(async () => (await sprint('s01')).interview.some(q => /backfill of last month doubled every row/.test(q.Q))), 'Airflow lens questions not in the interview set');
+    /* dbt (s04, five internals) and dimensional modelling (m01, four internals, scheduled in M102) */
+    for (const [m, n, word, q] of [['s04', 5, 'state:modified', /2,000 models and CI takes an hour/], ['m01', 4, 'fan trap', /joined on customer show double the revenue/]]) {
+      await go(p, '#/learn/' + m + '/chapter', 1500); await p.waitForSelector('.lens');
+      ok(await p.evaluate(([n, w]) => document.querySelectorAll('.lens tbody tr').length === 7 && document.querySelectorAll('.lens details').length === n && document.querySelector('.lens').textContent.includes(w), [n, word]), m + ' lens card incomplete');
+      ok(await p.evaluate(async ([m, q]) => (await sprint(m)).interview.some(x => new RegExp(q).test(x.Q)), [m, q.source]), m + ' lens questions not in the interview set');
+    }
+    ok(await p.evaluate(() => /architect's lens/.test((schedule().units.find(u => u.uid === 'm01:M102') || {}).title || '')), 'M1.8 is not in a reading step');
     await go(p, '#/learn/s00/chapter', 900); ok(/From a platform to a data foundation/.test(await text(p, '.prose')), 'Start here has no data foundation section');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
-  await T('architect\'s lens: Iceberg (2.9) shows seven questions and five internals answers, its interview and quiz questions join module 2, its reels cover four levels, and module 8 links to it', async p => {
+  await T('architect\'s lens: Iceberg (2.9) shows seven questions and six internals answers (v3 deletion vectors among them), its interview and quiz questions join module 2, its reels cover four levels, and module 8 links to it', async p => {
     await go(p, '#/learn/s02/chapter', 1500); await p.waitForSelector('.lens');
-    ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details').length === 5 && /manifest list/.test(l.textContent) && /merge-on-read/i.test(l.textContent); }), 'Iceberg lens card incomplete');
+    ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details').length === 6 && /manifest list/.test(l.textContent) && /deletion vector/.test(l.textContent) && /Polaris/.test(l.textContent) && /merge-on-read/i.test(l.textContent); }), 'Iceberg lens card incomplete');
     ok(await p.evaluate(() => getComputedStyle(document.querySelector('.lens td')).display === 'block' && document.documentElement.scrollWidth <= innerWidth), 'Iceberg lens is not stacked on a phone or scrolls sideways');
     ok(await p.evaluate(async () => { const s = await sprint('s02'); return s.interview.filter(q => /move[ds]? to Iceberg|commit to the same Iceberg table|every minute for a month/.test(q.Q)).length === 3 && s.quiz.filter(q => /hours\(event_ts\)|merge-on-read Iceberg table|storage does not go down/.test(q.Q)).length === 3; }), 'Iceberg lens questions not in the interview and quiz sets');
     ok(await p.evaluate(async () => { const r = (await reelsFor('s02')).filter(x => x.sec === '2.9'); return r.length === 8 && new Set(r.map(x => x.level)).size === 4; }), 'Iceberg lens reels missing or not at four levels');

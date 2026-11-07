@@ -135,6 +135,7 @@ For when Iceberg is the right choice at all, who owns it and how it fails, see [
 
 - **Snowflake** can create and manage Iceberg tables in your own bucket, and can read Iceberg tables managed by an external catalog such as AWS Glue.
 - **Databricks** can expose Delta tables with Iceberg metadata, read by Iceberg clients through Unity Catalog's Iceberg REST interface, and now manages Iceberg tables as well.
+- **The catalog layer** is where the vendors now compete. Apache Polaris is an open source Iceberg REST catalog (Snowflake runs it as Open Catalog), Unity Catalog speaks the same protocol, and Amazon S3 Tables are S3 buckets built for Iceberg with a catalog and automatic compaction included.
 
 The files are the easy part. Three things remain hard.
 
