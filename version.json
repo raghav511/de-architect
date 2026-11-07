@@ -1,8 +1,8 @@
 {
-  "version": "1.33.0",
+  "version": "1.33.1",
   "date": "2026-11-07",
   "notes": [
-    "New in Start here (1.9): the architect's lens for Airflow. When an orchestrator fits and when not, who owns it, how it fails and scales, and five under-the-hood answers: data intervals and backfills, why heavy DAG files slow everything, deferrable operators, Celery or Kubernetes executors, and what changed in Airflow 3.",
-    "Three new interview questions; seven reels arrive with the next reel batch."
+    "Sign in with Google is on: tap Sign in at the top right. You stay signed in for 24 hours.",
+    "Your exam app and Data Architect stay separate: a sign-in from one never opens the other's data, and updating Data Architect no longer clears the exam app's offline copy."
   ]
 }

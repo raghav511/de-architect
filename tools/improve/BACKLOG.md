@@ -4,6 +4,7 @@ Top unblocked item goes next. Each item: goal served (1 understand, 2 remember, 
 
 ## Next
 
+1. **Intermittent page error in reels** (5): `Cannot read properties of undefined (reading 'length')` seen once in Q23 (2026-11-07); reproduce by repeating the reel tests, find the race, fix, add a test.
 2. **Ship the recorded reels** (2): every iteration, run `tools/reels/build.py` to link the Heart recordings finished so far and ship them; when the recording of all 1,194 reels finishes, ship the last batch. Test: reels flow, every beat has audio.
 4. **Architect's lens: Spark (s03)** (1, 3). Same test.
 5. **Architect's lens: Iceberg and table formats (s02, s08)** (1, 3).
@@ -31,6 +32,7 @@ Top unblocked item goes next. Each item: goal served (1 understand, 2 remember, 
 ## Done
 
 - 1.32.0: Kafka architect's lens (5.9) with 5 internals answers, 3 interview questions, 8 reels.
+- 1.32.0: sign-in turned on with the exam app's client ID, sign-ins bound to Data Architect (nonce), cache clean-up limited to this app (user request: no data shared with the exam app).
 - 1.31.1: `tools/smoke.js` (16 checks, Chromium and WebKit; 1 real issue found and fixed: start-up stuck on Loading when a download stalls) and a real-Safari reel check in the iOS Simulator.
 - 1.31.0: Sign in with Google with 24-hour sessions (user request). Waiting on the user: create the OAuth client ID and set CLIENT_ID and OWNERS in the deployed sync script.
 - 1.29.0: security review (secret scan on commit and ship, profile out of the repo, CSP, private commit email, grader sandbox reads) and the approved home page reorganization.
