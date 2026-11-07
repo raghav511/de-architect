@@ -4405,5 +4405,1234 @@
     ]
    }
   ]
+ },
+ "5.9 Architect's lens: Kafka in a data platform": {
+  "hash": "14460f629b8d",
+  "sec": "5.9",
+  "reels": [
+   {
+    "title": "Kafka as a shared notebook",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "What if every message you sent was kept, and anyone could read it later, at their own speed?",
+      "show": {
+       "t": "big",
+       "text": "Keep everything. Read anytime.",
+       "sub": "The idea behind Kafka"
+      }
+     },
+     {
+      "say": "Picture a big notebook at a bakery. Each baker writes what they baked on a new line at the bottom. Nothing is ever erased.",
+      "show": {
+       "t": "scene",
+       "title": "Bakers write to one *notebook*",
+       "nodes": [
+        {
+         "id": "b",
+         "label": "Bakers",
+         "sub": "writers",
+         "x": 25,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "n",
+         "label": "Notebook",
+         "sub": "the log",
+         "x": 75,
+         "y": 25,
+         "tone": "blue",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "b",
+         "n"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "b",
+          "n"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "b",
+          "n"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Append only, never erased",
+          "tone": "blue",
+          "icon": "book"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Staff each keep a bookmark. The driver reads fast. The accountant reads once a day. Each bookmark moves on its own, and the bakers never need to know who is reading.",
+      "show": {
+       "t": "scene",
+       "title": "Each reader has a *bookmark*",
+       "nodes": [
+        {
+         "id": "n",
+         "label": "Notebook",
+         "sub": "the log",
+         "x": 50,
+         "y": 15,
+         "tone": "blue",
+         "kind": "disk"
+        },
+        {
+         "id": "d",
+         "label": "Driver",
+         "sub": "fast",
+         "x": 25,
+         "y": 60,
+         "tone": "teal"
+        },
+        {
+         "id": "a",
+         "label": "Accountant",
+         "sub": "daily",
+         "x": 75,
+         "y": 60,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "n",
+         "d"
+        ],
+        [
+         "n",
+         "a"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "n",
+          "d",
+          "a"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "n",
+          "d"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "n",
+          "a"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Readers move independently",
+          "tone": "teal",
+          "icon": "bookmark"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A new hire can start from page one and catch up. That notebook is Kafka: a shared, durable log that separates the writers from the readers.",
+      "show": {
+       "t": "points",
+       "title": "Kafka in one line",
+       "items": [
+        "Writers append once",
+        "Many readers, own pace",
+        "Replay from page one"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why can a brand new team read last week's events from Kafka?",
+     "opts": [
+      "Messages are kept after being read",
+      "Producers resend them on request",
+      "Consumers store a copy of everything"
+     ],
+     "ans": 0,
+     "why": "Kafka is a log: reading does not delete, so a new consumer can start from an earlier position."
+    },
+    "work": [
+     "List the teams that would want to read the same stream of events.",
+     "Ask which of your queues delete messages that a new team might later need."
+    ]
+   },
+   {
+    "title": "Why Kafka is fast on disk",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Kafka writes every message to disk, so why is it fast?",
+      "show": {
+       "t": "big",
+       "text": "Disk, yet fast?",
+       "sub": "Four tricks"
+      }
+     },
+     {
+      "say": "A disk is slow when its head jumps around, which is called seeking. Kafka only adds to the end of a file, so the disk writes in one straight line.",
+      "show": {
+       "t": "scene",
+       "title": "Append, never *seek*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Producer",
+         "x": 25,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "l",
+         "label": "Log segment",
+         "sub": "end of file",
+         "x": 75,
+         "y": 25,
+         "tone": "blue",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "l"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "p",
+          "l"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "p",
+          "l"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Sequential writes",
+          "tone": "blue",
+          "icon": "arrow"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Reads mostly come from memory. The operating system keeps recent data in its page cache, and zero copy sends it from there straight to the network, skipping the application.",
+      "show": {
+       "t": "scene",
+       "title": "Memory to *network*",
+       "nodes": [
+        {
+         "id": "c",
+         "label": "Page cache",
+         "sub": "recent data",
+         "x": 25,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "s",
+         "label": "Network socket",
+         "x": 75,
+         "y": 25,
+         "tone": "plum"
+        },
+        {
+         "id": "k",
+         "label": "Consumer",
+         "x": 50,
+         "y": 65,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "c",
+         "s"
+        ],
+        [
+         "s",
+         "k"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "c",
+          "s",
+          "k"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "c",
+          "s"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "s",
+          "k"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Zero copy, no app in between",
+          "tone": "teal",
+          "icon": "bolt"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Producers also batch and compress. One thousand small messages become one write and one network call. Most reads never touch the disk at all.",
+      "show": {
+       "t": "bars",
+       "title": "Calls for 1000 messages",
+       "unit": "calls",
+       "items": [
+        [
+         "One by one",
+         1000,
+         ""
+        ],
+        [
+         "Batched",
+         1,
+         ""
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Which choice best explains why Kafka's disk writes are fast?",
+     "opts": [
+      "It keeps everything only in the JVM heap",
+      "It appends sequentially and avoids seeking",
+      "It writes each message to a different disk"
+     ],
+     "ans": 1,
+     "why": "Appending to the end of a log gives sequential writes, which disks handle far faster than random ones."
+    },
+    "work": [
+     "Raise batch size and linger on a producer and compare throughput.",
+     "Leave spare RAM on brokers for the page cache rather than a huge heap."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Partitions cap parallelism",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Why can adding consumers fail to make Kafka faster?",
+      "show": {
+       "t": "big",
+       "text": "More consumers, same speed?",
+       "sub": "Partitions decide"
+      }
+     },
+     {
+      "say": "A topic is split into partitions. Say it has six. Inside one consumer group, each partition is read by exactly one consumer.",
+      "show": {
+       "t": "scene",
+       "title": "One partition, one *reader*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Topic",
+         "sub": "6 partitions",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "c1",
+         "label": "Consumer 1",
+         "x": 20,
+         "y": 60,
+         "tone": "teal"
+        },
+        {
+         "id": "c2",
+         "label": "Consumer 2",
+         "x": 50,
+         "y": 60,
+         "tone": "teal"
+        },
+        {
+         "id": "c3",
+         "label": "Consumer 3",
+         "x": 80,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "c1"
+        ],
+        [
+         "t",
+         "c2"
+        ],
+        [
+         "t",
+         "c3"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "t",
+          "c1",
+          "c2",
+          "c3"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "t",
+          "c2"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Each partition has one reader per group",
+          "tone": "teal",
+          "icon": "split"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So six consumers is the ceiling. A seventh sits idle. Choose the partition count with growth in mind.",
+      "show": {
+       "t": "bars",
+       "title": "Busy consumers, 6 partitions",
+       "unit": "busy",
+       "items": [
+        [
+         "6 consumers",
+         6,
+         ""
+        ],
+        [
+         "9 consumers",
+         6,
+         "3 idle"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Messages with the same key land on the same partition, which keeps their order. But if one customer sends half the traffic, that partition is hot, and its consumer falls behind while the others sit bored.",
+      "show": {
+       "t": "scene",
+       "title": "A *hot* key",
+       "nodes": [
+        {
+         "id": "h",
+         "label": "Hot partition",
+         "sub": "50% of traffic",
+         "x": 30,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "o",
+         "label": "Other partitions",
+         "sub": "light",
+         "x": 70,
+         "y": 30,
+         "tone": "grey"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "h",
+          "o"
+         ]
+        },
+        {
+         "at": 0.5,
+         "glow": "h"
+        },
+        {
+         "at": 0.6,
+         "dim": "o"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Lag builds on one partition",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A topic has 4 partitions and one group has 8 consumers. What happens?",
+     "opts": [
+      "All 8 share the work evenly",
+      "4 consumers work and 4 stay idle",
+      "The topic adds partitions automatically"
+     ],
+     "ans": 1,
+     "why": "Each partition goes to one consumer in a group, so at most 4 can be active."
+    },
+    "work": [
+     "Check the largest key's share of traffic on your busiest topic.",
+     "Pick partition counts for the load you expect in a year, not today."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "What acks=all really promises",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "With three copies of your data, what does an acknowledged write really promise?",
+      "show": {
+       "t": "big",
+       "text": "acks all, RF 3, min ISR 2",
+       "sub": "What is guaranteed?"
+      }
+     },
+     {
+      "say": "Set acks to all, replication factor three, and min in sync replicas two. The leader answers only after every in-sync replica has the record. It refuses writes if fewer than two are in sync.",
+      "show": {
+       "t": "scene",
+       "title": "Leader waits for the *ISR*",
+       "nodes": [
+        {
+         "id": "l",
+         "label": "Leader",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "f1",
+         "label": "Follower 1",
+         "sub": "in sync",
+         "x": 25,
+         "y": 60,
+         "tone": "teal"
+        },
+        {
+         "id": "f2",
+         "label": "Follower 2",
+         "sub": "in sync",
+         "x": 75,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "l",
+         "f1"
+        ],
+        [
+         "l",
+         "f2"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "l",
+          "f1",
+          "f2"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "l",
+          "f1"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "l",
+          "f2"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Acknowledged means on 2+ brokers",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So an acknowledged write lives on at least two brokers and survives losing one.",
+      "show": {
+       "t": "points",
+       "title": "Guarantee",
+       "items": [
+        "Ack means two or more copies",
+        "One broker loss is safe"
+       ]
+      }
+     },
+     {
+      "say": "Lose two brokers and producers get a not enough replicas error. Kafka stops accepting writes rather than take data it could lose. Committed data stays readable. Keep unclean leader election off, so a stale replica never becomes leader.",
+      "show": {
+       "t": "scene",
+       "title": "Two brokers *down*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Producer",
+         "sub": "errors",
+         "x": 25,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "r",
+         "label": "Last replica",
+         "sub": "reads still work",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "r"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "p",
+          "r"
+         ]
+        },
+        {
+         "at": 0.5,
+         "chip": {
+          "text": "Writes stop, data stays safe",
+          "tone": "red",
+          "icon": "stop"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "With RF 3 and min ISR 2, two brokers die. What happens to producers using acks=all?",
+     "opts": [
+      "Writes continue on the last broker",
+      "They get NotEnoughReplicas errors",
+      "Writes are silently buffered on the leader"
+     ],
+     "ans": 1,
+     "why": "The ISR drops to one, below the minimum of two, so Kafka rejects writes instead of risking data loss."
+    },
+    "work": [
+     "Check that critical topics set min.insync.replicas to 2 with RF 3.",
+     "Confirm unclean leader election is off.",
+     "Alert on under-replicated partitions."
+    ],
+    "part": "1 of 3"
+   },
+   {
+    "title": "Rebalances and how to calm them",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Why can one pod restart freeze a whole consumer group?",
+      "show": {
+       "t": "big",
+       "text": "One restart, whole group pauses",
+       "sub": "The rebalance"
+      }
+     },
+     {
+      "say": "When a consumer joins, leaves, or misses its heartbeat, the coordinator reassigns partitions. In the old eager protocol, everyone drops everything and waits. The whole group pauses.",
+      "show": {
+       "t": "scene",
+       "title": "Eager *rebalance*",
+       "nodes": [
+        {
+         "id": "g",
+         "label": "Group coordinator",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "a",
+         "label": "Consumer A",
+         "x": 25,
+         "y": 60,
+         "tone": "amber"
+        },
+        {
+         "id": "b",
+         "label": "Consumer B",
+         "x": 75,
+         "y": 60,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "g",
+         "a"
+        ],
+        [
+         "g",
+         "b"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "g",
+          "a",
+          "b"
+         ]
+        },
+        {
+         "at": 0.4,
+         "dim": "a"
+        },
+        {
+         "at": 0.45,
+         "dim": "b"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Everyone stops",
+          "tone": "red",
+          "icon": "pause"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Fixes: cooperative sticky assignment, so only the moving partitions pause. And static membership with a group instance id, so a restarting pod gets its partitions back with no rebalance.",
+      "show": {
+       "t": "points",
+       "title": "Fixes",
+       "items": [
+        "Cooperative sticky assignor",
+        "Static membership: group.instance.id",
+        "Kafka 4 incremental protocol"
+       ]
+      }
+     },
+     {
+      "say": "Also keep work per poll under the max poll interval, or Kafka thinks you died. And commit offsets before partitions are revoked, so the next owner does not redo work.",
+      "show": {
+       "t": "points",
+       "title": "Habits",
+       "items": [
+        "Short work per poll",
+        "Commit before revoke"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A pod restarts often during deploys and triggers rebalances. Which helps most?",
+     "opts": [
+      "Static membership with a group instance id",
+      "More partitions",
+      "Lower heartbeat interval"
+     ],
+     "ans": 0,
+     "why": "Static membership lets the restarted pod reclaim its partitions without a rebalance."
+    },
+    "work": [
+     "Turn on cooperative sticky assignment for consumers.",
+     "Set group.instance.id for stateful pods.",
+     "Alert on rebalance frequency and poll time."
+    ],
+    "part": "2 of 3"
+   },
+   {
+    "title": "Exactly once and where it stops",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Kafka says exactly once. So why do duplicates still reach your database?",
+      "show": {
+       "t": "big",
+       "text": "Exactly once has an edge",
+       "sub": "Know where it ends"
+      }
+     },
+     {
+      "say": "The idempotent producer numbers each batch per partition, so the broker drops a retried duplicate. Transactions add atomic writes across partitions, plus offset commits.",
+      "show": {
+       "t": "scene",
+       "title": "Dedupe at the *broker*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Producer",
+         "sub": "id + sequence",
+         "x": 25,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "b",
+         "label": "Broker",
+         "sub": "drops repeats",
+         "x": 75,
+         "y": 30,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "b"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "p",
+          "b"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "p",
+          "b"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Retry does not duplicate",
+          "tone": "blue",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Consumers set to read committed skip aborted records. Inside Kafka, read, process, write is exactly once.",
+      "show": {
+       "t": "code",
+       "title": "Consumer setting",
+       "text": "isolation.level=read_committed"
+      }
+     },
+     {
+      "say": "But the guarantee stops at Kafka's edge. A database or lake sink must be idempotent, such as an upsert by key, or join the same commit, as Flink's two phase sinks do.",
+      "show": {
+       "t": "scene",
+       "title": "The *edge* of Kafka",
+       "nodes": [
+        {
+         "id": "k",
+         "label": "Kafka",
+         "sub": "exactly once",
+         "x": 25,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "d",
+         "label": "Database or lake",
+         "sub": "needs upsert",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "k",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "k",
+          "d"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "k",
+          "d"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Make the sink idempotent",
+          "tone": "amber",
+          "icon": "key"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Your consumer writes Kafka events to Postgres and may retry. What makes it safe?",
+     "opts": [
+      "Enabling the idempotent producer",
+      "An upsert keyed by event id",
+      "Setting acks to all"
+     ],
+     "ans": 1,
+     "why": "Kafka's guarantee ends at its edge. An idempotent sink write makes retries harmless."
+    },
+    "work": [
+     "Give every event a stable id and use MERGE or upsert in sinks.",
+     "Use read_committed where transactions are in play."
+    ],
+    "part": "3 of 3"
+   },
+   {
+    "title": "Should we use Kafka at all?",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "A team proposes Kafka for two hundred events a day. What do you say?",
+      "show": {
+       "t": "big",
+       "text": "200 events a day?",
+       "sub": "Probably not Kafka"
+      }
+     },
+     {
+      "say": "Kafka earns its place when many producers write once and many consumers replay at their own pace. Unlike SQS or RabbitMQ, reading does not delete, so new teams can replay history.",
+      "show": {
+       "t": "points",
+       "title": "Why Kafka",
+       "items": [
+        "Replayable log",
+        "Many readers per stream",
+        "Decouples teams, absorbs bursts"
+       ]
+      }
+     },
+     {
+      "say": "Against Kinesis or Pub/Sub you gain Connect, Debezium, Flink and Schema Registry, and no per-shard limits. The price is running it, or paying Confluent or MSK.",
+      "show": {
+       "t": "scene",
+       "title": "Ecosystem versus *effort*",
+       "nodes": [
+        {
+         "id": "k",
+         "label": "Kafka",
+         "sub": "rich ecosystem",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "m",
+         "label": "Managed stream",
+         "sub": "less to run",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "k",
+          "m"
+         ]
+        },
+        {
+         "at": 0.6,
+         "glow": "k"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Trade ecosystem for ops",
+          "tone": "amber",
+          "icon": "scale"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Skip it for tiny volumes, request and reply calls, and large files, where you send a pointer to object storage. And skip it if nobody will own the on-call.",
+      "show": {
+       "t": "points",
+       "title": "Do not use for",
+       "items": [
+        "Tiny volumes: use a queue or batch",
+        "Request and reply: use an API",
+        "Large files: send a pointer",
+        "No owner for on-call"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Which need is the strongest reason to pick Kafka over SQS?",
+     "opts": [
+      "One worker processing each task once",
+      "Several teams replaying the same stream",
+      "Synchronous request and reply"
+     ],
+     "ans": 1,
+     "why": "Kafka keeps messages after reads, so many consumers can read and replay the same stream independently."
+    },
+    "work": [
+     "Write a one-page decision note: volume, consumers, replay need, owner.",
+     "Price managed Kafka against the on-call hours of self-hosting."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Owning, paying and leaving Kafka",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Who pays when Kafka gets expensive, and when do you leave it?",
+      "show": {
+       "t": "big",
+       "text": "Own it. Price it. Know the exit.",
+       "sub": "Running Kafka at scale"
+      }
+     },
+     {
+      "say": "A platform team owns clusters, quotas, access rules, Schema Registry and topic creation. Producing teams own their schemas. Cost per topic, including cross-zone traffic, is shown back to them.",
+      "show": {
+       "t": "scene",
+       "title": "Split *ownership*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Platform team",
+         "sub": "clusters, quotas, ACLs",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "t",
+         "label": "Producing teams",
+         "sub": "schemas, contracts",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "t"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "p",
+          "t"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "p",
+          "t"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Show cost back per topic",
+          "tone": "amber",
+          "icon": "coin"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Tiered storage moves old segments to object storage like S3, so months of retention need no extra broker disks, and brokers recover faster. Old reads get slower.",
+      "show": {
+       "t": "scene",
+       "title": "Tiered *storage*",
+       "nodes": [
+        {
+         "id": "b",
+         "label": "Broker disks",
+         "sub": "recent",
+         "x": 25,
+         "y": 30,
+         "tone": "blue",
+         "kind": "disk"
+        },
+        {
+         "id": "s",
+         "label": "Object storage",
+         "sub": "old segments",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "b",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "b",
+          "s"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "b",
+          "s"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Cheap retention, slower old reads",
+          "tone": "teal",
+          "icon": "cloud"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Kafka is the backbone, not the system of record or an analytics engine. Move off when you need only fan-out, when running it costs more than it gives, or when the data is really a table, like Iceberg with change feeds.",
+      "show": {
+       "t": "points",
+       "title": "Move off when",
+       "items": [
+        "Only occasional fan-out",
+        "Ops cost beats value: go managed",
+        "Data is really a table that streams"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Retention must grow to one year without buying more broker disks. What fits?",
+     "opts": [
+      "Tiered storage to object storage",
+      "More partitions",
+      "Disable replication"
+     ],
+     "ans": 0,
+     "why": "Tiered storage offloads old segments to cheap object storage, at the cost of slower reads of old data."
+    },
+    "work": [
+     "Tag topics by team and report storage and traffic cost monthly.",
+     "Test read speed of tiered data before relying on it for replays.",
+     "Review topics that only fan out and could be a queue."
+    ],
+    "part": "2 of 2"
+   }
+  ]
  }
 }

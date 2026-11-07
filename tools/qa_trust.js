@@ -239,8 +239,8 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
   });
 
   /* a stand-in for Google's button: clicking it hands the app an ID token for learner@example.com */
-  const fakeGoogle = () => { const b64 = o => btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); const tok = b64({ alg: 'none' }) + '.' + b64({ email: 'learner@example.com', given_name: 'Sam', aud: 'test-client' }) + '.sig';
-    window.google = { accounts: { id: { initialize: o => { window.__gcb = o.callback; }, renderButton: el => { const b = document.createElement('button'); b.className = 'gsi-fake'; b.textContent = 'Sign in with Google'; b.onclick = () => window.__gcb({ credential: tok }); el.appendChild(b); }, disableAutoSelect: () => { }, prompt: () => { } } } }; };
+  const fakeGoogle = () => { const b64 = o => btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); const tok = n => b64({ alg: 'none' }) + '.' + b64(Object.assign({ email: 'learner@example.com', given_name: 'Sam', aud: 'test-client' }, n ? { nonce: n } : {})) + '.sig';
+    window.google = { accounts: { id: { initialize: o => { window.__gcb = o.callback; window.__gnonce = o.nonce; }, renderButton: el => { const b = document.createElement('button'); b.className = 'gsi-fake'; b.textContent = 'Sign in with Google'; b.onclick = () => window.__gcb({ credential: tok(window.__gnonce) }); el.appendChild(b); const o = document.createElement('button'); o.className = 'gsi-other'; o.textContent = 'token from another app'; o.onclick = () => window.__gcb({ credential: tok('') }); el.appendChild(o); }, disableAutoSelect: () => { }, prompt: () => { } } } }; };
   const authStub = async c => { const log = { logins: 0, sess: [] }; await c.route('https://sync.test/**', r => { const b = JSON.parse(r.request().postData() || '{}'); if (b.action === 'login') { log.logins++; return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, session: 'sess' + log.logins, exp: Date.now() + 864e5 }) }); } if (b.session) log.sess.push(b.action + ':' + b.session); if (b.session && log.expired) return r.fulfill({ contentType: 'application/json', body: '{"ok":false,"error":"session expired: sign in again"}' }); return r.fulfill({ contentType: 'application/json', body: JSON.stringify(b.action === 'load' ? { ok: true, data: { start: '2026-10-19', done: { 'other:step': '2026-11-01' }, solved: {}, updated: 1 } } : { ok: true }) }); }); return log; };
 
   await T('Q26', 'Sign in with Google: the top right offers it, Profile signs in, and sync then uses the 24-hour session', async (p, c) => {
@@ -277,6 +277,28 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
     await c.route('**/data/bank/dsa.json*', () => { /* never answers */ });
     await p.goto(BASE + '#/today'); await p.waitForTimeout(13500);
     ok(/Still loading/.test(await p.$eval('#root', e => e.innerText)) && await p.$('#root button:has-text("Reload")'), 'still says Loading with nothing to do');
+  });
+
+  await T('Q30', 'updating Data Architect leaves another app\'s offline caches on the same address alone', async p => {
+    await boot(p);
+    const ks = await p.evaluate(async () => { await caches.open('gpscavy-v1'); await caches.open('data-architect-0.0.1'); window.__reload = location.reload; try { applyUpdate(); } catch (e) { } await new Promise(r => setTimeout(r, 400)); return caches.keys(); });
+    ok(ks.includes('gpscavy-v1') && !ks.includes('data-architect-0.0.1'), 'caches after update: ' + ks.join(', '));
+  });
+
+  await T('Q31', 'a Google token issued to another app (no Data Architect marker) does not sign in here', async (p, c) => {
+    await p.addInitScript(fakeGoogle); await authStub(c);
+    await boot(p); await p.evaluate(() => { S.settings.googleClientId = 'test-client'; S.settings.syncUrl = 'https://sync.test/exec'; save(); location.hash = '#/profile'; }); await p.waitForSelector('.authprof .gsi-other');
+    await p.click('.authprof .gsi-other'); await p.waitForTimeout(500);
+    ok(await p.evaluate(() => !authLive()), 'signed in with another app\'s token');
+  });
+
+  await T('Q32', 'the sync script refuses a sign-in without the Data Architect marker, and accepts one with it (sync/Code.gs)', async () => {
+    const vm = require('vm'), fs = require('fs'); let src = fs.readFileSync('sync/Code.gs', 'utf8').replace("const CLIENT_ID = '';", "const CLIENT_ID = 'cid';").replace('const OWNERS = [];', "const OWNERS = ['me@example.com'];");
+    const props = {}; const info = n => JSON.stringify({ aud: 'cid', email: 'me@example.com', email_verified: 'true', exp: String(Math.floor(Date.now() / 1000) + 600), nonce: n });
+    const ctx = { UrlFetchApp: { fetch: u => ({ getResponseCode: () => 200, getContentText: () => info(decodeURIComponent(u.split('id_token=')[1])) }) }, PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, v) => { props[k] = v; } }) }, LockService: { getScriptLock: () => ({ waitLock: () => { }, releaseLock: () => { } }) }, Utilities: { getUuid: () => Math.random().toString(36).slice(2) }, ContentService: { createTextOutput: s => ({ setMimeType: () => s }), MimeType: { JSON: 'json' } }, DriveApp: {} };
+    vm.createContext(ctx); vm.runInContext(src + '\nthis.login_ = login_;', ctx);
+    const other = ctx.login_(''), mine = ctx.login_('da-abc');
+    ok(!other.ok && /another app/.test(other.error) && mine.ok && mine.session, 'other: ' + JSON.stringify(other) + ' mine: ' + JSON.stringify(mine));
   });
 
   await browser.close();
