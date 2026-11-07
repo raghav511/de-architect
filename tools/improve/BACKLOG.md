@@ -5,7 +5,6 @@ Top unblocked item goes next. Each item: goal served (1 understand, 2 remember, 
 ## Next
 
 2. **Ship the recorded reels** (2): every iteration, run `tools/reels/build.py` to link the Heart recordings finished so far and ship them; when the recording of all 1,194 reels finishes, ship the last batch. Test: reels flow, every beat has audio.
-3. **Architect's lens: Kafka (s05)** (1, 3): 7-row lens and under-the-hood questions (why fast on disk, ISR and acks, rebalancing, exactly-once). Test: lens card renders, questions join @@interview.
 4. **Architect's lens: Spark (s03)** (1, 3). Same test.
 5. **Architect's lens: Iceberg and table formats (s02, s08)** (1, 3).
 6. **Architect's lens: Airflow and orchestration** (1, 3).
@@ -32,6 +31,7 @@ Top unblocked item goes next. Each item: goal served (1 understand, 2 remember, 
 
 ## Done
 
+- 1.32.0: Kafka architect's lens (5.9) with 5 internals answers, 3 interview questions, 8 reels.
 - 1.31.1: `tools/smoke.js` (16 checks, Chromium and WebKit; 1 real issue found and fixed: start-up stuck on Loading when a download stalls) and a real-Safari reel check in the iOS Simulator.
 - 1.31.0: Sign in with Google with 24-hour sessions (user request). Waiting on the user: create the OAuth client ID and set CLIENT_ID and OWNERS in the deployed sync script.
 - 1.29.0: security review (secret scan on commit and ship, profile out of the repo, CSP, private commit email, grader sandbox reads) and the approved home page reorganization.

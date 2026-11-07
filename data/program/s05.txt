@@ -218,6 +218,58 @@ Three engineering points separate working retrieval from a demo.
 - **Exact terms matter.** Embeddings are weak on identifiers such as `max.poll.interval.ms` or an error code. Combining vector search with keyword search, called hybrid search, fixes much of this.
 - **Retrieval or a tool?** Use retrieval for knowledge written in prose: runbooks, past incidents, definitions. Use a tool for live facts: current lag, today's row count. Asking retrieval for a live number returns yesterday's document.
 
+## 5.9 Architect's lens: Kafka in a data platform
+
+The questions an architect is asked about Kafka, beyond how to produce and consume.
+
+| Question | Short answer for Kafka |
+|---|---|
+| **What problem does it solve?** | A durable, replayable log between systems: many producers write events once, and any number of consumers read them at their own pace, now or days later, without the producers knowing who reads. It decouples teams and absorbs bursts. |
+| **Why it over the alternatives?** | Against a queue (SQS, RabbitMQ): messages are not deleted on read, so new consumers can replay history and several teams read the same stream. Against a managed stream (Kinesis, Pub/Sub): richer ecosystem (Connect, Debezium, Flink, Schema Registry) and no per-shard limits, at the cost of running it or paying for Confluent or MSK. |
+| **When not to use it?** | A few hundred events a day, or simple task fan-out (a queue or a scheduled batch is cheaper); request and reply calls (use an API); large files (put them in object storage and send a pointer); when nobody will own the cluster and its on-call. |
+| **Who owns and pays for it?** | A platform team owns the clusters, quotas, ACLs, Schema Registry and the topic-creation path. Producing teams own their topics' schemas and contracts; cost (brokers, storage, cross-zone traffic) is shown back per topic or team. |
+| **Where does it sit?** | The backbone between sources (apps, CDC from databases) and sinks (the lakehouse, search, caches, stream processors). It is not the system of record for business state, and not the place for analytics queries. |
+| **How does it fail and scale?** | It scales by partitions: each partition is read by one consumer per group, so partitions cap parallelism, and a hot key overloads one partition. It fails as consumer lag, under-replicated partitions, rebalance storms, a poison message, or a full disk when retention outgrows storage. |
+| **When do you move off it?** | When you only need occasional fan-out (a queue), when operating it costs more than the value (move to a managed service), or when the data really belongs in a table that streams (Iceberg or Delta with change feeds) rather than in a log. |
+
+### Under the hood
+
+**1. Kafka writes every message to disk. Why is it still so fast?**
+<details><summary>Model answer</summary>
+
+Four reasons. Writes only ever append to the end of a partition's log segment, so the disk does sequential writes with no seeking. Kafka leans on the operating system's page cache instead of its own cache, so recent data is read from memory and the JVM heap stays small. Consumers that read recent data get it with zero-copy (`sendfile`): the kernel sends bytes from the page cache straight to the network socket without copying them into the application. And producers batch and compress many messages together, so each disk write and network call carries a lot of data. The disk is used the way it is fastest, and most reads never touch it.
+
+</details>
+
+**2. With `acks=all`, replication factor 3 and `min.insync.replicas=2`, what exactly is guaranteed, and what happens when two brokers die?**
+<details><summary>Model answer</summary>
+
+`acks=all` means the leader answers only after every replica in the in-sync replica set (ISR) has the record. With `min.insync.replicas=2`, the leader refuses writes if fewer than 2 replicas are in sync, so an acknowledged write is on at least two brokers and survives one broker loss. If two of three brokers die, the ISR shrinks to one, and producers get `NotEnoughReplicas` errors: Kafka chooses to stop accepting writes rather than accept data it could lose. Reads of already committed data continue from the remaining replica. Setting `unclean.leader.election.enable=false` (the default) keeps an out-of-sync replica from becoming leader and silently dropping data.
+
+</details>
+
+**3. What happens in a consumer group rebalance, and how do you stop rebalances from hurting?**
+<details><summary>Model answer</summary>
+
+When a consumer joins, leaves, crashes or misses its heartbeat or poll interval, the group coordinator reassigns partitions. With the old eager protocol every consumer stops and gives up all partitions, so the whole group pauses. Fixes: the cooperative sticky assignor (only the partitions that move are paused), static membership with `group.instance.id` (a restarting pod gets its partitions back without a rebalance), keeping processing per poll under `max.poll.interval.ms`, and the newer server-side consumer protocol in Kafka 4 that makes rebalances incremental by default. Commit offsets before partitions are revoked so the next owner does not redo work.
+
+</details>
+
+**4. How does exactly-once work in Kafka, and where does it stop?**
+<details><summary>Model answer</summary>
+
+Two parts. The idempotent producer gets a producer id and numbers each batch per partition, so the broker drops a retried duplicate. Transactions let a producer write to several partitions and commit consumer offsets atomically; consumers with `isolation.level=read_committed` never see records from aborted transactions. Together, read-process-write inside Kafka is exactly-once. It stops at Kafka's edge: writing to a database, an API or a lake is exactly-once only if that sink is idempotent (upsert by key, MERGE on an event id) or takes part in the same commit, as Flink's two-phase sinks do.
+
+</details>
+
+**5. Why did Kafka drop ZooKeeper, and what does tiered storage change?**
+<details><summary>Model answer</summary>
+
+With KRaft, the controllers keep cluster metadata in an internal Raft-replicated log instead of ZooKeeper, so there is one system to run, metadata changes and failover are much faster, and a cluster can hold millions of partitions; Kafka 4 runs only in KRaft mode. Tiered storage keeps recent segments on broker disks and moves older segments to object storage such as S3. Retention can then be months or years without buying broker disks for it, brokers restart and rebalance faster because they hold less data, and the trade-off is slower reads of old data, which now come from object storage.
+
+</details>
+
+
 @@lab
 ## In the app: streaming without a cluster (2 hours)
 
@@ -684,6 +736,19 @@ Q: Tell me about a time you debugged a critical production issue under pressure.
 SRC: Confluent, 5–6 YOE
 TAG: behavioral
 A: Tell it in this order: what was broken and who was affected, how you narrowed it down, the fix, and what you changed afterwards. Interviewers listen for a calm method: stop the damage first, form a hypothesis, check evidence, change one thing at a time, communicate status. Use a real incident from Salesforce or Uber if you have one with clear numbers. If not, this sprint's incident is honest practice material, described as a simulated outage: lag of 1.8 million, a poison record after an app release, a dead-letter topic to contain it, a replay runbook to prevent a repeat. End with the prevention step. That is what separates a senior answer.
+
+---
+Q: Your company asks you to put Kafka in front of every pipeline. When do you agree, and when do you push back?
+TAG: arch
+A: Agree where several teams need the same events, where consumers must replay history, or where sources burst and sinks are slow: Kafka decouples them and absorbs the load. Push back for low volume, simple task fan-out (a queue is cheaper), request and reply calls, or large files. Name who owns the cluster and on-call, how topics and schemas are governed, and what it costs per team before saying yes.
+---
+Q: How is Kafka fast even though it writes every message to disk?
+TAG: streaming
+A: Sequential appends to the end of a log segment (no disk seeks), reads served from the operating system's page cache, zero-copy transfer from page cache to socket for consumers, and producer batching with compression. Most reads never touch the disk, and the writes that do are the fastest kind a disk can do.
+---
+Q: A producer uses acks=all with replication factor 3 and min.insync.replicas=2. Two brokers fail. What does the producer see, and why is that the right behaviour?
+TAG: streaming
+A: NotEnoughReplicas errors: the ISR has one member, below the minimum of two, so the leader refuses writes. Kafka chooses availability loss over silent data loss; already committed data can still be read. Keep unclean leader election off so an out-of-sync replica cannot become leader and drop acknowledged writes.
 
 @@mock
 ## Mock 5: streaming design and Kafka deep dive (40 minutes)

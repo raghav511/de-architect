@@ -1,9 +1,8 @@
 {
-  "version": "1.31.1",
+  "version": "1.32.0",
   "date": "2026-11-07",
   "notes": [
-    "If the app's data takes too long to download on a weak signal, you now see Still loading with a Reload button instead of a page stuck on Loading.",
-    "Reels were checked on a real iPhone browser: the Heart voice plays and each reel moves on to its quick check.",
-    "More reels recorded in the Heart voice."
+    "New in Kafka (5.9): the architect's lens. When to use Kafka and when not, who owns and pays for it, how it fails and scales, and five under-the-hood answers interviewers ask: why it is fast on disk, acks and in-sync replicas, rebalances, exactly-once, KRaft and tiered storage.",
+    "Three new Kafka interview questions and eight reels for the lens."
   ]
 }

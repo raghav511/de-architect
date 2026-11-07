@@ -39,6 +39,8 @@ function login_(tok) {
   if (j.aud !== CLIENT_ID) return { ok: false, error: 'that sign-in is for another app' };
   if (String(j.email_verified) !== 'true' || OWNERS.map(x => x.toLowerCase()).indexOf(String(j.email).toLowerCase()) < 0) return { ok: false, error: 'not allowed: not the owner' };
   if (+j.exp * 1000 < Date.now()) return { ok: false, error: 'that sign-in has expired' };
+  /* the client ID may be shared with another app of yours: only sign-ins made by Data Architect (nonce da-...) open this data */
+  if (String(j.nonce || '').indexOf('da-') !== 0) return { ok: false, error: 'that sign-in was made by another app' };
   const lock = LockService.getScriptLock(); lock.waitLock(10000);
   try { const s = sessions_(), id = Utilities.getUuid() + Utilities.getUuid(), exp = Date.now() + SESSION_HOURS * 36e5; s[id] = exp; PropertiesService.getScriptProperties().setProperty('sessions', JSON.stringify(s)); return { ok: true, session: id, exp: exp }; }
   finally { lock.releaseLock(); }

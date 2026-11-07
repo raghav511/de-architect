@@ -7,7 +7,7 @@
 const AUTH_KEY = 'da:auth', AUTH_HOURS = 24, GSI = 'https://accounts.google.com/gsi/client';
 function authGet() { try { return JSON.parse(localStorage.getItem(AUTH_KEY) || 'null'); } catch (e) { return null; } }
 function authSet(a) { try { if (a) localStorage.setItem(AUTH_KEY, JSON.stringify(a)); else localStorage.removeItem(AUTH_KEY); } catch (e) { } }
-const GOOGLE_CLIENT_ID = ''; /* the app's OAuth client ID (public, not a secret); until it is filled in, Profile › Sync takes one */
+const GOOGLE_CLIENT_ID = '338210814289-e4hu00vli2fiov21nb0t5ikqs2li7iiv.apps.googleusercontent.com'; /* the app's OAuth client ID (public, not a secret); until it is filled in, Profile › Sync takes one */
 function authClientId() { return String(S.settings.googleClientId || GOOGLE_CLIENT_ID || '').trim(); }
 function authOn() { return !!authClientId(); }
 function authLive() { const a = authGet(); return !!(a && a.email && a.exp > Date.now()); }
@@ -16,7 +16,7 @@ function authNeeded() { const a = authGet(); return authOn() && !!(a && a.email)
 function authUntil() { const a = authGet(); return a && a.exp ? new Date(a.exp).toLocaleString('en', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : ''; }
 function jwtBody(t) { try { return JSON.parse(decodeURIComponent(escape(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))); } catch (e) { return {}; } }
 
-let gsiP = null;
+let gsiP = null, authNonce = '';
 function authLoad() {
   if (window.google && google.accounts && google.accounts.id) return Promise.resolve();
   return gsiP = gsiP || new Promise((res, rej) => { const s = document.createElement('script'); s.src = GSI; s.async = true; s.onload = res; s.onerror = () => { gsiP = null; rej(new Error('Google sign-in could not load (offline?)')); }; document.head.appendChild(s); });
@@ -25,7 +25,8 @@ function authLoad() {
 async function authButton(box, onDone) {
   if (!authOn()) { box.appendChild(el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'Add your Google client ID under Sync to turn on sign-in.' })); return; }
   try { await authLoad(); } catch (e) { box.appendChild(el('p', { class: 'muted', style: { margin: 0 }, text: e.message })); return; }
-  google.accounts.id.initialize({ client_id: authClientId(), callback: r => authCredential(r.credential).then(ok => ok && onDone && onDone()), ux_mode: 'popup', auto_select: false, itp_support: true });
+  authNonce = 'da-' + Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join(''); /* this app's sign-ins only: the sync script refuses tokens without it */
+  google.accounts.id.initialize({ client_id: authClientId(), nonce: authNonce, callback: r => authCredential(r.credential).then(ok => ok && onDone && onDone()), ux_mode: 'popup', auto_select: false, itp_support: true });
   google.accounts.id.renderButton(box, { theme: document.documentElement.dataset.theme === 'dark' ? 'filled_black' : 'outline', size: 'large', text: 'signin_with', shape: 'pill', logo_alignment: 'left' });
 }
 /* Google's token is checked by your sync script, which returns a 24-hour session; without a sync URL the session is
@@ -33,6 +34,7 @@ async function authButton(box, onDone) {
 async function authCredential(tok) {
   const j = jwtBody(tok), url = S.settings.syncUrl, until = Date.now() + AUTH_HOURS * 36e5;
   if (!j.email) { toast('Google sign-in failed. Try again.'); return false; }
+  if (authNonce && j.nonce !== authNonce) { toast('That sign-in was not made by this app. Try again.'); return false; }
   let session = '', exp = until;
   if (url) {
     try {
