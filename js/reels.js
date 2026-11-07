@@ -71,10 +71,10 @@ function reelVoice() { const vs = reelVoices(); return vs.find(v => v.name === S
 if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => {};
 function reelVoiceSheet(onPick) {
   const vs = reelVoices(), sample = 'Kafka never writes in scattered places. Each new message goes at the end, so the disk keeps streaming.';
-  const cur = S.settings.reelVoice === false ? '' : (reelVoice() || {}).name;
+  const cur = S.settings.reelVoice === false ? '' : S.settings.reelVoiceName ? (reelVoice() || {}).name : 'recorded';
   const sheet = el('div', { class: 'rsheet', role: 'dialog', 'aria-label': 'Choose a voice' }, [el('div', { class: 'row' }, [el('b', { class: 'grow', text: 'Voice' }), el('button', { class: 'rbtn', 'aria-label': 'Close', onclick: () => sheet.remove() }, '✕')]),
-    el('span', { class: 'rnote', style: { textAlign: 'left' }, text: 'Smoother voices: on iPhone, Settings › Accessibility › Spoken Content › Voices › English, download a Premium voice (Ava, Zoe or Evan); on a Mac, System Settings › Accessibility › Spoken Content › System voice › Manage Voices. Then reopen this list.' }),
-    el('div', { class: 'rvlist' }, [el('button', { class: 'rvopt' + (!cur ? ' on' : ''), onclick: () => { S.settings.reelVoice = false; save(); sheet.remove(); onPick(); } }, 'Voice off (captions only)')].concat(vs.slice(0, 12).map(v => el('div', { class: 'row', style: { gap: '6px' } }, [
+    el('span', { class: 'rnote', style: { textAlign: 'left' }, text: 'Hand-written reels use the recorded Heart voice. Quick reels fall back to a device voice below. Smoother device voices: on iPhone, Settings › Accessibility › Spoken Content › Voices › English, download a Premium voice (Ava, Zoe or Evan); on a Mac, System Settings › Accessibility › Spoken Content › System voice › Manage Voices. Then reopen this list.' }),
+    el('div', { class: 'rvlist' }, [el('div', { class: 'row', style: { gap: '6px' } }, [el('button', { class: 'rvopt grow' + (cur === 'recorded' ? ' on' : ''), onclick: () => { S.settings.reelVoice = true; S.settings.reelVoiceName = ''; save(); sheet.remove(); onPick(); } }, 'Heart · natural recorded voice (recommended)'), el('button', { class: 'rbtn rsm', 'aria-label': 'Try Heart', onclick: () => { speechSynthesis.cancel(); new Audio('audio/reels/sample-heart.m4a').play().catch(() => {}); } }, 'Try')]), el('button', { class: 'rvopt' + (!cur ? ' on' : ''), onclick: () => { S.settings.reelVoice = false; save(); sheet.remove(); onPick(); } }, 'Voice off (captions only)')].concat(vs.slice(0, 12).map(v => el('div', { class: 'row', style: { gap: '6px' } }, [
       el('button', { class: 'rvopt grow' + (v.name === cur ? ' on' : ''), onclick: () => { S.settings.reelVoice = true; S.settings.reelVoiceName = v.name; save(); sheet.remove(); onPick(); } }, v.name + ' · ' + v.lang),
       el('button', { class: 'rbtn rsm', 'aria-label': 'Try ' + v.name, onclick: () => { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(sample); u.voice = v; u.rate = +S.settings.reelSpeed || 1; speechSynthesis.speak(u); } }, 'Try')]))))]);
   return sheet;
@@ -96,16 +96,23 @@ function reelPlayer(q) {
   const close = () => { stop(); ov.remove(); if (history.length > 1) history.back(); else location.hash = '#/today'; };
   document.body.appendChild(ov);
   cleanup.push(() => { stop(); ov.remove(); });
-  function stop() { clearTimeout(timer); timer = null; try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { } }
-  function say(text, done) {
+  let audio = null;
+  function stop() { clearTimeout(timer); timer = null; if (audio) { audio.onended = audio.onerror = null; audio.pause(); audio = null; } try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { } }
+  function say(text, done, file) {
     stop();
+    /* the recorded natural voice (Kokoro, Heart) when this beat has one and no device voice was picked */
+    if (file && S.settings.reelVoice !== false && !S.settings.reelVoiceName) {
+      audio = new Audio(file); audio.playbackRate = speed(); audio.preservesPitch = true;
+      audio.onended = () => done(); audio.onerror = () => { audio = null; say(text, done); };
+      audio.play().catch(() => { audio = null; say(text, done); }); return;
+    }
     if (speakOK()) { utter = new SpeechSynthesisUtterance(text); const v = reelVoice(); if (v) utter.voice = v; utter.rate = speed() * 0.97; utter.pitch = 1; utter.onend = () => { if (utter && utter._me === myTok) done(); }; const myTok = utter._me = Math.random(); speechSynthesis.speak(utter);
       timer = setTimeout(() => { if (playing && !speechSynthesis.speaking) done(); }, (text.split(' ').length / 2.2 / speed() + 3) * 1000); } /* safety net if the voice never reports the end */
     else timer = setTimeout(done, (text.split(' ').length / 2.5 / speed()) * 1000);
   }
   function play() { playing = true; started = true; draw(); runBeat(); }
   function pause() { playing = false; stop(); draw(); }
-  function runBeat() { const r = q[qi]; if (!playing || bi >= r.beats.length) return; say(r.beats[bi].say, () => { if (!playing) return; bi++; draw(); if (bi < r.beats.length) runBeat(); else { playing = false; reelDone(r); draw(); } }); }
+  function runBeat() { const r = q[qi]; if (!playing || bi >= r.beats.length) return; say(r.beats[bi].say, () => { if (!playing) return; bi++; draw(); if (bi < r.beats.length) runBeat(); else { playing = false; reelDone(r); draw(); } }, r.beats[bi].audio); }
   function goBeat(d) { const r = q[qi]; stop(); bi = Math.max(0, Math.min(r.beats.length, bi + d)); if (bi >= r.beats.length) { playing = false; reelDone(r); } draw(); if (playing) runBeat(); }
   function goReel(d) { const n = qi + d; if (n < 0 || n >= q.length) { if (d > 0) { toast('That was the last reel in this feed.'); } return; } stop(); qi = n; bi = 0; const was = started; draw(); if (was) { playing = true; runBeat(); draw(); } }
   function reelDone(r) { S.reels = S.reels || {}; const x = S.reels[r.id] = S.reels[r.id] || {}; if (!x.seen) { x.seen = iso(new Date()); if (typeof gameNote === 'function') gameNote('reel'); } save(); }

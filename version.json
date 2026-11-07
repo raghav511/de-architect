@@ -1,8 +1,7 @@
 {
-  "version": "1.23.0",
+  "version": "1.24.0",
   "date": "2026-11-07",
   "notes": [
-    "New Reels tab: 30 to 60 second explainers for every reading section, with captions, pictures and an optional voice. Swipe up for the next one.",
-    "Each reel ends with a quick check (missed ones come back in 3, 7 and 21 days) and a Use it at work list you can save to My playbook. Design moved under More."
+    "Hand-written reels are now narrated in a natural recorded voice (Heart). Open the voice button in a reel to try it, or pick a device voice or captions only."
   ]
 }

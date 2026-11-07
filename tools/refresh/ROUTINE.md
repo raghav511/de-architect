@@ -92,3 +92,4 @@ Find the modules on the learner's plan for the coming week (the next modules in 
 - Beats: a hook question, two or three ideas, each with a picture (`big`, `points`, `flow`, `bars`, `code`, `disk`, `shift`, or `fig` with a figure name from `js/figs.js`).
 - End with a `check` (one multiple-choice question with `why`) and a `work` list of two or three things to do at work.
 - Write everything yourself from the module's chapter; never copy course or article text.
+- Then record the narration: `python3 tools/reels/voice.py` (Kokoro, Heart voice, on this Mac, no key; about 4 seconds a beat). It records only beats that are new or changed and links them in `data/reels.json`; commit the new files in `audio/reels/` with the PR.

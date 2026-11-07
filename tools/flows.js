@@ -797,6 +797,10 @@ async function T(name, fn, opt) {
     await p.click('[aria-label^="Choose a voice"]'); await p.waitForSelector('.rsheet'); ok(/Voice off/.test(await text(p, '.rsheet')), 'voice picker missing'); await p.click('.rsheet [aria-label="Close"]');
     await p.click('[aria-label="Next reel"]'); ok(/page cache|Kafka is fast/i.test(await text(p, '.reelv .rhead')), 'next reel did not open');
     ok(await p.evaluate(() => document.querySelector('.reelv').scrollWidth <= innerWidth), 'reel player wider than the phone');
+    await p.evaluate(() => { S.settings.reelVoice = true; delete S.settings.reelVoiceName; save(); }); await go(p, '#/today', 600);
+    const heard = p.waitForRequest(r => /audio\/reels\/s05-52-0-0-/.test(r.url()), { timeout: 8000 }).then(() => true).catch(() => false);
+    await go(p, '#/reels/s05-52-0', 1200); await p.click('.reelv .rstart'); ok(await heard, 'the recorded Heart voice did not load for a hand-written reel');
+    await p.evaluate(() => { S.settings.reelVoice = false; save(); });
     await go(p, '#/playbook', 900); ok(/Size Kafka disks/.test(await text(p, '#page')), 'playbook does not list the saved work list');
     await go(p, '#/today', 1800); await p.waitForSelector('.rtoday'); ok(await p.evaluate(() => document.querySelectorAll('.rtoday .rthumb').length > 0), 'no reels for today');
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Today scrolls sideways');
