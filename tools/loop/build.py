@@ -21,7 +21,16 @@ ROUNDS = [
    "prep": ["Write 6 to 8 stories in STAR form: Situation, Task, Action, Result.", "Tag each story with what it shows; one story can answer several questions.", "Say I, not we, for your part; end with a number and what you learned.", "Keep each story to about two minutes out loud."]},
   {"id": "r6", "n": 6, "t": "Leadership and past project", "s": "How you work with others and decide, plus a technical deep dive into a project you led.",
    "look": [["Collaboration", "Working with different teams and stakeholders."], ["Ownership", "Taking initiative and finishing what you start."], ["Communication", "Explaining complex ideas clearly to different audiences."], ["Decision-making", "How you weigh trade-offs and decide."], ["Technical design discussion", "A project from your resume: the design, why you chose it, the alternatives, how it scaled and what you would do differently."]],
-   "prep": ["Choose one project you know end to end and draw its architecture.", "Write three key decisions, each with the alternative you rejected and why.", "Know its numbers: volume, latency, cost, team size, timeline.", "Have an honest answer to: what would you do differently?"]}
+   "prep": ["Choose one project you know end to end and draw its architecture.", "Write three key decisions, each with the alternative you rejected and why.", "Know its numbers: volume, latency, cost, team size, timeline.", "Have an honest answer to: what would you do differently?"]},
+  {"id": "r7", "n": 7, "t": "SQL, live", "s": "Write correct SQL against a schema in 15 to 20 minutes a question, talking through it, then make it fast.",
+   "look": [["Correct first", "Window functions, joins, deduplication, sessionization, top N per group, cohorts and funnels, all with NULLs and ties handled."], ["Speed", "Two to four questions in a round; a clean first answer beats a clever late one."], ["Thinking out loud", "State the grain of every subquery and check row counts as you go."], ["Optimising", "Read a plan: partition pruning, join order, avoiding a shuffle, pre-aggregating."]],
+   "prep": ["Do the Hard SQL problems under a timer, one a day.", "Learn the eight patterns below until you can write each from memory.", "Before typing, say the output grain: one row per what?", "After it works, say one way to make it cheaper on a billion rows."]},
+  {"id": "r8", "n": 8, "t": "Data modelling", "s": "Model a product from a short prompt: grain, facts, dimensions, keys and history, then answer questions with it.",
+   "look": [["Grain", "One row per what, stated first, for every table."], ["Facts and dimensions", "Which events or snapshots are facts, which attributes describe them, and which facts are additive."], ["Keys and history", "Surrogate keys, slowly changing dimension choices with a reason, late-arriving data."], ["Use", "The model answers the business questions in the prompt with simple SQL."]],
+   "prep": ["Ask what questions the model must answer before drawing anything.", "Say the grain of each table out loud before its columns.", "Pick an SCD type per attribute and say why.", "Finish by writing one query the business asked for against your model."]},
+  {"id": "r9", "n": 9, "t": "Product sense and metrics", "s": "Define how to measure a product, design the events to log, build the pipeline, then diagnose a metric that moved. Meta's data engineering loop runs this round.",
+   "look": [["Goal and metrics", "A north-star metric tied to the product's goal, a few supporting metrics and a guardrail."], ["Logging", "The events and fields to log, with ids and timestamps that make the metric computable."], ["Pipeline", "Raw events to a fact table to daily aggregates, with late data and deduplication handled."], ["Diagnosis", "A metric dropped: check the data first, then segment, then the product."]],
+   "prep": ["Start from the user and the goal, not the dashboard.", "Name one guardrail for every metric you push.", "Write the event schema as a short table: event, fields, when it fires.", "For a drop: is it real (logging, pipeline, definition), where is it (segment), why (product, outside)."]}
 ]
 
 RECRUITER = [
@@ -205,7 +214,102 @@ FOLLOW = [
   "What did you decide not to build, and why?", "How did the design change from the first version to now?", "What would break first if a zone went down?"
 ]
 
-TOPICS = [
+SQL_PAT = [
+  ["Latest row per key", "Deduplicate CDC or events to current state.", "SELECT * FROM (\n  SELECT t.*, ROW_NUMBER() OVER (PARTITION BY id ORDER BY updated_at DESC, seq DESC) AS rn\n  FROM t) x\nWHERE rn = 1"],
+  ["Top N per group", "Best sellers per category, top drivers per city.", "SELECT * FROM (\n  SELECT city, driver_id, trips, DENSE_RANK() OVER (PARTITION BY city ORDER BY trips DESC) AS r\n  FROM driver_trips) x\nWHERE r <= 3"],
+  ["Running total and moving average", "Cumulative revenue, 7-day averages.", "SELECT day, rev,\n  SUM(rev) OVER (ORDER BY day) AS cum_rev,\n  AVG(rev) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS avg_7d\nFROM daily_rev"],
+  ["Gaps and islands", "Streaks of consecutive active days.", "SELECT user_id, MIN(d) AS start_d, MAX(d) AS end_d FROM (\n  SELECT user_id, d, d - ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY d) * INTERVAL '1 day' AS grp\n  FROM active_days) x\nGROUP BY user_id, grp"],
+  ["Sessionization", "A new session after 30 minutes idle.", "SELECT *, SUM(new_s) OVER (PARTITION BY user_id ORDER BY ts) AS session_no FROM (\n  SELECT *, CASE WHEN ts - LAG(ts) OVER (PARTITION BY user_id ORDER BY ts) <= INTERVAL '30 minutes' THEN 0 ELSE 1 END AS new_s\n  FROM events) x"],
+  ["Retention by cohort", "Of users who joined in a week, how many came back in week N.", "SELECT c.cohort_wk, DATE_DIFF('week', c.cohort_wk, DATE_TRUNC('week', a.d)) AS wk_n, COUNT(DISTINCT a.user_id) AS users\nFROM cohorts c JOIN active_days a USING (user_id)\nGROUP BY 1, 2"],
+  ["Funnel", "View, then add to cart, then purchase, in order.", "SELECT COUNT(*) FILTER (WHERE v IS NOT NULL) AS viewed,\n  COUNT(*) FILTER (WHERE c > v) AS carted,\n  COUNT(*) FILTER (WHERE p > c) AS bought\nFROM (SELECT user_id, MIN(ts) FILTER (WHERE e='view') v, MIN(ts) FILTER (WHERE e='cart') c, MIN(ts) FILTER (WHERE e='buy') p\n      FROM events GROUP BY user_id) x"],
+  ["As-of join to an SCD2 dimension", "The customer's segment at the time of each order.", "SELECT o.order_id, d.segment\nFROM orders o JOIN dim_customer d\n  ON o.customer_id = d.customer_id\n AND o.order_ts >= d.valid_from AND o.order_ts < COALESCE(d.valid_to, TIMESTAMP '9999-12-31')"]
+]
+
+# data modelling and product sense: one prompt, written answers per part, then a model answer and a rubric
+MODEL = [
+  {"id": "dm1", "t": "Ride-hailing trips", "co": "Uber", "mid": "m02", "q": "Model trips for a ride-hailing company. The business wants completed trips and gross bookings by city and day, driver earnings per week, and cancellation rates by rider segment.",
+   "a": {"ask": "Is a cancelled request a trip? Which currency? How late can a trip change (tips, refunds days later)? Do we need history of a driver's vehicle or rating?",
+         "grain": "fact_trip: one row per trip request (trip_id), whatever its outcome, with status. fact_trip_payment: one row per payment event (charge, tip, refund). fact_driver_week: a periodic snapshot, one row per driver per week.",
+         "facts": "fact_trip: fare, distance_km, duration_min, surge (additive except surge, an average). fact_trip_payment: amount in local currency and USD (additive). Bookings come from payments, so late tips and refunds land as new rows rather than updates.",
+         "dims": "dim_date (role-playing: request, pickup, payment), dim_city, dim_rider (Type 2 on segment and home city, Type 1 on email), dim_driver (Type 2 on vehicle and tier), dim_product (UberX, Pool). Flags such as airport or scheduled as booleans or a junk dimension.",
+         "keys": "Surrogate keys on every dimension; the fact carries the surrogate key valid at request time. trip_id is the degenerate dimension. An unknown member (-1) for late-arriving drivers or riders, re-pointed when they arrive.",
+         "query": "Gross bookings by city and day: SUM(amount_usd) from fact_trip_payment joined to dim_city and dim_date on payment_date_key, grouped by city and day."},
+   "rubric": ["Stated the grain of every table first", "Separated trips from payments (late money is new rows)", "Chose an SCD type per attribute with a reason", "Used surrogate keys and an unknown member", "Answered a business question with SQL"]},
+  {"id": "dm2", "t": "Ads impressions and clicks", "co": "Meta", "mid": "m02", "q": "Model ads delivery: advertisers want impressions, clicks, spend and conversions per campaign per hour, and attribution of conversions to the last click within 7 days.",
+   "a": {"ask": "Billions of impressions a day: do we keep every impression or aggregate? Attribution window and model? Do conversions come from the advertiser later? Time zone of reporting?",
+         "grain": "fact_impression: one row per impression (often kept 30 to 90 days, then aggregated). fact_click: one row per click, with impression_id. fact_conversion: one row per conversion event, with the attributed click_id. agg_campaign_hour: one row per ad per hour.",
+         "facts": "Impressions and clicks are counts (additive); spend is additive; CTR and CPC are ratios computed from sums, never stored as averages to add up.",
+         "dims": "dim_advertiser, dim_campaign, dim_ad_set, dim_ad (Type 2 on budget and targeting, so reports show settings at the time), dim_placement, dim_device, dim_date and dim_hour.",
+         "keys": "impression_id and click_id as degenerate keys linking the facts. Attribution runs as a job that joins conversions to the last click within 7 days and writes the click_id onto the conversion; late conversions re-run the affected days.",
+         "query": "CTR per campaign per day: SUM(clicks) / NULLIF(SUM(impressions), 0) from agg_campaign_hour joined to dim_campaign, grouped by campaign and day."},
+   "rubric": ["Kept event grain and an hourly aggregate, and said why", "Computed ratios from sums, not stored averages", "Handled attribution and late conversions", "Kept campaign settings as of the time (Type 2)", "Talked about volume and retention"]},
+  {"id": "dm3", "t": "Sales pipeline", "co": "Salesforce", "mid": "m01", "q": "Model a sales pipeline. Leaders want pipeline value by stage at the end of each week, how long deals sit in each stage, and win rate by sales rep and region over time.",
+   "a": {"ask": "Can a deal move backwards? Does the region of a rep change? Do we need pipeline as it was on any past date? Multiple currencies?",
+         "grain": "fact_opportunity_snapshot: one row per opportunity per day (or week), a periodic snapshot. fact_stage_change: one row per stage transition. An accumulating snapshot with one row per opportunity and a date per milestone also works for stage durations.",
+         "facts": "Amount is semi-additive: sum it across opportunities, never across days (take the last day of the week). Days in stage comes from stage changes.",
+         "dims": "dim_rep (Type 2 on region and team, so win rate counts the region at the time), dim_account (Type 2 on segment), dim_stage, dim_product, dim_date.",
+         "keys": "Surrogate keys; opportunity_id as a degenerate dimension. Rep changes produce a new dim_rep row, and the snapshot row points at the version valid that day.",
+         "query": "Pipeline by stage at week end: SUM(amount) from the snapshot WHERE snapshot_date is the last day of each week, grouped by week and stage."},
+   "rubric": ["Chose a periodic or accumulating snapshot and said why", "Called amount semi-additive", "Used Type 2 for rep region", "Answered 'as it was on a date'", "Measured time in stage"]},
+  {"id": "dm4", "t": "Online orders and returns", "co": "Any", "mid": "m02", "q": "Model an online store: revenue by product and day, return rates by category, and how much each customer spends in their first 90 days.",
+   "a": {"ask": "Partial shipments and returns? Discounts at order or line level? Do product categories change? Is a customer anonymous before sign-up?",
+         "grain": "fact_order_line: one row per order line item. fact_return_line: one row per returned item. A customer daily snapshot is optional; first-90-day spend can be computed from order lines.",
+         "facts": "Quantity, gross amount, discount and net amount per line (additive). Order-level shipping is allocated to lines, or kept in a separate order-grain fact.",
+         "dims": "dim_product (Type 2 on category and price band), dim_customer (Type 2 on segment; first_order_date as an attribute), dim_date, dim_promotion, dim_channel.",
+         "keys": "Surrogate keys; order_id and line number as degenerate dimensions; returns carry the original order line's id.",
+         "query": "Return rate by category: returned units divided by sold units from the two facts joined to dim_product, grouped by category."},
+   "rubric": ["Chose line-item grain, not order", "Handled returns as their own fact", "Allocated order-level amounts", "Type 2 on product category", "Wrote the return-rate query"]},
+  {"id": "dm5", "t": "Music plays and subscriptions", "co": "Any", "mid": "m03", "q": "Model a music streaming service: plays per artist per day for royalty payments, subscriber counts by plan at month end, and churn.",
+   "a": {"ask": "What counts as a play (30 seconds?). Are royalties paid on plays per country? Can a user change plan mid-month? Offline plays arrive days later?",
+         "grain": "fact_play: one row per qualifying play. fact_subscription_day or month: a periodic snapshot, one row per subscriber per day or month. fact_subscription_event: one row per start, change, cancel.",
+         "facts": "Play count and seconds (additive). Subscribers are counted from the snapshot (semi-additive across time). Churn = cancels in month / subscribers at month start.",
+         "dims": "dim_track, dim_artist (a bridge table for tracks with several artists, with weights for royalty splits), dim_user (Type 2 on country and plan), dim_plan, dim_device, dim_date.",
+         "keys": "Surrogate keys; offline plays are accepted late and the royalty month recomputed for affected days; play_id deduplicates replays from devices.",
+         "query": "Plays per artist per day: SUM(plays × weight) from fact_play joined through the artist bridge, grouped by artist and day."},
+   "rubric": ["Defined a qualifying play", "Used a bridge for many artists", "Snapshot for subscribers, events for churn", "Handled late offline plays", "Royalty query uses the split weights"]}
+]
+METRICS = [
+  {"id": "pm1", "t": "Stories success", "co": "Meta", "mid": "s11", "q": "A photo app launched Stories. How do you know if it is working? Design the metrics, the logging and the pipeline.",
+   "a": {"goal": "Stories should get people sharing more often and coming back. Success is more people sharing and viewing without hurting feed engagement.",
+         "metrics": "North star: daily users who post or view a story. Supporting: stories posted per poster, views per story, share of viewers who reply. Guardrails: feed time per user, app crashes, reports per story.",
+         "events": "story_post(user_id, story_id, ts, media_type, device), story_view(viewer_id, story_id, author_id, ts, seconds_viewed), story_reply(user_id, story_id, ts), with an app session_id on every event and a client event_id to deduplicate.",
+         "pipeline": "Client events to a Kafka topic, landed hourly in the lake; dedupe by event_id; fact_story_view at event grain; daily aggregates per user and per country; a dashboard and an experiment table joined to assignment.",
+         "sql": "Daily story users: COUNT(DISTINCT user_id) over story_post and story_view events per day.",
+         "diag": "If views drop 10%: check logging (new app version, missing events, pipeline lag), then segment by country, platform, version and new versus old users, then product changes and seasonality."},
+   "rubric": ["Started from the goal", "North star, supporting and a guardrail", "Events with ids, timestamps and dedup keys", "Pipeline handles late and duplicate events", "Diagnosis checks data before product"]},
+  {"id": "pm2", "t": "Delivery time accuracy", "co": "Uber", "mid": "s11", "q": "Customers complain that the estimated delivery time is wrong. Define how to measure it, log it and report it.",
+   "a": {"goal": "Estimates should be close to what happens, and rarely late, because lateness hurts more than earliness.",
+         "metrics": "Share of orders delivered within ±5 minutes of the estimate shown at checkout; p50 and p90 absolute error; share late by more than 10 minutes. Guardrails: conversion at checkout (padding estimates lowers it), courier utilisation.",
+         "events": "eta_shown(order_id, ts, eta_min, model_version, stage), order_placed, picked_up, delivered(order_id, ts), all with city and restaurant ids.",
+         "pipeline": "Join the estimate shown at checkout to the actual delivery per order (late delivered events allowed up to a day), compute error per order in fact_order_eta, aggregate daily by city and model version.",
+         "sql": "Within five minutes: AVG(CASE WHEN ABS(actual_min - eta_min) <= 5 THEN 1.0 ELSE 0 END) per city and day.",
+         "diag": "If accuracy drops: a new model version, a city with weather or events, restaurants with slow prep, missing delivered events making orders look late."},
+   "rubric": ["Asymmetric goal: late is worse", "Error metrics plus a guardrail", "Logged the estimate actually shown", "Joined estimate to actual per order", "Segmented by model version"]},
+  {"id": "pm3", "t": "Feature adoption", "co": "Salesforce", "mid": "s11", "q": "A CRM shipped an AI assistant inside the deal page. Leadership asks: is it being adopted, and is it helping sales teams?",
+   "a": {"goal": "Reps should use the assistant regularly and close deals faster or more often; admins must trust it.",
+         "metrics": "Adoption: weekly active reps using it / reps with access, by account. Value: deal cycle time and win rate for users versus matched non-users, or in an experiment by account. Guardrails: suggestions dismissed, support tickets, data-access errors.",
+         "events": "assistant_open(user_id, org_id, opp_id, ts), suggestion_shown(suggestion_id, type), suggestion_accepted or dismissed, with org_id on every event for per-customer reporting and tenant isolation.",
+         "pipeline": "Events per tenant into the lake, deduplicated; join to opportunity stage history; weekly adoption per org; an experiment or a matched comparison for value.",
+         "sql": "Weekly adoption: COUNT(DISTINCT user_id) of assistant users / COUNT(DISTINCT user_id) with access, per org per week.",
+         "diag": "If adoption stalls: which orgs (enabled but unused?), which roles, did a release break the entry point, are suggestions dismissed (quality)?"},
+   "rubric": ["Split adoption from value", "Chose a fair comparison or experiment", "Tenant id on every event", "Joined usage to deal outcomes", "Diagnosis by org and role"]},
+  {"id": "pm4", "t": "Notifications: helping or hurting", "co": "Any", "mid": "s11", "q": "The team wants to send more push notifications. How would you measure whether that is good for the product?",
+   "a": {"goal": "Notifications should bring people back to something they value, without making them turn notifications off.",
+         "metrics": "Primary: sessions started from a notification that last more than 30 seconds, per user per week. Guardrails: notification opt-out rate, uninstalls, long-term retention (four weeks).",
+         "events": "notif_sent(notif_id, user_id, type, ts), notif_opened(notif_id, ts), session_start(user_id, ts, source), notif_settings_changed(user_id, type, on/off).",
+         "pipeline": "Join sends to opens and sessions by notif_id within a window; daily per type; an A/B test on volume with a holdout group kept for months.",
+         "sql": "Open rate per type: COUNT(opened) / COUNT(sent) grouped by type and day.",
+         "diag": "If opt-outs rise: which notification type, which country, new users versus old, a change in frequency caps."},
+   "rubric": ["Valued sessions, not opens", "Opt-out and long-term guardrails", "Linked sends to opens by id", "Long-running holdout", "Segmented by notification type"]}
+]
+COMPANIES = [
+  ["Meta", "Recruiter screen, SQL and Python coding, product sense with data modelling and pipeline design, behavioural.", ["r1", "r7", "r2", "r9", "r8", "r5"]],
+  ["Google", "Recruiter screen, coding, system design, code comprehension, behavioural and leadership with a past project.", ["r1", "r2", "r3", "r4", "r5", "r6"]],
+  ["Uber", "Recruiter screen, coding, SQL, data modelling, data platform design, behavioural.", ["r1", "r2", "r7", "r8", "r3", "r5"]],
+  ["Salesforce", "Recruiter screen, coding, SQL, system design, behavioural with the hiring manager.", ["r1", "r2", "r7", "r3", "r5", "r6"]]
+]
+
+WEB_TOPICS = [
   {"id": "url", "t": "URL shortener", "tpl": "url", "fr": ["Create a short link for a long URL", "Redirect a short link to the long URL", "Optional: custom alias, expiry, click counts"], "nfr": ["Redirects in under 50 ms", "Very read-heavy (about 100 reads per write)", "Links must never collide or disappear"],
    "api": ["POST /links {url} -> {code}", "GET /{code} -> 302 Location: url"], "data": ["links(code PK, url, owner, created_at, expires_at)", "clicks are an event stream, counted separately"],
    "decide": ["Code generation: base62 of a counter (no collisions, guessable) or a hash with a collision check", "301 (cached by browsers, no counts) or 302 (every click counted)", "Cache the hottest codes; size the store for a cold cache"],
@@ -224,8 +328,37 @@ TOPICS = [
    "est": {"users": 10000000, "act": "video views", "per": 5, "ws": 0.01, "wb": 500000000, "rb": 100000000, "peak": 3, "note": "1 in 100 views is matched by an upload of about 500 MB across all qualities; a view streams about 100 MB."}}
 ]
 
+# data platform designs at real scale (the design round); each ties to modules and simulator challenges
+TOPICS = [
+  {"id": "stream1m", "t": "1 million events a second, exactly once", "tpl": "stream", "mid": "s05", "sc": ["partitions", "hotkey", "dlq"],
+   "fr": ["Ingest app and device events at 1 million a second at peak", "Enrich and aggregate them within seconds for a serving store", "Land every event in the lake for replay and analytics"], "nfr": ["End to end in under 10 seconds", "No event counted twice or lost (exactly-once results)", "Survive a broker or zone loss"],
+   "api": ["Producers write to Kafka with a schema checked by a registry", "Consumers read with their own offsets"], "data": ["Topic keyed by user or device id; about 1 KB an event, so about 1 GB/s in", "Serving store keyed by entity and window; lake tables partitioned by hour"],
+   "decide": ["Partitions: a partition handles roughly 10 MB/s, so 1 GB/s needs 100 or more; plan for 2 to 3 times that for peaks and growth", "Exactly once: idempotent producers, transactional or checkpointed writes (Flink two-phase commit) and idempotent upserts in the sink", "Hot keys: salt or pre-aggregate the few huge keys; a DLQ for bad records"],
+   "est": {"who": "devices", "users": 100000000, "act": "events", "per": 864, "ws": 1, "wb": 1000, "rb": 2000, "peak": 2, "note": "Each event is about 1 KB, kept in the lake, and read by two consumers."}},
+  {"id": "cdcmr", "t": "Multi-region CDC", "tpl": "cdc", "mid": "s06", "sc": ["cdc", "zone", "failover"],
+   "fr": ["Stream every change from regional OLTP databases into a global lake and a search index", "Keep a current-state copy within a minute", "Rebuild any table from history"], "nfr": ["Within 60 seconds of the source", "No lost or reordered changes per row", "A region outage must not stop the others"],
+   "api": ["Debezium reads each database log into a regional Kafka", "Mirroring (MirrorMaker 2 or cluster linking) copies topics to the central region"], "data": ["Change events keyed by primary key, with source region, LSN and operation", "Current-state tables built by MERGE on the key, keeping the highest LSN"],
+   "decide": ["Log-based CDC over dual writes or polling (no deletes missed, no load on the app)", "Order per key from the key-based partitioning and the LSN, not arrival time", "Schema changes through a registry; snapshots for new tables; WAL retention sized for connector downtime"],
+   "est": {"who": "accounts", "users": 50000000, "act": "row changes", "per": 20, "ws": 1, "wb": 500, "rb": 1500, "peak": 3, "note": "Each change is about 500 bytes, kept as history, and sent to three consumers (lake, search, other regions)."}},
+  {"id": "backfill", "t": "Multi-petabyte batch backfill", "tpl": "batch", "mid": "s03", "sc": ["spark", "budget"],
+   "fr": ["Recompute three years of a core fact table after a logic fix", "Keep daily jobs and dashboards running while it runs", "Swap the new data in without readers seeing half of it"], "nfr": ["Finish within a week", "Cost within a set budget", "Restartable: a failure redoes only one partition"],
+   "api": ["The same job code as the daily run, given a date range", "An orchestrator runs it one partition (day) at a time, with a concurrency limit"], "data": ["About 2.5 PB a year of events: one partition per day, files of 256 MB to 1 GB", "Writes to a new table version, swapped atomically (Iceberg or Delta snapshot) or partition by partition"],
+   "decide": ["Idempotent per partition: overwrite a day, never append", "Throttle so the daily SLA keeps priority; use spot capacity with retries", "Validate counts and sums per partition against the old table before the swap"],
+   "est": {"who": "services", "users": 2000, "act": "events", "per": 50000000, "ws": 1, "wb": 200, "rb": 200, "peak": 1, "note": "Each event is about 200 bytes; a backfill reads each byte once.", "bwl": "Data read a second for one pass of one year (average)"}},
+  {"id": "feature", "t": "A feature store", "tpl": "serving", "mid": "s10", "sc": ["serving", "stampede"],
+   "fr": ["Serve features for model scoring in under 10 ms", "Give training the same features as of each past moment", "Let teams define a feature once and reuse it"], "nfr": ["p99 under 10 ms at 100,000 reads a second", "No training and serving skew", "Fresh within minutes for streaming features"],
+   "api": ["GET features(entity_id, feature_list) for online scoring", "A point-in-time join for training sets"], "data": ["Online store: key-value by entity, latest value only", "Offline store: lake tables of every value with event time"],
+   "decide": ["One definition computes both stores (batch and streaming), so values match", "Point-in-time correct joins in training (no future leakage)", "Size the online store for a cold cache; TTLs for stale features"],
+   "est": {"who": "users scored", "users": 200000000, "act": "feature lookups", "per": 50, "ws": 0.1, "wb": 2000, "rb": 2000, "peak": 3, "note": "About 1 in 10 lookups is matched by a feature update of about 2 KB; a lookup returns about 2 KB."}},
+  {"id": "migrate", "t": "Warehouse to lakehouse migration", "tpl": "batch", "mid": "s08", "sc": ["budget", "dashboards"],
+   "fr": ["Move 2 PB and 4,000 jobs from a warehouse to Iceberg tables", "Keep dashboards and SLAs working throughout", "Cut cost by at least a third"], "nfr": ["No downtime for readers", "Numbers match to the cent before cut-over", "A rollback path for every step"],
+   "api": ["Engines read the same Iceberg tables through one catalog", "Jobs move one domain at a time"], "data": ["Tables partitioned by date, files compacted to 512 MB", "A dual-run period writing both systems, with diff checks"],
+   "decide": ["Strangler pattern: domain by domain, with dual runs and automatic diffs", "Catalog and access control first, then data, then jobs, then dashboards", "Measure cost per query before and after, and keep hot marts where they are cheaper"],
+   "est": {"who": "analysts and jobs", "users": 20000, "act": "queries", "per": 100, "ws": 0.05, "wb": 50000000, "rb": 2000000000, "peak": 3, "note": "1 in 20 queries writes about 50 MB; a query scans about 2 GB.", "bwl": "Data scanned a second on average"}}
+]
+
 out = {"rounds": ROUNDS, "recruiter": RECRUITER, "dsaSteps": DSA_STEPS, "cx": CX, "cxChoices": CX_CHOICES, "cc": CC, "aiq": AIQ,
-       "behC": BEH_C, "beh": BEH, "star": STAR, "lead": LEAD, "proj": PROJ, "follow": FOLLOW, "topics": TOPICS}
+       "behC": BEH_C, "beh": BEH, "star": STAR, "lead": LEAD, "proj": PROJ, "follow": FOLLOW, "topics": TOPICS, "webTopics": WEB_TOPICS, "sqlPat": SQL_PAT, "model": MODEL, "metrics": METRICS, "companies": COMPANIES}
 p = os.path.join(os.path.dirname(__file__), '../../data/loop.json')
 json.dump(out, open(p, 'w'), ensure_ascii=False, indent=1)
-print('wrote data/loop.json:', len(CC), 'code items,', len(CX), 'complexity,', len(BEH) + len(LEAD), 'behavioural and leadership,', len(TOPICS), 'design topics')
+print('wrote data/loop.json:', len(ROUNDS), 'rounds,', len(CC), 'code items,', len(CX), 'complexity,', len(BEH) + len(LEAD), 'behavioural and leadership,', len(TOPICS), 'data platform designs,', len(MODEL), 'modelling and', len(METRICS), 'metrics cases')
