@@ -1,11 +1,9 @@
 {
-  "version": "1.36.0",
+  "version": "1.36.1",
   "date": "2026-11-07",
   "notes": [
-    "The interview loop is now a data engineering staff loop: nine rounds, with a card showing the typical loop at Meta, Google, Uber and Salesforce.",
-    "New SQL round: Hard problems against a 15-minute clock (shown on the problem page), with your best time per problem, and the eight SQL patterns most live rounds use.",
-    "New data modelling round: model a product (Uber trips, Meta ads, a Salesforce pipeline, orders, music plays) part by part, then compare with the model answer and tick the rubric.",
-    "New product sense and metrics round (Meta style): goal, metrics with a guardrail, events to log, pipeline, the metric in SQL, and diagnosing a drop.",
-    "System design now uses data platforms at real scale: 1 million events a second exactly once, multi-region CDC, a multi-petabyte backfill, a feature store and a lakehouse migration, each with its module, simulator challenges and an estimate. The web designs are still there, folded."
+    "On iPhone the Sign in button shows its whole label, and a reel's title is no longer hidden under the Shuffle filters.",
+    "About 250 written reels whose diagrams used a newer format no longer stop with an error; their diagrams now play.",
+    "Reel filters, My week and Shuffle, the Mode buttons, the day arrows, the level chip and the small \u203a links on Today are easier to tap on a phone."
   ]
 }
