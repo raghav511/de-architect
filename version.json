@@ -1,8 +1,7 @@
 {
-  "version": "1.28.1",
+  "version": "1.28.2",
   "date": "2026-11-07",
   "notes": [
-    "Source links on New this week boxes now say they open a new tab.",
-    "Behind the scenes: every app test passes again, and a standing improvement loop keeps shipping one improvement at a time."
+    "Reels play with sound again: any reel not yet recorded in the Heart voice is read by your device's best voice until its recording arrives."
   ]
 }

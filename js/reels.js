@@ -157,7 +157,7 @@ function reelPlayer(q, at, feedMode) {
       stop(); const b = render(); if (!b) { playing = false; reelDone(r); slide.classList.remove('playing'); return; }
       const my = tok, next = () => { if (my !== tok || !playing) return; bi++; beat(); };
       const est = (b.say.split(' ').length / 2.5 / speed()) * 1000;
-      const viaVoice = () => { if (speakOK() && S.settings.reelVoiceName) { const u = new SpeechSynthesisUtterance(b.say), v = reelVoice(); if (v) u.voice = v; u.rate = speed() * 0.97; u.onend = next; speechSynthesis.speak(u); fx.start(est); timer = setTimeout(() => { if (!speechSynthesis.speaking) next(); }, est + 4000); } else { fx.start(est); timer = setTimeout(next, est); } };
+      const viaVoice = () => { if (speakOK()) { /* no recording yet (or it failed): the best device voice reads it, never silence */ const u = new SpeechSynthesisUtterance(b.say), v = reelVoice(); if (v) u.voice = v; u.rate = speed() * 0.97; u.onend = next; speechSynthesis.speak(u); fx.start(est); timer = setTimeout(() => { if (!speechSynthesis.speaking) next(); }, est + 4000); } else { fx.start(est); timer = setTimeout(next, est); } };
       if (b.audio && S.settings.reelVoice !== false && !S.settings.reelVoiceName) {
         audio = new Audio(b.audio); audio.playbackRate = speed(); audio.preservesPitch = true;
         let started = false; const go2 = ms => { if (started || my !== tok) return; started = true; fx.start(ms); };

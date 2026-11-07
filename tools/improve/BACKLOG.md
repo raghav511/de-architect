@@ -4,7 +4,8 @@ Top unblocked item goes next. Each item: goal served (1 understand, 2 remember, 
 
 ## Next
 
-2. **Ship the recorded reels** (2): when the Heart-voice recording of all 1,194 reels finishes, rebuild (`tools/reels/build.py`) and ship. Test: reels flow, every beat has audio.
+1. **Build `tools/smoke.js`: test every feature on Chromium and WebKit (iPhone)** (5): one check per feature with the outcome a person notices (reel sound and beat advance, code output, quiz score, live mock score, simulator grade, sync merge, ticks persist, every route responds, offline reload). Run it locally and live. Fix every failure it finds, one per iteration, before new features.
+2. **Ship the recorded reels** (2): every iteration, run `tools/reels/build.py` to link the Heart recordings finished so far and ship them; when the recording of all 1,194 reels finishes, ship the last batch. Test: reels flow, every beat has audio.
 3. **Architect's lens: Kafka (s05)** (1, 3): 7-row lens and under-the-hood questions (why fast on disk, ISR and acks, rebalancing, exactly-once). Test: lens card renders, questions join @@interview.
 4. **Architect's lens: Spark (s03)** (1, 3). Same test.
 5. **Architect's lens: Iceberg and table formats (s02, s08)** (1, 3).
