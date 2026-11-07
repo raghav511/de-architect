@@ -509,7 +509,7 @@ function vWork(kind, id, mode) {
       S.runs[qid] = runs() + 1;
       S.seen = S.seen || {}; S.seen[qid] = Date.now(); /* when you last worked on it, for the nightly coach */
       if (r.pass) {
-        const first = !S.solved[qid]; S.solved[qid] = 1; if (first) gameNote('solve'); if (S.cv && S.cv.ex) S.cv.ex[qid] = exHash(findQ(qid)); /* the version you solved */
+        const first = !S.solved[qid]; S.solved[qid] = 1; if (first) gameNote('solve'); if (typeof loopSolved === 'function') loopSolved(qid); if (S.cv && S.cv.ex) S.cv.ex[qid] = exHash(findQ(qid)); /* the version you solved */
         if (review) {
           const lapsed = nh() > H.length; revPut(qid, lapsed ? 0 : rv.box + 1); review = false;
           const nr = S.rev[qid];
@@ -608,7 +608,7 @@ function vWork(kind, id, mode) {
   function av() { [[gripL, lw, 240, 520], [gripR, rw, 260, 520], [hgrip, oh, 120, 560]].forEach(([g, v, a, b]) => { g.setAttribute('aria-valuenow', Math.round(v)); g.setAttribute('aria-valuemin', a); g.setAttribute('aria-valuemax', b); }); }
   av();
   lay();
-  shell(title, eyebrow, el('div', { class: 'stack', style: { gap: '10px' } }, [mtabs, wb]), { back, extra, raw: true });
+  shell(title, eyebrow, el('div', { class: 'stack', style: { gap: '10px' } }, [typeof loopBanner === 'function' ? loopBanner(qid) : null, mtabs, wb]), { back, extra, raw: true });
   const pg = document.querySelector('.main'); pg.lastChild.style.padding = window.innerWidth < 1024 ? '10px 12px 100px' : '0';
   Py.start().catch(() => { });
 }
@@ -1055,9 +1055,9 @@ function mergeState(a, b) {
     out.sim.ex[k] = { best: Math.max(x.best == null ? -1 : x.best, y.best == null ? -1 : y.best), last: l, cur: c && Object.assign({}, c, x.cur && y.cur && x.cur.t0 === y.cur.t0 ? { lvl: Math.max(x.cur.lvl || 0, y.cur.lvl || 0), rev: Math.max(x.cur.rev || 0, y.cur.rev || 0) } : {}) }; if (out.sim.ex[k].best < 0) out.sim.ex[k].best = null; }
   /* interview loop: stories, answers and exercises merge one by one and the newer edit wins (a deleted story keeps a dated marker); the pitch and the project as a whole */
   if (a.loop || b.loop) { const la = a.loop || {}, lb = b.loop || {}, nw = (x, y) => !x ? y : !y ? x : (x.at || 0) > (y.at || 0) ? x : y; out.loop = Object.assign({}, la, lb);
-    ['stories', 'cc', 'cx', 'est', 'ans'].forEach(k => { const x = la[k] || {}, y = lb[k] || {}; out.loop[k] = Object.assign({}, x, y); for (const id in out.loop[k]) out.loop[k][id] = nw(x[id], y[id]); });
+    ['stories', 'cc', 'cx', 'est', 'ans', 'cases', 'sql'].forEach(k => { const x = la[k] || {}, y = lb[k] || {}; out.loop[k] = Object.assign({}, x, y); for (const id in out.loop[k]) out.loop[k][id] = nw(x[id], y[id]); });
     out.loop.reps = Object.assign({}, la.reps, lb.reps); for (const d in out.loop.reps) out.loop.reps[d] = Object.assign({}, (la.reps || {})[d], (lb.reps || {})[d]);
-    ['pitch', 'proj'].forEach(k => { out.loop[k] = nw(la[k], lb[k]) || {}; }); }
+    ['pitch', 'proj'].forEach(k => { out.loop[k] = nw(la[k], lb[k]) || {}; }); out.loop.sqlCur = [la.sqlCur, lb.sqlCur].filter(Boolean).sort((x, y) => (y.t0 || 0) - (x.t0 || 0))[0]; }
   out.updated = Math.max(a.updated || 0, b.updated || 0);
   return out;
 }

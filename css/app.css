@@ -708,3 +708,6 @@ a.srcl:hover{background:var(--teal-l)}
 .lpfit summary{cursor:pointer;font-weight:600}
 .lpnav{position:sticky;top:0;z-index:2;background:var(--bg);padding:4px 0}
 @media (max-width:560px){.lpgrid{grid-template-columns:1fr}.lpnum{width:7em}.lpcode{font-size:12.5px}}
+.lpsqlbar{align-items:center;gap:6px}.lpsqlbar.over{background:var(--amber-xl);border-color:var(--amber-b)}
+.lpmodel{font-size:15px}
+.lpco summary,.lpweb summary{cursor:pointer;font-weight:600;min-height:32px}

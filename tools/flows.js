@@ -1365,10 +1365,10 @@ async function T(name, fn, opt) {
 
   /* ---- interview loop (#/loop) ---- */
   const loopGo = async (p, h) => { await go(p, h, 1200); await p.waitForFunction(() => !!DATA.loop, null, { timeout: 15000 }); await p.waitForTimeout(200); };
-  await T('loop: the hub lists six rounds with readiness; the nav and Today link to it', async p => {
+  await T('loop: the hub lists nine rounds with readiness and company loops; the nav and Today link to it', async p => {
     await loopGo(p, '#/loop');
-    ok((await p.$$('.lpround')).length === 6, 'not six rounds'); const t = await text(p, '#page');
-    ok(/Recruiter screen/.test(t) && /Code comprehension/.test(t) && /Leadership and past project/.test(t) && /% ready/.test(t), 'hub text: ' + t.slice(0, 300));
+    ok((await p.$$('.lpround')).length === 9, 'not nine rounds'); await p.click('.lpco summary'); const t = await text(p, '#page');
+    ok(/Recruiter screen/.test(t) && /Code comprehension/.test(t) && /Leadership and past project/.test(t) && /SQL, live/.test(t) && /Data modelling/.test(t) && /Product sense/.test(t) && /Meta/.test(t) && /% ready/.test(t), 'hub text: ' + t.slice(0, 300));
     ok(await p.$('nav.side a[href="#/loop"]'), 'Interview loop not in the menu');
     await go(p, '#/today', 1400); const c = await p.$('.looptoday a'); ok(c, 'no Interview loop card on Today'); const h = await c.getAttribute('href');
     await c.click(); await p.waitForSelector('.tabs [aria-selected=true]'); ok(/#\/loop\/r\d\/\w+/.test(h) && (await p.evaluate(() => location.hash)) === h, 'Today card went to ' + h);
@@ -1397,16 +1397,19 @@ async function T(name, fn, opt) {
     await p.click('.lpnav .btn.pri'); await p.click('.lpopt:has-text("O(1)")'); ok(/Not quite/.test(await text(p, '.lpchoice .why')) && await p.$('.lpopt.ok'), 'wrong answer not marked with the right one');
     await go(p, '#/loop/r2/method', 900); ok(/Clarify/.test(await text(p, '.lpsteps')) && await p.$('a[href^="#/dsa/"]'), 'method or today\'s problem missing');
   });
-  await T('loop design: topics open Teach me in the simulator; an exact estimate scores 4 of 4', async p => {
+  await T('loop design: data platform topics link modules and simulator challenges and open Teach me; web topics stay; an exact estimate scores 4 of 4', async p => {
     await loopGo(p, '#/loop/r3/topics');
-    ok((await p.$$('.lptopic')).length === 4, 'four topics'); await p.click('.lptopic[data-topic=chat] summary'); ok(/Kafka key = conversation id/.test(await text(p, '.lptopic[data-topic=chat]')), 'topic details');
+    const ids = await p.$$eval('.lptopic', es => es.map(e => e.dataset.topic)); ok(['stream1m', 'cdcmr', 'backfill', 'feature', 'migrate'].every(x => ids.includes(x)), 'data platform topics: ' + ids);
+    await p.click('.lptopic[data-topic=stream1m] summary'); const st = await text(p, '.lptopic[data-topic=stream1m]'); ok(/exactly once/i.test(st) && /Module DE 5/.test(st) && await p.$('.lptopic[data-topic=stream1m] a[href="#/sim/sc/partitions"]'), 'stream topic: ' + st.slice(0, 200));
+    await p.click('.lpweb summary'); await p.click('.lptopic[data-topic=chat] summary'); ok(/Kafka key = conversation id/.test(await text(p, '.lptopic[data-topic=chat]')), 'web topic details');
     await p.click('.lptopic[data-topic=chat] a[href="#/sim/teach/chat"]'); await p.waitForSelector('.simcoach'); ok(/Chat system/.test(await text(p, '.simcoach')), 'teach did not open on chat');
     await loopGo(p, '#/loop/r3/est');
+    ok(/100,000,000 devices/.test(await text(p, '.lpest')) && /PB/.test(await text(p, '.lpest')), 'stream estimate is not at PB scale: ' + await text(p, '.lpest'));
     const v = await p.evaluate(() => loopEstQs(DATA.loop.topics[0], 1).map(q => q[2]));
     const ins = await p.$$('.lpnum'); for (let i = 0; i < 4; i++) await ins[i].fill(String(v[i]));
     await p.click('.lpest .btn.pri'); ok(/4 of 4/.test(await text(p, '.lpest')), 'estimate not 4 of 4: ' + await text(p, '.lpest'));
     await ins[0].fill(String(v[0] * 10)); await p.click('.lpest .btn.pri'); ok(/3 of 4/.test(await text(p, '.lpest')) && await p.$('.lpnum.bad'), 'a wrong number was accepted');
-    ok(await p.evaluate(() => S.loop.est.url.score === 4), 'best score not kept');
+    ok(await p.evaluate(() => S.loop.est.stream1m.score === 4), 'best score not kept');
     await go(p, '#/sim', 1200); await p.evaluate(() => { simDebug; }); const quick = await p.evaluate(() => [...simQuickRow(() => {}).querySelectorAll('.simqbtn')].map(b => b.dataset.tpl)); ok(!quick.includes('url') && quick.includes('cdc'), 'SWE starters leaked into quick start: ' + quick);
   });
   await T('loop code: understand, find the line, fix (tests run), improve, use AI well, explain', async p => {
@@ -1427,6 +1430,24 @@ async function T(name, fn, opt) {
     await loopGo(p, '#/loop/cc/cc05'); await p.click('.lpopt >> nth=0'); await p.click('.lpln[data-line="5"]');
     await p.click('button:has-text("Run the tests")'); await p.waitForSelector('.lptest', { timeout: 90000 }); ok(await p.$('.lptest.bad'), 'given code passed');
     await p.fill('.lpfix', 'def avg_latency(ms):\n    return sum(ms) / len(ms) if ms else None'); await p.click('button:has-text("Run the tests")'); await p.waitForSelector('.badge:has-text("Tests pass")', { timeout: 30000 });
+  });
+  await T('loop SQL: the timed round starts the clock on a Hard problem, shows it on the problem page, and records the solve time', async p => {
+    await loopGo(p, '#/loop/r7/timed'); const n = (await p.$$('[data-sql]')).length; ok(n === await p.evaluate(() => DATA.sql.filter(x => x.lv === 'Hard').length) && n >= 15, 'Hard list: ' + n);
+    await p.click('button:has-text("Start the clock")'); await p.waitForFunction(() => /Timed SQL round ·\s*1[45]:\d\d left/.test((document.querySelector('.lpsqlbar') || {}).innerText || ''), null, { timeout: 10000 }).catch(() => {}); ok(/Timed SQL round ·\s*1[45]:\d\d left/.test(await text(p, '.lpsqlbar')), 'no clock on the problem page: ' + await text(p, '.lpsqlbar'));
+    const id = await p.evaluate(() => S.loop.sqlCur.id); await p.evaluate(() => { S.loop.sqlCur.t0 -= 125000; S.solved[S.loop.sqlCur.id] = 1; loopSolved(S.loop.sqlCur.id); });
+    ok(await p.evaluate(x => S.loop.sql[x].secs >= 125 && S.loop.sql[x].secs < 135 && S.loop.sqlCur.done, id), 'solve time not recorded');
+    await loopGo(p, '#/loop/r7/timed'); ok(/1 of \d+ done/.test(await text(p, '#page')) && /2:0\d/.test(await text(p, '[data-sql="' + id + '"]')), 'round list');
+    await go(p, '#/loop/r7/patterns', 900); ok((await p.$$('.lptopic')).length === 8 && /ROW_NUMBER/.test(await all(p, '#page')), 'eight patterns');
+  });
+  await T('loop modelling and metrics: a prompt answered part by part, then the model answer per part, a rubric and readiness', async p => {
+    await loopGo(p, '#/loop/r8/cases'); ok(/Ride-hailing trips/.test(await text(p, '.lpcase')) && /Uber/.test(await text(p, '.lpcase')), 'first modelling case');
+    const f = await p.$$('#page .lpf textarea'); ok(f.length === 6, 'six parts: ' + f.length);
+    const ans = ['Is a cancelled request a trip and which currency', 'One row per trip request whatever its outcome', 'fare distance duration are additive measures', 'rider Type 2 on segment and home city', 'surrogate keys with an unknown member row', 'SUM amount by city and day from payments'];
+    for (let i = 0; i < 6; i++) await f[i].fill(ans[i]);
+    await p.click('button:has-text("Compare with the model answer")'); ok((await p.$$('.lpmodel')).length === 6 && /role-playing/.test(await text(p, '#page')), 'model answers not shown');
+    await p.click('.lpchk input'); ok(await p.evaluate(() => S.loop.cases.dm1.shown && /cancelled/.test(S.loop.cases.dm1.ask) && S.loop.ans['r8:dm1'].chk[0] && loopReady(DATA.loop).r8 > 0), 'case not saved or readiness unchanged');
+    await loopGo(p, '#/loop/r9/cases'); ok(/Stories success/.test(await text(p, '.lpcase')) && (await p.$$('#page .lpf textarea')).length === 6 && /guardrail/i.test(await text(p, '#page')), 'metrics case');
+    await go(p, '#/loop/r8/about', 900); ok(await p.$('a[href="#/learn/m01/practice"]'), 'no link to Model it out loud');
   });
   await T('loop behavioural: a STAR story with tags fills the coverage and shows under matching questions; delete leaves a marker', async p => {
     await loopGo(p, '#/loop/r5/stories'); await p.click('button:has-text("+ New story")');
@@ -1449,13 +1470,13 @@ async function T(name, fn, opt) {
   });
   await T('loop: sync keeps both devices\' stories and answers, the newer edit wins, a deleted story stays deleted', async p => {
     await go(p, '#/today', 900);
-    const r = await p.evaluate(() => { const a = { loop: { stories: { s1: { title: 'old', at: 1 }, s2: { title: 'gone', at: 5 } }, ans: { 'r5:b1': { t: 'a', at: 9 } }, pitch: { now: 'A', at: 3 }, cc: { cc01: { fixed: 1, at: 2 } }, reps: { '2026-11-07': { r1: 1 } } } };
-      const b = { loop: { stories: { s1: { title: 'new', at: 2 }, s2: { del: 1, at: 6 }, s3: { title: 'b only', at: 1 } }, ans: { 'r5:b1': { t: 'b', at: 4 } }, pitch: { now: 'B', at: 4 }, reps: { '2026-11-07': { r4: 1 } } } };
-      const o = mergeState(a, b).loop, o2 = mergeState(b, a).loop; return [o, o2].map(x => [x.stories.s1.title, !!x.stories.s2.del, x.stories.s3.title, x.ans['r5:b1'].t, x.pitch.now, !!x.cc.cc01.fixed, Object.keys(x.reps['2026-11-07']).sort().join()].join('|')); });
-    ok(r[0] === 'new|true|b only|a|B|true|r1,r4' && r[1] === r[0], 'merge: ' + r.join(' / '));
+    const r = await p.evaluate(() => { const a = { loop: { cases: { dm1: { grain: 'A', at: 1 } }, sql: { q024: { secs: 300, at: 1 } }, sqlCur: { id: 'q024', t0: 1 }, stories: { s1: { title: 'old', at: 1 }, s2: { title: 'gone', at: 5 } }, ans: { 'r5:b1': { t: 'a', at: 9 } }, pitch: { now: 'A', at: 3 }, cc: { cc01: { fixed: 1, at: 2 } }, reps: { '2026-11-07': { r1: 1 } } } };
+      const b = { loop: { cases: { dm1: { grain: 'B', at: 2 }, pm1: { goal: 'x', at: 1 } }, sql: { q025: { secs: 200, at: 1 } }, sqlCur: { id: 'q025', t0: 2 }, stories: { s1: { title: 'new', at: 2 }, s2: { del: 1, at: 6 }, s3: { title: 'b only', at: 1 } }, ans: { 'r5:b1': { t: 'b', at: 4 } }, pitch: { now: 'B', at: 4 }, reps: { '2026-11-07': { r4: 1 } } } };
+      const o = mergeState(a, b).loop, o2 = mergeState(b, a).loop; return [o, o2].map(x => [x.stories.s1.title, !!x.stories.s2.del, x.stories.s3.title, x.ans['r5:b1'].t, x.pitch.now, !!x.cc.cc01.fixed, Object.keys(x.reps['2026-11-07']).sort().join(), x.cases.dm1.grain, !!x.cases.pm1, Object.keys(x.sql).sort().join(), x.sqlCur.id].join('|')); });
+    ok(r[0] === 'new|true|b only|a|B|true|r1,r4|B|true|q024,q025|q025' && r[1] === r[0], 'merge: ' + r.join(' / '));
   });
   await T('loop on iPhone: no sideways scroll on the hub, a code exercise and an estimate; Next stays on screen', async p => {
-    for (const h of ['#/loop', '#/loop/cc/cc07', '#/loop/r3/est', '#/loop/r5/practice']) { await loopGo(p, h); const w = await p.evaluate(() => [document.documentElement.scrollWidth, innerWidth]); ok(w[0] <= w[1], h + ' scrolls sideways: ' + w); }
+    for (const h of ['#/loop', '#/loop/cc/cc07', '#/loop/r3/est', '#/loop/r5/practice', '#/loop/r3/topics', '#/loop/r7/timed', '#/loop/r8/cases']) { await loopGo(p, h); const w = await p.evaluate(() => [document.documentElement.scrollWidth, innerWidth]); ok(w[0] <= w[1], h + ' scrolls sideways: ' + w); }
     const b = await p.$eval('.lpnav .btn.pri', e => [e.getBoundingClientRect().bottom, document.querySelector('.tabbar').getBoundingClientRect().top]); ok(b[0] <= b[1], 'Next hidden under the tab bar');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
