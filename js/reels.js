@@ -34,12 +34,15 @@ function autoReels(m, head, md, idx) {
   return out.map((bs, k) => ({ id: 'auto-' + m + '-' + idx + '-' + k, sec: head.split(' ')[0], head, title: head.replace(/^[A-Z]?\d+(\.\d+)?\s+/, ''), part: out.length > 1 ? (k + 1) + ' of ' + out.length : '', beats: bs, auto: true, m }));
 }
 /* every reel of a module in chapter order: hand-written ones for a section replace its quick reel */
+/* reels teach concepts only: sections about the program itself (how it works, scoring, setup) get no reel */
+const REEL_META = /^(?:[A-Z]?\d+(?:\.\d+)?\s+)?(how this (program|track) works|what a module contains|how scoring works|two rules about using ai|what happens after|why this sprint exists|what this sprint is for|why a data engineer needs this|setup|accounts|then start|from your lab to an interview story|after the program|the platform you will build|from a platform to a data foundation)/i;
 async function reelsFor(m) {
+  if (m === 's00') return [];
   if (reelCache[m]) return reelCache[m];
   const s = await sprint(m).catch(() => null); if (!s) return [];
   const hand = ((DATA.reels || {})[m] || []), parts = (s.raw.chapter || '').split(/\n(?=## )/), out = [];
   parts.forEach((p, i) => {
-    const head = (/^## (.+)/.exec(p.trim()) || [])[1]; if (!head) return;
+    const head = (/^## (.+)/.exec(p.trim()) || [])[1]; if (!head || REEL_META.test(head)) return;
     const h = hand.filter(r => r.sec === head.split(' ')[0] || r.sec === head).map(r => Object.assign({ head, m }, r));
     (h.length ? h : autoReels(m, head, p.replace(/^## .+\n/, ''), i)).forEach(r => out.push(r));
   });
@@ -56,9 +59,21 @@ async function reelQueue() {
   for (const id of Object.keys(S.reels || {}).filter(reelDue)) { const m = reelMid(id); if (m) { const x = (await reelsFor(m)).find(y => y.id === id); if (x) due.push(x); } }
   const seen = new Set(), q = [];
   first.concat(rest.filter(x => !(S.reels || {})[x.id]), due, rest).forEach(x => { if (!seen.has(x.id)) { seen.add(x.id); q.push(x); } });
+  /* a thin week (early in the program) continues with the next modules on the path */
+  for (let j = MODS.indexOf(week[week.length - 1]) + 1; q.length < 10 && j < MODS.length; j++) (await reelsFor(MODS[j])).forEach(x => { if (!seen.has(x.id)) { seen.add(x.id); q.push(x); } });
   return q;
 }
 
+const REEL_TRACKS = [['all', 'Everything'], ['weak', 'Weak spots'], ['seen', 'Done before'], ['py', 'Python'], ['data', 'Data engineering'], ['model', 'Modelling'], ['sys', 'Systems and design'], ['ai', 'AI']];
+const reelTrack = m => /^p/.test(m) ? 'py' : /^m/.test(m) ? 'model' : /^[ac]/.test(m) ? 'ai' : /^(d01|s10|j01|r01)$/.test(m) ? 'sys' : 'data';
+async function reelShuffle(filter) {
+  const all = (await Promise.all(MODS.filter(m => m !== 's00').map(m => reelsFor(m).catch(() => [])))).flat();
+  const R = S.reels || {}, keep = r => filter === 'weak' ? (R[r.id] && (R[r.id].ok === false || reelDue(r.id))) : filter === 'seen' ? !!(R[r.id] && R[r.id].seen) : filter && filter !== 'all' ? reelTrack(r.m) === filter : true;
+  const groups = {}; all.filter(keep).forEach(r => (groups[r.m + '|' + r.head] = groups[r.m + '|' + r.head] || []).push(r));
+  const g = Object.values(groups);
+  for (let i = g.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [g[i], g[j]] = [g[j], g[i]]; }
+  return g.flat(); /* a random order of concepts; the levels of one concept stay together, in order */
+}
 function speakOK() { return 'speechSynthesis' in window && S.settings.reelVoice !== false; }
 /* the most natural English voice on this device: Premium and Enhanced voices (downloaded in iOS or macOS settings) first,
    then the well-known natural ones; the learner's pick (S.settings.reelVoiceName) wins */
@@ -80,82 +95,105 @@ function reelVoiceSheet(onPick) {
   return sheet;
 }
 
-/* the player: a full-screen vertical card over the app */
+/* the player: a vertical feed like Shorts. Every reel is a full-screen slide that snaps; the slide in view plays,
+   all others are silent; only the slides next to the current one are kept rendered, and the next reel's first
+   recording is fetched ahead */
 async function vReels(id) {
   shell('Reels', 'Short explainers', [el('p', { class: 'muted', text: 'Loading reels…' })], { back: '#/today' });
-  let q;
-  if (id && reelMid(id)) { const rs = await reelsFor(reelMid(id)); const i = rs.findIndex(r => r.id === id); q = i >= 0 ? rs.slice(i) : rs; }
-  else q = await reelQueue();
+  let q, at = 0;
+  const mode = S.settings.reelMode || 'shuffle';
+  if (id && reelMid(id)) { q = await reelsFor(reelMid(id)); at = Math.max(0, q.findIndex(r => r.id === id)); }
+  else q = mode === 'week' ? await reelQueue() : await reelShuffle(S.settings.reelFilter || 'all');
+  if (!q.length && mode !== 'week') { toast('Nothing matches that filter yet. Showing everything.'); S.settings.reelFilter = 'all'; q = await reelShuffle('all'); }
   if (!q.length) { $('#page').textContent = ''; $('#page').appendChild(el('section', { class: 'card pad' }, el('p', { text: 'No reels for this week yet.' }))); return; }
-  reelPlayer(q);
+  reelPlayer(q, at, !(id && reelMid(id)));
 }
-function reelPlayer(q) {
-  let qi = 0, bi = 0, playing = false, timer = null, utter = null, started = false;
+let reelUnlocked = false; /* browsers allow sound only after a first tap */
+function reelPlayer(q, at, feedMode) {
   const speed = () => +S.settings.reelSpeed || 1;
   const ov = el('div', { class: 'reelv', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Reels' });
-  const close = () => { stop(); ov.remove(); if (history.length > 1) history.back(); else location.hash = '#/today'; };
+  const feed = el('div', { class: 'rfeed' });
+  const slides = q.map((r, i) => el('section', { class: 'rslide', 'data-i': String(i), 'aria-label': r.title }));
+  feed.append(...slides); ov.appendChild(feed);
+  let cur = -1, C = null; /* C: the playing slide's controller */
+  const close = () => { if (C) C.stop(); ov.remove(); if (history.length > 1) history.back(); else location.hash = '#/today'; };
+  const mode = S.settings.reelMode || 'shuffle', setMode = (m, f) => { S.settings.reelMode = m; if (f) S.settings.reelFilter = f; save(); if (C) C.stop(); ov.remove(); vReels(); };
+  const sw = feedMode ? el('div', { class: 'rmode', role: 'tablist', 'aria-label': 'Reel order' }, [['week', 'My week'], ['shuffle', 'Shuffle']].map(([k, n]) => el('button', { role: 'tab', 'aria-selected': String(mode === k), onclick: () => setMode(k) }, n))) : el('span', { class: 'grow' });
+  const top = el('div', { class: 'rtop' }, [el('button', { class: 'rbtn', 'aria-label': 'Close reels', onclick: close }, '✕'), el('span', { class: 'grow' }), sw, el('span', { class: 'grow' }), el('span', { class: 'rcount' })]);
+  if (feedMode && mode === 'shuffle') ov.appendChild(el('div', { class: 'rfilters', role: 'toolbar', 'aria-label': 'Shuffle filter' }, REEL_TRACKS.map(([k, n]) => el('button', { class: (S.settings.reelFilter || 'all') === k ? 'on' : '', onclick: () => setMode('shuffle', k) }, n))));
+  ov.appendChild(top);
   document.body.appendChild(ov);
-  cleanup.push(() => { stop(); ov.remove(); });
-  let audio = null, tok = 0;
-  function stop() { tok++; clearTimeout(timer); timer = null; if (audio) { audio.onended = audio.onerror = null; audio.pause(); audio = null; } try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { } }
-  function say(text, done0, file) {
-    stop();
-    const my = tok, done = () => { if (my === tok) done0(); }; /* a line from an older reel or beat never speaks or advances */
-    /* the recorded natural voice (Kokoro, Heart) when this beat has one and no device voice was picked */
-    if (file && S.settings.reelVoice !== false && !S.settings.reelVoiceName) {
-      audio = new Audio(file); audio.playbackRate = speed(); audio.preservesPitch = true;
-      audio.onended = () => done(); audio.onerror = () => { if (my === tok) { audio = null; say(text, done0); } };
-      audio.play().catch(() => { if (my === tok) { audio = null; say(text, done0); } }); return;
+  cleanup.push(() => { if (C) C.stop(); ov.remove(); });
+  function controller(i) {
+    const r = q[i], slide = slides[i];
+    let bi = 0, playing = false, fx = null, audio = null, timer = null, tok = 0;
+    const bars = el('div', { class: 'rbars' }), stage = el('div', { class: 'rstage' }), cap = el('p', { class: 'rcap', 'aria-live': 'polite' }), hint = el('div', { class: 'rtap' });
+    const head = el('div', { class: 'rhead' }, [el('div', { class: 'grow' }, [r.level ? el('span', { class: 'rlevel', text: r.level }) : null, el('b', { text: r.title + (r.part ? ' · ' + r.part : '') }), el('span', { text: modLabel(r.m) + ' · ' + (r.head || r.sec) + ' · ' + reelSecs(r) + ' s' + (r.auto ? ' · quick reel' : '') })])]);
+    const saved = () => !!(S.playbook || {})[r.id];
+    const rail = el('div', { class: 'rrail' }, [
+      el('button', { class: 'rbtn rheart' + (saved() ? ' on' : ''), 'aria-label': 'Save to My playbook', onclick: e => { if (!r.work) { toast('This quick reel has no work list yet.'); return; } S.playbook = S.playbook || {}; if (saved()) delete S.playbook[r.id]; else S.playbook[r.id] = { title: r.title, m: r.m, sec: r.head || r.sec, items: r.work, at: iso(new Date()) }; save(); e.currentTarget.classList.toggle('on', saved()); } }, '♥'),
+      el('button', { class: 'rbtn rsm', 'aria-label': 'Speed', onclick: e => { S.settings.reelSpeed = { 1: 1.25, 1.25: 1.5, 1.5: 1 }[speed()] || 1; save(); e.currentTarget.textContent = speed() + '×'; if (playing) beat(); } }, speed() + '×'),
+      el('button', { class: 'rbtn rsm', 'aria-label': 'Choose a voice', onclick: () => { const was = playing; pause(); ov.appendChild(reelVoiceSheet(() => { if (was) play(); })); } }, S.settings.reelVoice === false ? 'Muted' : 'Voice')]);
+    slide.textContent = ''; slide.append(bars, head, stage, cap, rail, hint);
+    function paintBars() { bars.textContent = ''; r.beats.concat([null]).forEach((_, k) => bars.appendChild(el('i', { class: k < bi ? 'on' : k === bi ? 'cur' : '' }))); }
+    function stop() { tok++; clearTimeout(timer); timer = null; if (audio) { audio.onended = audio.onerror = audio.onloadedmetadata = null; audio.pause(); audio = null; } try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { } if (fx) fx.stop(); }
+    function render() {
+      paintBars(); stage.textContent = '';
+      if (bi >= r.beats.length) { cap.textContent = ''; stage.append(...reelEnd(r, () => go(i + 1), () => { bi = 0; play(); })); return null; }
+      const b = r.beats[bi]; fx = FX.build(b.show || {}); stage.appendChild(fx.el); cap.textContent = b.say; return b;
     }
-    if (speakOK()) { utter = new SpeechSynthesisUtterance(text); const v = reelVoice(); if (v) utter.voice = v; utter.rate = speed() * 0.97; utter.pitch = 1; utter.onend = () => { if (utter && utter._me === myTok) done(); }; const myTok = utter._me = Math.random(); speechSynthesis.speak(utter);
-      timer = setTimeout(() => { if (playing && !speechSynthesis.speaking) done(); }, (text.split(' ').length / 2.2 / speed() + 3) * 1000); } /* safety net if the voice never reports the end */
-    else timer = setTimeout(done, (text.split(' ').length / 2.5 / speed()) * 1000);
+    function beat() {
+      stop(); const b = render(); if (!b) { playing = false; reelDone(r); slide.classList.remove('playing'); return; }
+      const my = tok, next = () => { if (my !== tok || !playing) return; bi++; beat(); };
+      const est = (b.say.split(' ').length / 2.5 / speed()) * 1000;
+      const viaVoice = () => { if (speakOK() && S.settings.reelVoiceName) { const u = new SpeechSynthesisUtterance(b.say), v = reelVoice(); if (v) u.voice = v; u.rate = speed() * 0.97; u.onend = next; speechSynthesis.speak(u); fx.start(est); timer = setTimeout(() => { if (!speechSynthesis.speaking) next(); }, est + 4000); } else { fx.start(est); timer = setTimeout(next, est); } };
+      if (b.audio && S.settings.reelVoice !== false && !S.settings.reelVoiceName) {
+        audio = new Audio(b.audio); audio.playbackRate = speed(); audio.preservesPitch = true;
+        let started = false; const go2 = ms => { if (started || my !== tok) return; started = true; fx.start(ms); };
+        audio.onloadedmetadata = () => go2(audio.duration * 1000 / speed());
+        audio.onended = next; audio.onerror = () => { if (my === tok) { audio = null; viaVoice(); } };
+        audio.play().then(() => setTimeout(() => go2(est), 250)).catch(() => { if (my === tok) { audio = null; viaVoice(); } });
+      } else if (S.settings.reelVoice === false) { fx.start(est); timer = setTimeout(next, est); }
+      else viaVoice();
+    }
+    function play() { reelUnlocked = true; playing = true; slide.classList.add('playing'); hint.textContent = ''; beat(); }
+    function pause() { playing = false; stop(); if (fx) fx.finish(); slide.classList.remove('playing'); }
+    function step(d) { const was = playing; stop(); bi = Math.max(0, Math.min(r.beats.length, bi + d)); if (was && bi < r.beats.length) beat(); else { const b = render(); if (b && fx) fx.finish(); if (!b) { playing = false; reelDone(r); } } }
+    /* taps: left third back, right third forward, middle pause or play (like stories) */
+    slide.addEventListener('click', e => { if (e.target.closest('button,a,input,label,.rendcard,.rsheet')) return; const x = e.clientX - slide.getBoundingClientRect().left, w = slide.clientWidth; if (x < w / 3) step(-1); else if (x > 2 * w / 3) step(1); else (playing ? pause() : play()); });
+    const b0 = render(); if (b0 && fx) fx.finish();
+    return { play, pause, stop: () => { playing = false; stop(); slide.classList.remove('playing'); }, step, get playing() { return playing; }, slide };
   }
-  function play() { playing = true; started = true; draw(); runBeat(); }
-  function pause() { playing = false; stop(); draw(); }
-  function runBeat() { const r = q[qi]; if (!playing || bi >= r.beats.length) return; say(r.beats[bi].say, () => { if (!playing) return; bi++; draw(); if (bi < r.beats.length) runBeat(); else { playing = false; reelDone(r); draw(); } }, r.beats[bi].audio); }
-  function goBeat(d) { const r = q[qi]; stop(); bi = Math.max(0, Math.min(r.beats.length, bi + d)); if (bi >= r.beats.length) { playing = false; reelDone(r); } draw(); if (playing) runBeat(); }
-  function goReel(d) { const n = qi + d; if (n < 0 || n >= q.length) { if (d > 0) { toast('That was the last reel in this feed.'); } return; } stop(); qi = n; bi = 0; const was = started; draw(); if (was) { playing = true; runBeat(); draw(); } }
-  function reelDone(r) { S.reels = S.reels || {}; const x = S.reels[r.id] = S.reels[r.id] || {}; if (!x.seen) { x.seen = iso(new Date()); if (typeof gameNote === 'function') gameNote('reel'); } save(); }
-  function draw() {
-    const r = q[qi], end = bi >= r.beats.length, b = r.beats[Math.min(bi, r.beats.length - 1)];
-    ov.textContent = '';
-    const bars = el('div', { class: 'rbars' }, r.beats.concat([null]).map((_, i) => el('i', { class: i < bi ? 'on' : i === bi ? 'cur' : '' })));
-    const head = el('div', { class: 'rhead' }, [el('button', { class: 'rbtn', 'aria-label': 'Close reels', onclick: close }, '✕'), el('div', { class: 'grow' }, [el('b', { text: r.title + (r.part ? ' · ' + r.part : '') }), el('span', { text: modLabel(r.m) + ' · ' + (r.head || r.sec) + ' · ' + reelSecs(r) + ' s' + (r.auto ? ' · quick reel' : '') })]), el('span', { class: 'rcount', text: (qi + 1) + '/' + q.length })]);
-    const stage = el('div', { class: 'rstage' }, end ? reelEnd(r, () => goReel(1), () => { bi = 0; play(); }) : [reelShow(b.show || {}), el('p', { class: 'rcap', 'aria-live': 'polite', text: b.say })]);
-    const ctl = el('div', { class: 'rctl' }, [
-      el('button', { class: 'rbtn', 'aria-label': 'Previous reel', onclick: () => goReel(-1) }, '↑'),
-      el('button', { class: 'rbtn', 'aria-label': 'Previous point', onclick: () => goBeat(-1) }, '‹'),
-      el('button', { class: 'rbtn rplay', 'aria-label': playing ? 'Pause' : 'Play', onclick: () => playing ? pause() : (end ? (bi = 0, play()) : play()) }, playing ? '❚❚' : '▶'),
-      el('button', { class: 'rbtn', 'aria-label': 'Next point', onclick: () => goBeat(1) }, '›'),
-      el('button', { class: 'rbtn', 'aria-label': 'Next reel', onclick: () => goReel(1) }, '↓'),
-      el('button', { class: 'rbtn rsm', 'aria-label': 'Speed ' + speed() + 'x', onclick: () => { const v = { 1: 1.25, 1.25: 1.5, 1.5: 1 }[speed()] || 1; S.settings.reelSpeed = v; save(); draw(); if (playing) runBeat(); } }, speed() + '×'),
-      el('button', { class: 'rbtn rsm', 'aria-label': 'Choose a voice: ' + (S.settings.reelVoice === false ? 'off' : ((reelVoice() || {}).name || 'default')), onclick: () => { const was = playing; pause(); ov.appendChild(reelVoiceSheet(() => { draw(); if (was) play(); })); } }, S.settings.reelVoice === false ? 'Muted' : 'Voice')]);
-    ov.append(bars, head, stage, ctl);
-    if (!started && !end) ov.appendChild(el('button', { class: 'rstart', onclick: play }, [el('b', { text: '▶ Play' }), el('span', { text: 'Swipe up for the next reel · tap left or right to step' })]));
+  const built = {};
+  function activate(i) {
+    if (i === cur || i < 0 || i >= q.length) return;
+    if (C) { if (cur >= 0 && C.playing) mEvent('reel_skip'); C.stop(); }
+    mEvent('reel_open');
+    cur = i; top.querySelector('.rcount').textContent = (i + 1) + '/' + q.length;
+    Object.keys(built).forEach(k => { if (Math.abs(+k - i) > 1) { slides[k].textContent = ''; delete built[k]; } }); /* keep only neighbours rendered */
+    for (const k of [i - 1, i, i + 1]) if (k >= 0 && k < q.length && !built[k]) built[k] = controller(k);
+    C = built[i];
+    if (reelUnlocked) C.play(); else { const h = slides[i].querySelector('.rtap'); h.appendChild(el('button', { class: 'rstart', onclick: e => { e.stopPropagation(); C.play(); } }, [el('b', { text: '▶ Play' }), el('span', { text: 'Swipe up for the next reel · tap the sides to step' })])); }
+    const nb = q[i + 1] && (q[i + 1].beats[0] || {}).audio; if (nb) { const a = new Audio(); a.preload = 'auto'; a.src = nb; } /* fetch the next reel's first line ahead */
   }
-  /* gestures: swipe up or down changes reel; a tap on the left or right third steps */
-  let t0 = null;
-  ov.addEventListener('touchstart', e => { const t = e.touches[0]; t0 = [t.clientX, t.clientY, Date.now()]; }, { passive: true });
-  ov.addEventListener('touchend', e => { if (!t0) return; const t = e.changedTouches[0], dx = t.clientX - t0[0], dy = t.clientY - t0[1]; const tgt = e.target; t0 = null;
-    if (Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx)) { goReel(dy < 0 ? 1 : -1); return; }
-    if (tgt.closest('button,a,input,label')) return;
-    if (Math.abs(dx) < 12 && Math.abs(dy) < 12 && tgt.closest('.rstage')) { const w = innerWidth; if (t.clientX < w / 3) goBeat(-1); else if (t.clientX > 2 * w / 3) goBeat(1); else (playing ? pause() : play()); } });
-  let wheelAt = 0;
-  ov.addEventListener('wheel', e => { if (Date.now() - wheelAt < 700 || Math.abs(e.deltaY) < 30) return; wheelAt = Date.now(); goReel(e.deltaY > 0 ? 1 : -1); }, { passive: true });
-  const key = e => { if (!document.body.contains(ov)) return document.removeEventListener('keydown', key); if (e.key === 'ArrowDown') goReel(1); else if (e.key === 'ArrowUp') goReel(-1); else if (e.key === 'ArrowRight') goBeat(1); else if (e.key === 'ArrowLeft') goBeat(-1); else if (e.key === 'Escape') close(); else if (e.key === ' ') { e.preventDefault(); playing ? pause() : play(); } else return; };
+  function go(i) { if (i < 0 || i >= q.length) { if (i >= q.length) toast('That was the last reel in this feed.'); return; } feed.scrollTo({ top: slides[i].offsetTop, behavior: 'smooth' }); }
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting && e.intersectionRatio > 0.6) activate(+e.target.dataset.i); }), { root: feed, threshold: [0.6] });
+  slides.forEach(s => io.observe(s));
+  cleanup.push(() => io.disconnect());
+  const key = e => { if (!document.body.contains(ov)) return document.removeEventListener('keydown', key); if (e.key === 'ArrowDown') { e.preventDefault(); go(cur + 1); } else if (e.key === 'ArrowUp') { e.preventDefault(); go(cur - 1); } else if (e.key === 'ArrowRight') C && C.step(1); else if (e.key === 'ArrowLeft') C && C.step(-1); else if (e.key === 'Escape') close(); else if (e.key === ' ') { e.preventDefault(); C && (C.playing ? C.pause() : C.play()); } };
   document.addEventListener('keydown', key);
-  document.addEventListener('visibilitychange', () => { if (document.hidden && playing) pause(); });
-  draw();
-  ov.querySelector('.rstart, .rplay').focus();
+  const vis = () => { if (document.hidden && C) C.pause(); }; document.addEventListener('visibilitychange', vis); cleanup.push(() => document.removeEventListener('visibilitychange', vis));
+  requestAnimationFrame(() => { feed.scrollTop = slides[at].offsetTop; activate(at); });
+  window.reelGo = go; /* tests */
 }
+function reelDone(r) { S.reels = S.reels || {}; const x = S.reels[r.id] = S.reels[r.id] || {}; if (typeof mEvent === 'function') mEvent('reel_finish'); if (!x.seen) { x.seen = iso(new Date()); if (typeof gameNote === 'function') gameNote('reel'); } save(); }
 /* the end card: a quick check that schedules reviews, then the work checklist */
 function reelEnd(r, next, replay) {
   const x = (S.reels || {})[r.id] || {}, kids = [];
   if (r.check) {
     const c = r.check, res = el('div', { role: 'status' });
     const opts = el('div', { class: 'stack', style: { gap: '6px' } }, c.opts.map((o, i) => el('button', { class: 'btn ropt' + (x.ans === i ? (i === c.ans ? ' ok' : ' no') : ''), onclick: () => {
-      S.reels = S.reels || {}; const y = S.reels[r.id] = S.reels[r.id] || {}, ok = i === c.ans, wasDue = reelDue(r.id); y.ans = i; y.ok = ok;
+      S.reels = S.reels || {}; const y = S.reels[r.id] = S.reels[r.id] || {}, ok = i === c.ans, wasDue = reelDue(r.id); y.ans = i; y.ok = ok; mEvent(ok ? 'check_right' : 'check_wrong');
       if (!ok) { y.box = 0; y.due = iso(new Date(Date.now() + REEL_GAPS[0] * 864e5)); }
       else if (wasDue || y.box) { y.box = (y.box || 0) + 1; y.due = y.box < REEL_GAPS.length ? iso(new Date(Date.now() + REEL_GAPS[y.box] * 864e5)) : null; }
       else if (!wasDue) y.due = y.due && y.due > iso(new Date()) ? y.due : null;

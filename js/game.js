@@ -9,7 +9,7 @@ const XP_LV = { Easy: 10, Medium: 20, Hard: 30 };
 
 function gameState() { S.game = S.game || {}; S.game.days = S.game.days || {}; S.game.warm = S.game.warm || {}; S.game.shipped = S.game.shipped || {}; return S.game; }
 /* record that something real happened today (a step, a solve, a warm-up, a mock) */
-function gameNote(kind) { const g = gameState(), k = iso(new Date()); const d = g.days[k] = g.days[k] || {}; d[kind] = (d[kind] || 0) + 1; }
+function gameNote(kind) { if (typeof mEvent === 'function') mEvent('did_' + kind); const g = gameState(), k = iso(new Date()); const d = g.days[k] = g.days[k] || {}; d[kind] = (d[kind] || 0) + 1; }
 function funOn() { return S.settings.fun !== false && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); }
 
 function gameXP() {
