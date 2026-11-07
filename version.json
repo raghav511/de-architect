@@ -1,9 +1,8 @@
 {
-  "version": "1.35.0",
+  "version": "1.35.1",
   "date": "2026-11-07",
   "notes": [
-    "New: the architect's lens for dbt (4.10): what dbt run really does, incremental models and late data, slim CI for big projects, how snapshots build history and what they miss, and what tests and contracts check.",
-    "New: the architect's lens for dimensional modelling (M1.8): why star schemas are fast, the fan trap that doubles revenue, late-arriving dimension rows and correct point-in-time joins.",
-    "Five new interview questions; fourteen reels arrive with the next reel batch."
+    "New in Spark (3.10): the architect's lens. When to pick Spark over Flink, DuckDB or Polars, warehouse SQL, Dask or Ray and when not, who owns and pays for it, how it fails and scales, and five under-the-hood answers: the driver and stages, why shuffles cost so much, skew and salting, executor memory and out-of-memory errors, Catalyst and code generation.",
+    "Three new Spark interview questions, three quiz questions and eight reels for the lens; the Airflow lens reels are in the app too."
   ]
 }

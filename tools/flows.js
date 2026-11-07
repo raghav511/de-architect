@@ -736,6 +736,12 @@ async function T(name, fn, opt) {
     await go(p, '#/learn/s01/chapter', 1500); await p.waitForSelector('.lens');
     ok(await p.evaluate(() => document.querySelectorAll('.lens tbody tr').length === 7 && document.querySelectorAll('.lens details').length === 5 && /deferrable/.test(document.querySelector('.lens').textContent)), 'Airflow lens card incomplete');
     ok(await p.evaluate(async () => (await sprint('s01')).interview.some(q => /backfill of last month doubled every row/.test(q.Q))), 'Airflow lens questions not in the interview set');
+    /* Spark (s03): five internals questions (driver and stages, shuffle and AQE, skew, memory, Catalyst); questions join the interview set and the quiz; four-level reels */
+    await go(p, '#/learn/s03/chapter', 1500); await p.waitForSelector('.lens');
+    ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details:not(.fresh)').length === 5 && /salt/.test(l.textContent) && /whole-stage code generation/.test(l.textContent); }), 'Spark lens card incomplete');
+    ok(await p.evaluate(() => getComputedStyle(document.querySelector('.lens td')).display === 'block' && document.documentElement.scrollWidth <= innerWidth), 'Spark lens is not stacked on a phone or scrolls sideways');
+    ok(await p.evaluate(async () => { const s = await sprint('s03'); return s.interview.some(q => /Spark for every new pipeline/.test(q.Q)) && s.interview.some(q => /most expensive thing in a Spark job/.test(q.Q)) && s.quiz.some(q => /salt a hot key with 10 salt values/.test(q.Q)); }), 'Spark lens questions not in the interview set or quiz');
+    ok(await p.evaluate(async () => { const r = (await reelsFor('s03')).filter(x => x.sec === '3.10'); return r.length === 8 && ['New to it', 'How it works', 'Inside and caveats', 'Architect'].every(lv => r.some(x => x.level === lv)); }), 'Spark lens reels missing');
     /* dbt (s04, five internals) and dimensional modelling (m01, four internals, scheduled in M102) */
     for (const [m, n, word, q] of [['s04', 5, 'state:modified', /2,000 models and CI takes an hour/], ['m01', 4, 'fan trap', /joined on customer show double the revenue/]]) {
       await go(p, '#/learn/' + m + '/chapter', 1500); await p.waitForSelector('.lens');
