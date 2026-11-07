@@ -167,7 +167,7 @@ function liveQuestion(page, k, m) {
   const body = el('div', { class: 'stack' }), note = el('div', { role: 'status', class: 'muted', style: { fontSize: '14px' } });
   page.appendChild(el('section', { class: 'card pad stack live' }, [
     el('div', { class: 'row wrap' }, [el('span', { class: 'lbl grow', text: (i + 1) + ' of ' + m.qs.length + ' · ' + q.label }), q.carried ? el('span', { class: 'chip c-ai', text: 'from ' + shortDate(q.carried) }) : null, clock]),
-    el('div', { class: 'lq', html: mdi(q.q) }), body, note]));
+    el('div', { class: 'lq', html: mdi(q.q) }), typeof simSketch === 'function' && /design|scale|architect|pipeline|system|throughput|latency|estimate|migrat|stream|kafka|outage|page|fail|cost|serv/i.test(q.q + ' ' + q.label) ? el('div', { class: 'row' }, [simSketch(q.q)]) : null, body, note]));
   const next = () => { m.i = i + 1; if (m.i >= m.qs.length) { m.done = Date.now(); gameNote('live'); if (typeof confetti === 'function' && m.kind === 'we') confetti(); } save(); route(); };
   const showScored = () => {
     body.textContent = ''; const av = liveAvg(x);
