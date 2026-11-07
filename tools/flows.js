@@ -796,6 +796,20 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'live mock scrolls sideways on a phone');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
+  await T('live mock: the staff bank has 8 questions per kind and four weeks of mocks draw every rotated kind, new questions included', async p => {
+    await go(p, '#/today', 1200);
+    const r = await p.evaluate(async () => {
+      const per = {}; DATA.staff.items.forEach(x => { per[x.kind] = (per[x.kind] || 0) + 1; });
+      const kinds = new Set(), ids = new Set(), d0 = new Date();
+      for (let i = 0; i < 28; i++) { const d = new Date(d0); d.setDate(d0.getDate() + i); const k = iso(d); const q = await liveQuestions(k);
+        q.qs.filter(x => x && x.src === 'staff-level bank').forEach(x => { kinds.add(x.slot); const it = DATA.staff.items.find(s => s.q === x.q); if (it) ids.add(it.id); }); }
+      return { n: DATA.staff.items.length, per, kinds: [...kinds], fresh: [...ids].filter(id => +id.slice(2) >= 39).length };
+    });
+    ok(r.n >= 80 && Object.values(r.per).every(n => n >= 8), 'bank: ' + JSON.stringify(r.per));
+    const want = Object.values(await p.evaluate(() => LIVE_ROT)).concat(await p.evaluate(() => LIVE_WE));
+    ok(want.every(k => r.kinds.includes(k)), 'kinds drawn in four weeks: ' + r.kinds.join(', '));
+    ok(r.fresh >= 5, 'too few new questions drawn: ' + r.fresh);
+  });
   await T('new this week inside sections: What is new items sit under their section (sec), company questions under the best-matching section or at the top, folded; ticked questions disappear', async p => {
     await go(p, '#/today', 1200); await p.evaluate(() => { S.rq = {}; save(); });
     const n = await p.evaluate(() => (DATA.news.items || []).find(x => x.mid && x.sec)); ok(!!n, 'no What is new item has a module and section');
