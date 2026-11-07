@@ -299,6 +299,56 @@ function simFromSc(sc) {
     edges: sc.edges.map((e, i) => ({ id: 'e' + (i + 1), a: ids[e[0]], b: ids[e[1]] })) };
 }
 
+/* ---------------- hints: a ladder per challenge ---------------- */
+/* look = where to look, idea = the principle (and the module that teaches it), fix = what to change; Show me plays fix as steps.
+   A fix step: set (box kind, field, value), add (kind, wired from a box kind), insert (kind between two box kinds) or reroute (wire a → new kind instead of a → b) */
+const SIM_HINTS = {
+  skeleton: { look: 'Run traffic and watch the stream processor\'s load bar and the Lag number in the top bar.', idea: 'A reader slower than its writers falls behind forever: lag grows by the gap every second. Capacity must beat the arrival rate with headroom.', change: 'Give the stream processor more replicas (a topic can feed as many readers as it has partitions).',
+    fix: [{ set: 'stream', f: 'n', v: 2, why: 'Two tasks handle 5,000 a second; 3,000 arrive.' }] },
+  partitions: { look: 'Select the stream processor while traffic runs: some of its replicas are idle.', idea: 'In a consumer group each partition goes to one reader, so a topic with 6 partitions can keep at most 6 readers busy.', change: 'Raise the topic\'s partitions first, then the stream replicas to match.',
+    fix: [{ set: 'kafka', f: 'parts', v: 12, why: '12 partitions allow up to 12 readers.' }, { set: 'stream', f: 'n', v: 12, why: '12 tasks of 4,000 a second = 48,000, above the 40,000 arriving.' }] },
+  hotkey: { look: 'Watch Lag between second 10 and 60, then how fast it drains.', idea: 'A hot key sends most events to a few partitions, so only their readers work. Headroom decides how fast the lag drains afterwards.', change: 'Many more partitions and tasks than the steady load needs.',
+    fix: [{ set: 'kafka', f: 'parts', v: 48, why: 'With a hot key a quarter of the partitions carry the load: 48 leaves 12 useful.' }, { set: 'stream', f: 'n', v: 24, why: 'Enough tasks to use those partitions and drain the backlog fast.' }] },
+  dlq: { look: 'Inject nothing: the story does. Watch the stream processor drop to a tenth of its speed at second 10.', idea: 'A poison record retried forever blocks its partition (head-of-line blocking). Park failures aside and keep going.', change: 'Add a Dead-letter queue wired from the stream processor.',
+    fix: [{ add: 'dlq', from: 'stream', why: 'Bad records are parked in the DLQ; good ones keep flowing.' }] },
+  schema: { look: 'At second 20 the stream processor stops (load 0, Lag climbing).', idea: 'Readers depend on the shape of events. A registry with compatibility rules refuses a breaking schema at the producer, before any reader sees it.', change: 'Add a Schema registry and wire the producers to it.',
+    fix: [{ add: 'registry', from: 'producer', why: 'The registry checks every schema at the producer and refuses breaking changes.' }] },
+  dashboards: { look: 'The warehouse box is red: more queries than it runs at once.', idea: 'Warehouses scan big data for a few queries at a time. Dashboards need many small, fast aggregates: a serving layer for analytics.', change: 'Point the dashboards at a Real-time OLAP store (or a cache) instead of the warehouse.',
+    fix: [{ reroute: 'olap', a: 'bi', b: 'wh', why: 'An OLAP store answers dashboard aggregates in tens of ms, thousands at once.' }] },
+  rag: { look: 'Watch errors from second 15: the LLM API accepts only 30% of calls.', idea: 'Every call you do not make is one the provider cannot reject. Cache answers to repeated questions (a semantic cache).', change: 'Put a cache between the service and the LLM API.',
+    fix: [{ insert: 'cache', a: 'svc', b: 'llm', o: { hit: 0.6 }, why: 'A semantic cache answers 60% of questions without calling the LLM.' }] },
+  spark: { look: 'Lag grows from the start: the Spark job is at 100% load.', idea: 'Throughput = executors × rate per executor, as long as the topic has enough partitions to split the work.', change: 'Add Spark executors (replicas).',
+    fix: [{ set: 'spark', f: 'n', v: 5, why: '5 executors of 8,000 a second = 40,000, above the 30,000 arriving.' }] },
+  cdc: { look: 'Watch the CDC box from second 10 to 40, and how long Lag takes to come back down.', idea: 'After an outage a reader must handle new changes plus the backlog: spare capacity decides recovery time.', change: 'A second connector task.',
+    fix: [{ set: 'cdc', f: 'n', v: 2, why: 'Two tasks double the catch-up speed after the slow spell.' }] },
+  serving: { look: 'The service and Postgres are both red: 20,000 reads a second against 8,000 and 3,000 capacity.', idea: 'Scale the stateless tier out; protect the database with a cache so most reads never reach it. Keep load under about 85% or p99 climbs.', change: 'More service replicas, and a cache between the service and Postgres.',
+    fix: [{ set: 'svc', f: 'n', v: 30, why: '30 × 800 = 24,000 a second: about 83% load at 20,000.' }, { insert: 'cache', a: 'svc', b: 'pg', why: '90% of reads come from memory; Postgres sees 2,000 a second.' }] },
+  stampede: { look: 'At second 20 the cache misses everything and Postgres turns red.', idea: 'Size the store behind a cache for the miss rate of a cold cache, not the usual hit rate.', change: 'More read capacity on Postgres (replicas).',
+    fix: [{ set: 'pg', f: 'n', v: 6, why: 'Six read copies absorb the cold-cache burst of 15,000 a second.' }] },
+  failover: { look: 'From second 20 Postgres is down and errors jump to near 100%.', idea: 'Recovery time objective: how long you are down. A hot standby takes over in seconds; a rebuild takes much longer.', change: 'Turn on the hot standby for Postgres.',
+    fix: [{ set: 'pg', f: 'standby', v: true, why: 'The standby takes over in 3 seconds instead of 50.' }] },
+  zone: { look: 'At second 15 every box loses half its replicas; the service turns red.', idea: 'Plan for losing a zone: each tier must carry the load on half its replicas (run under 50%).', change: 'More service replicas and Postgres copies.',
+    fix: [{ set: 'svc', f: 'n', v: 12, why: '6 left after the outage × 800 = 4,800 a second, above 4,000.' }, { set: 'pg', f: 'n', v: 3, why: 'Enough copies to survive the zone loss.' }] },
+  budget: { look: 'Open the Cost tab: most of the bill is idle service replicas.', idea: 'Right-size from the numbers: replicas = load ÷ capacity per replica ÷ target load (about 75%).', change: 'Cut the service to about 13 replicas, Postgres and the cache to 1.',
+    fix: [{ set: 'svc', f: 'n', v: 13, why: '8,000 ÷ 800 ÷ 0.77 ≈ 13 replicas.' }, { set: 'pg', f: 'n', v: 1, why: 'The cache leaves Postgres 800 reads a second.' }, { set: 'cache', f: 'n', v: 1, why: 'One cache node handles 60,000 a second.' }] },
+  spike: { look: 'From second 20 traffic is 4 times higher: watch the gateway and the service.', idea: 'Auto-scaling handles spikes without paying for peak all day, but every tier must scale, including the edge.', change: 'Auto-scale the service with a high maximum, and a second gateway.',
+    fix: [{ set: 'svc', f: 'auto', v: true, why: 'The service adds replicas when it passes 75% load.' }, { set: 'svc', f: 'max', v: 40, why: 'High enough for 16,000 a second.' }, { set: 'gw', f: 'n', v: 2, why: 'One gateway handles 10,000 a second; the spike is 16,000.' }] },
+  partner: { look: 'From second 15 the partner API takes 10 times longer and p99 follows it.', idea: 'Do not make users wait for work they do not need right away: hand it to a queue and reply at once.', change: 'Service → Queue → Function → Partner API.',
+    fix: [{ insert: 'queue', a: 'svc', b: 'ext', why: 'The service hands the call to a queue and replies at once.' }, { insert: 'fn', a: 'queue', b: 'ext', why: 'A function calls the partner in the background.' }] }
+};
+const SIM_HINT_COST = [0, 5, 15, 35, 75]; /* marks lost in an exam after opening hint 1, 2, 3 or Show me */
+/* apply one fix step to a design; returns the id of the box it changed or added */
+function simApplyFix(d, f) {
+  const byK = k => d.nodes.find(n => n.k === k), nid = p => { let i = 1; while (d.nodes.some(n => n.id === p + i) || d.edges.some(e => e.id === p + i)) i++; return p + i; };
+  const mk = (k, x, y, o) => { const n = Object.assign({ id: nid('n'), k, x, y, name: SIM_K[k].t }, o || {}); d.nodes.push(n); return n; };
+  const wire = (a, b) => { if (!d.edges.some(e => e.a === a && e.b === b)) d.edges.push({ id: nid('e'), a, b }); };
+  if (f.set) { const n = byK(f.set); if (!n) return null; n[f.f] = f.v; return n.id; }
+  if (f.add) { const a = byK(f.from); if (!a) return null; const n = byK(f.add) || mk(f.add, a.x + (SIM_K[f.add].cat === 'ops' ? 0 : 220), a.y + 160, f.o); wire(a.id, n.id); return n.id; }
+  if (f.insert) { const a = byK(f.a), b = byK(f.b); if (!a || !b) return null; d.edges = d.edges.filter(e => !(e.a === a.id && e.b === b.id)); const n = mk(f.insert, Math.round((a.x + b.x) / 2), Math.round((a.y + b.y) / 2) + 110, f.o); wire(a.id, n.id); wire(n.id, b.id); return n.id; }
+  if (f.reroute) { const a = byK(f.a), b = byK(f.b); if (!a) return null; d.edges = d.edges.filter(e => !(e.a === a.id && b && e.b === b.id)); const n = mk(f.reroute, (b ? b.x : a.x + 220), (b ? b.y : a.y) + 160, f.o); wire(a.id, n.id); return n.id; }
+  return null;
+}
+
 /* ---------------- review: suggestions and patterns ---------------- */
 function simReview(d, m) {
   const N = {}; d.nodes.forEach(n => { N[n.id] = n; });
@@ -348,21 +398,32 @@ function simClean(j) { /* imported files and links are untrusted: keep only know
 }
 
 /* ---------------- screen ---------------- */
+const apx = (p, ...xs) => p.append(...xs.filter(x => x != null && x !== false)); /* append, skipping optional pieces */
 const SIM_W = 150, SIM_H = 66, SIM_NS = 'http://www.w3.org/2000/svg';
 const sv = (tag, a, kids) => { const e = document.createElementNS(SIM_NS, tag); for (const k in (a || {})) if (a[k] != null) e.setAttribute(k, a[k]); (kids || []).forEach(c => c && e.appendChild(c)); return e; };
 let simTab = 'build', simScFilter = 'all', simLastD = null;
-function vSim(a, b) {
+const simMode = {}, simLvl = {}; /* per challenge, this session: learn, practice or exam; hints opened outside exams */
+function simEx(sid) { const st = simState(); if (!st.ex || typeof st.ex !== 'object') st.ex = {}; const x = st.ex[sid] = st.ex[sid] || {}; if (!x.cur) x.cur = { lvl: 0, rev: 0, t0: Date.now() }; return x; }
+function simTeachTpl(key) { const D = typeof DATA !== 'undefined' && DATA.design && DATA.design[key]; return SIM_TPL.find(t => t.id === key) || (D && SIM_TPL.find(t => t.re.test(D.title + ' ' + D.prompt))) || SIM_TPL[3]; }
+function vSim(a, b, c) {
   const st = simState();
   if (a === 'share' && b) { try { const d = simUnpack(b); st.d[d.id] = d; st.cur = d.id; save(); toast('Shared design added: ' + d.name); } catch (e) { toast('That link does not hold a design.'); } location.replace('#/sim'); return; }
-  if (a === 'sc' && b) { const sc = SIM_SC.find(s => s.id === b); if (sc) { const id = 'sc-' + sc.id; if (!st.d[id] || st.d[id].del) st.d[id] = simFromSc(sc); st.cur = id; simTab = 'goal'; save(); } location.replace('#/sim'); return; }
+  if (a === 'sc' && b) { const sc = SIM_SC.find(s => s.id === b); if (sc) { const id = 'sc-' + sc.id; if (!st.d[id] || st.d[id].del) st.d[id] = simFromSc(sc); st.cur = id; simTab = 'goal'; simLastD = id; if (c === 'exam') { simMode[sc.id] = 'exam'; const x = simEx(sc.id); if (!x.cur.lvl && !x.cur.rev) x.cur.t0 = Date.now(); } save(); } location.replace('#/sim'); return; }
+  if (a === 'teach' && b) { /* Teach me this design: a module's design problem, or a starter, built box by box */
+    const t = simTeachTpl(b), D = typeof DATA !== 'undefined' && DATA.design && DATA.design[b], id = 'teach-' + b;
+    if (!st.d[id] || st.d[id].del) st.d[id] = { id, name: 'Learn: ' + (D ? D.title : t.t), mult: 1, at: Date.now(), nodes: [], edges: [], teach: { tpl: t.id, mid: D ? b : null, step: 0, map: {} } };
+    st.cur = id; simTab = 'build'; simLastD = id; save(); location.replace('#/sim'); return; }
   let d = st.d[st.cur]; if (!d || d.del) { d = simList()[0]; if (!d) { d = simBlank(); st.d[d.id] = d; } st.cur = d.id; }
   const sc = d.sid && SIM_SC.find(s => s.id === d.sid);
   if (simLastD !== d.id) { simTab = sc ? 'goal' : 'build'; simLastD = d.id; } /* a scenario opens on its challenge */
-  let lastGrade = null, rt = SIM.newRt(d), m = null, running = false, speed = 1, sel = null, vb = { x: 0, y: 0, w: 960, h: 420 }, zones = false;
+  const mode = () => sc ? simMode[sc.id] || (st.done[sc.id] ? 'practice' : 'learn') : null;
+  const lvlOf = () => !sc ? 0 : mode() === 'exam' ? simEx(sc.id).cur.lvl : Math.max(simLvl[sc.id] || 0, mode() === 'learn' ? 1 : 0);
+  const gated = () => (sc && mode() === 'exam') || !!d.live; /* suggestions are hints in an exam or a live mock sketch */
+  let showMsg = null, lastGrade = null, rt = SIM.newRt(d), m = null, running = false, speed = 1, sel = null, vb = { x: 0, y: 0, w: 960, h: 420 }, zones = false;
   const undo = [], redo = [];
   const snap = () => JSON.stringify({ nodes: d.nodes, edges: d.edges });
   const touch = () => { d.at = Date.now(); save(); };
-  const change = fn => { lastGrade = null; undo.push(snap()); if (undo.length > 60) undo.shift(); redo.length = 0; fn(); touch(); draw(); panel(); };
+  const change = fn => { lastGrade = null; undo.push(snap()); if (undo.length > 60) undo.shift(); redo.length = 0; fn(); teachSync(); touch(); draw(); panel(); };
   const restore = (from, to) => { if (!from.length) return; to.push(snap()); const j = JSON.parse(from.pop()); d.nodes = j.nodes; d.edges = j.edges; sel = null; touch(); draw(); panel(); };
   const N = id => d.nodes.find(n => n.id === id);
   const nid = p => { let i = 1; while (d.nodes.some(n => n.id === p + i) || d.edges.some(e => e.id === p + i)) i++; return p + i; };
@@ -371,7 +432,7 @@ function vSim(a, b) {
   const strip = el('div', { class: 'simstrip', role: 'status', 'aria-live': 'off' });
   const paintStrip = () => { const cost = SIM.cost(d, rt, m && m.R).total; strip.textContent = '';
     const cell = (l, v, cls) => el('span', { class: 'simstat' + (cls ? ' ' + cls : '') }, [el('small', { text: l }), el('b', { class: 'mono', text: v })]);
-    strip.append(cell('In', m ? Math.round(m.rps).toLocaleString() + '/s' : '—'), cell('p50', m ? Math.round(m.p50) + ' ms' : '—'), cell('p99', m ? Math.round(m.p99) + ' ms' : '—', m && m.p99 > 500 ? 'bad' : ''),
+    apx(strip, cell('In', m ? Math.round(m.rps).toLocaleString() + '/s' : '—'), cell('p50', m ? Math.round(m.p50) + ' ms' : '—'), cell('p99', m ? Math.round(m.p99) + ' ms' : '—', m && m.p99 > 500 ? 'bad' : ''),
       cell('Errors', m ? m.err.toFixed(1) + '%' : '—', m && m.err > 1 ? 'bad' : ''), cell('Lag', m ? (m.fresh ? m.fresh.toFixed(1) + ' s' : '0 s') : '—', m && m.fresh > 5 ? 'bad' : ''), cell('Hot spots', m ? String(m.hot.length) : '—', m && m.hot.length ? 'warn' : ''), cell('Cost', '$' + cost.toLocaleString() + '/mo'));
   };
 
@@ -392,7 +453,7 @@ function vSim(a, b) {
     d.edges.forEach(e => { const a = N(e.a), b = N(e.b); if (!a || !b) return; const flow = m && m.R[a.id] ? (SIM_K[a.k].async ? m.R[a.id].offer : m.R[a.id].served) : 0;
       const bad = rt.chaos.some(c => c.target === e.id && SIM.active(rt, rt.t).includes(c));
       const g = sv('g', { class: 'simedge' + (sel && sel.e === e.id ? ' on' : '') + (running && flow > 0 ? ' flow' : '') + (bad ? ' bad' : '') + (e._trace ? ' trace' : ''), 'data-id': e.id, tabindex: '0', role: 'button', 'aria-label': 'Wire from ' + (a.name || a.k) + ' to ' + (b.name || b.k) });
-      const p = ePath(a, b); g.append(sv('path', { class: 'hit', d: p }), sv('path', { class: 'ln', d: p, 'marker-end': 'url(#simarr)' }));
+      const p = ePath(a, b); apx(g, sv('path', { class: 'hit', d: p }), sv('path', { class: 'ln', d: p, 'marker-end': 'url(#simarr)' }));
       g.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); sel = { e: e.id }; draw(); panel(); } });
       gE.append(g); });
     d.nodes.forEach(n => {
@@ -400,18 +461,18 @@ function vSim(a, b) {
       const g = sv('g', { class: 'simnode' + (sel && sel.n === n.id ? ' on' : '') + (hot ? ' hot' : '') + (down ? ' down' : ''), 'data-id': n.id, 'data-k': n.k, transform: 'translate(' + n.x + ' ' + n.y + ')', tabindex: '0', role: 'button', 'aria-label': (n.name || K.t) + ', ' + K.t + (r ? ', ' + Math.round(r.inn) + ' per second, ' + Math.round((r.u || 0) * 100) + '% load' : '') });
       g.style.setProperty('--c', col);
       const tx = (x, y, s, cls) => { const t = sv('text', { x, y, class: cls }); t.textContent = s; return t; };
-      g.append(sv('rect', { class: 'box', width: SIM_W, height: SIM_H, rx: 12 }), sv('rect', { class: 'tag', x: 8, y: 8, width: 34, height: 16, rx: 4 }), tx(25, 20, K.ab, 'ab'), tx(48, 21, (n.name || K.t).slice(0, 15), 'nm'));
+      apx(g, sv('rect', { class: 'box', width: SIM_W, height: SIM_H, rx: 12 }), sv('rect', { class: 'tag', x: 8, y: 8, width: 34, height: 16, rx: 4 }), tx(25, 20, K.ab, 'ab'), tx(48, 21, (n.name || K.t).slice(0, 15), 'nm'));
       const reps = rt.reps[n.id] != null ? rt.reps[n.id] : (n.n || 1);
-      if (!simIsSrc(n)) g.append(tx(SIM_W - 8, 21, '×' + reps + (n.standby ? '+S' : '') + (n.auto || K.auto ? ' A' : ''), 'rp'));
-      if (r) { g.append(tx(10, 42, Math.round(simIsSrc(n) ? r.inn : r.served).toLocaleString() + '/s' + (simIsSrc(n) ? '' : ' · ' + Math.round((r.own || 0) * (2 + 2.5 * Math.pow(Math.min(r.u, 1.2), 2))) + 'ms'), 'rd'));
-        if (!simIsSrc(n)) { const u = Math.min(1, r.u || 0); g.append(sv('rect', { class: 'ub', x: 10, y: 50, width: SIM_W - 20, height: 6, rx: 3 }), sv('rect', { class: 'uf' + (u >= 0.85 ? ' hi' : u >= 0.6 ? ' mid' : ''), x: 10, y: 50, width: Math.max(2, (SIM_W - 20) * u), height: 6, rx: 3 })); }
-        if (r.lag > 1) g.append(tx(SIM_W - 8, 42, 'lag ' + (r.fresh || 0).toFixed(1) + 's', 'lg'));
-      } else g.append(tx(10, 44, simIsSrc(n) ? ((n.rps != null ? n.rps : K.rps) * (d.mult || 1)).toLocaleString() + '/s' : (n.cap != null ? n.cap : K.cap).toLocaleString() + '/s each', 'rd sub'));
-      g.append(sv('circle', { class: 'port', cx: SIM_W, cy: SIM_H / 2, r: 9, 'data-port': n.id }), sv('circle', { class: 'inport', cx: 0, cy: SIM_H / 2, r: 4 }));
+      if (!simIsSrc(n)) apx(g, tx(SIM_W - 8, 21, '×' + reps + (n.standby ? '+S' : '') + (n.auto || K.auto ? ' A' : ''), 'rp'));
+      if (r) { apx(g, tx(10, 42, Math.round(simIsSrc(n) ? r.inn : r.served).toLocaleString() + '/s' + (simIsSrc(n) ? '' : ' · ' + Math.round((r.own || 0) * (2 + 2.5 * Math.pow(Math.min(r.u, 1.2), 2))) + 'ms'), 'rd'));
+        if (!simIsSrc(n)) { const u = Math.min(1, r.u || 0); apx(g, sv('rect', { class: 'ub', x: 10, y: 50, width: SIM_W - 20, height: 6, rx: 3 }), sv('rect', { class: 'uf' + (u >= 0.85 ? ' hi' : u >= 0.6 ? ' mid' : ''), x: 10, y: 50, width: Math.max(2, (SIM_W - 20) * u), height: 6, rx: 3 })); }
+        if (r.lag > 1) apx(g, tx(SIM_W - 8, 42, 'lag ' + (r.fresh || 0).toFixed(1) + 's', 'lg'));
+      } else apx(g, tx(10, 44, simIsSrc(n) ? ((n.rps != null ? n.rps : K.rps) * (d.mult || 1)).toLocaleString() + '/s' : (n.cap != null ? n.cap : K.cap).toLocaleString() + '/s each', 'rd sub'));
+      apx(g, sv('circle', { class: 'port', cx: SIM_W, cy: SIM_H / 2, r: 9, 'data-port': n.id }), sv('circle', { class: 'inport', cx: 0, cy: SIM_H / 2, r: 4 }));
       g.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); if (sel && sel.wiring && sel.n !== n.id) { simWire(sel.n, n.id); return; } sel = { n: n.id }; simTab = 'build'; draw(); panel(); } }); /* tap or Enter on a second box while wiring finishes the wire */
       gN.append(g);
     });
-    paintStrip();
+    paintStrip(); paintNar();
   }
   /* pointers: drag a box, drag from its right dot to wire, drag the background to pan, two fingers to zoom */
   const pts = new Map(); let drag = null, pinch = null;
@@ -524,6 +585,7 @@ function vSim(a, b) {
     tabRow.textContent = ''; TABS.forEach(([k, t]) => tabRow.appendChild(el('button', { role: 'tab', id: 'simt_' + k, 'aria-selected': String(simTab === k), onclick: () => { simTab = k; panel(); }, text: t })));
     body.textContent = ''; live.textContent = '';
     ({ build: pBuild, run: pRun, break: pBreak, metrics: pMetrics, cost: pCost, review: pReview, goal: pGoal })[simTab]();
+    paintNar(); paintCoach();
   }
   function panelLive() { if (simTab === 'run') liveRun(); else if (simTab === 'metrics') liveMetrics(); else if (simTab === 'cost') liveCost(); }
   const num = (lbl, val, set, o) => { o = o || {}; const id = 'sim_' + lbl.replace(/\W+/g, '_').toLowerCase(); const i = el('input', { type: 'number', id, inputmode: 'decimal', value: val, min: o.min != null ? o.min : 0, max: o.max, step: o.step || 1 }); i.addEventListener('change', () => { const v = +i.value; if (!isFinite(v)) return; change(() => set(Math.max(o.min != null ? o.min : 0, o.max != null ? Math.min(o.max, v) : v))); }); return el('div', { class: 'field' }, [el('label', { for: id, class: 'lbl', text: lbl }), i]); };
@@ -545,24 +607,24 @@ function vSim(a, b) {
         if (n.auto || K.auto) f.push(num('Most replicas when scaling', n.max || K.max || 30, v => { n.max = Math.max(1, v); }, { min: 1, max: 500 }));
         if (K.cat === 'store' || n.k === 'kafka' || n.k === 'svc') f.push(check('Hot standby (fails over in 3 s)', !!n.standby, v => { n.standby = v || undefined; }));
       }
-      body.append(el('div', { class: 'row' }, [el('span', { class: 'simab', style: { background: SIM_CAT[K.cat][1] }, text: K.ab }), el('h3', { class: 'grow', text: K.t }), el('button', { class: 'btn sm', onclick: () => { sel = null; panel(); draw(); }, text: 'Done' })]),
+      apx(body, el('div', { class: 'row' }, [el('span', { class: 'simab', style: { background: SIM_CAT[K.cat][1] }, text: K.ab }), el('h3', { class: 'grow', text: K.t }), el('button', { class: 'btn sm', onclick: () => { sel = null; panel(); draw(); }, text: 'Done' })]),
         el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: K.d + (K.route === 'split' ? '. Shares its traffic between the wires out.' : K.route === 'miss' ? '. Only misses go on.' : K.async ? '. Readers pull at their own pace.' : '') }), ...f,
         el('div', { class: 'row wrap', style: { gap: '8px' } }, [el('button', { class: 'btn sm', onclick: () => { sel = { n: n.id, wiring: true }; draw(); toast('Now tap the box to wire it to.'); }, text: 'Wire to…' }), el('button', { class: 'btn sm', onclick: () => change(() => { const c = JSON.parse(JSON.stringify(n)); c.id = nid('n'); c.x += 30; c.y += 30; d.nodes.push(c); sel = { n: c.id }; }), text: 'Duplicate' }), el('button', { class: 'btn sm warn', onclick: delSel, text: 'Delete' })]));
       return;
     }
-    if (sel && sel.e) { const e = d.edges.find(x => x.id === sel.e); if (e) { body.append(el('h3', { text: 'Wire' }), el('p', { style: { margin: 0 }, text: (N(e.a).name || N(e.a).k) + ' → ' + (N(e.b).name || N(e.b).k) }), el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'Break it from the Break tab: add latency, cut it, or drop packets.' }), el('div', { class: 'row wrap', style: { gap: '8px' } }, [el('button', { class: 'btn sm', onclick: () => { simTab = 'break'; panel(); }, text: 'Break this wire' }), el('button', { class: 'btn sm warn', onclick: delSel, text: 'Delete wire' })])); return; } }
+    if (sel && sel.e) { const e = d.edges.find(x => x.id === sel.e); if (e) { apx(body, el('h3', { text: 'Wire' }), el('p', { style: { margin: 0 }, text: (N(e.a).name || N(e.a).k) + ' → ' + (N(e.b).name || N(e.b).k) }), el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'Break it from the Break tab: add latency, cut it, or drop packets.' }), el('div', { class: 'row wrap', style: { gap: '8px' } }, [el('button', { class: 'btn sm', onclick: () => { simTab = 'break'; panel(); }, text: 'Break this wire' }), el('button', { class: 'btn sm warn', onclick: delSel, text: 'Delete wire' })])); return; } }
     const q = el('input', { type: 'search', class: 'simsearch', placeholder: 'Find a component', 'aria-label': 'Find a component' });
     const list = el('div', { class: 'stack', style: { gap: '10px' } });
     const fill = () => { list.textContent = ''; const s = q.value.trim().toLowerCase(); Object.keys(SIM_CAT).forEach(c => { const ks = Object.keys(SIM_K).filter(k => SIM_K[k].cat === c && (!s || (SIM_K[k].t + ' ' + SIM_K[k].d).toLowerCase().includes(s))); if (!ks.length) return;
-      list.append(el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'lbl', text: SIM_CAT[c][0] }), el('div', { class: 'simpal' }, ks.map(k => el('button', { class: 'simcomp', 'data-k': k, title: SIM_K[k].d, onpointerdown: ev => palDrag(ev, k), onclick: ev => { if (ev.currentTarget.dataset.dragged) return; addNode(k); } }, [el('span', { class: 'simab', style: { background: SIM_CAT[c][1] }, text: SIM_K[k].ab }), el('span', { class: 'grow' }, [el('b', { text: SIM_K[k].t }), el('small', { text: SIM_K[k].d })])])))])); }); };
+      apx(list, el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'lbl', text: SIM_CAT[c][0] }), el('div', { class: 'simpal' }, ks.map(k => el('button', { class: 'simcomp', 'data-k': k, title: SIM_K[k].d, onpointerdown: ev => palDrag(ev, k), onclick: ev => { if (ev.currentTarget.dataset.dragged) return; addNode(k); } }, [el('span', { class: 'simab', style: { background: SIM_CAT[c][1] }, text: SIM_K[k].ab }), el('span', { class: 'grow' }, [el('b', { text: SIM_K[k].t }), el('small', { text: SIM_K[k].d })])])))])); }); };
     q.addEventListener('input', fill); fill();
-    if (d.nodes.length <= 1 && !d.edges.length) body.append(el('span', { class: 'lbl', text: 'Quick start' }), simQuickRow(id => change(() => { const t = simFromSc(SIM_TPL.find(x => x.id === id)); d.nodes = t.nodes; d.edges = t.edges; if (/^(My design|Design \d+)$/.test(d.name)) { d.name = t.name; nameIn.value = t.name; } sel = null; fit(); })), el('span', { class: 'lbl', text: 'Or build from parts' }));
-    body.append(el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'Tap a component to add it (wired after the selected box), or drag it onto the canvas. Drag from a box\'s right dot to another box to wire them.' }), q, list);
+    if (d.nodes.length <= 1 && !d.edges.length) apx(body, el('span', { class: 'lbl', text: 'Quick start' }), simQuickRow(id => change(() => { const t = simFromSc(SIM_TPL.find(x => x.id === id)); d.nodes = t.nodes; d.edges = t.edges; if (/^(My design|Design \d+)$/.test(d.name)) { d.name = t.name; nameIn.value = t.name; } sel = null; fit(); })), el('span', { class: 'lbl', text: 'Or build from parts' }));
+    apx(body, el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'Tap a component to add it (wired after the selected box), or drag it onto the canvas. Drag from a box\'s right dot to another box to wire them.' }), q, list);
   }
   function pRun() {
     const mult = el('input', { type: 'range', id: 'sim_mult', min: '0.25', max: '10', step: '0.25', value: d.mult || 1 }), mv = el('b', { class: 'mono', text: '×' + (d.mult || 1) });
     mult.addEventListener('input', () => { d.mult = +mult.value; mv.textContent = '×' + d.mult; touch(); if (!running) draw(); });
-    body.append(el('div', { class: 'row wrap', style: { gap: '8px' } }, [el('button', { class: 'btn pri', onclick: () => play(!running), text: running ? 'Pause' : 'Run traffic' }), el('button', { class: 'btn', onclick: resetSim, text: 'Reset' }),
+    apx(body, el('div', { class: 'row wrap', style: { gap: '8px' } }, [el('button', { class: 'btn pri', onclick: () => play(!running), text: running ? 'Pause' : 'Run traffic' }), el('button', { class: 'btn', onclick: resetSim, text: 'Reset' }),
       el('div', { class: 'seg', role: 'group', 'aria-label': 'Speed' }, [1, 2, 4].map(s => el('button', { 'aria-selected': String(speed === s), onclick: () => { speed = s; panel(); }, text: s + '×' })))]),
       el('div', { class: 'field' }, [el('label', { for: 'sim_mult', class: 'lbl' }, ['Traffic: every source × ', mv]), mult]),
       el('div', { class: 'row wrap', style: { gap: '8px' } }, [el('button', { class: 'btn sm', onclick: trace, text: 'Trace one request' })]), live);
@@ -579,13 +641,13 @@ function vSim(a, b) {
     live.prepend(el('div', { class: 'card pad stack simtrace' }, [el('b', { text: 'One request: about ' + tot + ' ms' }), el('ol', { style: { margin: 0, paddingLeft: '20px' } }, hops.map(h => el('li', { text: h[0] + (h[1] ? ' · ' + h[1] + ' ms' : '') + (h[2] ? ' · ' + h[2] : '') })))]));
   }
   function liveRun() { const box = live.querySelector('.simlive') || live.appendChild(el('div', { class: 'simlive stack' })); box.textContent = '';
-    if (!m) { box.append(el('p', { class: 'muted', style: { margin: 0 }, text: 'Run traffic to see each box\'s load. Boxes turn amber at 85% load and red when they drop requests or fall behind.' })); return; }
-    box.append(el('div', { class: 'list' }, d.nodes.filter(n => !simIsSrc(n)).map(n => { const r = m.R[n.id] || {}; return el('div', { class: 'item' }, [el('span', { class: 'grow t', text: n.name || SIM_K[n.k].t }), el('span', { class: 's mono', text: Math.round(r.served || 0).toLocaleString() + '/s · ' + Math.round((r.u || 0) * 100) + '%' + (r.drop > 0.5 ? ' · drops ' + Math.round(r.drop) + '/s' : '') + (r.lag > 1 ? ' · lag ' + (r.fresh || 0).toFixed(1) + ' s' : '') + (r.idle ? ' · ' + r.idle + ' idle' : '') })]); }))); }
+    if (!m) { apx(box, el('p', { class: 'muted', style: { margin: 0 }, text: 'Run traffic to see each box\'s load. Boxes turn amber at 85% load and red when they drop requests or fall behind.' })); return; }
+    apx(box, el('div', { class: 'list' }, d.nodes.filter(n => !simIsSrc(n)).map(n => { const r = m.R[n.id] || {}; return el('div', { class: 'item' }, [el('span', { class: 'grow t', text: n.name || SIM_K[n.k].t }), el('span', { class: 's mono', text: Math.round(r.served || 0).toLocaleString() + '/s · ' + Math.round((r.u || 0) * 100) + '%' + (r.drop > 0.5 ? ' · drops ' + Math.round(r.drop) + '/s' : '') + (r.lag > 1 ? ' · lag ' + (r.fresh || 0).toFixed(1) + ' s' : '') + (r.idle ? ' · ' + r.idle + ' idle' : '') })]); }))); }
   function pBreak() {
     const act = SIM.active(rt, rt.t), nm = id => { const n = N(id); if (n) return n.name || SIM_K[n.k].t; const e = d.edges.find(x => x.id === id); return e ? (N(e.a).name || '') + ' → ' + (N(e.b).name || '') : 'everything'; };
-    body.append(el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'Select a box or wire on the canvas, then inject a failure. Traffic starts by itself. Remove a failure to watch the system recover.' }));
-    if (rt.chaos.length) body.append(el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'lbl', text: 'Active failures' })].concat(rt.chaos.map((c, i) => el('div', { class: 'row simact' }, [el('span', { class: 'grow', text: SIM_CH[c.type].t + ' · ' + nm(c.target) + (act.includes(c) ? '' : ' (scheduled)') }), el('button', { class: 'btn sm', onclick: () => { rt.chaos.splice(i, 1); panel(); draw(); }, text: 'Fix' })])))));
-    SIM_CHAOS.forEach(([g, items]) => body.append(el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'lbl', text: g })].concat(items.map(([id, t, on, ds]) => el('div', { class: 'row simchaos' }, [el('span', { class: 'grow' }, [el('b', { text: t }), el('small', { text: ds })]), el('button', { class: 'btn sm', 'data-chaos': id, onclick: () => inject(id, on), text: 'Inject' })]))))));
+    apx(body, el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'Select a box or wire on the canvas, then inject a failure. Traffic starts by itself. Remove a failure to watch the system recover.' }));
+    if (rt.chaos.length) apx(body, el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'lbl', text: 'Active failures' })].concat(rt.chaos.map((c, i) => el('div', { class: 'row simact' }, [el('span', { class: 'grow', text: SIM_CH[c.type].t + ' · ' + nm(c.target) + (act.includes(c) ? '' : ' (scheduled)') }), el('button', { class: 'btn sm', onclick: () => { rt.chaos.splice(i, 1); panel(); draw(); }, text: 'Fix' })])))));
+    SIM_CHAOS.forEach(([g, items]) => apx(body, el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'lbl', text: g })].concat(items.map(([id, t, on, ds]) => el('div', { class: 'row simchaos' }, [el('span', { class: 'grow' }, [el('b', { text: t }), el('small', { text: ds })]), el('button', { class: 'btn sm', 'data-chaos': id, onclick: () => inject(id, on), text: 'Inject' })]))))));
   }
   function inject(id, on) {
     let target = null;
@@ -599,52 +661,155 @@ function vSim(a, b) {
     return sv('svg', { class: 'simchart', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': keys.map(k => k[1]).join(', ') + ' over time' }, [Object.assign(sv('text', { x: 2, y: 12, class: 'ax' }), { textContent: Math.round(mx).toLocaleString() + unit }), Object.assign(sv('text', { x: 2, y: H - 18, class: 'ax' }), { textContent: '0' }), sv('line', { x1: 30, y1: H - 16, x2: W, y2: H - 16, class: 'axl' })]
       .concat(keys.map(k => sv('polyline', { class: 'pl', points: hist.map((h, i) => sx(i).toFixed(1) + ',' + sy(h[k[0]] || 0).toFixed(1)).join(' '), style: 'stroke:' + k[2] })))
       .concat(keys.map((k, i) => Object.assign(sv('text', { x: 34 + i * 92, y: H - 2, class: 'ax', style: 'fill:' + k[2] }), { textContent: '— ' + k[1] })))); };
-  function pMetrics() { body.append(live); liveMetrics(); }
+  function pMetrics() { apx(body, live); liveMetrics(); }
   function liveMetrics() { live.textContent = '';
-    if (!m) { live.append(el('p', { class: 'muted', style: { margin: 0 }, text: 'Run traffic to fill the charts: latency, throughput, errors and lag, second by second.' }), el('button', { class: 'btn pri', style: { alignSelf: 'flex-start' }, onclick: () => play(true), text: 'Run traffic' })); return; }
+    if (!m) { apx(live, el('p', { class: 'muted', style: { margin: 0 }, text: 'Run traffic to fill the charts: latency, throughput, errors and lag, second by second.' }), el('button', { class: 'btn pri', style: { alignSelf: 'flex-start' }, onclick: () => play(true), text: 'Run traffic' })); return; }
     const h = rt.hist.slice(-120);
-    live.append(el('div', { class: 'simbig' }, [['Served', Math.round(m.rps * (1 - m.err / 100)).toLocaleString() + '/s'], ['p99', Math.round(m.p99) + ' ms'], ['Errors', m.err.toFixed(2) + '%'], ['Behind', (m.fresh || 0).toFixed(1) + ' s']].map(([k, v]) => el('div', {}, [el('small', { text: k }), el('b', { class: 'mono', text: v })]))),
+    apx(live, el('div', { class: 'simbig' }, [['Served', Math.round(m.rps * (1 - m.err / 100)).toLocaleString() + '/s'], ['p99', Math.round(m.p99) + ' ms'], ['Errors', m.err.toFixed(2) + '%'], ['Behind', (m.fresh || 0).toFixed(1) + ' s']].map(([k, v]) => el('div', {}, [el('small', { text: k }), el('b', { class: 'mono', text: v })]))),
       el('span', { class: 'lbl', text: 'Latency' }), chart(h, [['p50', 'p50', 'var(--teal)'], ['p99', 'p99', 'var(--red)']], ' ms'),
       el('span', { class: 'lbl', text: 'Throughput' }), chart(h, [['rps', 'offered', 'var(--blue)'], ['ok', 'served', 'var(--teal)']], '/s'),
       el('span', { class: 'lbl', text: 'Errors and lag' }), chart(h, [['err', 'errors %', 'var(--red)']], '%'), chart(h, [['lag', 'backlog', 'var(--amber)']], ''),
       el('span', { class: 'lbl', text: 'Hot spots' }), m.hot.length ? el('div', { class: 'list' }, m.hot.map(id => { const n = N(id), r = m.R[id]; return el('div', { class: 'item' }, [el('span', { class: 'grow t', text: n.name || SIM_K[n.k].t }), el('span', { class: 's', text: r.cap === 0 ? 'down' : r.drop > 0.5 ? 'dropping ' + Math.round(r.drop) + '/s: add replicas or put a queue in front' : (r.lag || 0) > r.inn ? 'readers behind by ' + (r.fresh || 0).toFixed(1) + ' s: more consumers or partitions' : Math.round(r.u * 100) + '% load: little headroom' })]); })) : el('span', { class: 'muted', text: 'None. Every box has headroom.' }));
   }
-  function pCost() { body.append(live); liveCost(); }
+  function pCost() { apx(body, live); liveCost(); }
   function liveCost() { live.textContent = ''; const c = SIM.cost(d, rt, m && m.R);
-    live.append(el('div', { class: 'simbig' }, [el('div', {}, [el('small', { text: 'Per month' }), el('b', { class: 'mono', text: '$' + c.total.toLocaleString() })]), el('div', {}, [el('small', { text: 'Per 1M requests' }), el('b', { class: 'mono', text: m && m.rps ? '$' + (c.total / (m.rps * 2.628e6 / 1e6)).toFixed(3) : '—' })])]),
+    apx(live, el('div', { class: 'simbig' }, [el('div', {}, [el('small', { text: 'Per month' }), el('b', { class: 'mono', text: '$' + c.total.toLocaleString() })]), el('div', {}, [el('small', { text: 'Per 1M requests' }), el('b', { class: 'mono', text: m && m.rps ? '$' + (c.total / (m.rps * 2.628e6 / 1e6)).toFixed(3) : '—' })])]),
       el('div', { class: 'list' }, c.rows.map(([n, reps, v]) => el('div', { class: 'item' }, [el('span', { class: 'grow t', text: (n.name || SIM_K[n.k].t) }), el('span', { class: 's mono', text: '×' + reps + ' · $' + v.toLocaleString() })]))),
       el('p', { class: 'muted', style: { margin: 0, fontSize: '13.5px' }, text: 'Rough list prices for comparing designs, not a quote. Replicas added by auto-scale count while they run; serverless is priced by the requests it serves.' }));
   }
   function pReview() { const r = simReview(d, m || SIM.run(d, 10).ms.pop());
-    body.append(el('span', { class: 'lbl', text: 'Suggestions' }), r.tips.length ? el('div', { class: 'stack', style: { gap: '8px' } }, r.tips.map(([t, x]) => el('div', { class: 'simtip' }, [el('b', { text: t }), el('span', { text: x })]))) : el('span', { class: 'muted', text: 'Nothing to flag. Try breaking it.' }),
+    const ex = sc && mode() === 'exam' ? simEx(sc.id) : null, seen = ex ? ex.cur.rev : d.live ? d.revSeen : true;
+    let tips;
+    if (gated() && !seen) tips = el('button', { class: 'btn sm', id: 'sim_revgate', onclick: () => {
+      if (ex) ex.cur.rev = 1; else { d.revSeen = 1; const lv = S.live && S.live[d.live.k], x = lv && lv.ans && lv.ans[d.live.i]; if (x) x.simHints = (x.simHints || 0) + 1; }
+      touch(); save(); panel(); }, text: 'Show ' + r.tips.length + ' suggestion' + (r.tips.length === 1 ? '' : 's') + (ex ? ' (−5 marks)' : ' (−0.25 on this answer)') });
+    else tips = r.tips.length ? el('div', { class: 'stack', style: { gap: '8px' } }, r.tips.map(([t, x]) => el('div', { class: 'simtip' }, [el('b', { text: t }), el('span', { text: x })]))) : el('span', { class: 'muted', text: 'Nothing to flag. Try breaking it.' });
+    apx(body, el('span', { class: 'lbl', text: 'Suggestions' }), tips,
       el('span', { class: 'lbl', text: 'Patterns in this design' }), r.pats.length ? el('div', { class: 'stack', style: { gap: '8px' } }, r.pats.map(([t, x]) => el('div', { class: 'simtip pat' }, [el('b', { text: t }), el('span', { text: x })]))) : el('span', { class: 'muted', text: 'None recognised yet: caches, topics, queues and CDC are named here when you use them.' }));
   }
+  /* Show me: play the fix on the canvas one step at a time, each with its reason */
+  function showMe() {
+    const fx = SIM_HINTS[sc.id].fix; let k = 0;
+    const next = () => { if (!document.body.contains(cv)) return; if (k >= fx.length) { showMsg = null; toast('Done. Now press ' + (mode() === 'exam' ? 'Submit' : 'Check my design') + '.'); draw(); return; }
+      const f = fx[k++]; let id = null; change(() => { id = simApplyFix(d, f); }); if (id) sel = { n: id }; showMsg = 'Show me, step ' + k + ' of ' + fx.length + ': ' + f.why; draw(); panel(); setTimeout(next, 1600); };
+    next();
+  }
+  function openHint(L) { if (mode() === 'exam') { const x = simEx(sc.id); x.cur.lvl = Math.max(x.cur.lvl, L); touch(); } else simLvl[sc.id] = Math.max(simLvl[sc.id] || 0, L); save(); panel(); if (L === 4) showMe(); }
   function pGoal() {
     if (sc) {
-      const out = el('div', { class: 'stack simresult' }), g = lastGrade;
-      if (g) out.append(el('div', { class: 'list' }, g.res.map(([k, v, want, ok]) => el('div', { class: 'item' }, [el('span', { class: 'grow t', text: (ok ? '✓ ' : '✗ ') + k }), el('span', { class: 's mono', text: v + ' (' + want + ')' })]))),
-        el('p', { class: g.pass ? 'simpass' : 'simfail', style: { margin: 0 }, text: g.pass ? 'Passed. In an interview, say why: which box limited you, and what you changed.' : 'Not yet. ' + sc.hint }));
-      body.append(el('div', { class: 'row wrap', style: { gap: '6px' } }, [el('span', { class: 'chip c-arch', text: 'Module ' + modLabel(sc.mid) }), el('span', { class: 'chip c-test', text: sc.lvl }), st.done[sc.id] ? el('span', { class: 'chip c-dsa', text: '✓ Passed ' + shortDate(st.done[sc.id]) }) : null]),
-        el('h3', { text: sc.t }), el('p', { style: { margin: 0 }, text: sc.q }),
+      const md = mode(), ex = simEx(sc.id), L = lvlOf(), H = SIM_HINTS[sc.id], g = lastGrade, out = el('div', { class: 'stack simresult' });
+      if (g) apx(out, el('div', { class: 'list' }, g.res.map(([k, v, want, ok]) => el('div', { class: 'item' }, [el('span', { class: 'grow t', text: (ok ? '✓ ' : '✗ ') + k }), el('span', { class: 's mono', text: v + ' (' + want + ')' })]))),
+        g.exam ? el('p', { class: 'simscore', style: { margin: 0 } }, [el('b', { text: 'Exam score: ' + g.exam.score + ' / 100' }), ' · goals met ' + g.exam.hit + '%' + (g.exam.cost ? ', hints −' + g.exam.cost : ', no hints') + ' · ' + Math.floor(g.exam.secs / 60) + ' min ' + (g.exam.secs % 60) + ' s']) : null,
+        el('p', { class: g.pass ? 'simpass' : 'simfail', style: { margin: 0 }, text: g.pass ? 'Passed. In an interview, say why: which box limited you, and what you changed.' : md === 'exam' ? 'Not yet. Change the design and submit again (a new attempt), or open a hint.' : 'Not yet. Open the next hint below if you are stuck.' }));
+      const seg = el('div', { class: 'seg simmode', role: 'group', 'aria-label': 'Mode' }, [['learn', 'Learn'], ['practice', 'Practice'], ['exam', 'Exam']].map(([k, t]) => el('button', { 'aria-selected': String(md === k), 'data-mode': k, onclick: () => { simMode[sc.id] = k; if (k === 'exam' && !ex.cur.lvl && !ex.cur.rev) ex.cur.t0 = Date.now(); lastGrade = null; panel(); draw(); }, text: t })));
+      const modeNote = { learn: 'Learn: hints open as you go and nothing is scored.', practice: 'Practice: hints are free; passing earns XP.', exam: 'Exam: hints cost marks (−5, −10, −20, −40; suggestions −5). Score = goals met minus hints.' }[md];
+      const names = ['Where to look', 'The idea', 'What to change', 'Show me'], costs = [5, 10, 20, 40];
+      const ladder = el('div', { class: 'stack simhints', style: { gap: '8px' } }, [el('span', { class: 'lbl', text: 'Hints' })]);
+      [H.look, H.idea, H.change, null].forEach((txt, j) => { const n = j + 1;
+        if (L >= n) apx(ladder, el('div', { class: 'simhint', 'data-h': n }, [el('b', { text: n + ' · ' + names[j] }), n < 4 ? el('span', { text: txt + (n === 2 ? ' (Module ' + modLabel(sc.mid) + ')' : '') }) : el('ol', { style: { margin: 0, paddingLeft: '20px' } }, H.fix.map(f => el('li', { text: f.why }))), n === 4 ? el('button', { class: 'btn sm', style: { alignSelf: 'flex-start' }, onclick: showMe, text: 'Play it again on the canvas' }) : null]));
+        else if (L === n - 1) apx(ladder, el('button', { class: 'btn sm simhbtn', 'data-h': n, style: { alignSelf: 'flex-start' }, onclick: () => openHint(n), text: 'Hint ' + n + ': ' + names[j] + (md === 'exam' ? ' (−' + costs[j] + ')' : '') })); });
+      if (md !== 'exam' && m) { const t = simReview(d, m).tips[0]; if (t) apx(ladder, el('div', { class: 'simtip' }, [el('b', { text: 'The simulator sees: ' + t[0] }), el('span', { text: t[1] })])); }
+      apx(body, el('div', { class: 'row wrap', style: { gap: '6px' } }, [el('span', { class: 'chip c-arch', text: 'Module ' + modLabel(sc.mid) }), el('span', { class: 'chip c-test', text: sc.lvl }), st.done[sc.id] ? el('span', { class: 'chip c-dsa', text: '✓ Passed ' + shortDate(st.done[sc.id]) }) : null, ex.best != null ? el('span', { class: 'chip c-ai', text: 'Best exam ' + ex.best }) : null]),
+        el('h3', { text: sc.t }), seg, el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: modeNote }), el('p', { style: { margin: 0 }, text: sc.q }),
         el('div', { class: 'row wrap', style: { gap: '8px' } }, [el('button', { class: 'btn pri', id: 'sim_check', onclick: () => { const g = lastGrade = SIM.grade(d, sc);
-          if (g.pass && !st.done[sc.id]) { st.done[sc.id] = iso(new Date()); save(); if (typeof gameNote === 'function') try { gameNote('sim'); } catch (e) { } }
-          const ch = simChaosFor(d, sc.chaos); resetSim(); rt.chaos = ch; play(true); }, text: 'Check my design' }),
+          if (md === 'exam') { const hit = Math.round(100 * g.res.filter(r => r[3]).length / g.res.length), cost = SIM_HINT_COST[ex.cur.lvl] + (ex.cur.rev ? 5 : 0);
+            g.exam = { score: Math.max(0, hit - cost), hit, cost, lvl: ex.cur.lvl, secs: Math.round((Date.now() - (ex.cur.t0 || Date.now())) / 1000) };
+            ex.last = Object.assign({ at: Date.now(), pass: g.pass }, g.exam); ex.best = Math.max(ex.best || 0, g.exam.score); ex.cur = { lvl: 0, rev: 0, t0: Date.now() }; }
+          if (g.pass && !(md === 'exam' && g.exam.lvl >= 4) && !st.done[sc.id]) { st.done[sc.id] = iso(new Date()); if (typeof gameNote === 'function') try { gameNote('sim'); } catch (e) { } }
+          touch(); save(); const ch = simChaosFor(d, sc.chaos); resetSim(); rt.chaos = ch; play(true); }, text: md === 'exam' ? 'Submit my design' : 'Check my design' }),
           el('button', { class: 'btn', onclick: () => { rt.chaos = simChaosFor(d, sc.chaos); rt.t = 0; play(true); }, text: 'Watch it play' }),
-          el('a', { class: 'btn', href: '#/learn/' + sc.mid, text: 'Open the module' }),
-          el('button', { class: 'btn sm', onclick: () => { st.d[d.id] = simFromSc(sc); save(); route(); }, text: 'Start over' })]),
-        el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Check runs ' + sc.secs + ' simulated seconds' + (sc.chaos ? ' with the failures in the story' : '') + ' and scores the goals.' }), out,
+          md !== 'exam' ? el('a', { class: 'btn', href: '#/learn/' + sc.mid, text: 'Open the module' }) : null,
+          el('button', { class: 'btn sm', onclick: () => { st.d[d.id] = Object.assign(simFromSc(sc), { from: d.from }); save(); route(); }, text: 'Start over' })]),
+        out, ladder,
+        ex.last ? el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'Last exam: ' + ex.last.score + ' / 100' + (ex.last.cost ? ' (hints −' + ex.last.cost + ')' : '') + ' on ' + shortDate(iso(new Date(ex.last.at))) + '.' }) : null,
         el('span', { class: 'lbl', text: 'Other scenarios' }));
-    } else body.append(el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'Each scenario opens a starting design that fails on purpose. Fix it until Check my design passes. Your edits are kept.' }));
+    } else apx(body, el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'Each scenario opens a starting design that fails on purpose. Fix it until Check my design passes. Your edits are kept.' }),
+      el('span', { class: 'lbl', text: 'Learn a design box by box' }), el('div', { class: 'simquick' }, SIM_TPL.map(t => el('a', { class: 'simqbtn', href: '#/sim/teach/' + t.id }, [el('b', { text: 'Teach me: ' + t.t }), el('small', { text: t.s })]))));
     const mods = [...new Set(SIM_SC.map(s => s.mid))];
-    body.append(el('div', { class: 'simchips', role: 'group', 'aria-label': 'Filter scenarios' }, [['all', 'All']].concat(mods.map(x => [x, modLabel(x)]), [['Beginner', 'Beginner'], ['Intermediate', 'Intermediate'], ['Advanced', 'Advanced']]).map(([k, t]) => el('button', { class: 'chip', 'aria-pressed': String(simScFilter === k), onclick: () => { simScFilter = k; panel(); }, text: t }))),
+    apx(body, el('div', { class: 'simchips', role: 'group', 'aria-label': 'Filter scenarios' }, [['all', 'All']].concat(mods.map(x => [x, modLabel(x)]), [['Beginner', 'Beginner'], ['Intermediate', 'Intermediate'], ['Advanced', 'Advanced']]).map(([k, t]) => el('button', { class: 'chip', 'aria-pressed': String(simScFilter === k), onclick: () => { simScFilter = k; panel(); }, text: t }))),
       el('div', { class: 'stack', style: { gap: '8px' } }, SIM_SC.filter(s => s.id !== d.sid && (simScFilter === 'all' || s.mid === simScFilter || s.lvl === simScFilter)).map(s => el('a', { class: 'simsc', href: '#/sim/sc/' + s.id, 'data-sc': s.id }, [el('span', { class: 'grow' }, [el('b', { text: (st.done[s.id] ? '✓ ' : '') + s.t }), el('small', { text: modLabel(s.mid) + ' · ' + modTitle(s.mid) + ' · ' + s.lvl })])]))));
+  }
+
+  /* ---- what is happening: one sentence from the tab, the selection, run state, failures and the challenge ---- */
+  const nar = el('p', { class: 'simnar', id: 'sim_nar' });
+  const fmt = v => Math.round(v || 0).toLocaleString(), nmOf = n => n ? n.name || SIM_K[n.k].t : '';
+  const tname = id => { const n = N(id); if (n) return nmOf(n); const e = d.edges.find(x => x.id === id); return e ? nmOf(N(e.a)) + ' → ' + nmOf(N(e.b)) : 'everything'; };
+  const why = id => { const r = m && m.R[id]; if (!r) return ''; return r.cap === 0 ? ' (down)' : r.drop > 0.5 ? ' (dropping ' + fmt(r.drop) + ' a second)' : (r.lag || 0) > r.inn ? ' (readers ' + (r.fresh || 0).toFixed(1) + ' s behind)' : ' (' + Math.round(r.u * 100) + '% load)'; };
+  function narrate() {
+    if (showMsg) return showMsg;
+    const act = SIM.active(rt, rt.t), parts = [];
+    if (sel && sel.n && N(sel.n)) {
+      const n = N(sel.n), K = SIM_K[n.k], r = m && m.R[n.id], cap = n.cap != null ? n.cap : K.cap, reps = rt.reps[n.id] != null ? rt.reps[n.id] : (n.n || 1);
+      if (sel.wiring) parts.push('Wiring from ' + nmOf(n) + ': tap the box it should send to.');
+      else if (!r) parts.push(nmOf(n) + ': ' + (simIsSrc(n) ? 'sends ' + fmt((n.rps != null ? n.rps : K.rps) * (d.mult || 1)) + ' a second.' : 'one replica handles ' + fmt(cap) + ' a second at about ' + (n.lat != null ? n.lat : K.lat) + ' ms; ' + reps + ' replica' + (reps > 1 ? 's' : '') + ' = ' + fmt(cap * reps) + ' a second.' + (K.route === 'split' ? ' It shares traffic between its wires out.' : K.route === 'miss' ? ' Only misses go to the box behind it.' : K.async ? ' Readers pull from it at their own pace.' : '')));
+      else if (simIsSrc(n)) parts.push(nmOf(n) + ' sends ' + fmt(r.inn) + ' a second' + (r.ok < 0.99 ? '; ' + Math.round(100 * (1 - r.ok)) + '% of them fail somewhere downstream.' : '; all of them succeed.'));
+      else if (r.cap === 0) parts.push(nmOf(n) + ' is down: ' + (K.async || K.tail ? 'work piles up as lag until it is back.' : 'every request that needs it fails.') + (n.standby ? ' Its standby takes over in 3 s.' : ' A standby would take over in 3 s.'));
+      else { let t = nmOf(n) + ' takes ' + fmt(r.inn) + ' a second and ' + (K.async ? 'stores them' : 'handles ' + fmt(r.served)) + ' at ' + Math.round(r.u * 100) + '% load on ' + reps + ' replica' + (reps > 1 ? 's' : '');
+        if (K.route === 'miss') t += '; ' + Math.round((r.hit || 0) * 100) + '% are hits, the rest go on';
+        if (n.k === 'kafka') t += '; ' + (n.parts || K.parts) + ' partitions let at most that many readers work';
+        if (r.idle) t += '; ' + r.idle + ' replicas sit idle (more readers than partitions)';
+        if ((r.lag || 0) > 1) t += '; readers are ' + (r.fresh || 0).toFixed(1) + ' s behind';
+        if (r.drop > 0.5) t += '; it drops ' + fmt(r.drop) + ' a second';
+        if (r.poison) t += '; bad records are ' + r.poison; if (r.schema) t += '; the schema change is ' + r.schema;
+        if (r.u >= 0.85 && !r.drop) t += '; near full, so latency climbs';
+        parts.push(t + '.'); }
+    } else if (sel && sel.e) { const e = d.edges.find(x => x.id === sel.e); if (e) { const c = act.find(x => x.target === e.id); parts.push('Wire ' + tname(e.id) + (m && e._v != null ? ': carries ' + fmt(e._v) + ' a second' : '') + (c ? '; ' + SIM_CH[c.type].t.toLowerCase() + ' is active on it' : '') + '.'); } }
+    const tc = d.teach && SIM_TPL.find(t => t.id === d.teach.tpl);
+    const T = {
+      build: () => sel ? 'Change it in the panel, or tap another box.' : tc ? 'Lesson: ' + Object.keys(d.teach.map).length + ' of ' + tc.nodes.length + ' boxes placed' + (tStep()[d.teach.step] && tStep()[d.teach.step].k ? '. Tap Add it for me, or add the highlighted part from the Build list below.' : '.') : d.nodes.length + ' boxes and ' + d.edges.length + ' wires. Tap a part to add it; drag from a box\'s right dot to wire it.',
+      run: () => running && m ? 'Traffic is running: ' + fmt(m.rps) + ' a second in, p99 ' + fmt(m.p99) + ' ms, ' + m.err.toFixed(1) + '% errors' + (m.fresh > 0.5 ? ', ' + m.fresh.toFixed(1) + ' s behind' : '') + '.' : (m ? 'Paused. Run traffic to continue' : 'Press Run traffic to send requests through the design') + ' (traffic × ' + (d.mult || 1) + ').',
+      break: () => act.length ? act.map(c => SIM_CH[c.type].t + (c.target ? ' on ' + tname(c.target) : '')).join(', ') + ' active' + (m ? ': ' + m.err.toFixed(1) + '% errors, ' + (m.fresh || 0).toFixed(1) + ' s behind.' : '.') : sel ? 'Inject a failure to hit the selected ' + (sel.e ? 'wire.' : 'box.') : 'Select a box or wire, then inject a failure to see how the design copes.',
+      metrics: () => !m ? 'Run traffic to fill the charts.' : m.hot.length ? 'Weakest point: ' + tname(m.hot[0]) + why(m.hot[0]) + '.' : 'No hot spots: every box has headroom.',
+      cost: () => { const c = SIM.cost(d, rt, m && m.R), top = c.rows.slice().sort((x, y) => y[2] - x[2])[0]; return '$' + fmt(c.total) + ' a month' + (top && c.total ? '; the biggest line is ' + nmOf(top[0]) + ' at ' + Math.round(100 * top[2] / c.total) + '%' : '') + (sel && sel.n && c.total ? '; the selected box is ' + Math.round(100 * ((c.rows.find(r => r[0].id === sel.n) || [0, 0, 0])[2]) / c.total) + '% of it' : '') + '.'; },
+      review: () => { const r = simReview(d, m); return r.tips.length + ' suggestion' + (r.tips.length === 1 ? '' : 's') + ' and ' + r.pats.length + ' pattern' + (r.pats.length === 1 ? '' : 's') + ' recognised' + (!gated() && r.tips[0] ? '. First: ' + r.tips[0][0] + '.' : '.'); },
+      goal: () => sc ? (mode() === 'exam' ? 'Exam: ' + sc.t + '. Hints cost marks; submit when ready.' : (mode() === 'learn' ? 'Learn: ' : 'Practice: ') + sc.t + (st.done[sc.id] ? ' (passed before).' : '. Fix the design, then check it.')) : 'Pick a scenario: each opens a design that fails on purpose.'
+    };
+    parts.push(T[simTab]());
+    if (simTab !== 'break' && act.length && running) parts.push('Failure active: ' + act.map(c => SIM_CH[c.type].t.toLowerCase()).join(', ') + '.');
+    return parts.join(' ');
+  }
+  const paintNar = () => { const t = narrate(); if (nar.textContent !== t) nar.textContent = t; };
+
+  /* ---- Teach me this design: a lesson card above the canvas ---- */
+  const coach = el('section', { class: 'card pad stack simcoach', 'aria-label': 'Lesson' });
+  const tStep = () => { const t = SIM_TPL.find(x => x.id === d.teach.tpl), D = d.teach.mid && DATA.design && DATA.design[d.teach.mid];
+    return [{ t: 'Requirements', x: (D ? D.prompt : t.t + ': ' + t.s + '.') + ' In an interview, start here: who uses it, how much data, how fresh, what must never break.' }, { t: 'Estimate', x: t.teach.est }]
+      .concat(t.nodes.map((nd, i) => Object.assign({ t: 'Add: ' + SIM_K[nd[0]].t, k: nd[0], i }, t.teach.steps[i])))
+      .concat([{ t: 'Run it', act: 'run', x: 'Press Run traffic. The wires start flowing; each box shows its load. Tap any box to read what it is doing.' },
+        { t: 'Break it', act: 'break', x: t.teach.brk.t + '. Inject it and watch the numbers in the top bar.' },
+        { t: 'Fix it', act: 'fix', x: t.teach.fix.map(f => f.why).join(' ') },
+        { t: 'Say it in the interview', x: t.teach.say }]); };
+  function teachSync() { /* a box the learner added from the palette counts for the current step: put it in place and wire it */
+    if (!d.teach) return; const steps = tStep(), sp = steps[d.teach.step]; if (!sp || sp.k == null) return;
+    const used = new Set(Object.values(d.teach.map)), n = d.nodes.find(x => x.k === sp.k && !used.has(x.id)); if (!n) return;
+    placeT(sp.i, n); d.teach.step++; requestAnimationFrame(fit); }
+  function placeT(i, n) { const t = SIM_TPL.find(x => x.id === d.teach.tpl), nd = t.nodes[i]; n.x = nd[1]; n.y = nd[2]; Object.assign(n, nd[3] || {}); d.teach.map[i] = n.id;
+    d.edges = d.edges.filter(e => e.b !== n.id || Object.values(d.teach.map).includes(e.a));
+    t.edges.forEach(([a, b]) => { const A = d.teach.map[a], B = d.teach.map[b]; if (A && B && !d.edges.some(e => e.a === A && e.b === B)) d.edges.push({ id: nid('e'), a: A, b: B }); }); }
+  function paintCoach() {
+    if (!d.teach) { coach.style.display = 'none'; return; } coach.style.display = '';
+    const steps = tStep(), k = Math.min(d.teach.step, steps.length - 1), sp = steps[k], t = SIM_TPL.find(x => x.id === d.teach.tpl);
+    const go = j => { d.teach.step = Math.max(0, Math.min(steps.length - 1, j)); if (d.teach.step === steps.length - 1) { st.taught = st.taught || {}; st.taught[d.teach.mid || t.id] = iso(new Date()); } touch(); paintCoach(); paintNar(); };
+    let actB = null;
+    if (sp.k != null) actB = el('button', { class: 'btn pri sm', id: 'sim_teach_add', onclick: () => { change(() => { const id = nid('n'), n = { id, k: sp.k, x: 0, y: 0, name: SIM_K[sp.k].t }; if (SIM_K[sp.k].cat === 'src') n.rps = SIM_K[sp.k].rps; d.nodes.push(n); placeT(sp.i, n); d.teach.step++; sel = null; simTab = 'build'; }); fit(); } }, 'Add it for me');
+    else if (sp.act === 'run') actB = el('button', { class: 'btn pri sm', onclick: () => { play(true); go(k + 1); } }, 'Run traffic');
+    else if (sp.act === 'break') actB = el('button', { class: 'btn pri sm', onclick: () => { rt.chaos = simChaosFor(d, [{ type: t.teach.brk.type, on: t.teach.brk.on }]).map(c => Object.assign(c, { from: rt.t })); play(true); simTab = 'metrics'; panel(); go(k + 1); } }, 'Inject it');
+    else if (sp.act === 'fix') actB = el('button', { class: 'btn pri sm', onclick: () => { change(() => t.teach.fix.forEach(f => simApplyFix(d, f))); go(k + 1); } }, 'Fix it for me');
+    coach.textContent = '';
+    apx(coach, el('div', { class: 'row wrap', style: { gap: '8px' } }, [el('span', { class: 'lbl grow', text: 'Lesson · step ' + (k + 1) + ' of ' + steps.length }), el('span', { class: 'simdots', 'aria-hidden': 'true' }, steps.map((x, j) => el('i', { class: j < k ? 'd' : j === k ? 'c' : '' })))]),
+      el('b', { class: 'simct', text: sp.t }), el('p', { style: { margin: 0 }, text: sp.why || sp.x }),
+      (sp.alt && sp.alt !== '-') || (sp.cost && sp.cost !== '-') ? el('details', { class: 'simwhy' }, [el('summary', { text: 'Instead of this, and the cost' }), sp.alt && sp.alt !== '-' ? el('p', { text: 'Instead: ' + sp.alt }) : null, sp.cost && sp.cost !== '-' ? el('p', { text: 'Cost: ' + sp.cost }) : null]) : null,
+      el('div', { class: 'row wrap', style: { gap: '8px' } }, [k > 0 ? el('button', { class: 'btn sm', onclick: () => go(k - 1), text: 'Back' }) : null, actB, k < steps.length - 1 ? el('button', { class: 'btn sm' + (actB ? '' : ' pri'), id: 'sim_teach_next', onclick: () => go(k + 1), text: 'Next' }) : el('a', { class: 'btn sm pri', href: d.teach.mid ? '#/design/' + d.teach.mid : '#/sim', text: d.teach.mid ? 'Write it up in the studio' : 'Done' })]));
+    document.querySelectorAll('.simpulse').forEach(x => x.classList.remove('simpulse'));
+    if (sp.k != null) { const pc = body.querySelector('.simcomp[data-k="' + sp.k + '"]'); if (pc) pc.classList.add('simpulse'); }
+    if (sp.act === 'run') playB.classList.add('simpulse');
   }
 
   const head = el('div', { class: 'row wrap simhead' }, [nameIn, pick, exportMenu, impIn]);
   const backTo = d.from && /^#\/(live|mock|design|quiz|learn|interview)\b/.test(d.from) ? el('a', { class: 'btn sm pri', href: d.from, text: 'Back to the question' }) : null; if (backTo) head.prepend(backTo);
-  shell('Design simulator', 'System design', [el('div', { class: 'stack simwrap' }, [head, strip, el('div', { class: 'simgrid' }, [canvasCard, el('section', { class: 'card pad stack simside' }, [tabRow, body])])])], { back: '#/design' });
+  shell('Design simulator', 'System design', [el('div', { class: 'stack simwrap' }, [head, strip, nar, coach, el('div', { class: 'simgrid' }, [canvasCard, el('section', { class: 'card pad stack simside' }, [tabRow, body])])])], { back: '#/design' });
   panel(); draw(); requestAnimationFrame(fit);
-  window.simDebug = { get d() { return d; }, get rt() { return rt; }, get m() { return m; }, play, step: () => tick() };
+  window.simDebug = { get d() { return d; }, get rt() { return rt; }, get m() { return m; }, play, step: () => tick(), narrate, get sel() { return sel; }, set sel(v) { sel = v; draw(); panel(); } };
 }
 
 /* ---------------- quick start and the weekly program ---------------- */
@@ -659,10 +824,77 @@ const SIM_TPL = [
   { id: 'serving', t: 'Serving API', s: 'Users, load balancer, service, cache, serving store', re: /serv|api|read|lookup|low.?latency|feature|recommend|profile/i,
     nodes: [['client', 40, 140, { rps: 5000 }], ['lb', 240, 140], ['svc', 440, 140, { n: 8, auto: true, max: 40 }], ['cache', 640, 140], ['kv', 840, 140, { n: 2 }]], edges: [[0, 1], [1, 2], [2, 3], [3, 4]] },
   { id: 'analytics', t: 'Real-time analytics', s: 'Events to Kafka to an OLAP store for dashboards', re: /dashboard|analytic|olap|metric|bi\b|aggregate|report/i,
-    nodes: [['producer', 40, 60, { rps: 8000 }], ['kafka', 260, 60, { parts: 12 }], ['olap', 480, 140, { n: 3 }], ['bi', 260, 240, { rps: 200 }], ['lake', 480, 300]], edges: [[0, 1], [1, 2], [3, 2], [1, 4]] },
+    nodes: [['producer', 40, 60, { rps: 8000 }], ['kafka', 260, 60, { parts: 12 }], ['olap', 480, 140, { n: 5 }], ['bi', 260, 240, { rps: 200 }], ['lake', 480, 300]], edges: [[0, 1], [1, 2], [3, 2], [1, 4]] },
   { id: 'rag', t: 'RAG assistant', s: 'Service, embedding model, vector store, cache, LLM', re: /rag|llm|vector|embed|retriev|agent|ai\b|genai/i,
-    nodes: [['client', 40, 140, { rps: 20 }], ['svc', 240, 140, { n: 2 }], ['embed', 460, 60], ['vector', 680, 60], ['cache', 460, 220, { hit: 0.4 }], ['llm', 680, 220]], edges: [[0, 1], [1, 2], [2, 3], [1, 4], [4, 5]] }
+    nodes: [['client', 40, 140, { rps: 20 }], ['svc', 240, 140, { n: 2 }], ['embed', 460, 60], ['vector', 680, 60], ['cache', 460, 220, { hit: 0.2 }], ['llm', 680, 220]], edges: [[0, 1], [1, 2], [2, 3], [1, 4], [4, 5]] }
 ];
+/* Teach me this design: one step per box (why it is there, what you could use instead, what it costs), then run, break and fix */
+const SIM_TEACH = {
+  stream: { est: '5,000 events a second at peak, about 430 million a day. Readers need them within seconds; history goes to the lake.',
+    steps: [
+      { why: 'Apps and devices emit events. Start every design from who sends what, and how much.', alt: 'Batch files instead, if minutes of delay are fine.', cost: 'Free here; you pay where events land.' },
+      { why: 'Every producer registers its event schema; breaking changes are refused before any reader sees them.', alt: 'Schemas in a shared code library: works until one team deploys late.', cost: 'Small: one cheap service.' },
+      { why: 'Kafka keeps events in order per key and lets many readers replay them. Partitions (12 here) cap how many readers can work at once.', alt: 'A queue (SQS) if each message has exactly one consumer and replay does not matter.', cost: '3 brokers, the biggest fixed cost of the pipeline.' },
+      { why: 'The stream processor (Flink or Spark Structured Streaming) cleans, joins and aggregates events as they arrive.', alt: 'Micro-batches every few minutes, if seconds of freshness are not needed.', cost: '3 tasks; can auto-scale up to the partition count.' },
+      { why: 'A serving store holds results keyed for fast lookups by apps and APIs.', alt: 'Postgres if the volume is small; Redis if it fits in memory.', cost: '2 nodes, sized for read traffic.' },
+      { why: 'The lake (Iceberg or Delta on object storage) keeps full history cheaply for analytics and replays.', alt: 'Straight into the warehouse: simpler, but you pay warehouse prices for raw data.', cost: 'Cheapest storage per GB.' },
+      { why: 'Records the processor cannot parse go to a dead-letter queue, so one bad record never stalls the pipeline.', alt: 'Skip bad records silently: you lose data without knowing.', cost: 'Almost nothing; someone must look at it.' }],
+    brk: { type: 'spike', t: 'A launch sends 4 times the events' }, fix: [{ set: 'stream', f: 'auto', v: true, why: 'The processor adds tasks when busy, up to the 12 partitions.' }],
+    goals: { fresh: 5 }, say: 'Producers write to Kafka with schemas checked by a registry; a stream job keeps a serving store fresh within seconds and lands history in the lake; bad records go to a DLQ. Under a spike the job scales out to the partition count, which is why partitions are sized for peak.' },
+  batch: { est: '200 records a second from files, about 17 million a day, ready for dashboards each morning.',
+    steps: [
+      { why: 'Partners drop files on a schedule. Know the arrival time and size: it sets your deadline.', alt: 'An API or CDC feed if the source can push changes.', cost: 'Free here.' },
+      { why: 'Land raw files in the lake first, unchanged, so you can always reprocess.', alt: 'Load straight into the warehouse: no replay if a transform was wrong.', cost: 'Cheapest storage.' },
+      { why: 'Spark reads the raw files, deduplicates and writes clean tables.', alt: 'dbt alone on the warehouse if the data is small.', cost: '2 executors, on only while the job runs.' },
+      { why: 'Quality checks (row counts, nulls, freshness, contracts) stop bad data before it reaches dashboards.', alt: 'No checks: people find problems in meetings.', cost: 'Small.' },
+      { why: 'dbt builds the business tables (facts and dimensions) with tested SQL.', alt: 'SQL in the BI tool: no tests, no reuse.', cost: 'Runs on warehouse compute.' },
+      { why: 'The warehouse serves analysts: big scans, few queries at once.', alt: 'Trino on the lake to avoid copying data.', cost: 'The largest line: pay per compute.' },
+      { why: 'Dashboards query the warehouse. Count how many queries run at the same time.', alt: 'An OLAP store or cache for hundreds of users.', cost: 'Licences; their queries cost warehouse time.' }],
+    brk: { type: 'backfill', on: 'files', t: 'A partner re-sends a month of files' }, fix: [{ set: 'wh', f: 'n', v: 3, why: 'More warehouse clusters run more loads and queries at once.' }],
+    goals: { err: 2 }, say: 'Files land raw in the lake, Spark cleans them, checks gate quality, dbt builds tested models in the warehouse for dashboards. A backfill triples load, so the warehouse scales out (or the backfill is throttled) instead of failing dashboards.' },
+  cdc: { est: '1,500 writes a second in the app database; the lake and serving store should be seconds behind.',
+    steps: [
+      { why: 'Users write through the app. Writes are the source of truth.', alt: '-', cost: '-' },
+      { why: 'The app service handles requests and writes to its database.', alt: 'Writing to Kafka too (dual write): fails half-way and the two disagree.', cost: '3 replicas.' },
+      { why: 'Postgres is the system of record. Its write-ahead log already lists every change in order.', alt: 'Polling tables by updated_at: misses deletes and adds load.', cost: 'Primary plus a replica.' },
+      { why: 'A CDC connector (Debezium) tails the log and turns each change into an event, without touching the app.', alt: 'An outbox table if you need business events, not row changes.', cost: 'One task; it lags if slowed.' },
+      { why: 'Kafka holds the change stream so many readers can use it at their own pace.', alt: 'Straight to the lake: one reader only, no replay.', cost: 'Brokers.' },
+      { why: 'A Kafka Connect sink copies the changes into the lake as tables.', alt: 'Your own consumer code: more to run.', cost: 'Connector tasks.' },
+      { why: 'The lake keeps the full history of every row (good for audits and backfills).', alt: '-', cost: 'Cheap storage.' },
+      { why: 'A stream job builds a read model from the changes.', alt: 'Read the primary database directly: adds load to it.', cost: 'Tasks.' },
+      { why: 'The serving store answers reads without touching the primary database.', alt: 'Read replicas of Postgres.', cost: 'Nodes.' }],
+    brk: { type: 'lag', on: 'cdc', t: 'The connector slows to a fifth of its speed' }, fix: [{ set: 'cdc', f: 'n', v: 3, why: 'Three connector tasks keep up with 1,500 changes a second even when slowed.' }],
+    goals: { fresh: 5 }, say: 'The app writes only to Postgres; Debezium tails the WAL into Kafka, so there are no dual writes. A sink lands history in the lake and a stream job keeps a serving store fresh. If the connector lags, the WAL grows on the database, so connector lag is a page.' },
+  serving: { est: '5,000 reads a second, p99 under 100 ms.',
+    steps: [
+      { why: 'Users send read requests. Know the read:write ratio and the latency target.', alt: '-', cost: '-' },
+      { why: 'The load balancer spreads requests over healthy service replicas and drops dead ones.', alt: 'DNS round robin: slow to remove a dead box.', cost: 'Small.' },
+      { why: 'Stateless service replicas: add more for more traffic. Auto-scale is on.', alt: 'One big server: simple until it falls over.', cost: '8 replicas, more at peak.' },
+      { why: 'A cache answers hot keys from memory; only misses go to the store.', alt: 'No cache: every read costs a store lookup.', cost: 'One node handles 60,000 a second.' },
+      { why: 'The serving store holds the data keyed for lookups.', alt: 'Postgres with read replicas.', cost: '2 nodes.' }],
+    brk: { type: 'crash', on: 'kv', t: 'The serving store crashes' }, fix: [{ set: 'kv', f: 'standby', v: true, why: 'A hot standby takes over in 3 seconds.' }],
+    goals: { err: 2 }, say: 'Behind a load balancer, stateless services auto-scale; a cache takes most reads and a key-value store serves the rest. Cache hits keep working when the store dies, but misses fail, so the store has a hot standby.' },
+  analytics: { est: '8,000 events a second; dashboards want numbers seconds old for 200 queries a second.',
+    steps: [
+      { why: 'Events from apps.', alt: '-', cost: '-' },
+      { why: 'Kafka buffers events and feeds the OLAP store and the lake.', alt: '-', cost: 'Brokers.' },
+      { why: 'A real-time OLAP store (ClickHouse, Pinot, Druid) ingests from Kafka and answers aggregates in milliseconds.', alt: 'The warehouse: minutes fresh and few queries at once.', cost: '5 nodes.' },
+      { why: 'Dashboards query the OLAP store directly.', alt: '-', cost: '-' },
+      { why: 'The lake keeps raw history for reprocessing.', alt: '-', cost: 'Cheap.' }],
+    brk: { type: 'crash', on: 'olap', t: 'The OLAP store crashes' }, fix: [{ set: 'olap', f: 'standby', v: true, why: 'Replicas with a standby take over in 3 seconds; Kafka holds events meanwhile.' }],
+    goals: { fresh: 5, err: 2 }, say: 'Events go through Kafka into a real-time OLAP store that dashboards query directly, and into the lake for history. If OLAP goes down, Kafka buffers and a standby takes over.' },
+  rag: { est: '20 questions a second; each needs an embedding, a vector lookup and an LLM answer within a few seconds.',
+    steps: [
+      { why: 'Users ask questions.', alt: '-', cost: '-' },
+      { why: 'The service runs retrieval and calls the model.', alt: '-', cost: '2 replicas.' },
+      { why: 'The embedding model turns the question into a vector.', alt: 'A hosted embedding API.', cost: 'GPU time.' },
+      { why: 'The vector store finds the closest passages.', alt: 'Postgres with pgvector for small corpora.', cost: 'Nodes.' },
+      { why: 'A semantic cache returns stored answers for similar questions.', alt: 'No cache: every question costs a model call.', cost: 'One node.' },
+      { why: 'The LLM writes the answer from the passages.', alt: 'A smaller self-hosted model.', cost: 'Per call: the biggest line.' }],
+    brk: { type: 'extlimit', on: 'llm', t: 'The provider cuts your rate limit' }, fix: [{ set: 'cache', f: 'hit', v: 0.6, why: 'Matching similar questions, not only exact ones, answers 60% from the cache.' }],
+    goals: { err: 2 }, say: 'Embed the question, retrieve passages from the vector store, and call the LLM through a semantic cache. The cache is the main lever on both rate limits and cost.' }
+};
+SIM_TPL.forEach(t => { t.teach = SIM_TEACH[t.id]; });
 function simNewFrom(tplId, name, from) {
   const st = simState(), t = SIM_TPL.find(x => x.id === tplId);
   const d = t ? Object.assign(simFromSc(t), { id: 'd' + Date.now().toString(36), sid: undefined, name: name || t.t }) : simBlank(name);
@@ -674,15 +906,15 @@ function simQuickRow(onPick) {
   return el('div', { class: 'simquick' }, SIM_TPL.map(t => el('button', { class: 'simqbtn', 'data-tpl': t.id, onclick: () => onPick(t.id) }, [el('b', { text: t.t }), el('small', { text: t.s })])));
 }
 /* "Sketch it in the simulator" for a question or design problem: opens a starter that fits the words, named after it */
-function simSketch(text, label) {
-  return el('button', { class: 'btn sm simsketch', onclick: () => { const t = SIM_TPL.find(x => x.re.test(text || '')) || SIM_TPL[3]; simNewFrom(t.id, String(text || '').replace(/[*_`#>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 58) || t.t, location.hash); location.hash = '#/sim'; } }, label || 'Sketch it in the simulator');
+function simSketch(text, label, live) {
+  return el('button', { class: 'btn sm simsketch', onclick: () => { const t = SIM_TPL.find(x => x.re.test(text || '')) || SIM_TPL[3]; const d = simNewFrom(t.id, String(text || '').replace(/[*_`#>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 58) || t.t, location.hash); if (live) { d.live = live; save(); } location.hash = '#/sim'; } }, label || 'Sketch it in the simulator');
 }
 /* a module's simulator challenges, for its chapter, quiz and design pages */
 function simCard(mid, opts) {
-  opts = opts || {}; const sc = SIM_SC.filter(s => s.mid === mid); if (!sc.length) return null; const done = simState().done;
+  opts = opts || {}; const sc = SIM_SC.filter(s => s.mid === mid); if (!sc.length) return null; const done = simState().done, ex = simState().ex || {}, tail = opts.exam ? '/exam' : '';
   return el('section', { class: 'card pad stack simmod' }, [el('div', { class: 'row wrap' }, [el('h3', { class: 'grow', text: opts.title || 'Prove it in the simulator' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: sc.filter(s => done[s.id]).length + ' of ' + sc.length + ' passed' })]),
-    el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'A design that fails on purpose. Change boxes, replicas or wires until Check my design passes.' }),
-    el('div', { class: 'stack', style: { gap: '6px' } }, sc.map(s => el('a', { class: 'simsc', href: '#/sim/sc/' + s.id, 'data-sc': s.id }, [el('span', { class: 'grow' }, [el('b', { text: (done[s.id] ? '✓ ' : '') + s.t }), el('small', { text: s.lvl + ' · ' + s.secs + ' s run' })]), el('span', { class: 'chip ' + (done[s.id] ? 'c-dsa' : 'c-arch'), text: done[s.id] ? 'Passed' : 'Try it' })])))]);
+    el('span', { class: 'muted', style: { fontSize: '14px' }, text: opts.exam ? 'Exam: fix a broken design with no help. Hints are there, but each one costs marks.' : 'A design that fails on purpose. Learn mode opens hints as you go; switch to Exam to score yourself.' }),
+    el('div', { class: 'stack', style: { gap: '6px' } }, sc.map(s => el('a', { class: 'simsc', href: '#/sim/sc/' + s.id + tail, 'data-sc': s.id }, [el('span', { class: 'grow' }, [el('b', { text: (done[s.id] ? '✓ ' : '') + s.t }), el('small', { text: s.lvl + ' · ' + s.secs + ' s run' + (ex[s.id] && ex[s.id].best != null ? ' · best exam ' + ex[s.id].best : '') })]), el('span', { class: 'chip ' + (opts.exam ? 'c-ai' : done[s.id] ? 'c-dsa' : 'c-arch'), text: opts.exam ? 'Exam' : done[s.id] ? 'Passed' : 'Learn it' })])))]);
 }
 /* Today, below the plan: this week's first unpassed challenge, else a quick start */
 function simToday() {
@@ -691,5 +923,5 @@ function simToday() {
   const mods = [sc.cur].concat(wk).filter((x, i, a) => x && a.indexOf(x) === i);
   const s = mods.map(m => SIM_SC.find(x => x.mid === m && !done[x.id])).find(Boolean);
   if (!s) return null;
-  return el('section', { class: 'card pad row wrap simtoday' }, [el('span', { class: 'simab', style: { background: 'var(--plum)' }, text: 'SIM' }), el('div', { class: 'grow stack', style: { gap: '0' } }, [el('b', { text: 'Simulator challenge: ' + s.t }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Module ' + modLabel(s.mid) + ' · about 5 minutes' })]), el('a', { class: 'btn sm', href: '#/sim/sc/' + s.id, text: 'Open' })]);
+  return el('section', { class: 'card pad row wrap simtoday' }, [el('span', { class: 'simab', style: { background: 'var(--plum)' }, text: 'SIM' }), el('div', { class: 'grow stack', style: { gap: '0' } }, [el('b', { text: 'Simulator challenge: ' + s.t }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Module ' + modLabel(s.mid) + ' · about 5 minutes' })]), el('a', { class: 'btn sm', href: '#/sim/sc/' + s.id + (done[s.id] ? '/exam' : ''), text: done[s.id] ? 'Take the exam' : 'Learn it' })]);
 }
