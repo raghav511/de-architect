@@ -106,12 +106,14 @@ async function run(engine) {
     ok(/✓|✗/.test(await txt(p, '.simresult')), 'no grade');
   });
 
-  await S('Interview loop: read the code, tap the bug line, fix it and the real Python tests pass; a STAR story saves', async p => {
+  await S('Interview loop: read the code, tap the bug line, fix it and the real Python tests pass; a STAR story saves; a modelling case compares', async p => {
     await boot(p, '#/loop/cc/cc12'); await p.waitForSelector('.lplines', { timeout: 20000 }); await p.click('.lpopt >> nth=1'); await p.click('.lpln[data-line="2"]');
     await p.fill('.lpfix', 'def page(rows, page_no, size):\n    start = (page_no - 1) * size\n    return rows[start:start + size]'); await p.click('button:has-text("Run the tests")');
     await p.waitForSelector('.badge:has-text("Tests pass")', { timeout: 90000 });
     await boot(p, '#/loop/r5/stories'); await p.click('button:has-text("+ New story")'); await p.fill('.lptitle', 'Smoke story'); await p.click('button:has-text("All stories")');
     ok(/Smoke story/.test(await txt(p, '.lpstory')), 'story not listed');
+    await boot(p, '#/loop/r8/cases'); await p.waitForSelector('.lpcase', { timeout: 20000 }); await p.fill('#page .lpf textarea >> nth=1', 'One row per trip request'); await p.click('button:has-text("Compare with the model answer")');
+    ok((await p.$$('.lpmodel')).length === 6, 'modelling answers not shown');
   });
 
   await S('Sync: progress from the other device merges in and this device uploads', async (p, c) => {

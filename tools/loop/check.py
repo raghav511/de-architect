@@ -29,4 +29,19 @@ for it in d['cc']:
 for x in d['cx']:
     if x['ans'] not in d['cxChoices']:
         bad += 1; print('BAD  ' + x['id'] + ': answer not among the choices')
+
+# every data platform design links to a simulator walkthrough and challenges that exist; rounds 8 and 9 answer every part
+import re
+sim = open(os.path.join(os.path.dirname(__file__), '../../js/sim.js')).read()
+sc_ids = set(re.findall(r"\{ id: '(\w+)', mid: '", sim)); tpl_ids = set(re.findall(r"\{ id: '(\w+)',(?: swe: true,)? t: '", sim))
+for t in d['topics'] + d['webTopics']:
+    miss = [x for x in t.get('sc', []) if x not in sc_ids] + ([t['tpl']] if t['tpl'] not in tpl_ids else [])
+    if miss: bad += 1; print('BAD  topic ' + t['id'] + ': unknown ' + ', '.join(miss))
+    else: print('ok   topic ' + t['id'])
+parts = {'model': ['ask', 'grain', 'facts', 'dims', 'keys', 'query'], 'metrics': ['goal', 'metrics', 'events', 'pipeline', 'sql', 'diag']}
+for k, ps in parts.items():
+    for c in d[k]:
+        gap = [p for p in ps if not c['a'].get(p)]
+        if gap or len(c['rubric']) < 4: bad += 1; print('BAD  ' + c['id'] + ': missing ' + ', '.join(gap))
+        else: print('ok   ' + c['id'])
 sys.exit(1 if bad else 0)
