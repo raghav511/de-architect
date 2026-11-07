@@ -1,7 +1,8 @@
 {
-  "version": "1.24.0",
+  "version": "1.24.1",
   "date": "2026-11-07",
   "notes": [
-    "Hand-written reels are now narrated in a natural recorded voice (Heart). Open the voice button in a reel to try it, or pick a device voice or captions only."
+    "Python 2 now has 8 reels in the natural Heart voice.",
+    "The refresh now runs every evening: new interview questions, coding problems, system design questions and AI news go into the right sections, with reels for anything new."
   ]
 }
