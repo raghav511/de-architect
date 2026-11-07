@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.30.0';
+const VERSION = '1.31.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -26,7 +26,7 @@ const I = { reel: '<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M
   update: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>', back: '<path d="M15 18l-6-6 6-6"/>', fwd: '<path d="M9 6l6 6-6 6"/>', dbl_l: '<path d="M18 6l-6 6 6 6M11 6l-6 6 6 6"/>', dbl_r: '<path d="M6 6l6 6-6 6M13 6l6 6-6 6"/>',
   x: '<path d="M18 6L6 18M6 6l12 12"/>', check: '<path d="M5 12l5 5 9-10" stroke="#fff" stroke-width="3"/>', spark: '<path d="M12 3l1.8 4.6L18 9.4l-4.2 1.8L12 16l-1.8-4.8L6 9.4l4.2-1.8z"/><path d="M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
   git: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 7v10M18 11c0 4-6 3-11 7"/>', news: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/>',
-  term: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1.30.0 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'
+  term: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1.31.0 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'
 };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 /* text from the daily refresh (scraped questions, news) and from AI replies is rendered as Markdown, so its HTML is
@@ -219,7 +219,7 @@ function shell(title, eyebrow, body, opts) {
     opts.extra || null,
     el('div', { class: 'row topbtns', style: { gap: '8px' } }, [
       el('button', { class: 'btn icon', onclick: () => openSearch(), title: 'Search (⌘K or /)', 'aria-label': 'Search' }, svg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>', 18)),
-      avatarBtn(route === 'profile')])]);
+      typeof authTopBtn === 'function' ? authTopBtn() : null, avatarBtn(route === 'profile')])]);
   const pageEl = opts.raw ? body : el('main', { class: 'page', id: 'page' }, body);
   /* trust fix 21: tell the learner when a newer version is published instead of silently running an old one */
   if (hasUpdate() && pageEl.prepend) pageEl.prepend(el('div', { class: 'hint row wrap', role: 'status', style: { margin: '0 0 12px' } }, [el('span', { class: 'grow' }, [el('b', { text: 'Version ' + S.newVersion + ' is available. ' }), 'You are on ' + VERSION + '; content and fixes may be out of date.']), el('button', { class: 'btn sm pri', onclick: doUpdate, text: 'See what is new' })]));
@@ -235,6 +235,7 @@ function logo() { const s = svg('<path d="M4 22h8l4-12 4 12h8" stroke="#5CC8B0" 
 let cleanup = [];
 function route() {
   cleanup.forEach(f => { try { f(); } catch (e) { } }); cleanup = [];
+  if (typeof authGate === 'function' && authGate()) return; /* signed out after 24 hours: sign in first */
   if (typeof schedFlush === 'function') schedFlush();
   const p = location.hash.replace(/^#\/?/, '').split('/');
   const r = p[0] || 'today';
@@ -927,7 +928,7 @@ function saveSettings(body) {
     const su = g('st_sync'); /* trust fix 20: refuse a sync URL that cannot work, warn when it has no key */
     if (su && !/^https:\/\/|^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(su)) { toast('That sync URL is not valid: it must start with https://. Settings were not saved.', null, 6000); return false; }
     if (su && /script\.google\.com/.test(su) && !/[?&]k=/.test(su)) setTimeout(() => toast('Saved. This sync URL has no ?k= key: anyone with the URL could read your progress.', null, 7000), 400);
-    const st0 = g('st_start'); if (/^\d{4}-\d\d-\d\d$/.test(st0)) { const d = new Date(st0 + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); if (iso(d) !== S.start) S.since = iso(new Date()); S.start = iso(d); } S.settings.syncUrl = su; S.settings.aiKey = g('st_key'); S.settings.aiModel = g('st_model') || 'claude-haiku-5-5';
+    const st0 = g('st_start'); if (/^\d{4}-\d\d-\d\d$/.test(st0)) { const d = new Date(st0 + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); if (iso(d) !== S.start) S.since = iso(new Date()); S.start = iso(d); } S.settings.syncUrl = su; S.settings.googleClientId = g('st_gcid'); S.settings.aiKey = g('st_key'); S.settings.aiModel = g('st_model') || 'claude-haiku-5-5';
     const wd = Math.round(+g('st_wd')), we = Math.round(+g('st_we')); S.settings.capWd = wd >= 15 && wd <= 600 ? wd : 60; S.settings.capWe = we >= 15 && we <= 720 ? we : 120; const nb = (id, lo, hi, def) => { const v = Math.round(+g(id)); return v >= lo && v <= hi ? v : def; }; S.settings.codeWd = nb('st_cwd', 0, 300, 50); S.settings.codeWe = nb('st_cwe', 0, 300, 80); S.settings.ivWd = nb('st_iwd', 15, 300, 30); S.settings.ivWe = nb('st_iwe', 15, 300, 45); S.settings.studyTime = g('st_time') || '07:00'; S.settings.accent = g('st_accent') || 'teal'; S.settings.name = g('st_name'); applyTheme(); S.settings.ai = g('st_ai') !== 'off'; applyAi();
     S.settings.fun = g('st_fun') !== 'off'; S.settings.sound = g('st_sound') === 'on';
     S.settings.coachVia = g('st_coach') || 'mac'; S.settings.gradeModel = g('st_grade') || 'auto'; S.settings.prefsAt = Date.now(); /* newest preferences win when devices sync */
@@ -954,7 +955,7 @@ function vProfile() {
     el('div', { class: 'qa qmode' }, [el('b', { text: 'Mode' }), modeSeg])]);
   const T = [['sync', 'Sync'], ['look', 'Look'], ['plan', 'Plan'], ['ai', 'AI'], ['data', 'Data']];
   const panels = {
-    sync: [f('st_sync', 'Sync URL (Apps Script, ends in ?k=your key)', S.settings.syncUrl, 'url', 'https://script.google.com/macros/s/…/exec?k=…'), note('Your plan, minutes and AI choices sync across devices. Theme, keys and this URL stay on this device.'),
+    sync: [f('st_sync', 'Sync URL (Apps Script, ends in ?k=your key)', S.settings.syncUrl, 'url', 'https://script.google.com/macros/s/…/exec?k=…'), f('st_gcid', 'Google client ID (for Sign in with Google; not a secret)', S.settings.googleClientId || '', 'text', '…apps.googleusercontent.com'), note('Your plan, minutes and AI choices sync across devices. Theme, keys and this URL stay on this device.'),
       el('label', { class: 'row', style: { gap: '10px', fontSize: '14.5px' } }, [el('input', { type: 'checkbox', id: 'st_notify', checked: S.settings.notifyUpdates ? 'checked' : null, style: { width: '22px', height: '22px' } }), 'Notify me when an app update is available'])],
     look: [sel('st_accent', 'Accent colour', S.settings.accent || 'teal', [['teal', 'Teal'], ['blue', 'Blue'], ['plum', 'Plum']]), f('st_name', 'Your name (used in the greeting)', S.settings.name || '', 'text', 'Your first name'), sel('st_fun', 'Celebrations (confetti when a module ships or a warm-up goes well)', S.settings.fun === false ? 'off' : 'on', [['on', 'On'], ['off', 'Off']]), sel('st_sound', 'Sounds in the warm-up', S.settings.sound ? 'on' : 'off', [['off', 'Off'], ['on', 'On']])],
     plan: [f('st_start', 'Week 1 starts (pick any day in that week)', S.start, 'date'), el('div', { class: 'tri' }, [f('st_wd', 'Reading, weekday minutes', S.settings.capWd || 60, 'number'), f('st_we', 'Reading, weekend minutes', S.settings.capWe || 120, 'number'), f('st_time', 'Study time', S.settings.studyTime || '07:00', 'time')]), el('div', { class: 'tri' }, [f('st_cwd', 'Coding, weekday', S.settings.codeWd || 50, 'number'), f('st_cwe', 'Coding, weekend', S.settings.codeWe || 80, 'number')]), el('div', { class: 'tri' }, [f('st_iwd', 'Interview and coaching, weekday', S.settings.ivWd || 30, 'number'), f('st_iwe', 'Interview and coaching, weekend', S.settings.ivWe || 45, 'number')])],
@@ -970,17 +971,20 @@ function vProfile() {
   const form = el('section', { class: 'card pad stack', onchange: () => { if (saveSettings(form)) { document.querySelectorAll('.avatar span, .avatar.big').forEach(a => { a.textContent = (userName().slice(0, 1).toUpperCase() || 'Me'); }); } } }, [tablist].concat(panelEls, [note('Changes save as you make them.')]));
   const body = el('div', { class: 'stack profile' }, [
     el('section', { class: 'card pad row phero' }, [el('span', { class: 'avatar big', 'aria-hidden': 'true', text: (userName().slice(0, 1).toUpperCase() || 'Me') }), el('div', { class: 'grow stack', style: { gap: '2px', minWidth: 0 } }, [el('h1', { text: userName() || 'Your profile' }), el('span', { class: 'muted', text: 'Week ' + weekOf(sc.today) + ' · ' + done + ' of ' + sc.units.length + ' steps' + (last ? ' · ends ' + shortDate(last) : '') })])]),
-    quick, form]);
+    typeof authCard === 'function' ? authCard() : null, quick, form]);
   shell('Profile', 'Sync, updates, theme, AI and settings', body);
 }
 async function doSync() {
   const url = S.settings.syncUrl;
   if (!url) { toast('Set up sync first: paste your sync URL on your profile.'); settings('st_sync'); return; }
+  if (typeof authNeeded === 'function' && authNeeded()) { toast('Sign in with Google first: your 24-hour session ended.'); location.hash = '#/profile'; return; }
+  const sess = typeof authLive === 'function' && authLive() ? (authGet() || {}).session || '' : '';
   S.syncing = true; const b = $('#syncBtn'); if (b) b.querySelector('.t').textContent = 'Syncing…';
   try {
     /* QA fix 2: if the server's copy cannot be read, stop: uploading now would replace it with this device's copy alone */
-    const remote = await fetch(url + (url.includes('?') ? '&' : '?') + 'action=load', { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error('download failed (' + r.status + ')'); return r.json(); });
+    const remote = await (sess ? fetch(url, { method: 'POST', body: JSON.stringify({ action: 'load', session: sess }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } }) : fetch(url + (url.includes('?') ? '&' : '?') + 'action=load', { cache: 'no-store' })).then(r => { if (!r.ok) throw new Error('download failed (' + r.status + ')'); return r.json(); });
     if (!remote || typeof remote !== 'object') throw new Error('download unreadable');
+    if (remote && remote.ok === false && /session/.test(remote.error || '') && typeof authSignOut === 'function') { S.syncing = false; authSignOut('Your session ended. Sign in again to sync; your progress stays on this device.'); return; }
     if (remote && remote.ok === false) throw new Error(remote.error || 'sync refused');
     const local = JSON.parse(JSON.stringify(S));
     let merged = local;
@@ -996,7 +1000,7 @@ async function doSync() {
     const body = JSON.parse(JSON.stringify(S)); delete body.settings; delete body.syncing; delete body.coach;
     body.prefs = Object.assign({ at: S.settings.prefsAt || 0 }, ...PREF_KEYS.filter(k => k in S.settings).map(k => ({ [k]: S.settings[k] })));
     /* trust fix 17: only say synced when the sync script confirms it saved */
-    const pr = await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'save', data: body }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+    const pr = await fetch(url, { method: 'POST', body: JSON.stringify({ action: 'save', data: body, session: sess || undefined }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
     if (!pr.ok) throw new Error('upload failed (' + pr.status + ')');
     const pj = await pr.json().catch(() => null);
     if (pj && pj.ok === false) throw new Error(pj.error || 'upload refused');

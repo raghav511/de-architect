@@ -33,6 +33,7 @@ Top unblocked item goes next. Each item: goal served (1 understand, 2 remember, 
 
 ## Done
 
+- 1.31.0: Sign in with Google with 24-hour sessions (user request). Waiting on the user: create the OAuth client ID and set CLIENT_ID and OWNERS in the deployed sync script.
 - 1.29.0: security review (secret scan on commit and ship, profile out of the repo, CSP, private commit email, grader sandbox reads) and the approved home page reorganization.
 - 1.28.1: the 4 long-failing journeys pass (3 outdated tests, 1 real issue: New this week source links did not say they open a new tab).
 - 1.28.0: QA trust release (22 trust tests, 15 confirmed issues fixed) and four-level reels for every section.
