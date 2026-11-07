@@ -1,11 +1,10 @@
 {
-  "version": "1.36.0",
+  "version": "1.36.1",
   "date": "2026-11-07",
   "notes": [
-    "The interview loop is now a data engineering staff loop: nine rounds, with a card showing the typical loop at Meta, Google, Uber and Salesforce.",
-    "New SQL round: Hard problems against a 15-minute clock (shown on the problem page), with your best time per problem, and the eight SQL patterns most live rounds use.",
-    "New data modelling round: model a product (Uber trips, Meta ads, a Salesforce pipeline, orders, music plays) part by part, then compare with the model answer and tick the rubric.",
-    "New product sense and metrics round (Meta style): goal, metrics with a guardrail, events to log, pipeline, the metric in SQL, and diagnosing a drop.",
-    "System design now uses data platforms at real scale: 1 million events a second exactly once, multi-region CDC, a multi-petabyte backfill, a feature store and a lakehouse migration, each with its module, simulator challenges and an estimate. The web designs are still there, folded."
+    "Grading through your sync script now checks for results on a gentle back-off (at most 8 checks per answer) and pauses while the app is in the background, so it no longer uses up Google quotas.",
+    "Your sync script refuses every request when it has no key set, unless you are signed in, and the app tells you why.",
+    "The app may now only talk to the services it needs (your sync script, Google sign-in, the AI API and the Python download), and Settings accepts only Google Apps Script sync URLs.",
+    "Profile \u203a AI warns that your key is kept in a browser address shared with your other pages, and suggests a spend-limited key."
   ]
 }
