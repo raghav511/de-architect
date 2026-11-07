@@ -90,6 +90,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.36.5: release.
 - 1.36.4: Iceberg architect's lens (2.9, linked from 8.5): when to use an open table format and when not, who owns it, how it fails, six internals answers (format v3 deletion vectors among them), three interview and three quiz questions, eight reels; 8.5 adds the catalog products (Polaris, Unity, S3 Tables).
 - 1.36.2: Security hardening (review 11–13): grading checks back off and pause while hidden (at most 8 per answer), the sync script no longer serves anyone when no KEY is set, the page may only call the hosts it needs, and only Apps Script sync URLs are accepted; Profile › AI warns that the key lives in a browser origin shared with other pages.
 - 1.36.1: button crawler (`tools/crawl.js`) and its first fixes: the Sign in label fits its button on phones, the reel title is no longer hidden under the Shuffle filters, written reels whose flow pictures used steps or nodes no longer crash the player (257 pictures), 44 px touch targets for reel filters, My week/Shuffle, the Mode buttons, checkboxes, the day arrows, the level chip and the plan's › links; reel filters say which one is on to screen readers; Mobbin UX benchmark in `tools/crawl/UX.md` (proposals wait for approval).
