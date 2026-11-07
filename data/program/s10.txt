@@ -50,22 +50,52 @@ You have built most of these systems in the last nine sprints. This sprint teach
 
 Two habits help. Say what you are assuming when the interviewer does not answer: "I'll assume 50,000 events per second at peak." And state the guarantee the system gives: "Dashboards are at most 30 seconds behind and may revise for two minutes; the daily numbers are final."
 
-## 10.3 Capacity arithmetic
+## 10.3 Capacity arithmetic at staff scale
 
-Memorise a few numbers and the rest is multiplication.
+Memorise a few numbers and the rest is multiplication. At staff level the interviewer expects billions of events a day, petabytes, regions and money, so the numbers below go that far.
 
 | Fact | Value |
 |---|---|
 | Seconds in a day | 86,400, about 10⁵ |
-| 1 million events a day | about 12 per second |
 | 1 billion events a day | about 11,600 per second |
+| 100 billion events a day | about 1.2 million per second |
 | A typical event | 0.5 to 1 KB as JSON |
 | Parquet compared with JSON | often 5 to 10 times smaller |
 | Peak compared with average | plan for 2 to 3 times |
+| One Kafka partition | plan for about 5 to 10 MB/s in, and one consumer task reading it at a few MB/s |
+| One Kafka broker | a few hundred MB/s in, before replication; replication factor 3 triples the disk and network writes |
+| S3 request rate | about 3,500 writes (PUT, COPY, POST, DELETE) and 5,500 reads (GET, HEAD) per second **per prefix**; more prefixes, more rate |
+| S3 object size for analytics | 128 MB to 1 GB per file; millions of small files cost requests and planning time |
+| Memory, SSD, same-zone network, cross-region | about 0.1 µs, 100 µs, 0.5 ms and 50 to 150 ms |
 
-A worked example. Meridian has 2 million trips a day, and each trip emits about 50 events. That is 100 million events a day, about 1,200 per second on average and 3,000 to 4,000 at peak. At 1 KB each, raw data is 100 GB a day, or about 36 TB a year before compression. As Parquet, perhaps 5 TB a year. If one consumer handles 5,000 events per second, a dozen Kafka partitions cover peak with headroom.
+### Unit costs to reason with
 
-The interviewer will rarely check your arithmetic. They check that you did it, and that your design follows from it: at 3,000 events per second, a single database could take the writes, so if you propose Kafka you should say why.
+Rough public list prices in US regions, late 2026. They change and vary by provider and discount, so say "about" and show the arithmetic; the interviewer checks the method, not the cent.
+
+| Item | About |
+|---|---|
+| Object storage, standard | $23 per TB-month |
+| Object storage, infrequent access | $12 per TB-month (plus a retrieval charge) |
+| Object storage, archive (instant or deep) | $4 to $1 per TB-month (deep archive takes hours to read) |
+| S3 requests | $5 per million writes, $0.40 per million reads |
+| Query by data scanned (BigQuery on demand, Athena) | $5 to $6.25 per TB scanned |
+| Compute, on-demand | about $0.04 to $0.05 per vCPU-hour |
+| Compute, spot or preemptible | about a third of on-demand, can be taken away |
+| Data out to the internet | about $0.09 per GB ($90 per TB) |
+| Between regions | about $0.02 per GB ($20 per TB) |
+| Between zones in a region | about $0.01 per GB each way |
+
+### Worked examples
+
+**A. One million events a second.** A product with 100 billion events a day averages about 1.2 million a second; use 1 million as the planning number and 2 to 3 million at peak. At 1 KB each that is about 1 GB/s, or 86 TB a day raw. Kafka: at about 4 MB/s per partition, 1 GB/s needs 250 partitions, so plan 300 to 500 across brokers that each take a few hundred MB/s (with replication factor 3, about 3 GB/s of disk writes cluster-wide). One stream task per partition. As Parquet, about 10 TB a day, so about 3.6 PB a year, roughly $80,000 a month of standard storage after a year unless older data moves to cheaper tiers. *Simulator:* [One million events a second](#/sim/sc/million) fails at 128 partitions until you size them.
+
+**B. A multi-petabyte backfill.** Recompute three years of a 2.5 PB-a-year events table: 7.5 PB raw, about 1.5 PB as compressed Parquet to read. Scanning it in a pay-per-TB engine at about $5 per TB costs about $7,500 a pass, and a mistake means paying again. On your own Spark cluster: if one vCPU reads about 50 MB/s of Parquet, 1.5 PB is 30 million vCPU-seconds, about 8,300 vCPU-hours, so about $400 on demand or about $140 on spot, plus the S3 reads (1.5 PB in 512 MB files is 3 million GETs, about $1.20). The lesson: compute is cheap, scanning someone else's engine per TB is not, and an idempotent, partition-by-partition backfill can run on spot. Writes: 20,000 objects a second under one prefix gets throttled at 3,500, so spread keys over prefixes. *Simulator:* [Backfill on a budget](#/sim/sc/petabyte) and [S3 request rate per prefix](#/sim/sc/prefix).
+
+**C. Multi-region, active-active.** Two regions both take writes. State the targets first: **RPO** (how much data you may lose, as time) and **RTO** (how long you may be down). Asynchronous replication across regions adds 50 to 150 ms plus whatever the replication backlog is, so RPO is "seconds", not zero; zero RPO needs synchronous writes across regions and costs that latency on every write. Conflicts need a rule: one home region per key (users pinned to a region), or last-writer-wins with clocks you trust, or CRDTs for counters. Cost: every byte replicated pays inter-region transfer, so 10 TB a day across regions is about $200 a day. *Simulator:* [Lose a region: RPO and RTO](#/sim/sc/region).
+
+**D. A warehouse that charges by TB scanned.** Dashboards running 2,000 queries an hour, each scanning 50 GB of an unpartitioned table, scan 100 TB an hour: about $500 an hour, $360,000 a month. Partitioning by date and clustering by the filter column so each query reads 1 GB cuts it fifty-fold; a daily aggregate table that queries read instead cuts it again. Always turn "per TB" into "per month" out loud.
+
+The interviewer will rarely check your arithmetic. They check that you did it, and that your design follows from it: at 3,000 events per second, a single database could take the writes, so if you propose Kafka you should say why; at 1 million a second, you should say how many partitions and why.
 
 ## 10.4 Choosing a serving store
 
@@ -96,7 +126,7 @@ Several of your bank's questions test these terms directly.
 
 **Recovery targets.** **RPO**, the recovery point objective, is how much data you can afford to lose, measured in time. **RTO**, the recovery time objective, is how long you can be down. A design for a region failure states both.
 
-## 10.6 Eight designs
+## 10.6 Twelve designs
 
 Each of these is a prompt from your bank. The skeletons below are the starting point for your one-page documents.
 
@@ -115,6 +145,14 @@ Each of these is a prompt from your bank. The skeletons below are the starting p
 **7. A task scheduler.** *(Fanatics.)* You answered this in sprint 9: a state store, a scheduling loop that releases tasks whose dependencies succeeded, workers with heartbeats, retries with backoff, and partitioned schedulers at scale.
 
 **8. An executive metrics layer.** *(Uber: "an executive dashboard for business leaders".)* The problem is consistency, not speed. Gold marts from sprint 4, with metric definitions in one place, a semantic layer or metrics store, so every dashboard computes "completed trips" the same way. Pre-aggregate daily and weekly tables for speed. Certify the core metrics with tests and owners. *Key decisions:* definitions and ownership, freshness by 07:00, reconciliation with finance, and access by role.
+
+**9. Ads impression and click attribution at billions a day.** *(Meta, Google, Uber Ads.)* 50 billion impressions and 500 million clicks a day: about 600,000 impressions a second on average. Impressions and clicks go to separate Kafka topics keyed by impression id. A stream job joins each click to its impression within a window (impressions arrive first; keep a day of impression state, keyed and compacted), and conversions from advertisers arrive up to 7 days later, so last-click attribution runs as a daily batch over a 7-day lookback and restates the affected days. Billing uses the batch numbers; dashboards use the stream. *Key decisions:* state size (600,000 a second × a day × 100 bytes is about 5 TB of join state, so keep only clicked impressions' keys, or join in batch); deduplicating click fraud; restating spend.
+
+**10. An experimentation platform.** *(Meta, Uber, Airbnb.)* Thousands of experiments at once over billions of exposure events a day. Assignment is a hash of user and experiment id, so no lookup is needed; exposures are logged when the user actually sees the change. A daily batch joins exposures to metric events per user, computes per-user totals, then per-variant means and variances (CUPED to cut variance), and writes results with confidence intervals. *Key decisions:* the unit of randomisation; sample ratio mismatch checks; pre-computing per-user metric tables once and reusing them for every experiment, because joining raw events per experiment does not scale; guardrail metrics on every test.
+
+**11. Deleting a user everywhere (GDPR) across a petabyte lake.** *(Any company with EU users.)* A deletion request must remove a person from every table within 30 days. Keep a deletion log keyed by user id. Tables are Iceberg or Delta, partitioned by date but with user id in every row, so a weekly job runs a merge-on-read delete for the batch of ids (deletion vectors or position deletes), then compaction rewrites the affected files and snapshot expiry removes the old ones, or the data is still there. Kafka topics hold at most 7 days, so they expire on their own; backups follow the same log. *Key decisions:* where personal data may live (a short list of tables with user id); batching deletes so you rewrite files once a week, not per request; proof of deletion for auditors. Cost: rewriting 1% of a 1 PB lake is 10 TB of reads and writes a week.
+
+**12. A lineage and catalog platform.** *(Salesforce, LinkedIn's DataHub, Uber's Databook.)* Every job emits OpenLineage events (inputs, outputs, columns, run status) to Kafka; a service builds a graph of datasets and jobs, and a search index serves "who uses this column?". At 50,000 tables and 10,000 jobs a day, the graph is small; the hard parts are coverage (every engine must emit) and trust (owners, descriptions and tests). *Key decisions:* push (jobs emit) over pull (crawl query logs); column-level lineage for impact analysis before a schema change; ownership required to publish a table.
 
 ## 10.7 AI in the design round
 
@@ -569,6 +607,21 @@ assert len(m.recent["a"]) == 4
 -->
 
 @@interview
+Q: Estimate the Kafka cluster and stream jobs for 100 billion events a day.
+SRC: staff-level practice
+TAG: design
+A: 100 billion a day is about 1.2 million a second on average; plan 1 million average and 2 to 3 million at peak. At 1 KB an event that is 1 GB/s average, up to 3 GB/s peak. A partition comfortably takes about 5 to 10 MB/s in and one consumer task reads a few MB/s, so 3 GB/s at about 5 MB/s is 600 partitions; I would say 600 to 1,000 for growth and key skew. Brokers take a few hundred MB/s each and replication factor 3 triples writes, so 9 GB/s of disk writes needs on the order of 30 to 50 brokers. Retention: 7 days at 86 TB a day is 600 TB raw, 1.8 PB with replication, so tiered storage moves older segments to object storage. One stream task per partition, so 600 to 1,000 tasks. Then I check the arithmetic against cost and say what I would measure first in a load test.
+---
+Q: A team wants to backfill three years of a 2.5 PB-a-year table. How do you plan it and what does it cost?
+SRC: staff-level practice
+TAG: design
+A: Three years is 7.5 PB raw, about 1.5 PB of Parquet to read. In a pay-per-TB engine at about $5 a TB, each pass costs about $7,500 and a mistake doubles it. On Spark: at about 50 MB/s per vCPU, 1.5 PB is about 8,300 vCPU-hours, roughly $400 on demand or $140 on spot, so I run it on Spark with spot capacity. It must be idempotent per partition (overwrite one day at a time), throttled so daily SLAs keep priority, and restartable from the last good partition. Writes go to a new table version swapped atomically after count and sum checks per partition. Keys are spread over prefixes, because S3 throttles at about 3,500 writes a second per prefix.
+---
+Q: Design active-active across two regions for an order database. What RPO and RTO can you promise?
+SRC: staff-level practice
+TAG: design
+A: First the targets: RPO is how much data we can lose, RTO how long we can be down. With asynchronous replication, RPO is the replication lag, usually seconds, and I monitor it as a page; zero RPO needs synchronous cross-region writes, which adds 50 to 150 ms to every write. Active-active needs a conflict rule: pin each customer to a home region so a key has one writer, and fail over the home on outage. RTO is the time to detect and promote, so health checks and automated failover give tens of seconds. Every replicated byte pays inter-region transfer, about $20 per TB, so I size it. I test failover regularly, because an untested failover is a guess.
+---
 Q: Design an end-to-end clickstream pipeline that supports dashboards with at most 30 seconds of delay and daily batch analytics.
 SRC: LinkedIn, 5 YOE
 TAG: design

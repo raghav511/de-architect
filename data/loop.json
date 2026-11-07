@@ -1471,6 +1471,7 @@
    "tpl": "stream",
    "mid": "s05",
    "sc": [
+    "million",
     "partitions",
     "hotkey",
     "dlq"
@@ -1516,6 +1517,7 @@
    "tpl": "cdc",
    "mid": "s06",
    "sc": [
+    "region",
     "cdc",
     "zone",
     "failover"
@@ -1561,8 +1563,9 @@
    "tpl": "batch",
    "mid": "s03",
    "sc": [
-    "spark",
-    "budget"
+    "petabyte",
+    "prefix",
+    "spark"
    ],
    "fr": [
     "Recompute three years of a core fact table after a logic fix",
