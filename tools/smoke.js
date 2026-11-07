@@ -106,6 +106,14 @@ async function run(engine) {
     ok(/✓|✗/.test(await txt(p, '.simresult')), 'no grade');
   });
 
+  await S('Interview loop: read the code, tap the bug line, fix it and the real Python tests pass; a STAR story saves', async p => {
+    await boot(p, '#/loop/cc/cc12'); await p.waitForSelector('.lplines', { timeout: 20000 }); await p.click('.lpopt >> nth=1'); await p.click('.lpln[data-line="2"]');
+    await p.fill('.lpfix', 'def page(rows, page_no, size):\n    start = (page_no - 1) * size\n    return rows[start:start + size]'); await p.click('button:has-text("Run the tests")');
+    await p.waitForSelector('.badge:has-text("Tests pass")', { timeout: 90000 });
+    await boot(p, '#/loop/r5/stories'); await p.click('button:has-text("+ New story")'); await p.fill('.lptitle', 'Smoke story'); await p.click('button:has-text("All stories")');
+    ok(/Smoke story/.test(await txt(p, '.lpstory')), 'story not listed');
+  });
+
   await S('Sync: progress from the other device merges in and this device uploads', async (p, c) => {
     let posted = null;
     await c.route('https://sync.test/**', r => r.request().method() === 'POST' ? (posted = JSON.parse(r.request().postData()).data, r.fulfill({ headers: H, contentType: 'application/json', body: '{"ok":true}' })) : r.fulfill({ headers: H, contentType: 'application/json', body: JSON.stringify({ ok: true, data: { start: '2026-10-19', done: { 'other:step': '2026-11-01' }, solved: {}, updated: 1 } }) }));

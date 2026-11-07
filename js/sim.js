@@ -701,7 +701,7 @@ function vSim(a, b, c) {
       if (g) apx(out, el('div', { class: 'list' }, g.res.map(([k, v, want, ok]) => el('div', { class: 'item' }, [el('span', { class: 'grow t', text: (ok ? '✓ ' : '✗ ') + k }), el('span', { class: 's mono', text: v + ' (' + want + ')' })]))),
         g.exam ? el('p', { class: 'simscore', style: { margin: 0 } }, [el('b', { text: 'Exam score: ' + g.exam.score + ' / 100' }), ' · goals met ' + g.exam.hit + '%' + (g.exam.cost ? ', hints −' + g.exam.cost : ', no hints') + ' · ' + Math.floor(g.exam.secs / 60) + ' min ' + (g.exam.secs % 60) + ' s']) : null,
         el('p', { class: g.pass ? 'simpass' : 'simfail', style: { margin: 0 }, text: g.pass ? 'Passed. In an interview, say why: which box limited you, and what you changed.' : md === 'exam' ? 'Not yet. Change the design and submit again (a new attempt), or open a hint.' : 'Not yet. Open the next hint below if you are stuck.' }));
-      const seg = el('div', { class: 'seg simmode', role: 'group', 'aria-label': 'Mode' }, [['learn', 'Learn'], ['practice', 'Practice'], ['exam', 'Exam']].map(([k, t]) => el('button', { 'aria-selected': String(md === k), 'data-mode': k, onclick: () => { simMode[sc.id] = k; if (k === 'exam' && !ex.cur.lvl && !ex.cur.rev) ex.cur.t0 = Date.now(); lastGrade = null; panel(); draw(); }, text: t })));
+      const seg = el('div', { class: 'seg simmode', role: 'tablist', 'aria-label': 'Mode' }, [['learn', 'Learn'], ['practice', 'Practice'], ['exam', 'Exam']].map(([k, t]) => el('button', { role: 'tab', 'aria-selected': String(md === k), 'data-mode': k, onclick: () => { simMode[sc.id] = k; if (k === 'exam' && !ex.cur.lvl && !ex.cur.rev) ex.cur.t0 = Date.now(); lastGrade = null; panel(); draw(); }, text: t })));
       const modeNote = { learn: 'Learn: hints open as you go and nothing is scored.', practice: 'Practice: hints are free; passing earns XP.', exam: 'Exam: hints cost marks (−5, −10, −20, −40; suggestions −5). Score = goals met minus hints.' }[md];
       const names = ['Where to look', 'The idea', 'What to change', 'Show me'], costs = [5, 10, 20, 40];
       const ladder = el('div', { class: 'stack simhints', style: { gap: '8px' } }, [el('span', { class: 'lbl', text: 'Hints' })]);
@@ -826,7 +826,16 @@ const SIM_TPL = [
   { id: 'analytics', t: 'Real-time analytics', s: 'Events to Kafka to an OLAP store for dashboards', re: /dashboard|analytic|olap|metric|bi\b|aggregate|report/i,
     nodes: [['producer', 40, 60, { rps: 8000 }], ['kafka', 260, 60, { parts: 12 }], ['olap', 480, 140, { n: 5 }], ['bi', 260, 240, { rps: 200 }], ['lake', 480, 300]], edges: [[0, 1], [1, 2], [3, 2], [1, 4]] },
   { id: 'rag', t: 'RAG assistant', s: 'Service, embedding model, vector store, cache, LLM', re: /rag|llm|vector|embed|retriev|agent|ai\b|genai/i,
-    nodes: [['client', 40, 140, { rps: 20 }], ['svc', 240, 140, { n: 2 }], ['embed', 460, 60], ['vector', 680, 60], ['cache', 460, 220, { hit: 0.2 }], ['llm', 680, 220]], edges: [[0, 1], [1, 2], [2, 3], [1, 4], [4, 5]] }
+    nodes: [['client', 40, 140, { rps: 20 }], ['svc', 240, 140, { n: 2 }], ['embed', 460, 60], ['vector', 680, 60], ['cache', 460, 220, { hit: 0.2 }], ['llm', 680, 220]], edges: [[0, 1], [1, 2], [2, 3], [1, 4], [4, 5]] },
+  /* the classic web-app interview topics (Interview loop, design round); kept out of the quick-start row */
+  { id: 'url', swe: true, t: 'URL shortener', s: 'Users, load balancer, service, cache, key-value store', re: /url|short|tinyurl|bit\.?ly|link/i,
+    nodes: [['client', 40, 140, { rps: 12000 }], ['lb', 240, 140], ['svc', 440, 140, { n: 20, auto: true, max: 60 }], ['cache', 640, 140, { hit: 0.9 }], ['kv', 840, 140, { n: 1 }]], edges: [[0, 1], [1, 2], [2, 3], [3, 4]] },
+  { id: 'chat', swe: true, t: 'Chat system', s: 'Users, load balancer, connection servers, Kafka, delivery workers, message store', re: /chat|messag|whatsapp|slack|inbox/i,
+    nodes: [['client', 40, 140, { rps: 15000 }], ['lb', 240, 140], ['svc', 440, 140, { n: 25, auto: true, max: 60 }], ['kafka', 640, 140, { n: 3, parts: 12 }], ['stream', 840, 140, { n: 6 }], ['kv', 1040, 140, { n: 2 }]], edges: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]] },
+  { id: 'ride', swe: true, t: 'Ride-hailing', s: 'Driver locations through Kafka into a geo index; riders query it through an API', re: /ride|uber|lyft|taxi|driver|geo|location/i,
+    nodes: [['producer', 40, 60, { rps: 10000 }], ['kafka', 260, 60, { n: 3, parts: 24 }], ['stream', 480, 60, { n: 4 }], ['kv', 700, 140, { n: 2 }], ['client', 40, 240, { rps: 1500 }], ['lb', 260, 240], ['svc', 480, 240, { n: 4, auto: true, max: 20 }]], edges: [[0, 1], [1, 2], [2, 3], [4, 5], [5, 6], [6, 3]] },
+  { id: 'video', swe: true, t: 'Video streaming', s: 'Viewers through a CDN to object storage; uploads queued for transcoding', re: /video|youtube|netflix|stream(ing)? platform|transcod/i,
+    nodes: [['client', 40, 60, { rps: 40000 }], ['cdn', 260, 60, { hit: 0.95 }], ['lake', 480, 140], ['files', 40, 240, { rps: 100 }], ['queue', 260, 240], ['fn', 480, 300]], edges: [[0, 1], [1, 2], [3, 4], [4, 5], [5, 2]] }
 ];
 /* Teach me this design: one step per box (why it is there, what you could use instead, what it costs), then run, break and fix */
 const SIM_TEACH = {
@@ -892,7 +901,47 @@ const SIM_TEACH = {
       { why: 'A semantic cache returns stored answers for similar questions.', alt: 'No cache: every question costs a model call.', cost: 'One node.' },
       { why: 'The LLM writes the answer from the passages.', alt: 'A smaller self-hosted model.', cost: 'Per call: the biggest line.' }],
     brk: { type: 'extlimit', on: 'llm', t: 'The provider cuts your rate limit' }, fix: [{ set: 'cache', f: 'hit', v: 0.6, why: 'Matching similar questions, not only exact ones, answers 60% from the cache.' }],
-    goals: { err: 2 }, say: 'Embed the question, retrieve passages from the vector store, and call the LLM through a semantic cache. The cache is the main lever on both rate limits and cost.' }
+    goals: { err: 2 }, say: 'Embed the question, retrieve passages from the vector store, and call the LLM through a semantic cache. The cache is the main lever on both rate limits and cost.' },
+  url: { est: '100 million new links a month is about 40 writes a second; at 100 reads per write, about 4,000 redirects a second on average and 12,000 at peak. Seven characters of base62 give 3.5 trillion codes.',
+    steps: [
+      { why: 'People click short links (reads) and a few create them (writes). Reads dominate, so design for reads.', alt: '-', cost: '-' },
+      { why: 'The load balancer spreads clicks over the redirect servers.', alt: 'DNS round robin.', cost: 'Small.' },
+      { why: 'Stateless redirect servers look up the code and answer with a 301 or 302. A 302 lets you count clicks.', alt: 'Serve redirects at the CDN edge for the hottest links.', cost: '20 replicas, auto-scaling to 60.' },
+      { why: 'Popular links are read again and again, so a cache answers 90% of lookups from memory.', alt: 'No cache: every click hits the store.', cost: 'One node.' },
+      { why: 'A key-value store maps code to long URL. Codes come from a counter encoded in base62, or a hash with a collision check.', alt: 'Postgres: fine at this size, harder to shard later.', cost: 'One node for now.' }],
+    brk: { type: 'stampede', on: 'cache', t: 'The cache restarts empty' }, fix: [{ set: 'kv', f: 'n', v: 2, why: 'With a cold cache every click reaches the store; two nodes carry the full 12,000 a second.' }],
+    goals: { err: 2 }, say: 'Reads outnumber writes 100 to 1, so stateless redirect servers sit behind a load balancer with a cache in front of a key-value store; codes are a base62 counter. Size the store for a cold cache, because a cache restart sends every click to it.' },
+  chat: { est: '50 million daily users sending 40 messages a day is about 23,000 messages a second on average; here 15,000 at peak in one region. Each message is about 200 bytes, so 400 GB a day.',
+    steps: [
+      { why: 'Users keep a connection open and send and receive messages.', alt: '-', cost: '-' },
+      { why: 'The load balancer assigns each user to a connection server and keeps them there.', alt: '-', cost: 'Small.' },
+      { why: 'Connection servers hold WebSockets: they push messages to online users and know who is connected.', alt: 'Long polling: simpler, more requests.', cost: '25 replicas.' },
+      { why: 'Kafka orders messages per conversation (the conversation id is the key) and keeps them if a reader is slow.', alt: 'A queue per user: loses ordering across devices.', cost: '3 brokers, 12 partitions.' },
+      { why: 'Delivery workers store each message and fan it out to the recipients\' connection servers, or to push notifications if they are offline.', alt: '-', cost: '6 workers.' },
+      { why: 'A wide-column store (Cassandra) keeps messages by conversation and time for history and sync.', alt: 'Postgres: harder at billions of rows.', cost: '2 nodes.' }],
+    brk: { type: 'hot', on: 'kafka', t: 'One huge group chat takes most of the traffic' }, fix: [{ set: 'kafka', f: 'parts', v: 48, why: 'More partitions (and splitting big groups across keys) leave enough usable partitions for the workers.' }],
+    goals: { fresh: 5 }, say: 'Clients hold WebSockets on connection servers; messages go to Kafka keyed by conversation, delivery workers store them in a wide-column store and push them to online recipients. A giant group chat makes one partition hot, so partition generously and split very large groups.' },
+  ride: { est: 'Each active driver sends a location every 4 seconds: 40,000 drivers is 10,000 updates a second. Riders ask for nearby drivers about 1,500 times a second.',
+    steps: [
+      { why: 'Driver apps send their location every few seconds. That write stream is the biggest load.', alt: '-', cost: '-' },
+      { why: 'Kafka takes the location stream so the index can catch up after a hiccup.', alt: 'Write straight into the index: a slow index then slows the drivers\' apps.', cost: '3 brokers.' },
+      { why: 'A stream job turns each location into a geo cell (geohash or H3) and updates the index.', alt: '-', cost: '4 tasks.' },
+      { why: 'The geo index is a key-value store keyed by cell: who is in this cell right now.', alt: 'A spatial database (PostGIS): richer queries, less write throughput.', cost: '2 nodes.' },
+      { why: 'Riders open the app and ask for nearby drivers.', alt: '-', cost: '-' },
+      { why: 'The load balancer spreads rider requests.', alt: '-', cost: 'Small.' },
+      { why: 'The matching service reads the rider\'s cell and the cells around it, ranks drivers by arrival time, and offers the ride.', alt: '-', cost: '4 replicas, auto-scaling.' }],
+    brk: { type: 'az', t: 'A whole zone goes down' }, fix: [{ set: 'stream', f: 'n', v: 6, why: 'Spread the tasks over zones with enough spare to lose one.' }, { set: 'kv', f: 'n', v: 3, why: 'Three geo index nodes, one per zone, still carry the load with one zone gone.' }],
+    goals: { fresh: 5, err: 2 }, say: 'Driver locations stream through Kafka into a geo index keyed by cell; matching reads the rider\'s cell and its neighbours. Locations are disposable after seconds, so freshness matters more than durability, and every tier has a spare zone of capacity.' },
+  video: { est: '40,000 video chunk requests a second from viewers; 100 uploads a second of new chunks. A minute of video is about 100 MB across its quality levels.',
+    steps: [
+      { why: 'Viewers request small chunks of a video at the quality their network allows (adaptive bitrate).', alt: '-', cost: '-' },
+      { why: 'The CDN serves 95% of chunks from servers near the viewer. This is what makes video affordable.', alt: 'Serve from your own region: slow and expensive.', cost: 'Per GB delivered.' },
+      { why: 'Object storage holds every chunk at every quality level: the origin behind the CDN.', alt: '-', cost: 'Cheap per GB.' },
+      { why: 'Creators upload raw video.', alt: '-', cost: '-' },
+      { why: 'A queue holds transcoding jobs so a burst of uploads waits instead of failing.', alt: 'Transcode inside the upload request: slow and fragile.', cost: 'Small.' },
+      { why: 'Workers transcode each upload into chunks at several qualities and write them to storage.', alt: '-', cost: 'Per second of work.' }],
+    brk: { type: 'stampede', on: 'cdn', t: 'A purge leaves the CDN cold just as a video goes viral' }, fix: [{ insert: 'cache', a: 'cdn', b: 'lake', o: { hit: 0.9 }, why: 'An origin shield cache between the CDN and storage absorbs the misses.' }],
+    goals: { err: 2 }, say: 'Viewers fetch adaptive-bitrate chunks through a CDN backed by object storage; uploads go to a queue and transcoding workers write every quality level. Protect the origin with a shield cache, because a cold CDN sends every request to storage.' }
 };
 SIM_TPL.forEach(t => { t.teach = SIM_TEACH[t.id]; });
 function simNewFrom(tplId, name, from) {
@@ -903,11 +952,11 @@ function simNewFrom(tplId, name, from) {
 }
 /* Quick start: a row of starter buttons (Build tab of an empty design, and the sketch sheet) */
 function simQuickRow(onPick) {
-  return el('div', { class: 'simquick' }, SIM_TPL.map(t => el('button', { class: 'simqbtn', 'data-tpl': t.id, onclick: () => onPick(t.id) }, [el('b', { text: t.t }), el('small', { text: t.s })])));
+  return el('div', { class: 'simquick' }, SIM_TPL.filter(t => !t.swe).map(t => el('button', { class: 'simqbtn', 'data-tpl': t.id, onclick: () => onPick(t.id) }, [el('b', { text: t.t }), el('small', { text: t.s })])));
 }
 /* "Sketch it in the simulator" for a question or design problem: opens a starter that fits the words, named after it */
 function simSketch(text, label, live) {
-  return el('button', { class: 'btn sm simsketch', onclick: () => { const t = SIM_TPL.find(x => x.re.test(text || '')) || SIM_TPL[3]; const d = simNewFrom(t.id, String(text || '').replace(/[*_`#>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 58) || t.t, location.hash); if (live) { d.live = live; save(); } location.hash = '#/sim'; } }, label || 'Sketch it in the simulator');
+  return el('button', { class: 'btn sm simsketch', onclick: () => { const t = SIM_TPL.find(x => x.swe && x.re.test(text || '')) || SIM_TPL.find(x => x.re.test(text || '')) || SIM_TPL[3]; const d = simNewFrom(t.id, String(text || '').replace(/[*_`#>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 58) || t.t, location.hash); if (live) { d.live = live; save(); } location.hash = '#/sim'; } }, label || 'Sketch it in the simulator');
 }
 /* a module's simulator challenges, for its chapter, quiz and design pages */
 function simCard(mid, opts) {

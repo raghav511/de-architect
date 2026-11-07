@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.33.2';
+const VERSION = '1.34.1';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -26,7 +26,7 @@ const I = { reel: '<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M
   update: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>', back: '<path d="M15 18l-6-6 6-6"/>', fwd: '<path d="M9 6l6 6-6 6"/>', dbl_l: '<path d="M18 6l-6 6 6 6M11 6l-6 6 6 6"/>', dbl_r: '<path d="M6 6l6 6-6 6M13 6l6 6-6 6"/>',
   x: '<path d="M18 6L6 18M6 6l12 12"/>', check: '<path d="M5 12l5 5 9-10" stroke="#fff" stroke-width="3"/>', spark: '<path d="M12 3l1.8 4.6L18 9.4l-4.2 1.8L12 16l-1.8-4.8L6 9.4l4.2-1.8z"/><path d="M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
   git: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 7v10M18 11c0 4-6 3-11 7"/>', news: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/>',
-  term: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1.33.1 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'
+  term: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1.34.0 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'
 };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 /* text from the daily refresh (scraped questions, news) and from AI replies is rendered as Markdown, so its HTML is
@@ -186,9 +186,9 @@ function chipFor(k) { return { py: ['Python', 'c-py'], dsa: ['DSA', 'c-dsa'], co
 function chip(k) { const c = chipFor(k); return el('span', { class: 'chip ' + c[1], text: c[0] }); }
 
 /* ---------------- shell ---------------- */
-const NAV = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/playbook', 'My playbook', 'book'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/sim', 'Design simulator', 'design'], ['#/git', 'Git lessons', 'git'], ['#/terminal', 'Terminal', 'code'], ['#/news', 'What is new in AI', 'news'], ['#/recent', 'Asked this week', 'quiz'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/mock', 'Mock interview', 'quiz'], ['#/coach', 'Coach', 'spark'], ['#/progress', 'Progress', 'prog']];
+const NAV = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/playbook', 'My playbook', 'book'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/sim', 'Design simulator', 'design'], ['#/loop', 'Interview loop', 'quiz'], ['#/git', 'Git lessons', 'git'], ['#/terminal', 'Terminal', 'code'], ['#/news', 'What is new in AI', 'news'], ['#/recent', 'Asked this week', 'quiz'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/mock', 'Mock interview', 'quiz'], ['#/coach', 'Coach', 'spark'], ['#/progress', 'Progress', 'prog']];
 /* the sidebar and the More sheet group every section under Learn, Practice, Interview and You (Today stays on top) */
-const NAV_GROUPS = [['learn', 'Learn', ['#/path', '#/reels', '#/learn/0', '#/quiz/0']], ['practice', 'Practice', ['#/practice', '#/projects', '#/design', '#/sim', '#/git', '#/terminal']], ['interview', 'Interview', ['#/live', '#/recent', '#/mock', '#/coach']], ['you', 'You', ['#/progress', '#/playbook', '#/news']]];
+const NAV_GROUPS = [['learn', 'Learn', ['#/path', '#/reels', '#/learn/0', '#/quiz/0']], ['practice', 'Practice', ['#/practice', '#/projects', '#/design', '#/sim', '#/git', '#/terminal']], ['interview', 'Interview', ['#/loop', '#/live', '#/recent', '#/mock', '#/coach']], ['you', 'You', ['#/progress', '#/playbook', '#/news']]];
 const NAV_LIVE = ['#/live', 'Live mock', 'quiz'];
 const navItem = h => h === '#/live' ? NAV_LIVE : NAV.find(x => x[0] === h);
 const navGroupOf = r => (NAV_GROUPS.find(g => g[2].some(h => h.split('/')[1] === r)) || [])[0];
@@ -252,6 +252,7 @@ function route() {
     else if (r === 'practice') vPractice(p[1] || 'all');
     else if (r === 'design') vDesign(p[1]);
     else if (r === 'sim') vSim(p[1], p[2], p[3]);
+    else if (r === 'loop') vLoop(p[1], p[2]);
     else if (r === 'quiz') vQuiz(p[1]);
     else if (r === 'interview') vInterview(p[1], p[2]);
     else if (r === 'progress') vProgress();
@@ -1052,6 +1053,11 @@ function mergeState(a, b) {
   out.sim.taught = Object.assign({}, sa.taught || {}, sb.taught || {}); out.sim.ex = Object.assign({}, sa.ex || {}, sb.ex || {});
   for (const k in out.sim.ex) { const x = (sa.ex || {})[k], y = (sb.ex || {})[k]; if (!x || !y) continue; const l = [x.last, y.last].filter(Boolean).sort((p, q) => (q.at || 0) - (p.at || 0))[0], c = [x.cur, y.cur].filter(Boolean).sort((p, q) => (q.t0 || 0) - (p.t0 || 0))[0];
     out.sim.ex[k] = { best: Math.max(x.best == null ? -1 : x.best, y.best == null ? -1 : y.best), last: l, cur: c && Object.assign({}, c, x.cur && y.cur && x.cur.t0 === y.cur.t0 ? { lvl: Math.max(x.cur.lvl || 0, y.cur.lvl || 0), rev: Math.max(x.cur.rev || 0, y.cur.rev || 0) } : {}) }; if (out.sim.ex[k].best < 0) out.sim.ex[k].best = null; }
+  /* interview loop: stories, answers and exercises merge one by one and the newer edit wins (a deleted story keeps a dated marker); the pitch and the project as a whole */
+  if (a.loop || b.loop) { const la = a.loop || {}, lb = b.loop || {}, nw = (x, y) => !x ? y : !y ? x : (x.at || 0) > (y.at || 0) ? x : y; out.loop = Object.assign({}, la, lb);
+    ['stories', 'cc', 'cx', 'est', 'ans'].forEach(k => { const x = la[k] || {}, y = lb[k] || {}; out.loop[k] = Object.assign({}, x, y); for (const id in out.loop[k]) out.loop[k][id] = nw(x[id], y[id]); });
+    out.loop.reps = Object.assign({}, la.reps, lb.reps); for (const d in out.loop.reps) out.loop.reps[d] = Object.assign({}, (la.reps || {})[d], (lb.reps || {})[d]);
+    ['pitch', 'proj'].forEach(k => { out.loop[k] = nw(la[k], lb[k]) || {}; }); }
   out.updated = Math.max(a.updated || 0, b.updated || 0);
   return out;
 }
