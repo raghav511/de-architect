@@ -1,5 +1,5 @@
 {
-  "version": "1.33.1",
+  "version": "1.33.2",
   "date": "2026-11-07",
   "notes": [
     "New in Storage (2.9): the architect's lens for Iceberg and open table formats. When to use one and when not, who owns and pays for it, how it fails, and five under-the-hood answers: the metadata tree, commits from two writers, hidden partitioning, copy-on-write or merge-on-read, and compaction with snapshot expiry.",
