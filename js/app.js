@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.26.0';
+const VERSION = '1.27.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -26,7 +26,7 @@ const I = { reel: '<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M
   update: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>', back: '<path d="M15 18l-6-6 6-6"/>', fwd: '<path d="M9 6l6 6-6 6"/>', dbl_l: '<path d="M18 6l-6 6 6 6M11 6l-6 6 6 6"/>', dbl_r: '<path d="M6 6l6 6-6 6M13 6l6 6-6 6"/>',
   x: '<path d="M18 6L6 18M6 6l12 12"/>', check: '<path d="M5 12l5 5 9-10" stroke="#fff" stroke-width="3"/>', spark: '<path d="M12 3l1.8 4.6L18 9.4l-4.2 1.8L12 16l-1.8-4.8L6 9.4l4.2-1.8z"/><path d="M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
   git: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 7v10M18 11c0 4-6 3-11 7"/>', news: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/>',
-  term: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1.26.0 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'
+  term: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M13 15h4"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1.27.0 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'
 };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const md = s => { try { return window.marked ? window.marked.parse(s || '', { gfm: true }) : esc(s); } catch (e) { return esc(s); } };
@@ -169,7 +169,7 @@ function chipFor(k) { return { py: ['Python', 'c-py'], dsa: ['DSA', 'c-dsa'], co
 function chip(k) { const c = chipFor(k); return el('span', { class: 'chip ' + c[1], text: c[0] }); }
 
 /* ---------------- shell ---------------- */
-const NAV = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/playbook', 'My playbook', 'book'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/git', 'Git lessons', 'git'], ['#/terminal', 'Terminal', 'code'], ['#/news', 'What is new in AI', 'news'], ['#/recent', 'Asked this week', 'quiz'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/mock', 'Mock interview', 'quiz'], ['#/coach', 'Coach', 'spark'], ['#/progress', 'Progress', 'prog']];
+const NAV = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/playbook', 'My playbook', 'book'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/sim', 'Design simulator', 'design'], ['#/git', 'Git lessons', 'git'], ['#/terminal', 'Terminal', 'code'], ['#/news', 'What is new in AI', 'news'], ['#/recent', 'Asked this week', 'quiz'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/mock', 'Mock interview', 'quiz'], ['#/coach', 'Coach', 'spark'], ['#/progress', 'Progress', 'prog']];
 const TABS = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/path', 'Path', 'path'], ['#/practice', 'Coding', 'code'], ['#/projects', 'Projects', 'proj']];
 function shell(title, eyebrow, body, opts) {
   opts = opts || {};
@@ -222,6 +222,7 @@ function route() {
     else if (r === 'test') vWork('test', midOf(p[1]) + '/' + p[2]);
     else if (r === 'practice') vPractice(p[1] || 'all');
     else if (r === 'design') vDesign(p[1]);
+    else if (r === 'sim') vSim(p[1], p[2]);
     else if (r === 'quiz') vQuiz(p[1]);
     else if (r === 'interview') vInterview(p[1], p[2]);
     else if (r === 'progress') vProgress();
@@ -763,11 +764,12 @@ function vDesign(m) {
     el('div', { class: 'stack', style: { gap: '4px' } }, [el('span', { class: 'lbl', text: 'Problem statement' }), el('p', { style: { margin: 0, fontSize: '16.5px' }, text: D.prompt })]),
     el('div', { class: 'stack', style: { gap: '4px' } }, [el('span', { class: 'lbl', text: 'What you hand in' }), el('p', { style: { margin: 0 }, text: D.deliverable })]),
     el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Work through the six steps below in one sitting, writing your answer in each box. Then tap Grade my design at the bottom for an interviewer\'s grade.' }),
-    du ? el('button', { class: 'btn', style: { alignSelf: 'flex-start' }, onclick: () => toggleUnit(du), text: du.isDone ? 'Mark not done' : 'Mark this design done' }) : null]);
+    el('div', { class: 'row wrap', style: { gap: '8px' } }, [du ? el('button', { class: 'btn', onclick: () => toggleUnit(du), text: du.isDone ? 'Mark not done' : 'Mark this design done' }) : null,
+      typeof simSketch === 'function' ? simSketch(D.title + ' ' + D.prompt, 'Sketch it in the simulator') : null])]);
   const notesAll = () => STEPS.map((x, i) => (S.code['design_' + m + '_' + i] || '').trim() ? '## ' + (i + 1) + '. ' + x[0] + '\n' + S.code['design_' + m + '_' + i].trim() : '').filter(Boolean).join('\n\n');
   const gradeCard = el('section', { class: 'card pad stack' }, [el('h3', { text: 'Grade my design' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'When you have written all six steps, get an interviewer\'s grade on the whole design: requirements, estimates, trade-offs, failure handling and cost.' }),
     gradeBox({ kind: 'design', key: 'design:' + m, title: D.title, label: 'Grade my design', text: notesAll, payload: () => ({ prompt: D.prompt, deliverable: D.deliverable, notes: notesAll() }) })]);
-  shell('System design studio', 'Design problem · module ' + modLabel(m), [problem, tabs,
+  shell('System design studio', 'Design problem · module ' + modLabel(m), [problem, typeof simCard === 'function' ? simCard(m, { title: 'Then test it under load' }) : null, tabs,
     el('div', { class: 'grid2' }, [el('section', { class: 'card pad stack' }, [stepBox]),
       el('div', { class: 'stack', style: { gap: '18px' } }, [
         el('section', { class: 'card pad stack' }, [el('h3', { text: 'Back-of-envelope calculator' }), el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: '10px' } }, [inp('trips', 'Users or trips per day'), inp('events', 'Events per user'), inp('bytes', 'Bytes per event'), inp('peak', 'Peak ÷ average'), inp('years', 'Years kept'), inp('repl', 'Replication factor')]), out]),
@@ -804,6 +806,7 @@ async function vQuiz(m) {
       if (st.last !== pct || JSON.stringify(st.miss) !== JSON.stringify(miss)) { st.last = pct; st.miss = miss; st.at = Date.now(); save(); }
       const toMark = qs.filter((q, k) => q.TYPE === 'short' && st.a[k] && st.a[k].t && st.a[k].self === undefined).length;
       page.appendChild(el('section', { class: 'card pad stack' }, [el('h2', { text: 'Score: ' + score + ' of ' + qs.length + ' (' + pct + '%)' }), el('span', { class: 'muted', text: (st.best ? 'Best: ' + st.best + '% · ' : '') + (pct >= 80 ? 'Pass mark reached (80%).' : 'The pass mark is 80%. Review the ones marked Review, then retake.') + (toMark ? ' ' + toMark + ' short answer' + (toMark > 1 ? 's' : '') + ' still to mark yourself below.' : '') }), el('div', { class: 'row wrap' }, [el('button', { class: 'btn pri', onclick: () => { S.quiz[w] = { a: {}, sub: false, i: 0, best: st.best }; save(); vQuiz(m); }, text: 'Retake' }), el('a', { class: 'btn', href: '#/today', text: 'Back to Today' })])]));
+      if (typeof simCard === 'function') { const c = simCard(m, { title: 'Prove it in the simulator' }); if (c) page.appendChild(c); }
       const yours = (q, a) => a == null || a === '' ? 'no answer' : q.TYPE === 'mcq' ? a + ') ' + ((q.opts || []).find(o => o[0] === a) || ['', ''])[1] : q.TYPE === 'fill' ? String(a) : (a.t || 'no answer');
       qs.forEach((q, k) => {
         const g = grade(q, st.a[k]), sh = q.TYPE === 'short' && st.a[k] && st.a[k].t;
@@ -994,6 +997,9 @@ function mergeState(a, b) {
   /* instant grades: a finished grade beats a pending one for the same job, otherwise the newer wins */
   out.grades = Object.assign({}, a.grades || {}, b.grades || {});
   for (const k in out.grades) { const x = (a.grades || {})[k], y = (b.grades || {})[k]; out.grades[k] = !x ? y : !y ? x : x.job && x.job === y.job && (x.s === 'done') !== (y.s === 'done') ? (x.s === 'done' ? x : y) : (x.at || 0) >= (y.at || 0) ? x : y; }
+  /* design simulator: designs merge one by one and the newer edit wins; a removed design keeps a dated marker, so sync never drops or revives one by accident */
+  const sa = a.sim || {}, sb = b.sim || {}; out.sim = Object.assign({}, sa, sb, { d: Object.assign({}, sa.d || {}, sb.d || {}), done: Object.assign({}, sa.done || {}, sb.done || {}) });
+  for (const id in out.sim.d) { const x = (sa.d || {})[id], y = (sb.d || {})[id]; out.sim.d[id] = !x ? y : !y ? x : (x.at || 0) > (y.at || 0) ? x : y; }
   out.updated = Math.max(a.updated || 0, b.updated || 0);
   return out;
 }

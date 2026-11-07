@@ -1200,6 +1200,89 @@ async function T(name, fn, opt) {
     ok(posted && posted.data.prefs && posted.data.prefs.capWd === 45 && !JSON.stringify(posted).includes('sk-secret') && !('settings' in posted.data), 'upload leaked device settings or missed prefs');
   });
 
+  /* ---- design simulator (#/sim) ---- */
+  const simState = p => p.evaluate(() => JSON.parse(JSON.stringify(S.sim || {})));
+  await T('sim: System design opens the simulator on its module scenario; Check grades the starting design as not yet', async p => {
+    await go(p, '#/design/s10', 1200);
+    await p.click('.simmod .simsc'); await p.waitForSelector('#sim_check');
+    ok(/Design simulator/.test(await text(p, '.top')) && /Serving reads at scale|cache stampede|Dashboards/i.test(await text(p, '.simside')), 'scenario did not open on its challenge');
+    await p.click('#sim_check'); await p.waitForSelector('.simresult .item');
+    const r = await text(p, '.simresult'); ok(/✗/.test(r) && /Not yet/.test(r), 'starting design should fail: ' + r.slice(0, 200));
+    ok(await p.evaluate(() => Object.keys(S.sim.d).some(k => /^sc-/.test(k))), 'scenario design not saved');
+  });
+  await T('sim in the program: module chapter and lab list its challenges; Today shows one; passing one adds XP', async p => {
+    await go(p, '#/learn/s05/chapter', 1500); await p.waitForSelector('.simmod'); ok(/Real time/.test(await text(p, '.simmod')), 'no challenges on the s05 chapter');
+    await go(p, '#/learn/s00/chapter', 1200); ok(!(await p.$('.simmod')), 'a module without challenges shows a card');
+    await go(p, '#/today', 1200); const t = await p.$('.simtoday'); if (t) ok(/Simulator challenge/.test(await text(p, '.simtoday')), 'Today card text');
+    const x0 = await p.evaluate(() => gameXP()); await p.evaluate(() => { simState().done.cdc = iso(new Date()); }); ok((await p.evaluate(() => gameXP())) === x0 + 25, 'no XP for a passed challenge');
+  });
+  await T('sim quick start: a design problem opens a fitting starter named after it, with a way back; a blank design offers starters', async p => {
+    await go(p, '#/design/s05', 1200); await p.click('.simsketch'); await p.waitForSelector('.simcv');
+    const d = await p.evaluate(() => simDebug.d); ok(d.nodes.length >= 5 && d.edges.length >= 4 && /#\/design/.test(d.from), 'sketch did not open a starter: ' + d.nodes.length);
+    ok(await p.$('a.btn:has-text("Back to the question")'), 'no way back to the question');
+    await p.selectOption('select[aria-label="Open a design"]', '+new'); await p.waitForSelector('.simqbtn');
+    await p.click('.simqbtn[data-tpl=cdc]'); await p.waitForTimeout(200); ok((await p.evaluate(() => simDebug.d.nodes.some(n => n.k === 'cdc'))), 'quick start CDC did not fill the design');
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  await T('sim: the More menu lists the simulator', async p => {
+    await go(p, '#/today', 1000); await p.click('.tabmore'); await p.click('.sheet a[href="#/sim"]'); await p.waitForSelector('.simcv');
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  await T('sim: add a component by tap, wire it by tapping the dot then the box, undo it; the design autosaves', async p => {
+    await go(p, '#/sim', 1200);
+    await p.click('.simcomp[data-k=kafka]'); await p.waitForTimeout(200);
+    ok((await simState(p)).d[(await simState(p)).cur].nodes.some(n => n.k === 'kafka'), 'Kafka not added or not saved');
+    await p.click('#simt_build'); await p.click('button:has-text("Done")').catch(() => {});
+    await p.click('[data-port=n1]'); await p.click('.simnode[data-k=kafka]'); await p.waitForTimeout(200);
+    let d = await p.evaluate(() => simDebug.d); ok(d.edges.length === 1 && d.edges[0].a === 'n1', 'tap-to-wire failed: ' + JSON.stringify(d.edges));
+    await p.click('.simcv', { position: { x: 400, y: 30 } }); await p.keyboard.press(process.platform === 'darwin' ? 'Meta+z' : 'Control+z'); await p.waitForTimeout(150);
+    d = await p.evaluate(() => simDebug.d); ok(d.edges.length === 0, 'undo did not remove the wire');
+    await p.reload(); await p.waitForSelector('.simcv'); ok((await p.evaluate(() => simDebug.d.nodes.length)) === 2, 'design not kept after reload');
+  });
+  await T('sim: dragging a box moves it, and dragging from its dot wires it', async p => {
+    await go(p, '#/sim', 1200); await p.click('.simcomp[data-k=svc]'); await p.click('button:has-text("Done")'); await p.waitForTimeout(150);
+    const b = await p.$eval('.simnode[data-k=svc] .box', e => { const r = e.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; });
+    const x0 = await p.evaluate(() => simDebug.d.nodes.find(n => n.k === 'svc').x);
+    await p.mouse.move(b[0], b[1]); await p.mouse.down(); await p.mouse.move(b[0] + 80, b[1] + 60, { steps: 6 }); await p.mouse.up(); await p.waitForTimeout(150);
+    ok((await p.evaluate(() => simDebug.d.nodes.find(n => n.k === 'svc').x)) !== x0, 'box did not move');
+    const s = await p.$eval('[data-port=n1]', e => { const r = e.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }), t = await p.$eval('.simnode[data-k=svc] .box', e => { const r = e.getBoundingClientRect(); return [r.x + 20, r.y + r.height / 2]; });
+    await p.mouse.move(s[0], s[1]); await p.mouse.down(); await p.mouse.move(t[0], t[1], { steps: 8 }); await p.mouse.up(); await p.waitForTimeout(150);
+    ok((await p.evaluate(() => simDebug.d.edges.length)) === 1, 'drag-to-wire failed');
+  });
+  await T('sim: a fixed scenario passes and is recorded; a failure while running shows errors', async p => {
+    await go(p, '#/sim/sc/failover', 1400); await p.waitForSelector('#sim_check');
+    await p.click('.simnode[data-k=pg] .box'); await p.check('#sim_c_hot_standby_fails_over_in_3_s_');
+    await p.click('#simt_goal'); await p.click('#sim_check'); await p.waitForSelector('.simresult .simpass');
+    ok(!!(await simState(p)).done.failover, 'pass not recorded');
+    await p.click('#simt_break'); await p.click('[data-chaos=crash]'); await p.waitForTimeout(2500);
+    const strip = await text(p, '.simstrip'); ok(/ERRORS\s*[1-9]/i.test(strip.replace(/\n/g, ' ')) || /Errors\s*[1-9]/.test(strip), 'no errors shown during a crash: ' + strip.replace(/\n/g, ' '));
+    await p.click('#simt_metrics'); ok(await p.$('.simchart'), 'no metrics charts');
+  });
+  await T('sim: every starting scenario fails and its fix passes (engine)', async p => {
+    await go(p, '#/sim', 1000);
+    const r = await p.evaluate(() => SIM_SC.map(sc => [sc.id, SIM.grade(simFromSc(sc), sc).pass]));
+    ok(r.length >= 16 && r.every(x => !x[1]), 'a starting design already passes: ' + JSON.stringify(r.filter(x => x[1])));
+  });
+  await T('sim: JSON export and a share link bring the design back', async p => {
+    await go(p, '#/sim/sc/skeleton', 1200); await p.waitForSelector('.simcv');
+    await p.click('.simexp summary'); const [dl] = await Promise.all([p.waitForEvent('download'), p.click('button:has-text("Download JSON")')]);
+    const j = JSON.parse(require('fs').readFileSync(await dl.path(), 'utf8')); ok(j.nodes.length === 4 && j.edges.length === 3, 'export incomplete');
+    const link = await p.evaluate(() => '#/sim/share/' + simPack(simDebug.d)); const before = Object.keys((await simState(p)).d).length;
+    await hash(p, link, 800); ok(Object.keys((await simState(p)).d).length === before + 1 && /Walking skeleton/.test(await p.inputValue('.simname')), 'share link did not add the design');
+    await hash(p, '#/sim/share/not-a-design', 600); ok(/does not hold a design/.test(await text(p, '.toast')), 'bad link not refused');
+  });
+  await T('sim: sync keeps designs from both devices, the newer edit wins, removed stays removed', async p => {
+    await go(p, '#/today', 800);
+    const r = await p.evaluate(() => { const a = { sim: { d: { x: { id: 'x', name: 'old', at: 1, nodes: [] }, y: { id: 'y', name: 'only a', at: 5, nodes: [] } }, done: { cdc: '2026-11-01' } } }, b = { sim: { d: { x: { id: 'x', name: 'new', at: 9, nodes: [] }, z: { id: 'z', name: 'gone', at: 7, del: 7, nodes: [] } }, done: { dlq: '2026-11-02' } } };
+      const m = mergeState(a, b), m2 = mergeState(b, a); return [m.sim.d.x.name, !!m.sim.d.y, m.sim.d.z.del, Object.keys(m.sim.done).sort().join(), m2.sim.d.x.name]; });
+    ok(r[0] === 'new' && r[1] && r[2] === 7 && r[3] === 'cdc,dlq' && r[4] === 'new', JSON.stringify(r));
+  });
+  await T('sim on iPhone: no sideways scroll, Run traffic on the first screen; Today Up next still above the tab bar', async p => {
+    await go(p, '#/sim', 1400);
+    const w = await p.evaluate(() => [document.documentElement.scrollWidth, innerWidth]); ok(w[0] <= w[1], 'page scrolls sideways: ' + w);
+    const b = await p.$eval('.simplay', e => [e.getBoundingClientRect().bottom, document.querySelector('.tabbar').getBoundingClientRect().top]); ok(b[0] <= b[1], 'Run traffic hidden under the tab bar: ' + b);
+    await go(p, '#/today', 1200); const u = await p.$('.unit.cur .acts .btn.pri');
+    if (u) { const y = await u.evaluate(e => [e.getBoundingClientRect().bottom, document.querySelector('.tabbar').getBoundingClientRect().top]); ok(y[0] <= y[1], 'Up next pushed below the tab bar'); }
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
   await browser.close();
   results.forEach(r => console.log(r.join('  ')));
   const f = results.filter(r => r[0] === 'FAIL').length;

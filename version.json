@@ -1,8 +1,11 @@
 {
-  "version": "1.26.0",
+  "version": "1.27.0",
   "date": "2026-11-07",
   "notes": [
-    "Reels are now a swipe feed like Shorts, shuffled by default (switch to My week any time, or filter by weak spots or a track), with animated scenes: components light up, data moves between them, counters and bars animate.",
-    "Kafka 5.2 is a four-level series: New to it, How it works, Inside and caveats, Architect. Reels now teach topics only."
+    "New: a design simulator (More \u203a Design simulator). Draw a data system with 37 parts, including Kafka, CDC, Spark, Airflow, dbt, quality checks, schema registry, dead-letter queue, lake, warehouse, OLAP, feature and vector stores and an LLM. Run traffic and watch throughput, p99, errors, lag and monthly cost.",
+    "Break it: 19 failures, such as a crashed database, a zone outage, a hot partition, bad records, a breaking schema change, a cache stampede or a slow partner API.",
+    "16 challenges tied to your modules (Kafka partitions, CDC catch-up, serving reads, failover, cost, RAG under a rate limit). Each starts broken; fix it until Check my design passes. Passing earns XP.",
+    "Find them where you study: on module chapters and labs, after module quizzes, in the System design studio, as a challenge card on Today, and as Sketch it in the simulator on live mock design questions.",
+    "Quick start on iPhone: one tap opens a ready streaming, batch, CDC, serving, analytics or RAG design to edit by touch. Designs save as you go, sync across devices, and export as JSON, a picture or a share link."
   ]
 }

@@ -1,0 +1,27 @@
+{
+  "reference": "https://syssimulator.com/simulator",
+  "checked": "2026-11-07",
+  "note": "Features seen on the reference simulator (feature names only, in our words) and where our own implementation lives in js/sim.js. The weekly check (tools/sim/ROUTINE.md) compares the site against this list and builds anything new as original code.",
+  "features": [
+    { "id": "palette", "ref": "Component palette in categories (external, networking, compute, messaging, data, AI agents) with search", "ours": "Build tab: 37 components in 7 groups with search (SIM_K, SIM_CAT), including data engineering parts: Kafka, CDC, Connect sink, stream processor, Spark, Airflow, dbt, quality checks, schema registry, DLQ, lake, catalog, warehouse, Trino, OLAP, serving store, feature store, vector store, embedding model, LLM API" },
+    { "id": "custom", "ref": "Custom component with your own latency and capacity", "ours": "Custom box; every box's capacity, latency and cost can be edited" },
+    { "id": "canvas", "ref": "Infinite canvas, drag and drop, zoom, pan", "ours": "SVG canvas with pointer drag (mouse and touch), pan, wheel and pinch zoom, fit" },
+    { "id": "wires", "ref": "Curved wires between components", "ours": "Bezier wires: drag from a box's right dot, or tap the dot then a box; keyboard Enter works too" },
+    { "id": "undo", "ref": "Undo and redo", "ours": "Toolbar and Cmd/Ctrl+Z, Shift+Cmd/Ctrl+Z" },
+    { "id": "autolayout", "ref": "Auto layout and layout zones", "ours": "Auto layout by depth from the sources; zones by category" },
+    { "id": "multiselect", "ref": "Multi-select", "ours": "Not built: single selection with arrow-key nudging" },
+    { "id": "simulate", "ref": "Traffic simulation at a set rate, play, pause, reset, speed", "ours": "SIM.step fluid model, Run tab: play, pause, reset, 1x/2x/4x, traffic multiplier, per-source rate" },
+    { "id": "readouts", "ref": "Live readouts on each box and a top status bar (RPS, p99, errors, bottlenecks)", "ours": "Box readouts (rate, p99, load bar, lag), status strip (in, p50, p99, errors, lag, hot spots, cost)" },
+    { "id": "metrics", "ref": "Full metrics view with latency history and bottleneck callouts", "ours": "Metrics tab: latency, throughput, errors and backlog charts, hot spots with the reason" },
+    { "id": "chaos", "ref": "Failure injection in groups: network, infrastructure, traffic, data layer, application, dependency", "ours": "Break tab: 19 failures in 5 groups, including data ones (bad records, breaking schema change, backfill, hot partition, connector lag, broker lost)" },
+    { "id": "cost", "ref": "Rough cloud cost per box", "ours": "Cost tab: per box and total per month, cost per million requests" },
+    { "id": "blueprints", "ref": "Blueprint library with category and level filters", "ours": "Scenarios tab: 16 starting designs tied to modules, filters by module and level" },
+    { "id": "challenges", "ref": "Practice scenarios", "ours": "Each scenario is a challenge with goals; Check my design runs it headless and grades it (SIM.grade), passes saved in S.sim.done" },
+    { "id": "suggestions", "ref": "Suggestions and architecture notes", "ours": "Review tab: suggestions (single points of failure, idle consumers, no DLQ, no registry) and recognised patterns" },
+    { "id": "trace", "ref": "Trace a request through the flow", "ours": "Run tab: Trace one request, highlights the path and lists hop latency" },
+    { "id": "export", "ref": "Export JSON and PNG, import JSON", "ours": "Save and share menu: JSON, PNG, import" },
+    { "id": "share", "ref": "Share link (stored on their server for 7 days)", "ours": "Share link carries the design in the URL, no server; imported designs are cleaned (simClean)" },
+    { "id": "tutorial", "ref": "Guided tour and tutorial", "ours": "Inline hints in each tab; the first scenarios are the tutorial" },
+    { "id": "ai-create", "ref": "Create a design with AI from a template", "ours": "Not built" }
+  ]
+}

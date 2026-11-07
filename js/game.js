@@ -21,6 +21,7 @@ function gameXP() {
   Object.values(g.warm).forEach(w => { xp += 2 * (w.right || 0) + (w.best || 0); });
   xp += 5 * Object.keys(S.rq || {}).length;
   Object.values(S.reels || {}).forEach(r => { if (r.seen) xp += 3; if (r.ok) xp += 2; });
+  xp += 25 * Object.keys((S.sim && S.sim.done) || {}).length; /* design simulator challenges passed */
   return xp;
 }
 /* the best weekend (boss) round at each level */
