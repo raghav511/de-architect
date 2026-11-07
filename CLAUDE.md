@@ -91,6 +91,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.36.7: Unguessable quizzes (review 3).
 - 1.36.6: second crawler batch: lesson pages no longer pan sideways on iPhone (a long module name in the picker, and WebKit counting wide code blocks); Today's "This week" and the design round timer no longer overlap; 44 px touch targets on phones for folded answers, reel buttons under headings, Progress quests and links, loop and simulator chips, simulator tools, editor pane tabs and the day arrows; an empty Send or Run line puts the cursor in its box; the quiz palette marks the current question for screen readers; the coach mic says when it is listening.
 - 1.36.5: release.
 - 1.36.4: Iceberg architect's lens (2.9, linked from 8.5): when to use an open table format and when not, who owns it, how it fails, six internals answers (format v3 deletion vectors among them), three interview and three quiz questions, eight reels; 8.5 adds the catalog products (Polaris, Unity, S3 Tables).
@@ -157,5 +158,5 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 - More in-app system labs: modules 2 (Iceberg tables), 3 (Spark under load), 7 (cloud) and 8 (Delta and Snowflake), where they still assume Docker or a cloud account.
 - iPhone Safari pass with mobile-mcp (separate session): blocked by machine load; avoid running Playwright while it retries.
-- Merging: `main` requires one approving review; Claude cannot remove it or bypass it (the auto-mode safety check blocks both), so PRs need the user's merge until the rule is removed in GitHub settings.
+- Merging: the leader merges handed-over PRs and cuts releases (`../qa/release.sh`); workers hand over with `../qa/pr.sh` and never bump the version.
 - Then: project environments and the Claude Code track inside the app (agent lab using the user's API key).
