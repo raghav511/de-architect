@@ -153,6 +153,14 @@ async function run(engine) {
     ok(/right/.test(await txt(p, '.gwarm')), 'warm-up did not score');
   });
 
+  await S('Recall: a submitted quiz comes back on Today as a recall set, answered from memory and marked', async p => {
+    await boot(p);
+    await p.evaluate(() => { const m = MODS.find(x => (DATA.sprints[x].quiz || []).length >= 2); recallEnroll('qz', m, DATA.sprints[m].quiz); Object.values(S.recall).forEach(r => { r.due = recallDay(0); }); save(); });
+    await nav(p, '#/recall'); await p.click('#rc_show'); await p.click('button[data-rate="easy"]'); await p.waitForTimeout(500);
+    ok(Object.values(await p.evaluate(() => S.recall)).some(r => r.n === 1 && r.box === 1), 'marking easy did not reschedule the item');
+    ok(/^2 of \d/im.test(await txt(p)), 'the next recall item did not appear: ' + (await txt(p)).slice(0, 120));
+  });
+
   await S('Profile: settings save, and Update opens the version dialog', async p => {
     await boot(p, '#/profile'); await p.click('#pt_look'); await p.fill('#st_name', 'Sam'); await p.dispatchEvent('#st_name', 'change'); await p.waitForTimeout(300);
     ok(await p.evaluate(() => S.settings.name === 'Sam'), 'name not saved');

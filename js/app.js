@@ -47,7 +47,7 @@ let S = load();
 function load() {
   let s = {};
   try { s = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { s = {}; }
-  return Object.assign({ start: null, proj: {}, done: {}, doneAt: {}, undone: {}, code: {}, solved: {}, runs: {}, hints: {}, secs: {}, quiz: {}, iv: {}, tests: {}, settings: {}, layout: {}, rev: {}, mock: {}, grades: {}, updated: 0, week: null }, s);
+  return Object.assign({ start: null, proj: {}, done: {}, doneAt: {}, undone: {}, code: {}, solved: {}, runs: {}, hints: {}, secs: {}, quiz: {}, iv: {}, tests: {}, settings: {}, layout: {}, rev: {}, mock: {}, grades: {}, recall: {}, updated: 0, week: null }, s);
 }
 let saveT = null;
 /* a change made just before the tab closes or the phone locks is written at once, not lost with the 150 ms timer */
@@ -198,9 +198,9 @@ function chipFor(k) { return { py: ['Python', 'c-py'], dsa: ['DSA', 'c-dsa'], co
 function chip(k) { const c = chipFor(k); return el('span', { class: 'chip ' + c[1], text: c[0] }); }
 
 /* ---------------- shell ---------------- */
-const NAV = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/playbook', 'My playbook', 'book'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/sim', 'Design simulator', 'design'], ['#/loop', 'Interview loop', 'quiz'], ['#/git', 'Git lessons', 'git'], ['#/terminal', 'Terminal', 'code'], ['#/news', 'What is new in AI', 'news'], ['#/recent', 'Asked this week', 'quiz'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/mock', 'Mock interview', 'quiz'], ['#/coach', 'Coach', 'spark'], ['#/progress', 'Progress', 'prog']];
+const NAV = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/playbook', 'My playbook', 'book'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/sim', 'Design simulator', 'design'], ['#/loop', 'Interview loop', 'quiz'], ['#/git', 'Git lessons', 'git'], ['#/terminal', 'Terminal', 'code'], ['#/news', 'What is new in AI', 'news'], ['#/recent', 'Asked this week', 'quiz'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/mock', 'Mock interview', 'quiz'], ['#/recall', 'Daily recall', 'quiz'], ['#/coach', 'Coach', 'spark'], ['#/progress', 'Progress', 'prog']];
 /* the sidebar and the More sheet group every section under Learn, Practice, Interview and You (Today stays on top) */
-const NAV_GROUPS = [['learn', 'Learn', ['#/path', '#/reels', '#/learn/0', '#/quiz/0']], ['practice', 'Practice', ['#/practice', '#/projects', '#/design', '#/sim', '#/git', '#/terminal']], ['interview', 'Interview', ['#/loop', '#/live', '#/recent', '#/mock', '#/coach']], ['you', 'You', ['#/progress', '#/playbook', '#/news']]];
+const NAV_GROUPS = [['learn', 'Learn', ['#/path', '#/reels', '#/learn/0', '#/quiz/0']], ['practice', 'Practice', ['#/practice', '#/projects', '#/design', '#/sim', '#/git', '#/terminal']], ['interview', 'Interview', ['#/loop', '#/live', '#/recall', '#/recent', '#/mock', '#/coach']], ['you', 'You', ['#/progress', '#/playbook', '#/news']]];
 const NAV_LIVE = ['#/live', 'Live mock', 'quiz'];
 const navItem = h => h === '#/live' ? NAV_LIVE : NAV.find(x => x[0] === h);
 const navGroupOf = r => (NAV_GROUPS.find(g => g[2].some(h => h.split('/')[1] === r)) || [])[0];
@@ -273,6 +273,7 @@ function route() {
     else if (r === 'mock') vMock(p[1]);
     else if (r === 'live') vLive(p[1]);
     else if (r === 'warm') vWarm();
+    else if (r === 'recall') vRecall();
     else if (r === 'reels') vReels(p[1]);
     else if (r === 'playbook') vPlaybook();
     else if (r === 'coach') vCoach();
@@ -869,7 +870,7 @@ async function vQuiz(m) {
     else { const ta = el('textarea', { class: 'code', style: { minHeight: '140px', border: '1px solid var(--line2)', borderRadius: '10px', fontFamily: 'var(--body)', fontSize: '16px' }, 'aria-label': 'Your answer' }); ta.value = (st.a[i] && st.a[i].t) || ''; ta.addEventListener('input', () => { st.a[i] = Object.assign({}, st.a[i] || {}, { t: ta.value }); save(); }); card.appendChild(ta);
       card.appendChild(el('div', { class: 'row wrap' }, [el('span', { class: 'muted', text: 'After you submit, Claude grades this answer (score, what to fix and a stronger answer) and you compare with the model answer.' })])); }
     page.append(card, el('div', { class: 'row qdock' }, [el('button', { class: 'btn', disabled: i === 0 ? true : null, onclick: () => { i--; draw(); }, text: 'Previous' }), el('span', { class: 'grow' }), i < qs.length - 1 ? el('button', { class: 'btn pri', onclick: () => { i++; draw(); }, text: 'Save and next' }) : null,
-      el('button', { class: 'btn' + (i === qs.length - 1 || answered === qs.length ? ' dark' : ''), onclick: async () => { const left = qs.length - answered; const v = await confirmBox('Submit the quiz?', left ? left + ' question' + (left > 1 ? 's are' : ' is') + ' unanswered. They count as wrong.' : 'All questions answered.', [{ t: 'Submit', cls: 'pri', v: 1 }, { t: 'Keep answering', v: null }]); if (v) { st.sub = true; if (aiOn()) qs.forEach((q, k) => { if (q.TYPE === 'short' && st.a[k] && (st.a[k].t || '').trim()) gradeNow('quiz:' + w + ':' + k, 'answer', { question: q.Q, model_answer: q.MODEL || q.ANS || '', answer: st.a[k].t }, st.a[k].t, q.Q); }); const qu = modUnits(m).find(u => u.kind === 'quiz'); if (qu && !S.done[qu.uid]) { S.done[qu.uid] = iso(new Date()); S.doneAt = S.doneAt || {}; gameNote('step'); S.doneAt[qu.uid] = Date.now(); } save(); draw(); window.scrollTo(0, 0); } }, text: 'Submit' })]), el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Questions' }), pal, reset]));
+      el('button', { class: 'btn' + (i === qs.length - 1 || answered === qs.length ? ' dark' : ''), onclick: async () => { const left = qs.length - answered; const v = await confirmBox('Submit the quiz?', left ? left + ' question' + (left > 1 ? 's are' : ' is') + ' unanswered. They count as wrong.' : 'All questions answered.', [{ t: 'Submit', cls: 'pri', v: 1 }, { t: 'Keep answering', v: null }]); if (v) { st.sub = true; if (typeof recallEnroll === 'function') recallEnroll('qz', m, qs); if (aiOn()) qs.forEach((q, k) => { if (q.TYPE === 'short' && st.a[k] && (st.a[k].t || '').trim()) gradeNow('quiz:' + w + ':' + k, 'answer', { question: q.Q, model_answer: q.MODEL || q.ANS || '', answer: st.a[k].t }, st.a[k].t, q.Q); }); const qu = modUnits(m).find(u => u.kind === 'quiz'); if (qu && !S.done[qu.uid]) { S.done[qu.uid] = iso(new Date()); S.doneAt = S.doneAt || {}; gameNote('step'); S.doneAt[qu.uid] = Date.now(); } save(); draw(); window.scrollTo(0, 0); } }, text: 'Submit' })]), el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Questions' }), pal, reset]));
   }
   draw();
 }
@@ -885,14 +886,14 @@ async function vInterview(m, focus) {
   page.appendChild(el('div', { class: 'row wrap' }, [el('select', { class: 'btn sm', 'aria-label': 'Module', onchange: e => { location.hash = '#/interview/' + e.target.value; } }, MODS.map(x => el('option', { value: x, selected: x === m ? 'selected' : null, text: modLabel(x) + ' · ' + modTitle(x) }))), ivCount])); paintCount();
   s.interview.forEach((q, k) => {
     const ans = mdEl(q.A || ''); ans.style.display = 'none';
-    const setTick = v => { st[k] = v; save(); tick.setAttribute('aria-pressed', String(!!st[k])); tick.style.background = st[k] ? 'var(--teal)' : ''; tick.style.borderColor = st[k] ? 'var(--teal)' : ''; tick.textContent = ''; if (st[k]) tick.appendChild(svg(I.check, 16)); paintCount(); };
+    const setTick = v => { st[k] = v; if (v && typeof recallEnroll === 'function') recallEnroll('iv', m, [q]); save(); tick.setAttribute('aria-pressed', String(!!st[k])); tick.style.background = st[k] ? 'var(--teal)' : ''; tick.style.borderColor = st[k] ? 'var(--teal)' : ''; tick.textContent = ''; if (st[k]) tick.appendChild(svg(I.check, 16)); paintCount(); };
     const tick = el('button', { class: 'check', 'aria-pressed': String(!!st[k]), 'aria-label': 'I can answer this', style: st[k] ? { background: 'var(--teal)', borderColor: 'var(--teal)' } : {}, onclick: () => setTick(!st[k]) }, st[k] ? svg(I.check, 16) : null);
     const akey = 'iv_' + w + '_' + k;
     const ta = el('textarea', { class: 'code', 'aria-label': 'Your answer', placeholder: 'Answer as you would out loud: structure first, then detail, with numbers.', style: { minHeight: '130px', border: '1px solid var(--line2)', borderRadius: '10px', fontFamily: 'var(--body)', fontSize: '16px' } });
     ta.value = S.code[akey] || ''; ta.addEventListener('input', () => { S.code[akey] = ta.value; save(); });
     const prac = el('details', { open: S.code[akey] ? '' : null }, [el('summary', { style: { cursor: 'pointer', fontWeight: 600 }, text: 'Practise: write your answer and get graded' }), el('div', { class: 'stack', style: { gap: '8px', marginTop: '8px' } }, [ta,
       gradeBox({ kind: 'answer', key: 'iv:' + w + ':' + k, title: q.Q, label: 'Grade my answer', text: () => ta.value, payload: () => ({ question: q.Q, model_answer: q.A || '', answer: ta.value }), onResult: g => { if (g.r.score >= 4 && !st[k]) { setTick(true); toast('Scored ' + g.r.score + ' / 5: ticked as ready.'); } } })])]);
-    const show = el('button', { class: 'btn sm', 'aria-expanded': 'false', onclick: () => { const o = ans.style.display === 'none'; ans.style.display = o ? 'block' : 'none'; show.textContent = o ? 'Hide model answer' : 'Show model answer'; show.setAttribute('aria-expanded', String(o)); } }, 'Show model answer');
+    const show = el('button', { class: 'btn sm', 'aria-expanded': 'false', onclick: () => { const o = ans.style.display === 'none'; ans.style.display = o ? 'block' : 'none'; if (o && typeof recallEnroll === 'function' && recallEnroll('iv', m, [q])) save(); show.textContent = o ? 'Hide model answer' : 'Show model answer'; show.setAttribute('aria-expanded', String(o)); } }, 'Show model answer');
     page.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row', style: { alignItems: 'flex-start' } }, [tick, el('div', { class: 'grow stack', style: { gap: '4px' } }, [el('b', { style: { fontSize: '16.5px' }, html: mdi(q.Q) }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: [q.TAG ? chipFor(q.TAG)[0] : '', q.SRC].filter(Boolean).join(' · ') })])]), prac, show, ans]));
   });
   const rqs = recentFor(m); if (rqs.length) { page.appendChild(el('h2', { text: 'Asked recently at companies' })); rqs.forEach(q => page.appendChild(rqCard(q))); }
@@ -1055,6 +1056,7 @@ function mergeState(a, b) {
   const when = v => v && typeof v === 'object' ? (v.at || v.t || 0) : 0;
   by('live', (x, y) => !!x.done !== !!y.done ? (x.done ? x : y) : Object.keys(x.ans || {}).length !== Object.keys(y.ans || {}).length ? (Object.keys(x.ans || {}).length > Object.keys(y.ans || {}).length ? x : y) : when(x) > when(y) ? x : y);
   by('reels', (x, y) => when(x) > when(y) ? Object.assign({}, y, x) : Object.assign({}, x, y));
+  by('recall', (x, y) => when(x) > when(y) ? x : y); /* daily recall: the newer rating of an item wins */
   ['playbook', 'tabs', 'gitlab', 'rq', 'planned', 'metrics'].forEach(k => by(k, (x, y) => y));
   /* a manual tick is a time, an untick minus the time: the later one wins (QA fix 21) */
   by('xdone', (x, y) => { const o = Object.assign({}, x, y); for (const id in o) if (id in x && id in y) o[id] = Math.abs(+x[id] || 0) > Math.abs(+y[id] || 0) ? x[id] : y[id]; return o; });
