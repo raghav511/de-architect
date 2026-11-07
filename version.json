@@ -1,8 +1,7 @@
 {
-  "version": "1.36.4",
+  "version": "1.36.5",
   "date": "2026-11-07",
   "notes": [
-    "New in Storage (2.9): the architect's lens for Iceberg and open table formats. When to use one and when not, who owns and pays for it, how it fails, and six under-the-hood answers: the metadata tree, commits from two writers, hidden partitioning, copy-on-write or merge-on-read, compaction with snapshot expiry, and the new version 3 deletion vectors.",
-    "The lens covers Iceberg version 3, Amazon S3 Tables and REST catalogs such as Polaris; module 8 (8.5) adds the catalog products and links to the lens. Three new interview questions, three quiz questions and eight reels."
+    "754 of 1239 reels now play in the natural Heart voice."
   ]
 }
