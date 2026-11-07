@@ -130,7 +130,8 @@ function reelPlayer(q, at, feedMode) {
   const mode = S.settings.reelMode || 'shuffle', setMode = (m, f) => { S.settings.reelMode = m; if (f) S.settings.reelFilter = f; save(); if (C) C.stop(); ov.remove(); vReels(); };
   const sw = feedMode ? el('div', { class: 'rmode', role: 'tablist', 'aria-label': 'Reel order' }, [['week', 'My week'], ['shuffle', 'Shuffle']].map(([k, n]) => el('button', { role: 'tab', 'aria-selected': String(mode === k), onclick: () => setMode(k) }, n))) : el('span', { class: 'grow' });
   const top = el('div', { class: 'rtop' }, [el('button', { class: 'rbtn', 'aria-label': 'Close reels', onclick: close }, '✕'), el('span', { class: 'grow' }), sw, el('span', { class: 'grow' }), el('span', { class: 'rcount' })]);
-  if (feedMode && mode === 'shuffle') ov.appendChild(el('div', { class: 'rfilters', role: 'toolbar', 'aria-label': 'Shuffle filter' }, REEL_TRACKS.map(([k, n]) => el('button', { class: (S.settings.reelFilter || 'all') === k ? 'on' : '', onclick: () => setMode('shuffle', k) }, n))));
+  if (feedMode && mode === 'shuffle') ov.classList.add('hasfilt'); /* room under the filter row for the reel title */
+  if (feedMode && mode === 'shuffle') ov.appendChild(el('div', { class: 'rfilters', role: 'toolbar', 'aria-label': 'Shuffle filter' }, REEL_TRACKS.map(([k, n]) => el('button', { class: (S.settings.reelFilter || 'all') === k ? 'on' : '', 'aria-pressed': String((S.settings.reelFilter || 'all') === k), onclick: () => setMode('shuffle', k) }, n))));
   ov.appendChild(top);
   document.body.appendChild(ov);
   cleanup.push(() => { if (C) C.stop(); ov.remove(); });
