@@ -8,3 +8,4 @@
 - 2026-11-07 · 1.31.1 · every-feature smoke test · tools/smoke.js 16 checks both engines, Q29 (fails live, passes) · iOS Simulator: recorded reel plays with sound in Mobile Safari
 - 2026-11-07 · 1.32.0 · Kafka architect's lens · flows lens test extended (7 rows, 5 internals, interview set) · pass
 - 2026-11-07 · Airflow architect's lens (1.9) · lens test extended (7 rows, 5 internals, interview set) · pass
+- 2026-11-07 · 1.33.1 · Iceberg architect's lens · new flows lens journey (7 rows, 5 internals, interview and quiz sets, 4-level reels, 8.5 link) · pass

@@ -5645,5 +5645,1312 @@
     ]
    }
   ]
+ },
+ "2.9 Architect's lens: Iceberg and open table formats": {
+  "hash": "7d48fe00c51a",
+  "sec": "2.9",
+  "reels": [
+   {
+    "title": "A table is a library catalogue",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "How do you find one book among ten million without walking every shelf?",
+      "show": {
+       "t": "big",
+       "text": "Find one book in ten million",
+       "sub": "Without walking the shelves"
+      }
+     },
+     {
+      "say": "A library keeps a catalogue. Drawers point to cards, cards point to shelves. You open a few drawers, read a few cards, and walk straight to the right shelf.",
+      "show": {
+       "t": "scene",
+       "title": "The catalogue does the *walking*",
+       "nodes": [
+        {
+         "id": "c",
+         "label": "Catalogue",
+         "x": 25,
+         "y": 20,
+         "tone": "blue",
+         "sub": "drawers"
+        },
+        {
+         "id": "k",
+         "label": "Cards",
+         "x": 75,
+         "y": 20,
+         "tone": "teal",
+         "sub": "one per book"
+        },
+        {
+         "id": "s",
+         "label": "Shelf",
+         "x": 50,
+         "y": 62,
+         "tone": "amber",
+         "sub": "the book",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "c",
+         "k"
+        ],
+        [
+         "k",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "c"
+         ]
+        },
+        {
+         "at": 0.35,
+         "show": "k"
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "c",
+          "k"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.65,
+         "show": "s"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "k",
+          "s"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Read a little, skip the rest",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Iceberg does this for data files in cloud storage. Small metadata files say which data files hold which values, so a query reads only the files it needs.",
+      "show": {
+       "t": "scene",
+       "title": "Iceberg is the *catalogue*",
+       "nodes": [
+        {
+         "id": "m",
+         "label": "Metadata",
+         "x": 25,
+         "y": 25,
+         "tone": "blue",
+         "sub": "small files"
+        },
+        {
+         "id": "d",
+         "label": "Data files",
+         "x": 75,
+         "y": 25,
+         "tone": "amber",
+         "sub": "Parquet",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "m",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "m",
+          "d"
+         ]
+        },
+        {
+         "at": 0.45,
+         "packet": [
+          "m",
+          "d"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Only the needed files are opened",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "And when someone adds books, the new catalogue goes live in one step. Readers see the old shelves or the new ones, never a half-finished mess.",
+      "show": {
+       "t": "points",
+       "title": "What you get",
+       "items": [
+        "Fast lookups",
+        "All-or-nothing changes",
+        "Many tools, one copy"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why can a query on an Iceberg table skip most of its files?",
+     "opts": [
+      "It reads small metadata that says which files can match",
+      "It keeps every file in memory",
+      "It sorts the whole table before each query"
+     ],
+     "ans": 0,
+     "why": "The metadata records value ranges per file, so the engine can rule files out before opening them."
+    },
+    "work": [
+     "Find one slow lake table and count how many files a typical query opens.",
+     "Ask which of your tables several tools read, and whether each keeps its own copy."
+    ]
+   },
+   {
+    "title": "The metadata tree, top to bottom",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "A table has two million files. How does Iceberg plan a query without listing a single folder?",
+      "show": {
+       "t": "big",
+       "text": "2 million files, no listing",
+       "sub": "Walk the tree instead"
+      }
+     },
+     {
+      "say": "The catalog points to the current metadata file. That names the current snapshot, which points to a manifest list. Each manifest list row says which partition range one manifest covers.",
+      "show": {
+       "t": "scene",
+       "title": "From pointer to *manifests*",
+       "nodes": [
+        {
+         "id": "c",
+         "label": "Catalog",
+         "x": 20,
+         "y": 15,
+         "tone": "grey",
+         "sub": "pointer"
+        },
+        {
+         "id": "j",
+         "label": "metadata.json",
+         "x": 55,
+         "y": 15,
+         "tone": "blue",
+         "sub": "schema, snapshots"
+        },
+        {
+         "id": "l",
+         "label": "Manifest list",
+         "x": 35,
+         "y": 55,
+         "tone": "teal",
+         "sub": "one row per manifest"
+        },
+        {
+         "id": "m",
+         "label": "Manifests",
+         "x": 75,
+         "y": 55,
+         "tone": "plum",
+         "sub": "one row per file"
+        }
+       ],
+       "edges": [
+        [
+         "c",
+         "j"
+        ],
+        [
+         "j",
+         "l"
+        ],
+        [
+         "l",
+         "m"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.05,
+         "show": [
+          "c",
+          "j"
+         ]
+        },
+        {
+         "at": 0.2,
+         "packet": [
+          "c",
+          "j"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.45,
+         "show": "l"
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "j",
+          "l"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.75,
+         "show": "m"
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "l",
+          "m"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Each manifest row describes one data file: its path, row count, and the minimum and maximum of every column. The planner drops manifests, then files, that cannot match the filter.",
+      "show": {
+       "t": "scene",
+       "title": "Statistics *prune* files",
+       "nodes": [
+        {
+         "id": "m",
+         "label": "Manifest",
+         "x": 25,
+         "y": 20,
+         "tone": "plum",
+         "sub": "min and max"
+        },
+        {
+         "id": "a",
+         "label": "File A",
+         "x": 75,
+         "y": 15,
+         "tone": "teal",
+         "sub": "matches"
+        },
+        {
+         "id": "b",
+         "label": "File B",
+         "x": 75,
+         "y": 45,
+         "tone": "grey",
+         "sub": "skipped"
+        }
+       ],
+       "edges": [
+        [
+         "m",
+         "a"
+        ],
+        [
+         "m",
+         "b"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "m",
+          "a",
+          "b"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "m",
+          "a"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "dim": "b"
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Files ruled out unopened",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So planning reads a handful of small files instead of paging through millions of object listings.",
+      "show": {
+       "t": "bars",
+       "title": "Requests to plan one query",
+       "unit": "requests",
+       "items": [
+        [
+         "List folders",
+         2000,
+         ""
+        ],
+        [
+         "Walk metadata",
+         12,
+         ""
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What does a manifest file hold?",
+     "opts": [
+      "One row per data file, with column minimums and maximums",
+      "The table schema history only",
+      "A copy of every row in the table"
+     ],
+     "ans": 0,
+     "why": "Manifests list data files with per-column statistics, which is what lets the planner skip files."
+    },
+    "work": [
+     "Query the files metadata table of a big table and look at file sizes.",
+     "Run rewrite_manifests when planning time creeps up."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Hidden partitioning and changing it later",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Why does a forgotten date filter scan a whole Hive table, but not an Iceberg one?",
+      "show": {
+       "t": "big",
+       "text": "Forgot the dt filter?",
+       "sub": "Iceberg has your back"
+      }
+     },
+     {
+      "say": "In Hive, users filter on a separate partition column. Forget it, and every file is read. Iceberg stores a transform instead, such as days of event time.",
+      "show": {
+       "t": "code",
+       "title": "The table stores the rule",
+       "text": "PARTITIONED BY (days(event_ts))"
+      }
+     },
+     {
+      "say": "A filter on event time is turned into partition pruning automatically. Nobody needs to know the partition column even exists.",
+      "show": {
+       "t": "scene",
+       "title": "Filter the real *column*",
+       "nodes": [
+        {
+         "id": "q",
+         "label": "Query",
+         "x": 25,
+         "y": 20,
+         "tone": "amber",
+         "sub": "event_ts filter"
+        },
+        {
+         "id": "p",
+         "label": "Planner",
+         "x": 75,
+         "y": 20,
+         "tone": "blue",
+         "sub": "applies days()"
+        },
+        {
+         "id": "d",
+         "label": "Two days of files",
+         "x": 50,
+         "y": 60,
+         "tone": "teal",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "q",
+         "p"
+        ],
+        [
+         "p",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "q",
+          "p"
+         ]
+        },
+        {
+         "at": 0.35,
+         "packet": [
+          "q",
+          "p"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.6,
+         "show": "d"
+        },
+        {
+         "at": 0.65,
+         "packet": [
+          "p",
+          "d"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Pruned without a dt column",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Each file also records the partition spec it was written with. Switch from daily to hourly, and only new files use hours. Old files stay put, and the planner reads both.",
+      "show": {
+       "t": "points",
+       "title": "Partition evolution",
+       "items": [
+        "New spec for new files",
+        "Old files untouched",
+        "No rewrite needed"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "You change a table from daily to hourly partitions. What happens to old files?",
+     "opts": [
+      "They keep their daily spec and are still pruned correctly",
+      "They must all be rewritten first",
+      "They become unreadable"
+     ],
+     "ans": 0,
+     "why": "Every file records its own partition spec, so evolution is a metadata change."
+    },
+    "work": [
+     "Look for Hive tables where analysts often forget the partition filter.",
+     "Pick partition transforms from the filters queries really use."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Two writers, one table",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Two jobs commit to the same table at the same second. Who wins, and what does a reader see?",
+      "show": {
+       "t": "big",
+       "text": "Two commits, one second",
+       "sub": "Who wins?"
+      }
+     },
+     {
+      "say": "Each writer writes its files and a new metadata file, then asks the catalog to swap the pointer, but only if it still points where it started. One swap wins.",
+      "show": {
+       "t": "scene",
+       "title": "Compare and *swap*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Job A",
+         "x": 20,
+         "y": 15,
+         "tone": "teal"
+        },
+        {
+         "id": "b",
+         "label": "Job B",
+         "x": 80,
+         "y": 15,
+         "tone": "amber"
+        },
+        {
+         "id": "c",
+         "label": "Catalog",
+         "x": 50,
+         "y": 55,
+         "tone": "blue",
+         "sub": "table pointer"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "c"
+        ],
+        [
+         "b",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "a",
+          "b",
+          "c"
+         ]
+        },
+        {
+         "at": 0.35,
+         "packet": [
+          "a",
+          "c"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "b",
+          "c"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.65,
+         "glow": "a"
+        },
+        {
+         "at": 0.7,
+         "dim": "b"
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Only one swap succeeds",
+          "tone": "blue",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The loser rereads the new state and checks for conflict. Two appends never clash, so it simply retries on top. Two jobs rewriting the same files do clash, and one fails.",
+      "show": {
+       "t": "points",
+       "title": "Optimistic concurrency",
+       "items": [
+        "No locks while writing",
+        "Check only at commit",
+        "Appends retry, rewrites may fail"
+       ]
+      }
+     },
+     {
+      "say": "A reader pins one snapshot when its query starts. It sees a whole commit or none of it, even while writes keep landing.",
+      "show": {
+       "t": "scene",
+       "title": "Readers pin a *snapshot*",
+       "nodes": [
+        {
+         "id": "r",
+         "label": "Reader",
+         "x": 25,
+         "y": 25,
+         "tone": "plum",
+         "sub": "query"
+        },
+        {
+         "id": "s",
+         "label": "Snapshot 41",
+         "x": 75,
+         "y": 25,
+         "tone": "teal",
+         "sub": "fixed view"
+        }
+       ],
+       "edges": [
+        [
+         "r",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "r",
+          "s"
+         ]
+        },
+        {
+         "at": 0.45,
+         "packet": [
+          "r",
+          "s"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "All of a commit or none of it",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Two jobs append new rows to one Iceberg table at the same time. What usually happens?",
+     "opts": [
+      "One swap wins and the other retries on top and succeeds",
+      "Both commits are lost",
+      "The table locks until an admin steps in"
+     ],
+     "ans": 0,
+     "why": "Appends do not touch the same files, so the losing writer rebases on the new snapshot and commits."
+    },
+    "work": [
+     "Give each table one main writing job.",
+     "Alert on commit retries and commit failures per table."
+    ],
+    "part": "1 of 3"
+   },
+   {
+    "title": "Copy-on-write or merge-on-read",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Delete one row from a five hundred megabyte file. Should you rewrite the whole file?",
+      "show": {
+       "t": "big",
+       "text": "Delete one row",
+       "sub": "Rewrite 500 MB?"
+      }
+     },
+     {
+      "say": "Copy-on-write says yes. Every file holding a changed row is rewritten. Writes are slow and costly, but readers see only clean data files.",
+      "show": {
+       "t": "scene",
+       "title": "Copy-on-*write*",
+       "nodes": [
+        {
+         "id": "o",
+         "label": "Old file",
+         "x": 25,
+         "y": 25,
+         "tone": "grey",
+         "sub": "500 MB"
+        },
+        {
+         "id": "n",
+         "label": "New file",
+         "x": 75,
+         "y": 25,
+         "tone": "teal",
+         "sub": "500 MB, row gone",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "o",
+         "n"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "o"
+        },
+        {
+         "at": 0.4,
+         "show": "n"
+        },
+        {
+         "at": 0.45,
+         "packet": [
+          "o",
+          "n"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Heavy write, fast read",
+          "tone": "amber",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Merge-on-read writes a tiny delete file instead, naming the rows to drop. Writes are cheap, but every query must merge those deletes, and reads slow down as they pile up.",
+      "show": {
+       "t": "scene",
+       "title": "Merge-on-*read*",
+       "nodes": [
+        {
+         "id": "d",
+         "label": "Data file",
+         "x": 25,
+         "y": 25,
+         "tone": "blue",
+         "sub": "unchanged",
+         "kind": "disk"
+        },
+        {
+         "id": "x",
+         "label": "Delete file",
+         "x": 75,
+         "y": 25,
+         "tone": "red",
+         "sub": "a few rows"
+        },
+        {
+         "id": "q",
+         "label": "Query",
+         "x": 50,
+         "y": 62,
+         "tone": "plum",
+         "sub": "merges both"
+        }
+       ],
+       "edges": [
+        [
+         "d",
+         "q"
+        ],
+        [
+         "x",
+         "q"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "d",
+          "x"
+         ]
+        },
+        {
+         "at": 0.45,
+         "show": "q"
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "d",
+          "q"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.55,
+         "packet": [
+          "x",
+          "q"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Cheap write, costlier read",
+          "tone": "amber",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Pick copy-on-write for tables read all day and changed in nightly batches. Pick merge-on-read for constant small changes, like a CDC feed, and compact on a schedule.",
+      "show": {
+       "t": "points",
+       "title": "Choose by workload",
+       "items": [
+        "Batch changes: copy-on-write",
+        "Frequent changes: merge-on-read",
+        "Merge-on-read needs compaction"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A table gets CDC updates every minute and is read a few times an hour. Which mode fits?",
+     "opts": [
+      "Merge-on-read with scheduled compaction",
+      "Copy-on-write",
+      "Neither: CDC cannot go into Iceberg"
+     ],
+     "ans": 0,
+     "why": "Frequent small changes make copy-on-write rewrite huge files constantly; merge-on-read keeps writes cheap and compaction keeps reads healthy."
+    },
+    "work": [
+     "Check the delete file count on your merge-on-read tables.",
+     "Set the write mode per table, not one default for all."
+    ],
+    "part": "2 of 3"
+   },
+   {
+    "title": "Small files and the snapshot bill",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "You compacted the table. So why did storage go up?",
+      "show": {
+       "t": "big",
+       "text": "Compacted, yet bigger?",
+       "sub": "Snapshots remember"
+      }
+     },
+     {
+      "say": "A job writing every minute adds small files, a manifest and a snapshot each time. After a month, that is about forty three thousand snapshots and tens of thousands of tiny files.",
+      "show": {
+       "t": "bars",
+       "title": "After one month of minute commits",
+       "unit": "snapshots",
+       "items": [
+        [
+         "Hourly writes",
+         720,
+         ""
+        ],
+        [
+         "Minute writes",
+         43200,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Compaction writes big files and a new snapshot. But older snapshots still point to the small files for time travel, so nothing is freed until you expire them.",
+      "show": {
+       "t": "scene",
+       "title": "Old snapshots hold *files*",
+       "nodes": [
+        {
+         "id": "o",
+         "label": "Old snapshots",
+         "x": 25,
+         "y": 20,
+         "tone": "grey"
+        },
+        {
+         "id": "s",
+         "label": "Small files",
+         "x": 25,
+         "y": 62,
+         "tone": "red",
+         "kind": "disk"
+        },
+        {
+         "id": "n",
+         "label": "New snapshot",
+         "x": 75,
+         "y": 20,
+         "tone": "teal"
+        },
+        {
+         "id": "b",
+         "label": "Big files",
+         "x": 75,
+         "y": 62,
+         "tone": "teal",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "o",
+         "s"
+        ],
+        [
+         "n",
+         "b"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "o",
+          "s"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "n",
+          "b"
+         ]
+        },
+        {
+         "at": 0.45,
+         "packet": [
+          "n",
+          "b"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Expire snapshots to free space",
+          "tone": "amber",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So schedule four jobs: compact data files, expire old snapshots, remove orphan files, and rewrite manifests. Retention is a business choice, because it limits how far back you can roll back.",
+      "show": {
+       "t": "points",
+       "title": "Housekeeping",
+       "items": [
+        "Compact data files",
+        "Expire snapshots",
+        "Remove orphans",
+        "Rewrite manifests"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does storage stay high right after compaction?",
+     "opts": [
+      "Older snapshots still reference the small files",
+      "Compaction copies data twice on purpose",
+      "Object storage never frees space"
+     ],
+     "ans": 0,
+     "why": "Files are deleted only once no snapshot needs them, which is what expire_snapshots arranges."
+    },
+    "work": [
+     "Agree a snapshot retention period with the data owners.",
+     "Schedule compaction and expiry together in one maintenance DAG.",
+     "Track files per partition and average file size."
+    ],
+    "part": "3 of 3"
+   },
+   {
+    "title": "Should we put this on Iceberg?",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Leadership says: move every table to Iceberg. Do you say yes?",
+      "show": {
+       "t": "big",
+       "text": "Everything on Iceberg?",
+       "sub": "It depends on the readers"
+      }
+     },
+     {
+      "say": "Say yes where several engines share data, like Spark writing and Trino and Snowflake reading, where storing and loading copies twice is costly, or where lock-in to one vendor is a real risk.",
+      "show": {
+       "t": "points",
+       "title": "Good reasons",
+       "items": [
+        "Many engines, one copy",
+        "Avoid paying for copies",
+        "Keep the exit open"
+       ]
+      }
+     },
+     {
+      "say": "Compare honestly. Delta is smoothest inside Databricks. Hudi shines at heavy record upserts. A warehouse table needs no maintenance from you. Plain Parquet with Hive has no atomic commits.",
+      "show": {
+       "t": "scene",
+       "title": "The *alternatives*",
+       "nodes": [
+        {
+         "id": "i",
+         "label": "Iceberg",
+         "x": 50,
+         "y": 12,
+         "tone": "blue",
+         "sub": "many engines"
+        },
+        {
+         "id": "d",
+         "label": "Delta",
+         "x": 20,
+         "y": 50,
+         "tone": "teal",
+         "sub": "Databricks"
+        },
+        {
+         "id": "h",
+         "label": "Hudi",
+         "x": 50,
+         "y": 62,
+         "tone": "plum",
+         "sub": "upserts"
+        },
+        {
+         "id": "w",
+         "label": "Warehouse",
+         "x": 80,
+         "y": 50,
+         "tone": "amber",
+         "sub": "managed"
+        }
+       ],
+       "edges": [
+        [
+         "i",
+         "d"
+        ],
+        [
+         "i",
+         "h"
+        ],
+        [
+         "i",
+         "w"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "i"
+        },
+        {
+         "at": 0.3,
+         "show": "d"
+        },
+        {
+         "at": 0.5,
+         "show": "h"
+        },
+        {
+         "at": 0.7,
+         "show": "w"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Choose by engines and workload",
+          "tone": "blue",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Push back for small data one warehouse handles well, for row by row transactions, and when nobody will own compaction, snapshot expiry and the catalog.",
+      "show": {
+       "t": "points",
+       "title": "Push back when",
+       "items": [
+        "Small data, one engine",
+        "Transactional workloads",
+        "No owner for maintenance"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Which situation is the strongest reason to choose Iceberg?",
+     "opts": [
+      "Spark, Trino and Snowflake must share the same tables",
+      "One small team uses one warehouse for gigabytes of data",
+      "An app needs thousands of single-row updates a second"
+     ],
+     "ans": 0,
+     "why": "Iceberg pays off when several engines read and write one copy; the other two fit a warehouse or a database better."
+    },
+    "work": [
+     "Write a one-page decision note: engines, data size, owner, exit plan.",
+     "List which engine writes each candidate table."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Owning, paying and leaving Iceberg",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Who gets paged when an Iceberg table slows down?",
+      "show": {
+       "t": "big",
+       "text": "Who gets paged?",
+       "sub": "Own the table format"
+      }
+     },
+     {
+      "say": "A platform team owns the catalog, the maintenance jobs and the layout rules. Producing teams own each table schema. The catalog is the front door: it holds each table pointer and hands out storage access.",
+      "show": {
+       "t": "scene",
+       "title": "Ownership *lines*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Platform team",
+         "x": 25,
+         "y": 15,
+         "tone": "blue",
+         "sub": "catalog, upkeep"
+        },
+        {
+         "id": "t",
+         "label": "Producing team",
+         "x": 75,
+         "y": 15,
+         "tone": "teal",
+         "sub": "schema, contract"
+        },
+        {
+         "id": "c",
+         "label": "Catalog",
+         "x": 50,
+         "y": 55,
+         "tone": "plum",
+         "sub": "front door"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "c"
+        ],
+        [
+         "t",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "p",
+          "t"
+         ]
+        },
+        {
+         "at": 0.45,
+         "show": "c"
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "p",
+          "c"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "t",
+          "c"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "One catalog of record",
+          "tone": "blue",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "It fails as tiny files, piled up deletes, storage that never shrinks, commit clashes, and worst of all, two catalogs that both think they own a table. Show storage and compute cost per table.",
+      "show": {
+       "t": "points",
+       "title": "Watch for",
+       "items": [
+        "Small files",
+        "Delete file pile-up",
+        "Unexpired snapshots",
+        "Two catalogs, one table"
+       ]
+      }
+     },
+     {
+      "say": "Move off when one platform becomes the only engine and its native tables are cheaper, or when the work is really transactions. Then a warehouse table or a database is the better home.",
+      "show": {
+       "t": "points",
+       "title": "Move off when",
+       "items": [
+        "One engine left",
+        "Native tables cheaper",
+        "Really a database job"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What most often corrupts a shared Iceberg table?",
+     "opts": [
+      "Two catalogs that both commit to it",
+      "Too many readers",
+      "Using hidden partitioning"
+     ],
+     "ans": 0,
+     "why": "Commits are atomic only within one catalog; two catalogs swapping different pointers lose each other’s changes."
+    },
+    "work": [
+     "Name the single catalog of record for every shared table.",
+     "Report storage and maintenance cost per table each month.",
+     "Review tables only one engine still uses."
+    ],
+    "part": "2 of 2"
+   }
+  ]
  }
 }
