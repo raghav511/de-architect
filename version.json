@@ -1,8 +1,8 @@
 {
-  "version": "1.35.1",
+  "version": "1.35.2",
   "date": "2026-11-07",
   "notes": [
-    "New in Spark (3.10): the architect's lens. When to pick Spark over Flink, DuckDB or Polars, warehouse SQL, Dask or Ray and when not, who owns and pays for it, how it fails and scales, and five under-the-hood answers: the driver and stages, why shuffles cost so much, skew and salting, executor memory and out-of-memory errors, Catalyst and code generation.",
-    "Three new Spark interview questions, three quiz questions and eight reels for the lens; the Airflow lens reels are in the app too."
+    "The Spark lens (3.10) now covers Spark 4: Spark Connect and what it changes for running Spark, ANSI mode on by default and what breaks on upgrade, and the VARIANT type for JSON-like data. Each internals answer says which Spark version it applies to.",
+    "One new interview question: what changed in Spark 4 and what breaks when you upgrade."
   ]
 }
