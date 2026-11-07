@@ -236,6 +236,64 @@ Points to understand, because each is a design choice an interviewer can ask you
 - **Evidence is required.** Asking for the exact log line lets you check the classification mechanically: the line must appear in the input. A classification whose evidence is not in the log is discarded.
 - **A small model.** Classification is high-volume and simple. Use a cheap, fast model here and keep the stronger one for root-cause analysis in sprint 9.
 
+## 2.9 Architect's lens: Iceberg and open table formats
+
+The questions an architect is asked about Iceberg, beyond how to create a table and run a `MERGE`.
+
+| Question | Short answer for Iceberg |
+|---|---|
+| **What problem does it solve?** | It turns a folder of Parquet files in object storage into a real table: atomic commits, a schema with history, row-level changes and time travel, and fast planning from file statistics. Several engines can then share one copy of the data instead of each keeping its own. Format version 3 adds deletion vectors, row lineage (a stable id per row, so changed rows can be found), the `variant` type for semi-structured data, and default column values. |
+| **Why it over the alternatives?** | Against plain Parquet with a Hive metastore: no directory listing, no half-written reads, and partitioning or columns can change without a rewrite. Against Delta Lake: the widest engine support (Spark, Trino, Flink, Snowflake, BigQuery, Athena) and an open catalog protocol, where Delta is smoothest inside Databricks. Against Hudi: simpler to run, while Hudi is stronger for heavy record-level upserts with its key index. Against a warehouse's own storage: you keep the files and can switch engines, but you take on maintenance the warehouse used to do for you, unless a managed service such as Amazon S3 Tables runs compaction and snapshot expiry for you. |
+| **When not to use it?** | Small data that fits comfortably in one warehouse or one Postgres; a single engine that already manages its own tables well and no plan to share them; very high-rate single-row updates and point lookups (use an operational database); a team with nobody to own compaction, snapshot expiry and the catalog. |
+| **Who owns and pays for it?** | A data platform team owns the catalog, the maintenance jobs and the storage layout rules. Producing teams own their tables' schemas and contracts. You pay for object storage, the compute of every engine that reads, and the housekeeping compute; old snapshots and orphan files are a quiet storage bill that should be shown per table. |
+| **Where does it sit?** | The storage layer of the lakehouse, between the engines that write (Spark, Flink, streaming ingest) and the engines that read (Trino, Snowflake, BigQuery, notebooks). The catalog is the front door: it holds the pointer to each table's current metadata and hands out storage access. Most now speak the Iceberg REST catalog protocol: Apache Polaris (open source, also run by Snowflake as Open Catalog), Unity Catalog, AWS Glue, and S3 Tables, which bundles storage, catalog and automatic maintenance. |
+| **How does it fail and scale?** | It scales with metadata, not directories: millions of files plan quickly if manifests stay tidy. It fails as small files and slow reads after streaming writes, piles of delete files on merge-on-read tables, storage that never shrinks because snapshots are not expired, commit conflicts when many writers hit one table, and corrupted state when two catalogs both think they own a table. |
+| **When do you move off it?** | When one platform becomes the only engine and its native tables are cheaper to run (move into the warehouse or Delta on Databricks), when the workload is really row-level transactions (move to a database), or when nobody will run the maintenance and a managed table service (S3 Tables, or a warehouse's managed Iceberg tables) is cheaper than the team's time. |
+
+### Under the hood
+
+**1. Walk through Iceberg's metadata tree. Why does planning stay fast on a table with millions of files?**
+<details><summary>Model answer</summary>
+
+The catalog points to the table's current metadata file (`metadata.json`), which holds the schema, the partition spec and the list of snapshots. Each snapshot points to one manifest list. The manifest list has one row per manifest, with the range of partition values that manifest covers. Each manifest has one row per data file: its path, partition value, row count, and the minimum, maximum and null count of each column. Planning is a walk down this tree with the query's filter: skip manifests whose partition range cannot match, then skip data files whose column ranges cannot match. The engine reads a few small metadata files instead of listing directories in object storage, which is slow and paged. It stays fast only while the manifests are healthy, which is why `rewrite_manifests` exists.
+
+</details>
+
+**2. Two jobs commit to the same Iceberg table at the same moment. What happens, and what guarantee does a reader get?**
+<details><summary>Model answer</summary>
+
+Each writer writes its data files and a new metadata file without touching the table, then asks the catalog to swap the table's pointer from the metadata file it started from to its new one. The catalog does a compare-and-swap, so only one swap can win. The loser sees that the pointer moved, re-reads the new current state, checks whether the winner's change conflicts with its own (for example both deleted rows in the same files), and either retries its commit on top or fails. That is optimistic concurrency: no locks while writing, a check only at commit. Readers use snapshot isolation: a query pins one snapshot when it starts and sees all of a commit or none of it, even while writes continue. Many appenders commit happily; many writers rewriting the same files conflict often, so give each table one main writer.
+
+</details>
+
+**3. What is hidden partitioning, and how can a table change its partitioning without rewriting data?**
+<details><summary>Model answer</summary>
+
+The table stores a partition transform, such as `days(event_ts)` or `bucket(16, rider_id)`, not a separate partition column that users must remember. A filter on `event_ts` is turned into a filter on the partition values automatically, so nobody causes a full scan by forgetting a `dt` predicate, and nobody writes the wrong `dt` value. Partition evolution works because every data file records which partition spec it was written with. Changing from daily to hourly adds a new spec; new files use it, old files keep the old one, and the planner prunes each file by its own spec. No data is rewritten unless you choose to rewrite old files later.
+
+</details>
+
+**4. Copy-on-write or merge-on-read for deletes and updates: what does each cost, and how do you choose?**
+<details><summary>Model answer</summary>
+
+Copy-on-write rewrites every data file that contains a changed row. A one-row delete in a 500 MB file rewrites 500 MB, so writes are slow and expensive, but readers see only plain data files. Merge-on-read writes a small delete file instead: a position delete lists file and row positions, an equality delete lists key values to drop (format version 3 replaces position delete files with deletion vectors, below). Writes are cheap, but every read must merge those deletes, and reads slow down as delete files pile up until compaction folds them in. Choose copy-on-write for tables read constantly and changed in occasional batches; choose merge-on-read for frequent small changes such as a CDC feed, and schedule compaction to match.
+
+</details>
+
+**5. A streaming job writes to an Iceberg table every minute. What goes wrong over a month, and what maintenance fixes it?**
+<details><summary>Model answer</summary>
+
+Each commit adds small data files, a manifest and a snapshot. After a month there are tens of thousands of tiny files, many manifests and about 43,000 snapshots: queries spend their time opening files and reading metadata, and storage keeps growing. Four jobs fix it. `rewrite_data_files` compacts small files into large ones (and folds in delete files). `expire_snapshots` drops old snapshots so files only they reference can be deleted; until then compaction actually adds storage, because the old small files are still kept for time travel. `remove_orphan_files` cleans files left by failed writes. `rewrite_manifests` keeps the metadata tree compact. Prevent some of it at write time with a longer trigger interval and rows routed by partition before the write. Snapshot retention is a business decision too: it sets how far back time travel and rollback can go.
+
+</details>
+
+**6. What changed with deletion vectors in format version 3, compared with version 2 position deletes?**
+<details><summary>Model answer</summary>
+
+In version 2, each merge-on-read delete writes a new position delete file: rows of (data file path, row position). One data file can collect many such files over a day of updates, and a delete file may cover many data files, so a reader must find, open and merge every delete file that might apply before it can return rows. In version 3, deletes for a data file are kept as one deletion vector: a compressed bitmap of deleted row positions, stored in a small Puffin file and referenced from the manifest. There is at most one vector per data file; a writer that deletes more rows reads the old vector, adds its positions and replaces it. Readers load at most one small bitmap per file, delete files stop piling up, and compaction has less to clean. It is the same idea as Delta's deletion vectors, which helps the two formats share tables. Equality deletes, used by streaming writers that know only the key, still exist and still need compaction.
+
+</details>
+
 @@lab
 ## Build: trip events as an Iceberg table (2.5 hours)
 
@@ -389,6 +447,36 @@ C) The API requires it
 D) It reduces token cost
 ANS: B
 WHY: A pipeline that assumes the shape will fail somewhere unrelated, later. Validation at the boundary fails early, with a message you can send back to the model for one corrected attempt.
+---
+TYPE: mcq
+TAG: spark
+Q: An Iceberg table partitioned by `days(event_ts)` is changed to `hours(event_ts)`. What happens to the files already in the table?
+A) Every old file is rewritten into hourly partitions before the change takes effect
+B) Old files keep the daily spec they were written with, new files use the hourly spec, and the planner prunes each file by its own spec
+C) Old files become unreadable until compaction runs
+D) The change is refused because partition columns cannot change
+ANS: B
+WHY: Each data file records the partition spec it was written with, so partition evolution is a metadata change. Rewriting old files is optional, never required.
+---
+TYPE: mcq
+TAG: spark
+Q: A merge-on-read Iceberg table receives CDC updates every minute. Queries on it get slower every day. What is the most likely cause?
+A) The snapshot pointer is swapped too often
+B) Delete files pile up and every read must merge them with the data files until compaction folds them in
+C) Merge-on-read tables cannot use column statistics
+D) Hidden partitioning stops working after many commits
+ANS: B
+WHY: Merge-on-read makes writes cheap by deferring work to readers. Without regular compaction (`rewrite_data_files`), each query applies more and more delete files.
+---
+TYPE: mcq
+TAG: spark
+Q: You compact a table full of small files, but the bucket's storage does not go down. Why?
+A) Compaction only rewrites manifests, not data files
+B) The old small files are still referenced by older snapshots, so they stay until those snapshots are expired
+C) Object storage never frees space for deleted files
+D) Compaction writes duplicates on purpose for safety
+ANS: B
+WHY: Compaction commits a new snapshot that points to the new large files. Older snapshots still point to the small ones for time travel. `expire_snapshots` releases them, and then the files can be deleted.
 ---
 TYPE: fill
 TAG: spark
@@ -685,6 +773,19 @@ Q: Tell me about a time you reduced complexity in a data pipeline. What was the 
 SRC: Adobe, 4–6 YOE
 TAG: behavioral
 A: Use situation, task, action, result, and choose a story where you removed something. From your resume, the migration of 120+ on-premise automation workflows to AWS is a strong candidate: describe the duplication you found, the decision to refactor shared logic into reusable PySpark components or templates, what you deleted, and the result, a 30% cost reduction and 99.99% uptime. Name one thing you chose not to simplify and why. Interviewers at this level listen for judgment about what to leave alone as much as for the clean-up itself.
+---
+Q: Leadership wants every table in the warehouse moved to Iceberg on object storage. When do you agree, and when do you push back?
+TAG: arch
+A: Agree where several engines must read or write the same data (Spark, Trino, Snowflake, Flink), where lock-in to one warehouse's storage is a real cost or risk, or where data is large enough that one open copy beats paying to store and load it twice. Push back for small data that one warehouse handles well, for tables nobody will maintain, and for row-level transactional workloads. Before saying yes, name who owns the catalog and the maintenance jobs (compaction, snapshot expiry, orphan clean-up), which engine writes each table, how access rules are enforced on every engine, and what the migration costs.
+---
+Q: Two Spark jobs commit to the same Iceberg table at the same time. What happens, and what does a reader running a query see?
+TAG: spark
+A: Both write their files and a new metadata file, then each asks the catalog to swap the table pointer from the metadata it started from. The swap is compare-and-swap, so one wins. The other re-reads the new state, checks whether the changes conflict (for example both rewrote the same files), and retries on top or fails. Readers pin one snapshot when the query starts, so they see a commit entirely or not at all. Appends rarely conflict; concurrent rewrites of the same files often do, so give each table one main writer.
+---
+Q: A streaming job has written to an Iceberg table every minute for a month. Queries are slow and storage keeps growing even after compaction. Why, and what do you schedule?
+TAG: spark
+A: Each commit added small files, a manifest and a snapshot, so there are tens of thousands of tiny files and about 43,000 snapshots. Compaction alone adds storage because old snapshots still reference the small files. Schedule `rewrite_data_files` to compact, `expire_snapshots` with a retention agreed with the business so old files can go, `remove_orphan_files` for failed writes, and `rewrite_manifests` for the metadata. At write time, lengthen the trigger interval and route rows by partition before writing.
+
 
 @@mock
 ## Mock 2: big data fundamentals screen (30 minutes)
