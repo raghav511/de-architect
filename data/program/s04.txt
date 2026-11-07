@@ -206,6 +206,58 @@ You cannot improve what you do not measure, so build an **evaluation set**: ques
 
 Then change one thing in the context and score again. That loop of change, measure and compare is the core discipline of building with language models.
 
+## 4.10 Architect's lens: dbt and the transformation layer
+
+The questions an architect is asked about dbt, beyond writing a model.
+
+| Question | Short answer for dbt |
+|---|---|
+| **What problem does it solve?** | Turning raw tables into trusted ones inside the warehouse, as plain SQL with software habits: version control, code review, dependency order from `ref()`, tests, documentation and lineage, so a definition like "active rider" lives in one reviewed place. |
+| **Why it over the alternatives?** | Against stored procedures or scheduled SQL scripts: dependencies, tests, environments and docs come built in. Against Spark jobs for the same logic: analysts can own it, and the warehouse does the compute. Against SQLMesh: the largest community and package ecosystem, while SQLMesh offers stronger change planning and virtual environments. |
+| **When not to use it?** | Logic that SQL expresses badly (API calls, ML, complex parsing), streaming with second-level freshness, or heavy row-by-row work. Use Spark, Python or a stream processor there, and let dbt pick up the result. |
+| **Who owns and pays for it?** | Analytics engineers and domain teams own their models and tests; the platform team owns the project layout, CI, environments, the shared macros and the warehouse cost guardrails. The warehouse bill is the real cost, so each model's runtime and spend should be visible. |
+| **Where does it sit?** | Between ingestion (Fivetran, Debezium, Spark landing) and consumption (BI, the semantic layer, features). It orchestrates SQL inside one warehouse; Airflow or dbt Cloud schedules it alongside everything else. |
+| **How does it fail and scale?** | Thousands of models with slow CI that rebuilds everything, incremental models that drift from the truth or miss late data, tests that only warn so nobody looks, a full refresh that costs a fortune, and one giant project where every team waits on every other. It scales with slim CI, incremental models with lookback windows, contracts and model versions, and several projects linked as a mesh. |
+| **When do you move off it?** | When most logic must run in streams, or when the transformations are better owned by Spark or Python pipelines. Usually you split the project (dbt Mesh) long before you replace dbt. |
+
+### Under the hood
+
+**1. What exactly happens when you type `dbt run`?**
+<details><summary>Model answer</summary>
+
+dbt parses every model and reads each `ref()` and `source()` call to build a dependency graph (saved as `manifest.json`). It renders each model's Jinja into plain SQL for your warehouse, wraps it in the DDL for its materialization (`create view`, `create table as`, a `merge` for incremental), and sends those statements to the warehouse in dependency order, several at a time up to `threads`. dbt itself moves no data: the warehouse does all the work, which is why dbt's cost is your warehouse bill.
+
+</details>
+
+**2. How does an incremental model work, and how does it go wrong with late data?**
+<details><summary>Model answer</summary>
+
+On the first run it builds the whole table. Later runs render the `is_incremental()` block, which usually filters to rows newer than the table's maximum timestamp, and apply them with the chosen strategy: `merge` on a `unique_key`, `delete+insert`, or `insert_overwrite` of whole partitions. A row that arrives late, with an old timestamp, falls behind the filter and is never loaded, so the table quietly drifts from the source. The fix is a lookback window (reprocess the last few days every run, which merge or partition overwrite makes safe) plus a periodic full refresh or a reconciliation test against the source.
+
+</details>
+
+**3. CI rebuilds all 2,000 models on every pull request and takes an hour. How do you fix it?**
+<details><summary>Model answer</summary>
+
+Slim CI: compare against the production manifest with `--select state:modified+ --defer --state prod-artifacts`. dbt builds only the models that changed and everything downstream of them, and for unchanged parents it reads the production tables instead of rebuilding them. Add `--empty` or sampling for heavy models, run tests on the same selection, and the run drops to the few models a change can actually affect.
+
+</details>
+
+**4. How do dbt snapshots build an SCD Type 2 table, and what can they miss?**
+<details><summary>Model answer</summary>
+
+Each snapshot run compares the source rows with the current rows of the snapshot table, by `updated_at` (timestamp strategy) or by comparing chosen columns (check strategy). For a changed row it closes the old version by setting `dbt_valid_to` and inserts a new version with a new `dbt_valid_from`. It sees only what exists at the moment it runs: a row that changes twice between two runs keeps only the last change, and deleted rows stay open unless you turn on hard-delete handling. When every change matters, use CDC events (module 6) instead of snapshots.
+
+</details>
+
+**5. What does a dbt test really run, and what does a model contract add?**
+<details><summary>Model answer</summary>
+
+A test compiles to a `SELECT` that returns the rows breaking the rule (nulls, duplicates, orphan keys); zero rows means pass. `severity` makes it warn or fail, and `store_failures` keeps the bad rows for inspection. A model contract checks, at build time, that the model's columns and data types match what you declared, so a change that would break consumers fails before it lands. Versions let you publish `v2` beside `v1` while consumers move. Warehouse constraints such as primary keys are mostly not enforced, so uniqueness still needs a test.
+
+</details>
+
+
 @@lab
 ## Build: a star schema in dbt (2.5 hours)
 
@@ -699,6 +751,19 @@ TAG: behavioral
 A: Describe a method, then a real case. Method: ask each stakeholder what decision the data feeds and by when, which turns "urgent" into a date and a consequence. Rank by business impact and cost of delay, look for a small deliverable that unblocks more than one of them, and make the order visible so nobody is surprised. Escalate only when two requests truly conflict and the ranking is not yours to make.
 
 For the case, your go-to-market request-handling work at Salesforce is suitable: many teams, competing requests, and a system you built to process them faster. End with the result and what you would repeat.
+
+---
+Q: Your dbt project has 2,000 models and CI takes an hour per pull request. How do you bring it down?
+TAG: arch
+A: Slim CI: build only state:modified+ against the production manifest with --defer, so unchanged parents are read from production instead of rebuilt; run tests on the same selection; sample or use --empty for heavy models. Longer term, split the project into domain projects (dbt Mesh) with contracts and versions at the boundaries.
+---
+Q: An incremental model has drifted from its source over a month. Why, and how do you stop it happening again?
+TAG: core
+A: Late-arriving rows had timestamps older than the model's high-water mark, so the incremental filter skipped them. Reprocess a lookback window every run with merge on a unique key (or partition overwrite), add a reconciliation test of counts and sums against the source, and schedule a periodic full refresh for tables where late data is common.
+---
+Q: When would you not use dbt for a transformation?
+TAG: arch
+A: When SQL is the wrong tool: calls to APIs, ML, complex parsing, row-by-row logic, or streaming that needs seconds of freshness. Do that in Spark, Python or a stream processor, land the result as a table, and let dbt model it from there.
 
 @@mock
 ## Mock 4: data modeling round (40 minutes)

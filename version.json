@@ -1,11 +1,9 @@
 {
-  "version": "1.34.0",
+  "version": "1.35.0",
   "date": "2026-11-07",
   "notes": [
-    "A new Interview loop page (Interview group, and a short drill on Today each day) covers the six rounds of a big-tech loop: recruiter screen, coding, system design, code comprehension, behavioural, and leadership with a past-project deep dive.",
-    "Each round shows what interviewers look for and how to prepare, then lets you practise: build a 60 to 90 second pitch, answer recruiter questions out loud with a timer, and drill time complexity.",
-    "System design adds four classic topics (URL shortener, chat, ride-hailing, video streaming) with a Teach me walkthrough in the simulator and a back-of-the-envelope estimate checked within 30%.",
-    "Code comprehension has 12 exercises: say what the code does, tap the line with the bug, fix it and run the tests, improve it, choose how to use an AI assistant well, and explain your approach.",
-    "Write STAR stories tagged by what they show, practise behavioural questions with the stories that fit, and prepare your past project with three decisions, its numbers and follow-up questions; draw it in the simulator."
+    "New: the architect's lens for dbt (4.10): what dbt run really does, incremental models and late data, slim CI for big projects, how snapshots build history and what they miss, and what tests and contracts check.",
+    "New: the architect's lens for dimensional modelling (M1.8): why star schemas are fast, the fan trap that doubles revenue, late-arriving dimension rows and correct point-in-time joins.",
+    "Five new interview questions; fourteen reels arrive with the next reel batch."
   ]
 }

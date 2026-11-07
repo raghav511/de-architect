@@ -7545,5 +7545,959 @@
     "part": "2 of 2"
    }
   ]
+ },
+ "4.10 Architect's lens: dbt and the transformation layer": {
+  "hash": "6439e0c2e43d",
+  "sec": "4.10",
+  "reels": [
+   {
+    "title": "dbt is a recipe book for your data",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Who decides what an active rider means in your company? If five analysts each write their own version, you get five different numbers.",
+      "show": {
+       "t": "big",
+       "text": "5 analysts, 5 answers",
+       "sub": "One metric, many definitions"
+      }
+     },
+     {
+      "say": "Think of a restaurant kitchen. Raw ingredients arrive in the back. Recipes turn them into dishes. dbt is the recipe book for your data warehouse. Each recipe is just a SQL query, saved in a file, and it says which other recipes it needs first.",
+      "show": {
+       "t": "scene",
+       "title": "Raw data becomes *dishes*",
+       "nodes": [
+        {
+         "id": "raw",
+         "label": "Raw tables",
+         "sub": "ingredients",
+         "x": 50,
+         "y": 15,
+         "tone": "grey"
+        },
+        {
+         "id": "rec",
+         "label": "dbt recipes",
+         "sub": "SQL files",
+         "x": 50,
+         "y": 45,
+         "tone": "blue"
+        },
+        {
+         "id": "dish",
+         "label": "Trusted tables",
+         "sub": "dishes",
+         "x": 50,
+         "y": 75,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "raw",
+         "rec"
+        ],
+        [
+         "rec",
+         "dish"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "raw"
+        },
+        {
+         "at": 0.4,
+         "show": "rec",
+         "packet": [
+          "raw",
+          "rec"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "dish",
+         "packet": [
+          "rec",
+          "dish"
+         ],
+         "n": 3
+        }
+       ]
+      }
+     },
+     {
+      "say": "Because recipes are files, people can review changes, like an editor checking a menu. dbt also taste-tests each dish, with checks for blanks and duplicates. Now active rider is defined once, in one reviewed place, and everyone serves the same number.",
+      "show": {
+       "t": "points",
+       "title": "Why it builds trust",
+       "items": [
+        "Recipes saved as files",
+        "Changes get reviewed",
+        "Taste tests on every dish",
+        "One definition of active rider"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What is the main benefit of defining active rider in one dbt model?",
+     "opts": [
+      "Queries run faster on any data",
+      "Everyone uses one reviewed definition and gets the same number",
+      "The data no longer needs to be loaded"
+     ],
+     "ans": 1,
+     "why": "dbt puts logic in version controlled, reviewed, tested files, so the definition lives in one place instead of in many analysts' own queries."
+    },
+    "work": [
+     "List metrics in your company that have more than one definition.",
+     "Pick one and move its logic into a single reviewed model."
+    ]
+   },
+   {
+    "title": "What dbt run really does",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "What actually happens when you type dbt run? Surprisingly, dbt moves no data at all.",
+      "show": {
+       "t": "big",
+       "text": "dbt moves 0 rows",
+       "sub": "The warehouse does the work"
+      }
+     },
+     {
+      "say": "First it reads every model and every ref call, and builds a dependency graph. That graph is saved as manifest dot json. Then it turns the Jinja templating into plain SQL for your warehouse.",
+      "show": {
+       "t": "scene",
+       "title": "Parse, then *compile*",
+       "nodes": [
+        {
+         "id": "m",
+         "label": "Models",
+         "sub": "ref and source",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "g",
+         "label": "Dependency graph",
+         "sub": "manifest.json",
+         "x": 50,
+         "y": 45,
+         "tone": "amber"
+        },
+        {
+         "id": "s",
+         "label": "Plain SQL",
+         "sub": "rendered Jinja",
+         "x": 50,
+         "y": 75,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "m",
+         "g"
+        ],
+        [
+         "g",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "m"
+        },
+        {
+         "at": 0.4,
+         "show": "g",
+         "packet": [
+          "m",
+          "g"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "s",
+         "packet": [
+          "g",
+          "s"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Next it wraps each query in the right statement: create view, create table as, or merge for incremental models. It sends them in dependency order, several at once, up to the threads setting, say four.",
+      "show": {
+       "t": "flow",
+       "title": "Run in order",
+       "steps": [
+        {
+         "label": "Wrap in DDL",
+         "sub": "view, table, merge"
+        },
+        {
+         "label": "Send in order",
+         "sub": "parents first"
+        },
+        {
+         "label": "Threads",
+         "sub": "4 at a time"
+        }
+       ]
+      }
+     },
+     {
+      "say": "The warehouse does all the compute. So dbt's cost is simply your warehouse bill, which is why a slow model is also an expensive model.",
+      "show": {
+       "t": "scene",
+       "title": "The bill is the *warehouse*",
+       "nodes": [
+        {
+         "id": "d",
+         "label": "dbt",
+         "sub": "sends SQL",
+         "x": 30,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "w",
+         "label": "Warehouse",
+         "sub": "all compute",
+         "kind": "disk",
+         "x": 70,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "d",
+         "w"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "d",
+          "w"
+         ],
+         "packet": [
+          "d",
+          "w"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "chip": {
+          "text": "Slow model = costly model",
+          "tone": "amber",
+          "icon": "coin"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why is dbt's cost mostly your warehouse bill?",
+     "opts": [
+      "dbt charges per model",
+      "dbt only sends SQL and the warehouse does all the compute",
+      "dbt copies data to its own servers"
+     ],
+     "ans": 1,
+     "why": "dbt renders and sends SQL; no data flows through it, so spend shows up as warehouse compute."
+    },
+    "work": [
+     "Find your ten slowest models from the last run results.",
+     "Show each model's runtime and cost to its owner."
+    ]
+   },
+   {
+    "title": "Incremental models and late data",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your incremental model says it is up to date, yet the totals are slightly lower than the source. Why?",
+      "show": {
+       "t": "big",
+       "text": "Totals are quietly low",
+       "sub": "Nothing failed"
+      }
+     },
+     {
+      "say": "An incremental model builds the full table once. After that, it only loads rows newer than the latest timestamp already in the table. That makes runs cheap, maybe seconds instead of an hour.",
+      "show": {
+       "t": "scene",
+       "title": "Load only what is *new*",
+       "nodes": [
+        {
+         "id": "src",
+         "label": "Source",
+         "sub": "new rows",
+         "x": 30,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "tbl",
+         "label": "Model table",
+         "sub": "max timestamp filter",
+         "kind": "disk",
+         "x": 70,
+         "y": 30,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "src",
+         "tbl"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "src",
+          "tbl"
+         ],
+         "packet": [
+          "src",
+          "tbl"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "chip": {
+          "text": "Seconds, not an hour",
+          "tone": "teal",
+          "icon": "bolt"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "But a late row arrives today carrying last Tuesday's timestamp. It falls behind the filter, so it is never loaded. The table quietly drifts from the truth, and no test fails.",
+      "show": {
+       "t": "scene",
+       "title": "The late row is *skipped*",
+       "nodes": [
+        {
+         "id": "late",
+         "label": "Late row",
+         "sub": "old timestamp",
+         "x": 30,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "f",
+         "label": "Filter",
+         "sub": "newer than max",
+         "x": 70,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "late",
+         "f"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "late",
+          "f"
+         ],
+         "packet": [
+          "late",
+          "f"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.6,
+         "dim": "late"
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Never loaded",
+          "tone": "red",
+          "icon": "x"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The fix is a lookback window. Reprocess the last three days on every run, using merge on a unique key so repeats are harmless. Add a periodic full refresh, or a reconciliation test against the source.",
+      "show": {
+       "t": "points",
+       "title": "Fixes",
+       "items": [
+        "Lookback: reprocess last 3 days",
+        "Merge on a unique key",
+        "Periodic full refresh",
+        "Reconcile counts with source"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A row arrives two days late with an old timestamp. What happens in a plain max timestamp incremental model?",
+     "opts": [
+      "It is loaded and merged automatically",
+      "It is skipped, so the table drifts from the source",
+      "The run fails with an error"
+     ],
+     "ans": 1,
+     "why": "The filter only takes rows newer than the current maximum, so the late row is ignored silently. A lookback window catches it."
+    },
+    "work": [
+     "Check how late data arrives in your sources.",
+     "Add a lookback window to incremental models that use a max timestamp filter.",
+     "Add a row count reconciliation test against the source."
+    ],
+    "part": "1 of 3"
+   },
+   {
+    "title": "What snapshots can miss",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "A rider changes their city twice between two snapshot runs. How many versions does your history table hold?",
+      "show": {
+       "t": "big",
+       "text": "2 changes, 1 version?",
+       "sub": "Snapshots see only run time"
+      }
+     },
+     {
+      "say": "A dbt snapshot builds slowly changing history. Each run compares source rows to the current rows in the snapshot table, by an updated at column, or by checking chosen columns. For a changed row, it closes the old version by setting dbt valid to, and inserts a new one.",
+      "show": {
+       "t": "scene",
+       "title": "Close the old, *open the new*",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Source row",
+         "sub": "compared each run",
+         "x": 30,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "h",
+         "label": "Snapshot table",
+         "sub": "dbt_valid_to set",
+         "kind": "disk",
+         "x": 70,
+         "y": 30,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "h"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "s",
+          "h"
+         ],
+         "packet": [
+          "s",
+          "h"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "cells": {
+          "label": "Versions",
+          "items": [
+           [
+            "v1",
+            "closed"
+           ],
+           [
+            "v2",
+            "open"
+           ]
+          ]
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "But it only sees the moment it runs. Two changes between runs leave just the last one. The middle version is gone. Deleted source rows stay open unless you enable hard delete handling.",
+      "show": {
+       "t": "points",
+       "title": "What it misses",
+       "items": [
+        "Changes between two runs",
+        "The middle version is lost",
+        "Deletes stay open by default"
+       ]
+      }
+     },
+     {
+      "say": "When every change matters, such as audits, capture change events with CDC instead of polling snapshots.",
+      "show": {
+       "t": "big",
+       "text": "Every change matters? Use CDC",
+       "sub": "Events, not polling"
+      }
+     }
+    ],
+    "check": {
+     "q": "A source row changes twice between two snapshot runs. What does the snapshot table hold?",
+     "opts": [
+      "Both changes as separate versions",
+      "Only the latest change, the middle version is lost",
+      "Nothing until a full refresh"
+     ],
+     "ans": 1,
+     "why": "Snapshots compare state at run time, so intermediate states between runs are never seen."
+    },
+    "work": [
+     "Check how often your snapshots run against how often sources change.",
+     "Switch audit critical tables to CDC events."
+    ],
+    "part": "2 of 3"
+   },
+   {
+    "title": "Tests and contracts in dbt",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your model has a primary key declared. Does the warehouse stop duplicates? Usually, no.",
+      "show": {
+       "t": "big",
+       "text": "Keys often not enforced",
+       "sub": "Declared is not checked"
+      }
+     },
+     {
+      "say": "A dbt test is just a SELECT that returns the rows breaking a rule, like nulls, duplicates, or orphan keys. Zero rows means pass. Severity decides whether a failure warns or stops the run, and store failures keeps the bad rows for inspection.",
+      "show": {
+       "t": "scene",
+       "title": "Zero bad rows means *pass*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Test SELECT",
+         "sub": "finds bad rows",
+         "x": 30,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "r",
+         "label": "Result",
+         "sub": "0 rows = pass",
+         "x": 70,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "r"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "t",
+          "r"
+         ],
+         "packet": [
+          "t",
+          "r"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "chip": {
+          "text": "Severity: warn or fail",
+          "tone": "amber",
+          "icon": "flag"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A model contract adds a build time check. The columns and data types must match what you declared, so a change that would break a dashboard fails before it lands. Versions then let you publish v two beside v one while consumers move.",
+      "show": {
+       "t": "points",
+       "title": "Contracts and versions",
+       "items": [
+        "Columns and types checked at build",
+        "Breaking change fails early",
+        "v2 published beside v1",
+        "Consumers migrate on their own time"
+       ]
+      }
+     },
+     {
+      "say": "Warehouse constraints are mostly not enforced, so keep a unique test. And a test that only warns is one nobody reads.",
+      "show": {
+       "t": "big",
+       "text": "Keep the unique test",
+       "sub": "Warnings get ignored"
+      }
+     }
+    ],
+    "check": {
+     "q": "What does a model contract check?",
+     "opts": [
+      "That rows are unique",
+      "That the model's columns and data types match the declaration at build time",
+      "That the source data is fresh"
+     ],
+     "ans": 1,
+     "why": "Contracts guard the shape of the output. Uniqueness still needs a test, since warehouse keys are mostly unenforced."
+    },
+    "work": [
+     "Add contracts to models that feed dashboards or other teams.",
+     "Make critical tests fail instead of warn.",
+     "Keep unique and not null tests on every primary key."
+    ],
+    "part": "3 of 3"
+   },
+   {
+    "title": "When to choose dbt, and when not",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When would you tell a team not to use dbt? Knowing the edge is what makes the choice credible.",
+      "show": {
+       "t": "big",
+       "text": "Know the edge",
+       "sub": "Where dbt stops"
+      }
+     },
+     {
+      "say": "Choose dbt over stored procedures and scheduled scripts because dependencies, tests, environments and docs come built in. Choose it over Spark for the same logic because analysts can own it and the warehouse does the compute. SQLMesh has stronger change planning, but dbt has the biggest community and packages.",
+      "show": {
+       "t": "bars",
+       "title": "Why dbt wins",
+       "unit": "built in",
+       "items": [
+        [
+         "dbt",
+         4,
+         "deps, tests, envs, docs"
+        ],
+        [
+         "Scheduled SQL",
+         0,
+         "you build it"
+        ],
+        [
+         "Stored procs",
+         1,
+         "little built in"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Do not use it for API calls, machine learning, complex parsing, or row by row work. Nor for streaming that needs second level freshness. Use Spark, Python or a stream processor there, and let dbt pick up the result.",
+      "show": {
+       "t": "scene",
+       "title": "Hand off, then *pick up*",
+       "nodes": [
+        {
+         "id": "sp",
+         "label": "Spark, Python, streams",
+         "sub": "hard logic",
+         "x": 50,
+         "y": 15,
+         "tone": "plum"
+        },
+        {
+         "id": "wh",
+         "label": "Warehouse table",
+         "sub": "landed result",
+         "kind": "disk",
+         "x": 50,
+         "y": 45,
+         "tone": "grey"
+        },
+        {
+         "id": "db",
+         "label": "dbt",
+         "sub": "picks up",
+         "x": 50,
+         "y": 75,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "sp",
+         "wh"
+        ],
+        [
+         "wh",
+         "db"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "sp"
+        },
+        {
+         "at": 0.5,
+         "show": "wh",
+         "packet": [
+          "sp",
+          "wh"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "show": "db",
+         "packet": [
+          "wh",
+          "db"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Since the warehouse bill is the real cost, make each model's runtime and spend visible to its owner.",
+      "show": {
+       "t": "big",
+       "text": "Cost per model, visible",
+       "sub": "Owners see their spend"
+      }
+     }
+    ],
+    "check": {
+     "q": "A team needs second level freshness from event streams. What is the best approach?",
+     "opts": [
+      "Run dbt every minute on everything",
+      "Use a stream processor, and let dbt pick up the landed result",
+      "Rewrite the logic as stored procedures"
+     ],
+     "ans": 1,
+     "why": "dbt is batch SQL in the warehouse. Streaming and heavy non SQL logic belong in purpose built tools, with dbt consuming their output."
+    },
+    "work": [
+     "Write down which pipelines in your stack are not a good fit for dbt.",
+     "Add per model cost reporting and share it with owners."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Scaling dbt past two thousand models",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Two thousand models, and every pull request rebuilds all of them in an hour. How do you fix that?",
+      "show": {
+       "t": "big",
+       "text": "2,000 models, 1 hour",
+       "sub": "Every pull request"
+      }
+     },
+     {
+      "say": "Use slim CI. Compare against the production manifest and select state modified plus. dbt builds only changed models and everything downstream. For unchanged parents it defers to the production tables instead of rebuilding them.",
+      "show": {
+       "t": "scene",
+       "title": "Build only what *changed*",
+       "nodes": [
+        {
+         "id": "pm",
+         "label": "Prod manifest",
+         "sub": "the baseline",
+         "x": 50,
+         "y": 15,
+         "tone": "grey"
+        },
+        {
+         "id": "ch",
+         "label": "Changed + downstream",
+         "sub": "built in CI",
+         "x": 50,
+         "y": 45,
+         "tone": "blue"
+        },
+        {
+         "id": "pt",
+         "label": "Prod tables",
+         "sub": "deferred parents",
+         "kind": "disk",
+         "x": 50,
+         "y": 75,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "pm",
+         "ch"
+        ],
+        [
+         "pt",
+         "ch"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "pm"
+        },
+        {
+         "at": 0.5,
+         "show": "ch",
+         "packet": [
+          "pm",
+          "ch"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "show": "pt",
+         "packet": [
+          "pt",
+          "ch"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Then the other limit: one giant project where every team waits on every other. Split it into several projects linked as a mesh, with contracts and model versions as the agreements between them.",
+      "show": {
+       "t": "scene",
+       "title": "Many projects, one *mesh*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Team A project",
+         "sub": "owns models",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Team B project",
+         "sub": "owns models",
+         "x": 50,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "c",
+         "label": "Team C project",
+         "sub": "owns models",
+         "x": 80,
+         "y": 30,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "b"
+        ],
+        [
+         "b",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "a",
+          "b",
+          "c"
+         ]
+        },
+        {
+         "at": 0.6,
+         "chip": {
+          "text": "Contracts between teams",
+          "tone": "amber",
+          "icon": "link"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "You move off dbt only when most logic must run in streams, or is better owned by Spark or Python pipelines. Usually you split the project long before you replace it.",
+      "show": {
+       "t": "points",
+       "title": "Order of moves",
+       "items": [
+        "Slim CI first",
+        "Lookback windows on incrementals",
+        "Split into a mesh",
+        "Replace dbt only as a last step"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "CI takes an hour because it rebuilds every model. What is the best first fix?",
+     "opts": [
+      "Buy a bigger warehouse",
+      "Slim CI: build state modified plus and defer to production for unchanged parents",
+      "Delete tests from CI"
+     ],
+     "ans": 1,
+     "why": "Selecting only changed models and their downstream, and reading unchanged parents from production, cuts the run to what a change can actually affect."
+    },
+    "work": [
+     "Save production artifacts after each deploy and use them in CI.",
+     "Find the teams that block each other most and consider a separate project for them."
+    ],
+    "part": "2 of 2"
+   }
+  ]
  }
 }
