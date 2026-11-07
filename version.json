@@ -1,8 +1,12 @@
 {
-  "version": "1.26.0",
+  "version": "1.27.0",
   "date": "2026-11-07",
   "notes": [
-    "Reels are now a swipe feed like Shorts, shuffled by default (switch to My week any time, or filter by weak spots or a track), with animated scenes: components light up, data moves between them, counters and bars animate.",
-    "Kafka 5.2 is a four-level series: New to it, How it works, Inside and caveats, Architect. Reels now teach topics only."
+    "Sync no longer drops what you did on your other device (live mocks, reel checks, playbook, ticks, streak days), and stops safely if it cannot read the server first.",
+    "Two open tabs no longer overwrite each other's progress.",
+    "Backups leave out your API key and sync URL; restoring keeps this device's.",
+    "Questions and AI replies can no longer run code in the app; older questions show the day they were found.",
+    "AI scores say they can be wrong, and an incomplete AI reply lets you mark yourself instead of scoring 1.",
+    "Every section now has reels at four levels: new to it, how it works, inside and caveats, architect."
   ]
 }

@@ -1,0 +1,7549 @@
+{
+ "4.2 Facts, dimensions and grain": {
+  "hash": "0b2569b8a8c4",
+  "sec": "4.2",
+  "reels": [
+   {
+    "title": "Receipts and labels",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Why do analysts argue for hours over one number? Usually because nobody agreed what one row actually means.",
+      "show": {
+       "t": "big",
+       "text": "What is one row?",
+       "sub": "Agree this before anything else"
+      }
+     },
+     {
+      "say": "Picture a shoebox of shop receipts. Each receipt is a fact: something that happened, with amounts on it, like price and quantity. The fact table is that shoebox. It grows fast, but each slip is small.",
+      "show": {
+       "t": "scene",
+       "title": "The *shoebox* of facts",
+       "nodes": [
+        {
+         "id": "f",
+         "label": "Fact table",
+         "sub": "one slip per event",
+         "x": 50,
+         "y": 40,
+         "tone": "blue"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "f"
+        },
+        {
+         "at": 0.5,
+         "count": {
+          "key": "r",
+          "label": "receipts",
+          "to": 1000000,
+          "unit": "rows",
+          "tone": "blue"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Now picture the labels: customer, shop, date. These are dimensions. They are the context you use to sort and group the receipts. There are far fewer labels than receipts, but each one has lots of detail.",
+      "show": {
+       "t": "scene",
+       "title": "Labels are *dimensions*",
+       "nodes": [
+        {
+         "id": "f",
+         "label": "Facts",
+         "sub": "receipts",
+         "x": 50,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "c",
+         "label": "Customer",
+         "x": 20,
+         "y": 65,
+         "tone": "teal"
+        },
+        {
+         "id": "s",
+         "label": "Shop",
+         "x": 50,
+         "y": 65,
+         "tone": "teal"
+        },
+        {
+         "id": "d",
+         "label": "Date",
+         "x": 80,
+         "y": 65,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "f",
+         "c"
+        ],
+        [
+         "f",
+         "s"
+        ],
+        [
+         "f",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "f"
+        },
+        {
+         "at": 0.3,
+         "show": [
+          "c",
+          "s",
+          "d"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "f",
+          "s"
+         ],
+         "n": 3
+        }
+       ]
+      }
+     },
+     {
+      "say": "The grain is the rule for what one slip stands for. One receipt per trip, say. Decide it first, and every later choice gets easy.",
+      "show": {
+       "t": "big",
+       "text": "Grain = what one row means",
+       "sub": "One row per trip"
+      }
+     }
+    ],
+    "check": {
+     "q": "In the shoebox analogy, what is the grain?",
+     "opts": [
+      "The shop's name on the label",
+      "The rule for what one receipt stands for",
+      "The total value of all receipts",
+      "The date label"
+     ],
+     "ans": 1,
+     "why": "Grain is the exact statement of what one row represents, such as one row per trip. Labels are dimensions, not grain."
+    },
+    "work": [
+     "Write the grain of your three most-used tables as one sentence each.",
+     "Ask a teammate what one row means in a table they query daily and compare answers."
+    ]
+   },
+   {
+    "title": "The four design steps",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "You have millions of rides to model. Where do you even start? Four steps, always in this order.",
+      "show": {
+       "t": "points",
+       "title": "Design order",
+       "items": [
+        "Business process",
+        "Grain",
+        "Dimensions",
+        "Facts"
+       ]
+      }
+     },
+     {
+      "say": "First, pick the business process: completed rides. Second, declare the grain in one sentence: one row per trip. If a rider takes ten trips today, that is ten rows, never one.",
+      "show": {
+       "t": "flow",
+       "steps": [
+        {
+         "label": "Process",
+         "sub": "completed rides"
+        },
+        {
+         "label": "Grain",
+         "sub": "one row per trip"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Third, choose dimensions that are true of a single trip: rider, driver, pickup zone, drop-off zone, date, payment method. Fourth, choose facts at that grain: fare, distance, duration, tip and surge multiplier.",
+      "show": {
+       "t": "scene",
+       "title": "Trip fact and its *dimensions*",
+       "nodes": [
+        {
+         "id": "f",
+         "label": "fact_trip",
+         "sub": "fare, distance, tip",
+         "x": 50,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "r",
+         "label": "Rider",
+         "x": 20,
+         "y": 70,
+         "tone": "teal"
+        },
+        {
+         "id": "d",
+         "label": "Driver",
+         "x": 50,
+         "y": 70,
+         "tone": "teal"
+        },
+        {
+         "id": "z",
+         "label": "Zone",
+         "x": 80,
+         "y": 70,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "f",
+         "r"
+        ],
+        [
+         "f",
+         "d"
+        ],
+        [
+         "f",
+         "z"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "f"
+        },
+        {
+         "at": 0.3,
+         "show": [
+          "r",
+          "d",
+          "z"
+         ]
+        },
+        {
+         "at": 0.7,
+         "chip": {
+          "text": "Facts match the grain",
+          "tone": "blue",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The result: a fact table that is long and narrow, perhaps a billion rows of keys and numbers. Dimensions are short and wide, like a few hundred zones with many descriptive columns.",
+      "show": {
+       "t": "bars",
+       "title": "Typical row counts",
+       "unit": "rows",
+       "items": [
+        [
+         "fact_trip",
+         1000000000,
+         ""
+        ],
+        [
+         "dim_driver",
+         200000,
+         ""
+        ],
+        [
+         "dim_zone",
+         300,
+         ""
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why declare the grain before choosing dimensions and facts?",
+     "opts": [
+      "It makes queries run faster",
+      "Every dimension and measure is tested against it",
+      "Dimensions must be unique",
+      "It decides the file format"
+     ],
+     "ans": 1,
+     "why": "Each later choice is checked against the grain sentence: only things true of one trip belong in a trip-grain table."
+    },
+    "work": [
+     "For your next table, write the grain sentence before any column.",
+     "Reject any column that is not true of one row at that grain."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Three kinds of fact table",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Is a payment, a driver's day and a trip the same kind of fact? No, and the difference is what one row means.",
+      "show": {
+       "t": "points",
+       "title": "Fact table types",
+       "items": [
+        "Transaction",
+        "Periodic snapshot",
+        "Accumulating snapshot"
+       ]
+      }
+     },
+     {
+      "say": "A transaction fact is one event at one moment. One payment is one row, written once and never touched again.",
+      "show": {
+       "t": "big",
+       "text": "One payment = one row",
+       "sub": "Transaction fact"
+      }
+     },
+     {
+      "say": "A periodic snapshot is the state at the end of each period. Each driver gets one row per day with earnings and hours. Ten thousand drivers means ten thousand rows a day, even for those who did nothing.",
+      "show": {
+       "t": "bars",
+       "title": "Rows per day",
+       "unit": "rows",
+       "items": [
+        [
+         "Day 1",
+         10000,
+         ""
+        ],
+        [
+         "Day 2",
+         10000,
+         ""
+        ],
+        [
+         "Day 3",
+         10000,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "An accumulating snapshot is one row per process, updated as it moves. One trip row gets its requested, accepted, started and completed timestamps filled in over time. That lets you measure waits between steps.",
+      "show": {
+       "t": "flow",
+       "steps": [
+        {
+         "label": "Requested"
+        },
+        {
+         "label": "Accepted"
+        },
+        {
+         "label": "Started"
+        },
+        {
+         "label": "Completed"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Which table lets you measure the average time from request to accept for each trip?",
+     "opts": [
+      "Transaction fact of payments",
+      "Periodic snapshot of driver days",
+      "Accumulating snapshot of trips",
+      "A dimension table of riders"
+     ],
+     "ans": 2,
+     "why": "An accumulating snapshot keeps one row per trip with a timestamp per milestone, so gaps between milestones are simple subtractions."
+    },
+    "work": [
+     "Label each fact table you own as transaction, periodic or accumulating.",
+     "Look for a process with milestones that you currently rebuild from event logs."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Why revenue doubled",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Revenue doubled overnight, but nobody took more rides. What happened?",
+      "show": {
+       "t": "big",
+       "text": "Total too high?",
+       "sub": "Suspect a join that changed the grain"
+      }
+     },
+     {
+      "say": "Probably a join changed the grain. Take one trip with a twenty dollar fare. It has two payments, wallet and card. Join trips to payments and the trip row repeats, once per payment.",
+      "show": {
+       "t": "scene",
+       "title": "One trip, *two* payments",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Trip",
+         "sub": "fare 20",
+         "x": 50,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "p1",
+         "label": "Wallet",
+         "x": 30,
+         "y": 70,
+         "tone": "amber"
+        },
+        {
+         "id": "p2",
+         "label": "Card",
+         "x": 70,
+         "y": 70,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "p1"
+        ],
+        [
+         "t",
+         "p2"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "t"
+        },
+        {
+         "at": 0.3,
+         "show": [
+          "p1",
+          "p2"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "t",
+          "p1"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "t",
+          "p2"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Now sum the fare and you get forty dollars. Rows multiplied, so totals inflated. Shared rides do the same: a per-rider attribute in a trip-grain table breaks the one row per trip promise.",
+      "show": {
+       "t": "scene",
+       "title": "Fan-out *inflates* totals",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Real",
+         "sub": "one trip",
+         "x": 30,
+         "y": 40,
+         "tone": "teal"
+        },
+        {
+         "id": "b",
+         "label": "After join",
+         "sub": "two rows",
+         "x": 70,
+         "y": 40,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "b"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "at": 0.4,
+         "race": {
+          "items": [
+           [
+            "Correct fare",
+            20,
+            "teal"
+           ],
+           [
+            "Joined sum",
+            40,
+            "red"
+           ]
+          ],
+          "unit": "dollars"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "When a number is too high, compare row counts before and after each join. Or aggregate payments up to trip grain first, then join.",
+      "show": {
+       "t": "points",
+       "title": "Debug fan-out",
+       "items": [
+        "Count rows before and after each join",
+        "Aggregate to trip grain first",
+        "Then join"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A trip has two payments. You join trips to payments and sum trip fare. What happens?",
+     "opts": [
+      "Fare is correct",
+      "Fare is counted twice",
+      "Fare is counted zero times",
+      "The join fails"
+     ],
+     "ans": 1,
+     "why": "The trip row repeats once per payment, so its fare is summed twice. Aggregate payments to trip grain before joining."
+    },
+    "work": [
+     "Add a row count check before and after joins in key reports.",
+     "Add a uniqueness test on the declared grain key of every fact table."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "What can you add up?",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Can you always add up a column? No, and adding the wrong one gives confident, wrong answers.",
+      "show": {
+       "t": "big",
+       "text": "Not every number adds",
+       "sub": "Additive, semi-additive, non-additive"
+      }
+     },
+     {
+      "say": "A fare is additive. Sum it across riders, zones, days, anything, and the total still makes sense.",
+      "show": {
+       "t": "big",
+       "text": "Fare: sum anywhere",
+       "sub": "Additive"
+      }
+     },
+     {
+      "say": "A wallet balance is semi-additive. Add balances across riders for today's total, but never across days. Ten dollars held for seven days is not seventy dollars. Use the last value or an average over time.",
+      "show": {
+       "t": "bars",
+       "title": "Balance of one rider",
+       "unit": "dollars",
+       "items": [
+        [
+         "Mon",
+         10,
+         ""
+        ],
+        [
+         "Tue",
+         10,
+         ""
+        ],
+        [
+         "Wed",
+         10,
+         ""
+        ],
+        [
+         "Wrong sum",
+         30,
+         "never add across days"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "A ratio like cancellation rate is non-additive. Averaging daily rates ignores that days have different volumes. Store cancelled count and requested count, sum both, then divide at query time.",
+      "show": {
+       "t": "flow",
+       "steps": [
+        {
+         "label": "Store",
+         "sub": "cancelled, requested"
+        },
+        {
+         "label": "Sum both"
+        },
+        {
+         "label": "Divide",
+         "sub": "at query time"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Daily cancellation rates are 50 percent on a day with 2 rides and 10 percent on a day with 98 rides. What is the correct overall approach?",
+     "opts": [
+      "Average the two rates",
+      "Add the two rates",
+      "Sum cancelled and requested counts, then divide",
+      "Take the maximum rate"
+     ],
+     "ans": 2,
+     "why": "Ratios are non-additive. Summing numerator and denominator weights each day by volume, giving about 10.8 percent."
+    },
+    "work": [
+     "Mark each measure in your models as additive, semi-additive or non-additive.",
+     "Replace stored ratio columns with numerator and denominator columns."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Star or snowflake",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Should you normalise your dimensions like an application database? Usually not.",
+      "show": {
+       "t": "big",
+       "text": "Normalise dimensions?",
+       "sub": "Usually no"
+      }
+     },
+     {
+      "say": "A star keeps each dimension as one wide, denormalised table joined straight to the fact. Zone carries its city and country as plain columns, repeated on every row. Analysts write one join per question.",
+      "show": {
+       "t": "scene",
+       "title": "The *star*",
+       "nodes": [
+        {
+         "id": "f",
+         "label": "fact_trip",
+         "x": 50,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "z",
+         "label": "dim_zone",
+         "sub": "city, country inside",
+         "x": 50,
+         "y": 70,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "f",
+         "z"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "f"
+        },
+        {
+         "at": 0.3,
+         "show": "z"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "f",
+          "z"
+         ],
+         "n": 3
+        }
+       ]
+      }
+     },
+     {
+      "say": "A snowflake splits it: dim zone points to dim city, which points to dim country. Less duplication, but more joins, harder queries and more places to get wrong.",
+      "show": {
+       "t": "scene",
+       "title": "The *snowflake*",
+       "nodes": [
+        {
+         "id": "z",
+         "label": "dim_zone",
+         "x": 20,
+         "y": 50,
+         "tone": "teal"
+        },
+        {
+         "id": "c",
+         "label": "dim_city",
+         "x": 50,
+         "y": 50,
+         "tone": "amber"
+        },
+        {
+         "id": "k",
+         "label": "dim_country",
+         "x": 80,
+         "y": 50,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "z",
+         "c"
+        ],
+        [
+         "c",
+         "k"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "z"
+        },
+        {
+         "at": 0.3,
+         "show": "c"
+        },
+        {
+         "at": 0.5,
+         "show": "k"
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Two extra joins",
+          "tone": "amber",
+          "icon": "warn"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Columnar storage compresses repeated values so well that star redundancy costs almost nothing. Choose a snowflake only when a dimension is huge and shared so widely that maintaining it in one place matters more.",
+      "show": {
+       "t": "points",
+       "title": "Default to star",
+       "items": [
+        "Fewer joins",
+        "Cheap redundancy in columnar storage",
+        "Snowflake only for huge, widely shared dimensions"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why is a star's redundancy usually acceptable in a warehouse?",
+     "opts": [
+      "Warehouses ignore storage cost",
+      "Columnar compression makes repeated values cheap",
+      "Dimensions are never updated",
+      "Joins are free"
+     ],
+     "ans": 1,
+     "why": "Columnar formats compress repeated values heavily, so the duplication costs little while the saved joins make queries simpler and faster."
+    },
+    "work": [
+     "Flatten snowflaked dimensions into stars unless one is shared across many models.",
+     "Count joins in your top ten dashboards queries and look for avoidable dimension chains."
+    ]
+   }
+  ]
+ },
+ "4.1 The problem is a definition": {
+  "hash": "d8e3006956cc",
+  "sec": "4.1",
+  "reels": [
+   {
+    "title": "Same word, two numbers",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Two teams report yesterday's trips. One says four hundred twelve thousand. The other says three hundred ninety-eight thousand, five hundred. Who got it wrong?",
+      "show": {
+       "t": "scene",
+       "title": "Two teams, two *numbers*",
+       "nodes": [
+        {
+         "id": "ops",
+         "label": "Operations",
+         "sub": "412,000",
+         "x": 25,
+         "y": 40,
+         "tone": "blue"
+        },
+        {
+         "id": "fin",
+         "label": "Finance",
+         "sub": "398,500",
+         "x": 75,
+         "y": 40,
+         "tone": "amber"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "ops"
+        },
+        {
+         "at": 0.6,
+         "show": "fin"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Who is wrong?",
+          "tone": "red",
+          "icon": "?"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Nobody. Picture a pizza shop. The kitchen calls an order done when the pizza leaves the door. The accountant calls it done when the customer has paid and asked for no refund. Same word, two different counts.",
+      "show": {
+       "t": "scene",
+       "title": "What does *done* mean?",
+       "nodes": [
+        {
+         "id": "k",
+         "label": "Kitchen",
+         "sub": "pizza left the door",
+         "x": 25,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "a",
+         "label": "Accountant",
+         "sub": "paid, no refund",
+         "x": 75,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "w",
+         "label": "done",
+         "sub": "one word",
+         "x": 50,
+         "y": 65,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "k",
+         "w"
+        ],
+        [
+         "a",
+         "w"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "k"
+        },
+        {
+         "at": 0.5,
+         "show": "a"
+        },
+        {
+         "at": 0.75,
+         "show": "w",
+         "packet": [
+          "k",
+          "w"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Same word, different meaning",
+          "tone": "plum",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Meridian is a ride company. Operations counts a trip as completed when the rider is dropped off. Finance waits until payment has settled and no refund was given. Both wrote correct queries, which are just questions asked of the data.",
+      "show": {
+       "t": "points",
+       "title": "Both are correct",
+       "items": [
+        "Operations: rider dropped off",
+        "Finance: paid and not refunded",
+        "Both queries are right",
+        "They are different metrics"
+       ]
+      }
+     },
+     {
+      "say": "Data modeling fixes this. You write down what each word means, once, in one shared place. Then the same question always gets the same answer.",
+      "show": {
+       "t": "big",
+       "text": "One meaning, one place",
+       "sub": "Same question, same answer"
+      }
+     }
+    ],
+    "check": {
+     "q": "Operations and Finance report different completed trip counts, both from correct SQL. What is the most likely cause?",
+     "opts": [
+      "One team's database is corrupted",
+      "They define completed differently",
+      "SQL returns random results",
+      "One team has more users"
+     ],
+     "ans": 1,
+     "why": "Correct queries can still disagree when the same name hides two definitions. Modeling makes the definition explicit and shared."
+    },
+    "work": [
+     "Pick one metric your team reports and write its definition in one sentence.",
+     "Ask two teams what they mean by the same word, like active user or completed."
+    ]
+   },
+   {
+    "title": "Where 13,500 trips went",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Thirteen thousand five hundred trips vanished between two dashboards. Where did they go?",
+      "show": {
+       "t": "bars",
+       "title": "Two counts, one gap",
+       "unit": "trips",
+       "items": [
+        [
+         "Operations",
+         412000,
+         ""
+        ],
+        [
+         "Finance",
+         398500,
+         ""
+        ],
+        [
+         "Gap",
+         13500,
+         "about 3%"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Start with every trip row. Operations keeps rows where the status is dropped off. That gives four hundred twelve thousand. Finance starts from the same rows, then adds two more filters.",
+      "show": {
+       "t": "flow",
+       "title": "Same rows, different filters",
+       "steps": [
+        {
+         "label": "All trip rows"
+        },
+        {
+         "label": "Status is dropped off",
+         "note": "412,000"
+        },
+        {
+         "label": "Payment settled"
+        },
+        {
+         "label": "No refund"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Payment must be settled, and no refund can exist. Those filters drop thirteen thousand five hundred trips, about three percent, leaving three hundred ninety-eight thousand five hundred. The gap is the definition, not a bug.",
+      "show": {
+       "t": "scene",
+       "title": "The gap is the *definition*",
+       "nodes": [
+        {
+         "id": "d",
+         "label": "Dropped off",
+         "sub": "412,000",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "s",
+         "label": "Unsettled or refunded",
+         "sub": "13,500 removed",
+         "x": 50,
+         "y": 42,
+         "tone": "red"
+        },
+        {
+         "id": "f",
+         "label": "Net completed",
+         "sub": "398,500",
+         "x": 50,
+         "y": 70,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "d",
+         "s"
+        ],
+        [
+         "s",
+         "f"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.15,
+         "show": "d"
+        },
+        {
+         "at": 0.5,
+         "show": "s",
+         "packet": [
+          "d",
+          "s"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.8,
+         "show": "f",
+         "count": {
+          "key": "gap",
+          "label": "Trips removed",
+          "to": 13500,
+          "unit": "trips",
+          "tone": "red"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So model it once. Build one trip table with a dropped off flag, a settled flag, and a refunded flag. Then publish two metrics with two different names: trips dropped off, and trips net completed. Everyone reads the same table.",
+      "show": {
+       "t": "scene",
+       "title": "One table, two *names*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "trip table",
+         "sub": "3 flags per trip",
+         "x": 50,
+         "y": 15,
+         "tone": "teal",
+         "kind": "disk"
+        },
+        {
+         "id": "m1",
+         "label": "trips dropped off",
+         "sub": "Operations",
+         "x": 25,
+         "y": 60,
+         "tone": "blue"
+        },
+        {
+         "id": "m2",
+         "label": "trips net completed",
+         "sub": "Finance",
+         "x": 75,
+         "y": 60,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "m1"
+        ],
+        [
+         "t",
+         "m2"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "t"
+        },
+        {
+         "at": 0.5,
+         "show": "m1",
+         "packet": [
+          "t",
+          "m1"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.75,
+         "show": "m2",
+         "packet": [
+          "t",
+          "m2"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Two names, no confusion",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What is the best way to stop the 412,000 versus 398,500 argument?",
+     "opts": [
+      "Tell Finance to use Operations' filter",
+      "Publish two distinctly named metrics from one shared trip table",
+      "Delete the refund data",
+      "Round both numbers"
+     ],
+     "ans": 1,
+     "why": "Both definitions are valid. Naming each one and building both from the same table removes the ambiguity without forcing either team to change."
+    },
+    "work": [
+     "Write the filters behind a key metric as a list of flags on one table.",
+     "Rename any metric whose name hides a stricter or looser definition."
+    ]
+   },
+   {
+    "title": "Why correct SQL still disagrees",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Even with an agreed definition, yesterday's finance number can change tomorrow. Why?",
+      "show": {
+       "t": "big",
+       "text": "Yesterday's number moved",
+       "sub": "Same definition, new value"
+      }
+     },
+     {
+      "say": "Because payments settle late and refunds arrive days after the ride. A trip counted today may drop out next week. So a settled-based metric is restated, and you must say how long it takes to become final.",
+      "show": {
+       "t": "flow",
+       "title": "A trip's number can change",
+       "steps": [
+        {
+         "label": "Day 0: dropped off"
+        },
+        {
+         "label": "Day 2: payment settles",
+         "note": "counted"
+        },
+        {
+         "label": "Day 6: refund arrives",
+         "note": "drops out"
+        },
+        {
+         "label": "Day 30: final"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Two more traps. First, yesterday in which time zone? A late night trip can land on different days. Second, grain, meaning what one row stands for. Join trips to payments with split fares and one trip becomes two rows, so your count inflates.",
+      "show": {
+       "t": "scene",
+       "title": "Time zone and *grain*",
+       "nodes": [
+        {
+         "id": "tz",
+         "label": "Time zone",
+         "sub": "which day is it?",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "g",
+         "label": "Grain",
+         "sub": "one row = ?",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "j",
+         "label": "Join with split fares",
+         "sub": "1 trip becomes 2 rows",
+         "x": 50,
+         "y": 65,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "g",
+         "j"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "tz"
+        },
+        {
+         "at": 0.5,
+         "show": "g"
+        },
+        {
+         "at": 0.8,
+         "show": "j",
+         "packet": [
+          "g",
+          "j"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Count inflates",
+          "tone": "red",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "When two correct queries disagree, check three things: the definition, the time boundary, and the grain. Count distinct trip ids, and state all three beside the number.",
+      "show": {
+       "t": "points",
+       "title": "Debug a mismatch",
+       "items": [
+        "Definition: what counts",
+        "Time boundary: zone and cutoff",
+        "Grain: one row means what",
+        "Count distinct trip ids"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A join between trips and payments raises the trip count by 2%. Split fares exist. What is the likely issue?",
+     "opts": [
+      "Time zone error",
+      "Join fan-out: a trip appears on several rows",
+      "Late refunds",
+      "Wrong status filter"
+     ],
+     "ans": 1,
+     "why": "Split fares give one trip several payment rows. Joining at that grain duplicates trips, so you need to count distinct trip ids or aggregate payments first."
+    },
+    "work": [
+     "For each key metric, document its time zone, cutoff and how long until it is final.",
+     "Add a row-count check after every join that should not change the number of rows."
+    ]
+   },
+   {
+    "title": "One definition is the wrong goal",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Should Meridian force one official definition of a completed trip? Usually, no.",
+      "show": {
+       "t": "big",
+       "text": "One official definition?",
+       "sub": "Usually, no"
+      }
+     },
+     {
+      "say": "Operations needs speed: it staffs drivers by the hour and cannot wait days for payments. Finance needs accuracy. Forcing one meaning breaks one team. Instead, force unique names, and keep both metrics, each with an owner.",
+      "show": {
+       "t": "scene",
+       "title": "Unique *names*, named owners",
+       "nodes": [
+        {
+         "id": "o",
+         "label": "Operations",
+         "sub": "fast, hourly",
+         "x": 25,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "f",
+         "label": "Finance",
+         "sub": "accurate, final",
+         "x": 75,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "n",
+         "label": "Two named metrics",
+         "sub": "each has an owner",
+         "x": 50,
+         "y": 68,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "o",
+         "n"
+        ],
+        [
+         "f",
+         "n"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "o"
+        },
+        {
+         "at": 0.5,
+         "show": "f"
+        },
+        {
+         "at": 0.8,
+         "show": "n",
+         "packet": [
+          "o",
+          "n"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Names are unique, meanings stay",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Define metrics in one governed layer, such as shared transformation models, not inside each dashboard. That costs review time and slows changes. Dashboard-level definitions are faster, but drift, and every drift is another meeting about whose number is right.",
+      "show": {
+       "t": "points",
+       "title": "Where to define",
+       "items": [
+        "Governed layer: consistent, slower to change",
+        "Per dashboard: fast, but drifts",
+        "Drift costs meetings and trust"
+       ]
+      }
+     },
+     {
+      "say": "Don't over-engineer a five person startup with one team; a documented query is enough. Past several teams, centralize. In an interview, design the trip table first, state its grain, then write SQL against it.",
+      "show": {
+       "t": "points",
+       "title": "Choosing and answering",
+       "items": [
+        "One team: documented query",
+        "Many teams: central models",
+        "Interview: design the trip table",
+        "State the grain, then write SQL"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Operations needs hourly numbers and Finance needs final numbers. What is the best architect response?",
+     "opts": [
+      "Pick Finance's definition for everyone",
+      "Let each dashboard define its own",
+      "Keep both as uniquely named, owned metrics in a shared layer",
+      "Ban the word completed"
+     ],
+     "ans": 2,
+     "why": "Both needs are legitimate. Unique names with owners in one governed layer keep consistency without sacrificing either team's purpose."
+    },
+    "work": [
+     "List metrics that share a name across teams and propose distinct names for each.",
+     "Move one dashboard-only definition into a shared, reviewed model."
+    ]
+   }
+  ]
+ },
+ "4.3 Keys and the dimensions that have names": {
+  "hash": "1bd32aa336e1",
+  "sec": "4.3",
+  "reels": [
+   {
+    "title": "The coat check ticket",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "What happens if the id a system gave you is later handed to someone else?",
+      "show": {
+       "t": "big",
+       "text": "Ids get reused",
+       "sub": "What then?"
+      }
+     },
+     {
+      "say": "Think of a coat check. Every coat arrives with the owner's own tag. But the coat check hands you its own numbered ticket, which means nothing outside that room.",
+      "show": {
+       "t": "scene",
+       "title": "Your *ticket*, not their tag",
+       "nodes": [
+        {
+         "id": "tag",
+         "label": "Owner's tag",
+         "sub": "natural key",
+         "x": 25,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "tick",
+         "label": "Coat check ticket",
+         "sub": "surrogate key",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "coat",
+         "label": "The coat",
+         "sub": "one row",
+         "x": 50,
+         "y": 70,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "tag",
+         "coat"
+        ],
+        [
+         "tick",
+         "coat"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "tag"
+        },
+        {
+         "at": 0.5,
+         "show": [
+          "tick",
+          "coat"
+         ]
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "tick",
+          "coat"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Why bother? If the owner's tag changes shape, or two cloakrooms reuse the same numbers, your ticket still points to exactly one coat. And a ticket marked unknown means nobody ever holds a blank.",
+      "show": {
+       "t": "points",
+       "title": "Why our own ticket",
+       "items": [
+        "Tag format changes, ticket stays",
+        "Two rooms reuse numbers, no clash",
+        "An unknown ticket, never a blank"
+       ]
+      }
+     },
+     {
+      "say": "In a warehouse, the source's id is the natural key. The number the warehouse hands out is the surrogate key.",
+      "show": {
+       "t": "scene",
+       "title": "Natural versus *surrogate*",
+       "nodes": [
+        {
+         "id": "n",
+         "label": "driver_id",
+         "sub": "from the source",
+         "x": 25,
+         "y": 40,
+         "tone": "amber"
+        },
+        {
+         "id": "s",
+         "label": "driver_key",
+         "sub": "made by warehouse",
+         "x": 75,
+         "y": 40,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "n",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "n"
+        },
+        {
+         "at": 0.6,
+         "show": "s",
+         "chip": {
+          "text": "Surrogate means nothing outside the warehouse",
+          "tone": "teal",
+          "icon": "key"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What is a surrogate key?",
+     "opts": [
+      "The id the source system uses for a driver",
+      "A meaningless number the warehouse generates itself",
+      "A key copied from another fact table"
+     ],
+     "ans": 1,
+     "why": "A surrogate key is generated by the warehouse and has no meaning outside it, which protects it from source id changes."
+    },
+    "work": [
+     "List the natural key and the surrogate key for one of your dimensions.",
+     "Check whether any source id has ever been reused or reformatted."
+    ]
+   },
+   {
+    "title": "One driver, two rows",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Driver 482 moves from Pune to Mumbai. How do you keep last year's trips in Pune?",
+      "show": {
+       "t": "big",
+       "text": "Pune to Mumbai",
+       "sub": "Same driver, new city"
+      }
+     },
+     {
+      "say": "The source system's driver id, 482, is the natural key. The warehouse adds its own number for every version of the driver. Version one gets key 9001, city Pune. When the city changes, a new row gets key 9002, city Mumbai.",
+      "show": {
+       "t": "scene",
+       "title": "Each version gets a *key*",
+       "nodes": [
+        {
+         "id": "src",
+         "label": "Source driver 482",
+         "sub": "natural key",
+         "x": 50,
+         "y": 15,
+         "tone": "amber"
+        },
+        {
+         "id": "v1",
+         "label": "Key 9001",
+         "sub": "Pune",
+         "x": 25,
+         "y": 50,
+         "tone": "blue"
+        },
+        {
+         "id": "v2",
+         "label": "Key 9002",
+         "sub": "Mumbai",
+         "x": 75,
+         "y": 50,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "src",
+         "v1"
+        ],
+        [
+         "src",
+         "v2"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "src"
+        },
+        {
+         "at": 0.4,
+         "show": "v1",
+         "packet": [
+          "src",
+          "v1"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.75,
+         "show": "v2",
+         "packet": [
+          "src",
+          "v2"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Each trip is stamped with the key that was current when it happened. So old trips still say Pune, and new trips say Mumbai. One driver, two rows.",
+      "show": {
+       "t": "scene",
+       "title": "Facts keep the *right* version",
+       "nodes": [
+        {
+         "id": "f1",
+         "label": "Trips last year",
+         "sub": "key 9001",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "f2",
+         "label": "Trips this year",
+         "sub": "key 9002",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "d",
+         "label": "dim_driver",
+         "sub": "2 rows, 1 driver",
+         "x": 50,
+         "y": 75,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "f1",
+         "d"
+        ],
+        [
+         "f2",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "f1",
+          "f2"
+         ]
+        },
+        {
+         "at": 0.5,
+         "show": "d",
+         "packet": [
+          "f1",
+          "d"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "f2",
+          "d"
+         ],
+         "n": 2,
+         "chip": {
+          "text": "History stays correct",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The same trick covers a missing value. Key zero means unknown, so a fact row never carries a null key and joins never drop it.",
+      "show": {
+       "t": "points",
+       "title": "The unknown row",
+       "items": [
+        "Key zero means unknown",
+        "Facts never hold a null key",
+        "Inner joins keep every row"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why can one driver have several rows in a dimension with surrogate keys?",
+     "opts": [
+      "Each version of the driver gets its own warehouse key",
+      "The source system creates duplicate ids",
+      "Facts must repeat the driver name"
+     ],
+     "ans": 0,
+     "why": "Surrogate keys identify row versions, so history is preserved while each fact points to the version current at the time."
+    },
+    "work": [
+     "Add an unknown row with key zero to each dimension.",
+     "Check that no fact table has null foreign keys."
+    ]
+   },
+   {
+    "title": "Shared and reused dimensions",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Why can one report cover both rides and food delivery?",
+      "show": {
+       "t": "big",
+       "text": "One report, two businesses",
+       "sub": "What makes it possible?"
+      }
+     },
+     {
+      "say": "Because of a conformed dimension: one dimension shared by several fact tables, with the same keys and meaning. Date and city serve both rides and food, so you can line them up side by side.",
+      "show": {
+       "t": "scene",
+       "title": "A *conformed* dimension",
+       "nodes": [
+        {
+         "id": "r",
+         "label": "fact_rides",
+         "sub": "",
+         "x": 25,
+         "y": 20,
+         "tone": "blue"
+        },
+        {
+         "id": "f",
+         "label": "fact_food",
+         "sub": "",
+         "x": 75,
+         "y": 20,
+         "tone": "amber"
+        },
+        {
+         "id": "c",
+         "label": "dim_city",
+         "sub": "shared, same keys",
+         "x": 50,
+         "y": 70,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "r",
+         "c"
+        ],
+        [
+         "f",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "r",
+          "f"
+         ]
+        },
+        {
+         "at": 0.5,
+         "show": "c",
+         "packet": [
+          "r",
+          "c"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.75,
+         "packet": [
+          "f",
+          "c"
+         ],
+         "n": 2,
+         "chip": {
+          "text": "Same keys, same meaning",
+          "tone": "teal",
+          "icon": "link"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A role-playing dimension is one table used twice in the same fact. The zone table plays pickup zone and drop-off zone, joined twice under different names.",
+      "show": {
+       "t": "scene",
+       "title": "One table, two *roles*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "fact_trip",
+         "sub": "",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "p",
+         "label": "Pickup zone",
+         "sub": "dim_zone",
+         "x": 25,
+         "y": 65,
+         "tone": "teal"
+        },
+        {
+         "id": "d",
+         "label": "Drop-off zone",
+         "sub": "dim_zone",
+         "x": 75,
+         "y": 65,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "p"
+        ],
+        [
+         "t",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "t"
+        },
+        {
+         "at": 0.5,
+         "show": "p",
+         "packet": [
+          "t",
+          "p"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "show": "d",
+         "packet": [
+          "t",
+          "d"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Gotcha: if food uses its own city codes, the dimension is not conformed, and the cross-report quietly gives wrong numbers. Conform first, report second.",
+      "show": {
+       "t": "big",
+       "text": "Different codes, silent wrong totals",
+       "kicker": "Gotcha"
+      }
+     }
+    ],
+    "check": {
+     "q": "Food delivery uses its own city codes that differ from dim_city. What is the risk?",
+     "opts": [
+      "Queries will always error out",
+      "Cross-business reports may silently give wrong results",
+      "The surrogate keys will be null"
+     ],
+     "ans": 1,
+     "why": "Without a conformed dimension, joins still run but mismatched keys or meanings quietly produce wrong comparisons."
+    },
+    "work": [
+     "Pick one dimension shared by two facts and confirm the keys match.",
+     "Find any table joined twice and name each role clearly."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Trip ids, flags and shared riders",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Where does a trip id live, if no table describes a trip?",
+      "show": {
+       "t": "big",
+       "text": "trip_id",
+       "sub": "Nothing to join to"
+      }
+     },
+     {
+      "say": "In the fact table itself, as a degenerate dimension. It is an identifier with no dimension of its own, useful for grouping and tracing back to the source.",
+      "show": {
+       "t": "points",
+       "title": "Degenerate dimension",
+       "items": [
+        "Identifier kept in the fact",
+        "No dimension table behind it",
+        "Groups rows and traces to source"
+       ]
+      }
+     },
+     {
+      "say": "Next, six yes-or-no flags on every row bloat the fact. A junk dimension combines them into one small table, so the fact carries one key.",
+      "show": {
+       "t": "scene",
+       "title": "Six flags, one *key*",
+       "nodes": [
+        {
+         "id": "f",
+         "label": "fact_trip",
+         "sub": "one junk key",
+         "x": 25,
+         "y": 40,
+         "tone": "blue"
+        },
+        {
+         "id": "j",
+         "label": "dim_trip_flags",
+         "sub": "small combo table",
+         "x": 75,
+         "y": 40,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "f",
+         "j"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.3,
+         "show": "f"
+        },
+        {
+         "at": 0.6,
+         "show": "j",
+         "packet": [
+          "f",
+          "j"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "And a pooled trip has several riders. A bridge table, one row per trip and rider, sits between the fact and the rider dimension. Add a weighting factor, say one third each, so the fare is split and not tripled.",
+      "show": {
+       "t": "scene",
+       "title": "A *bridge* for many riders",
+       "nodes": [
+        {
+         "id": "f",
+         "label": "fact_trip",
+         "sub": "",
+         "x": 20,
+         "y": 50,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "bridge",
+         "sub": "trip + rider + weight",
+         "x": 50,
+         "y": 50,
+         "tone": "amber"
+        },
+        {
+         "id": "r",
+         "label": "dim_rider",
+         "sub": "",
+         "x": 80,
+         "y": 50,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "f",
+         "b"
+        ],
+        [
+         "b",
+         "r"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "f"
+        },
+        {
+         "at": 0.5,
+         "show": "b",
+         "packet": [
+          "f",
+          "b"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "show": "r",
+         "packet": [
+          "b",
+          "r"
+         ],
+         "n": 2,
+         "chip": {
+          "text": "Weight one third stops triple counting",
+          "tone": "amber",
+          "icon": "scale"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A pooled trip has three riders and a fare of 90. Without a weighting factor in the bridge, what goes wrong?",
+     "opts": [
+      "The fare is counted three times, 270",
+      "The trip disappears from the fact",
+      "The rider dimension gets null keys"
+     ],
+     "ans": 0,
+     "why": "Joining through the bridge repeats the trip row per rider, so the fare is summed three times unless weights split it."
+    },
+    "work": [
+     "Find flag columns repeated on a fact and consider a junk dimension.",
+     "Add a weight column to any bridge table that feeds money measures."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "When not to use the full toolkit",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Do you always need a surrogate key? No, and a staff engineer says when.",
+      "show": {
+       "t": "big",
+       "text": "Not always",
+       "sub": "Know the cost"
+      }
+     },
+     {
+      "say": "Date never changes meaning, so a readable year-month-day integer works fine. Skip junk and bridge tables when you only have two flags or one rider per trip.",
+      "show": {
+       "t": "points",
+       "title": "Skip it when",
+       "items": [
+        "Date: readable integer key is fine",
+        "Two flags: keep them in the fact",
+        "One rider per trip: no bridge"
+       ]
+      }
+     },
+     {
+      "say": "The cost of surrogates is a key lookup on every load, and a mapping you must protect. Sequence numbers collide across parallel loads and change on rebuild. A hash of the natural key and version date is repeatable, so reruns give the same keys.",
+      "show": {
+       "t": "scene",
+       "title": "Sequence or *hash* key",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Sequence",
+         "sub": "simple, unstable on rebuild",
+         "x": 25,
+         "y": 40,
+         "tone": "amber"
+        },
+        {
+         "id": "h",
+         "label": "Hash of key + date",
+         "sub": "repeatable, parallel safe",
+         "x": 75,
+         "y": 40,
+         "tone": "teal"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.3,
+         "show": "s"
+        },
+        {
+         "at": 0.6,
+         "show": "h",
+         "glow": "h",
+         "chip": {
+          "text": "Reruns give identical keys",
+          "tone": "teal",
+          "icon": "repeat"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Conformed dimensions cost most: every team must agree on one definition. Pay it for city and date, where cross-domain reports matter, and not for everything.",
+      "show": {
+       "t": "bars",
+       "title": "Where governance pays",
+       "unit": "value",
+       "items": [
+        [
+         "dim_date",
+         9,
+         "shared by all"
+        ],
+        [
+         "dim_city",
+         8,
+         "cross reports"
+        ],
+        [
+         "dim_promo_note",
+         1,
+         "one team"
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Which is the best reason to use a hash-based surrogate key over a sequence?",
+     "opts": [
+      "Hashes are always shorter",
+      "Reruns and parallel loads produce the same keys",
+      "Hashes remove the need for a dimension"
+     ],
+     "ans": 1,
+     "why": "A hash of natural key and version date is deterministic, so rebuilds and parallel loads stay consistent, unlike sequences."
+    },
+    "work": [
+     "Decide per dimension whether it needs a surrogate key or a stable natural one.",
+     "Name an owner for each conformed dimension."
+    ]
+   }
+  ]
+ },
+ "4.4 Slowly changing dimensions": {
+  "hash": "e457e083b68d",
+  "sec": "4.4",
+  "reels": [
+   {
+    "title": "Don't erase the old address",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "If a friend moves house, should you erase their old address from every letter you ever sent?",
+      "show": {
+       "t": "big",
+       "text": "Erase the old address?",
+       "sub": "What happens to history when things change"
+      }
+     },
+     {
+      "say": "Picture a shop ledger. In January a customer lives in Pune. In March she moves to Bengaluru. If you cross out Pune and write Bengaluru, every old receipt now looks like it came from Bengaluru. History quietly lies.",
+      "show": {
+       "t": "scene",
+       "title": "Overwriting makes history *lie*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "January receipt",
+         "sub": "Pune",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Ledger",
+         "sub": "now says Bengaluru",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "c",
+         "label": "Old receipt looks wrong",
+         "sub": "Bengaluru",
+         "x": 50,
+         "y": 65,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "b"
+        ],
+        [
+         "b",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "a"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "b"
+         ],
+         "packet": [
+          "a",
+          "b"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": [
+          "c"
+         ],
+         "chip": {
+          "text": "History rewritten",
+          "tone": "red",
+          "icon": "x"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The safer habit is to keep the old line and add a new line beneath it, with dates saying when each was true. Old receipts still point to Pune. New ones point to Bengaluru.",
+      "show": {
+       "t": "scene",
+       "title": "Keep both *lines*, add dates",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Pune",
+         "sub": "Jan to Mar",
+         "x": 30,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Bengaluru",
+         "sub": "Mar onward",
+         "x": 70,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "r",
+         "label": "Receipts",
+         "sub": "each finds its own line",
+         "x": 50,
+         "y": 65,
+         "tone": "grey"
+        }
+       ],
+       "edges": [
+        [
+         "r",
+         "p"
+        ],
+        [
+         "r",
+         "b"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "p",
+          "b"
+         ]
+        },
+        {
+         "at": 0.5,
+         "show": "r",
+         "packet": [
+          "r",
+          "p"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "r",
+          "b"
+         ],
+         "n": 2,
+         "chip": {
+          "text": "Each receipt keeps its truth",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Data people call this a slowly changing dimension. A dimension is the descriptive detail, like a driver's city. Slowly means it changes rarely, not every second.",
+      "show": {
+       "t": "points",
+       "title": "Slowly changing dimension",
+       "items": [
+        "Dimension: the describing detail, like a city",
+        "Slowly: changes rarely",
+        "The question: keep or lose the past?"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A customer moves city. Why keep the old address line instead of overwriting it?",
+     "opts": [
+      "It saves storage space",
+      "Old receipts should still show where she lived at the time",
+      "Overwriting is not allowed in databases"
+     ],
+     "ans": 1,
+     "why": "Keeping the old line with dates means past records still tell the true story. Overwriting makes every old record appear to come from the new city."
+    },
+    "work": [
+     "List three attributes in your warehouse that change, such as city or plan.",
+     "For each one, ask whether an old report should show the old or the new value."
+    ]
+   },
+   {
+    "title": "Four ways to handle change",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "A driver moves from Pune to Bengaluru. What should the warehouse do with the old city?",
+      "show": {
+       "t": "big",
+       "text": "Pune to Bengaluru",
+       "sub": "Four possible answers"
+      }
+     },
+     {
+      "say": "Type zero never changes the value. Use it for the date of a first trip. Type one overwrites. That suits fixing a misspelt name, because nobody wants the typo kept.",
+      "show": {
+       "t": "points",
+       "title": "Types 0 and 1",
+       "items": [
+        "Type 0: never change. Date of first trip",
+        "Type 1: overwrite. History is gone",
+        "Good for typo fixes"
+       ]
+      }
+     },
+     {
+      "say": "Type three adds a previous city column. It remembers exactly one step back, which helps during a single reorganisation when both views are needed briefly.",
+      "show": {
+       "t": "points",
+       "title": "Type 3",
+       "items": [
+        "Columns: city and previous_city",
+        "One step back only",
+        "A second move erases the first"
+       ]
+      }
+     },
+     {
+      "say": "Type two closes the old row and adds a new one. Nothing is lost, so the old value still explains old facts. This is the one you must be able to build.",
+      "show": {
+       "t": "scene",
+       "title": "Type 2 keeps *every* version",
+       "nodes": [
+        {
+         "id": "o",
+         "label": "Row 1",
+         "sub": "Pune, closed",
+         "x": 30,
+         "y": 35,
+         "tone": "grey"
+        },
+        {
+         "id": "n",
+         "label": "Row 2",
+         "sub": "Bengaluru, current",
+         "x": 70,
+         "y": 35,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "o",
+         "n"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "o"
+        },
+        {
+         "at": 0.5,
+         "show": "n",
+         "packet": [
+          "o",
+          "n"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Full history",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A single reorganisation needs both the old and new region visible side by side for a few weeks. Which type fits?",
+     "opts": [
+      "Type 1",
+      "Type 3",
+      "Type 0"
+     ],
+     "ans": 1,
+     "why": "Type 3 keeps one previous value in a column, which is enough for a brief, single change. Type 1 loses the old value and Type 0 never updates."
+    },
+    "work": [
+     "Label each tracked column in a dimension as type 0, 1, 2 or 3 and write down why.",
+     "Check that no Type 1 column secretly needs history for reports."
+    ],
+    "part": "1 of 3"
+   },
+   {
+    "title": "Building a Type 2 load",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How do you add a new version of a driver without losing the old one?",
+      "show": {
+       "t": "big",
+       "text": "New version, old one kept",
+       "sub": "Two statements"
+      }
+     },
+     {
+      "say": "Each row has a surrogate key, which is a number the warehouse invents, plus the natural key d-77, the city, a valid from date, a valid to date, and a current flag.",
+      "show": {
+       "t": "scene",
+       "title": "One driver, *two* rows",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "sk 1041",
+         "sub": "Pune, 1 Jan to 1 Mar",
+         "x": 30,
+         "y": 35,
+         "tone": "grey"
+        },
+        {
+         "id": "b",
+         "label": "sk 2290",
+         "sub": "Bengaluru, 1 Mar to 9999",
+         "x": 70,
+         "y": 35,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "b"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "at": 0.7,
+         "cells": {
+          "label": "dim_driver",
+          "items": [
+           [
+            "1041",
+            "Pune, current false"
+           ],
+           [
+            "2290",
+            "Bengaluru, current true"
+           ]
+          ]
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The load runs two steps. First, find drivers whose city or vehicle type changed, and close their current row by setting valid to the change date and the flag to false.",
+      "show": {
+       "t": "flow",
+       "title": "Step 1: close",
+       "steps": [
+        {
+         "label": "Staging row arrives"
+        },
+        {
+         "label": "Compare with current row"
+        },
+        {
+         "label": "Set valid_to, is_current false"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Second, insert a new current row for those drivers, and for brand new ones, with valid to set to the year 9999. Step one removed their current row, so the insert finds none.",
+      "show": {
+       "t": "flow",
+       "title": "Step 2: insert",
+       "steps": [
+        {
+         "label": "Find drivers with no current row"
+        },
+        {
+         "label": "Insert new row, valid_to 9999"
+        },
+        {
+         "label": "is_current true"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does the second statement insert a row for a driver whose city just changed?",
+     "opts": [
+      "It checks the city again",
+      "The first statement closed their current row, so they have none",
+      "It inserts every staging row"
+     ],
+     "ans": 1,
+     "why": "The insert picks staging drivers with no current row. Closing the old row in step one is what makes changed drivers qualify, along with brand-new ones."
+    },
+    "work": [
+     "Write the close and insert statements for one of your own dimensions.",
+     "Run them twice on test data and confirm the second run changes nothing."
+    ],
+    "part": "2 of 3"
+   },
+   {
+    "title": "Facts pick the right version",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "A trip happened in February. Months later, how does it still say Pune?",
+      "show": {
+       "t": "big",
+       "text": "February trip, still Pune",
+       "sub": "Months after the move"
+      }
+     },
+     {
+      "say": "When the fact row is loaded, we look up the driver version whose date range contains the trip date. Then we store that version's surrogate key on the fact, not the driver id.",
+      "show": {
+       "t": "code",
+       "title": "Lookup at load time",
+       "text": "JOIN dim_driver d ON d.driver_id = t.driver_id AND t.trip_date >= d.valid_from AND t.trip_date < d.valid_to"
+      }
+     },
+     {
+      "say": "Driver d-77 has two rows. Pune runs from January first to March first. Bengaluru runs from March first onward. A February trip lands in the Pune row, an April trip in the Bengaluru row.",
+      "show": {
+       "t": "scene",
+       "title": "Each trip finds *its* row",
+       "nodes": [
+        {
+         "id": "f",
+         "label": "Feb trip",
+         "sub": "",
+         "x": 25,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "a",
+         "label": "Apr trip",
+         "sub": "",
+         "x": 75,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "p",
+         "label": "sk 1041 Pune",
+         "sub": "",
+         "x": 25,
+         "y": 65,
+         "tone": "grey"
+        },
+        {
+         "id": "b",
+         "label": "sk 2290 Bengaluru",
+         "sub": "",
+         "x": 75,
+         "y": 65,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "f",
+         "p"
+        ],
+        [
+         "a",
+         "b"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "f",
+          "a",
+          "p",
+          "b"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "f",
+          "p"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "a",
+          "b"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Because the key is frozen when the fact is loaded, the February trip reports under Pune for ever, even after later changes.",
+      "show": {
+       "t": "big",
+       "text": "Key frozen at load",
+       "sub": "Old facts never drift"
+      }
+     }
+    ],
+    "check": {
+     "q": "What does the fact table store to link a trip to the right driver version?",
+     "opts": [
+      "The natural key d-77",
+      "The surrogate key of the matching version",
+      "The city name"
+     ],
+     "ans": 1,
+     "why": "The natural key is the same for every version. Only the surrogate key identifies which version applied on the trip date."
+    },
+    "work": [
+     "Check that your fact tables store surrogate keys, not natural keys, for Type 2 dimensions.",
+     "Test one trip near a change date and confirm it joins to exactly one row."
+    ],
+    "part": "3 of 3"
+   },
+   {
+    "title": "Edges that break Type 2",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Why does a trip on exactly March first never get counted twice?",
+      "show": {
+       "t": "big",
+       "text": "The boundary day",
+       "sub": "1 March: Pune or Bengaluru?"
+      }
+     },
+     {
+      "say": "Because the interval is half open. Valid from is inclusive and valid to is exclusive. March first belongs only to Bengaluru. With both ends inclusive, that day would match two rows and the join would double count the trip.",
+      "show": {
+       "t": "scene",
+       "title": "Half open *intervals*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Pune",
+         "sub": "to 1 Mar, exclusive",
+         "x": 30,
+         "y": 35,
+         "tone": "grey"
+        },
+        {
+         "id": "b",
+         "label": "Bengaluru",
+         "sub": "from 1 Mar, inclusive",
+         "x": 70,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "t",
+         "label": "Trip on 1 Mar",
+         "sub": "",
+         "x": 50,
+         "y": 70,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "b"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "p",
+          "b",
+          "t"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "t",
+          "b"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "dim": "p",
+         "chip": {
+          "text": "One match only",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Watch the change test too. Comparing with not equals returns unknown when either side is null, so a city changing from null to Pune is silently missed. Use a null safe comparison.",
+      "show": {
+       "t": "points",
+       "title": "Null trap",
+       "items": [
+        "null <> Pune gives unknown",
+        "The row is not treated as changed",
+        "Use a null-safe comparison"
+       ]
+      }
+     },
+     {
+      "say": "And track only attributes that matter. Add a noisy column like last login, and you create a new row every day.",
+      "show": {
+       "t": "big",
+       "text": "Noisy column, new row daily",
+       "sub": "Track only what reports need"
+      }
+     }
+    ],
+    "check": {
+     "q": "Both valid_from and valid_to are inclusive. What goes wrong on the change date?",
+     "opts": [
+      "The date matches two versions and the join duplicates facts",
+      "The date matches no version",
+      "Nothing, it is just style"
+     ],
+     "ans": 0,
+     "why": "The closing date of the old row equals the opening date of the new one, so both qualify and the fact is joined twice."
+    },
+    "work": [
+     "Check every dimension uses valid_from inclusive and valid_to exclusive.",
+     "Replace plain not-equals in change detection with a null-safe comparison."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Late changes and duplicates",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "What if a driver's move is reported three weeks late?",
+      "show": {
+       "t": "big",
+       "text": "Reported three weeks late",
+       "sub": "The move already happened"
+      }
+     },
+     {
+      "say": "Trips in that gap were already loaded against the Pune row, so they are now wrong. Fix it by setting valid from to the real move date, then reloading those facts so they point at the new row.",
+      "show": {
+       "t": "scene",
+       "title": "Late change, *wrong* facts",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Trips in the gap",
+         "sub": "loaded as Pune",
+         "x": 30,
+         "y": 35,
+         "tone": "red"
+        },
+        {
+         "id": "n",
+         "label": "New row",
+         "sub": "valid from real date",
+         "x": 70,
+         "y": 35,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "n"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "t",
+          "n"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "t",
+          "n"
+         ],
+         "n": 3,
+         "chip": {
+          "text": "Reload affected facts",
+          "tone": "amber",
+          "icon": "refresh"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Duplicates are another trap. If staging holds two changes for one driver, the insert creates two current rows. Keep only the latest change per driver first. Rerunning the same load is safe, because a matching current row means nothing closes.",
+      "show": {
+       "t": "points",
+       "title": "Guard the load",
+       "items": [
+        "One staging row per driver",
+        "Latest change wins",
+        "Rerun is safe: no diff, no close"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Staging contains two changes for the same driver. What is the likely result?",
+     "opts": [
+      "Two current rows for that driver",
+      "The load fails safely",
+      "Only the older change is kept"
+     ],
+     "ans": 0,
+     "why": "The insert sees no current row after the close step and inserts every matching staging row, giving two current rows. Deduplicate staging first."
+    },
+    "work": [
+     "Add a step that keeps the latest change per driver in staging.",
+     "Add a test asserting each natural key has exactly one current row."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "When Type 2 costs too much",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Type 2 on every column sounds safe. Why is that a costly mistake?",
+      "show": {
+       "t": "big",
+       "text": "Type 2 everywhere?",
+       "sub": "Safe looking, expensive"
+      }
+     },
+     {
+      "say": "Every tracked change adds a row, and every fact join needs a date range test, which is slower than a plain key match. A fast moving attribute, like a driver's rating, can create millions of versions.",
+      "show": {
+       "t": "bars",
+       "title": "Rows for 1 million drivers",
+       "unit": "rows",
+       "items": [
+        [
+         "Type 1",
+         1,
+         "one each"
+        ],
+        [
+         "Type 2, city",
+         1.2,
+         "rare moves"
+        ],
+        [
+         "Type 2, rating",
+         30,
+         "daily changes"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Move those into a small separate dimension, or stamp them on the fact row at load time. Use Type 1 for corrections, and Type 3 for a one off reorganisation.",
+      "show": {
+       "t": "points",
+       "title": "Cheaper options",
+       "items": [
+        "Mini-dimension for fast changers",
+        "Stamp value on the fact row",
+        "Type 1 for corrections, Type 3 for one reorg"
+       ]
+      }
+     },
+     {
+      "say": "Reserve Type 2 for attributes where the past must stay true, such as payout or compliance reports. For everyone else, offer a current only view filtered on the flag.",
+      "show": {
+       "t": "big",
+       "text": "Type 2 where the past must hold",
+       "sub": "Plus a current-only view"
+      }
+     }
+    ],
+    "check": {
+     "q": "A driver's rating changes daily and reports rarely need its history. What is the best choice?",
+     "opts": [
+      "Type 2 on the main dimension",
+      "A separate mini-dimension or value stamped on the fact",
+      "Never store it"
+     ],
+     "ans": 1,
+     "why": "Fast-changing attributes bloat a Type 2 table. Isolating them or stamping them on the fact keeps history where needed without exploding row counts."
+    },
+    "work": [
+     "Count versions per key in each Type 2 dimension and flag any above a few dozen.",
+     "Move the fastest changing attribute out into its own table."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Type 2 or nightly snapshots",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Could you skip all this and just snapshot the whole dimension every night?",
+      "show": {
+       "t": "big",
+       "text": "Just snapshot it nightly?",
+       "sub": "A real alternative"
+      }
+     },
+     {
+      "say": "Sometimes, yes. A snapshot is simple, and a fact joins on the date with plain equality. But ten million drivers for 365 days is 3.65 billion rows a year, when only a few thousand actually changed.",
+      "show": {
+       "t": "bars",
+       "title": "Rows per year",
+       "unit": "million",
+       "items": [
+        [
+         "Nightly snapshot",
+         3650,
+         "10M x 365"
+        ],
+        [
+         "Type 2 changes",
+         12,
+         "10M + changes"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Type 2 stores only changes, so it stays small, and each version carries exact start and end times, not just a day.",
+      "show": {
+       "t": "points",
+       "title": "Why Type 2 wins at scale",
+       "items": [
+        "Stores only changes",
+        "Exact validity times",
+        "Range join is the cost"
+       ]
+      }
+     },
+     {
+      "say": "Pick snapshots for small dimensions, or when your platform compresses repeats cheaply. Pick Type 2 for large dimensions where change is sparse.",
+      "show": {
+       "t": "big",
+       "text": "Small and simple: snapshot",
+       "sub": "Large and sparse: Type 2"
+      }
+     }
+    ],
+    "check": {
+     "q": "Which dimension favours Type 2 over nightly snapshots?",
+     "opts": [
+      "500 rows, changing weekly",
+      "10 million rows, a tiny fraction changing daily",
+      "Any table with a surrogate key"
+     ],
+     "ans": 1,
+     "why": "Snapshots repeat every unchanged row each night, so cost grows with size times days. Type 2 grows only with the number of changes."
+    },
+    "work": [
+     "Estimate yearly rows for snapshot versus Type 2 for your largest dimension.",
+     "Use snapshots for small reference tables where simplicity beats storage."
+    ],
+    "part": "2 of 2"
+   }
+  ]
+ },
+ "4.5 Layers": {
+  "hash": "92ddcce0851f",
+  "sec": "4.5",
+  "reels": [
+   {
+    "title": "The restaurant kitchen of data",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Why does a restaurant never serve food straight from the delivery truck?",
+      "show": {
+       "t": "big",
+       "text": "Truck to table?",
+       "sub": "Something happens in between"
+      }
+     },
+     {
+      "say": "Boxes arrive muddy, mislabelled, with the odd bad apple. The kitchen keeps every box exactly as it came. That is the raw layer, called bronze. If a cook makes a mistake, you start again from the box.",
+      "show": {
+       "t": "scene",
+       "title": "Keep the *original* box",
+       "nodes": [
+        {
+         "id": "truck",
+         "label": "Delivery",
+         "sub": "messy",
+         "x": 50,
+         "y": 15,
+         "tone": "grey"
+        },
+        {
+         "id": "raw",
+         "label": "Bronze",
+         "sub": "untouched boxes",
+         "x": 50,
+         "y": 45,
+         "tone": "amber",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "truck",
+         "raw"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "truck"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "truck",
+          "raw"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.6,
+         "show": [
+          "raw"
+         ]
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Never edited, can rebuild",
+          "tone": "amber",
+          "icon": "lock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Next, cooks wash, chop and label everything the same way. That is silver: cleaned and consistent.",
+      "show": {
+       "t": "scene",
+       "title": "Prep makes it *consistent*",
+       "nodes": [
+        {
+         "id": "raw",
+         "label": "Bronze",
+         "sub": "boxes",
+         "x": 50,
+         "y": 15,
+         "tone": "amber",
+         "kind": "disk"
+        },
+        {
+         "id": "prep",
+         "label": "Silver",
+         "sub": "washed, chopped",
+         "x": 50,
+         "y": 45,
+         "tone": "grey",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "raw",
+         "prep"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "raw",
+          "prep"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "raw",
+          "prep"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Clean and consistent",
+          "tone": "grey",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Finally, plated dishes go to the guests. That is gold. Diners order from the menu, never from the pantry. Data works the same way.",
+      "show": {
+       "t": "scene",
+       "title": "Guests see only *gold*",
+       "nodes": [
+        {
+         "id": "prep",
+         "label": "Silver",
+         "sub": "prepped",
+         "x": 50,
+         "y": 15,
+         "tone": "grey",
+         "kind": "disk"
+        },
+        {
+         "id": "gold",
+         "label": "Gold",
+         "sub": "plated dishes",
+         "x": 50,
+         "y": 45,
+         "tone": "amber",
+         "kind": "disk"
+        },
+        {
+         "id": "guest",
+         "label": "Analysts",
+         "sub": "dashboards",
+         "x": 50,
+         "y": 75,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "prep",
+         "gold"
+        ],
+        [
+         "gold",
+         "guest"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "prep",
+          "gold"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "prep",
+          "gold"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": "guest"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "gold",
+          "guest"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Query gold only",
+          "tone": "amber",
+          "icon": "star"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "In the kitchen story, why keep the delivery boxes untouched?",
+     "opts": [
+      "So guests can eat from them",
+      "So you can start again if prep goes wrong",
+      "To save space in the pantry"
+     ],
+     "ans": 1,
+     "why": "Untouched raw data is your safety net. Any later mistake can be fixed by rebuilding from it."
+    },
+    "work": [
+     "Ask which table in your warehouse is the untouched original copy of a source.",
+     "List who queries raw or cleaned tables directly and could use a gold table instead."
+    ]
+   },
+   {
+    "title": "Bronze, silver, gold step by step",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Where does a duplicate order get fixed, and where must it never be touched?",
+      "show": {
+       "t": "big",
+       "text": "Fix it where?",
+       "sub": "Not in bronze"
+      }
+     },
+     {
+      "say": "Bronze lands source data as it arrived. Say ten million order events, with two hundred thousand duplicates and dates stored as text. Nothing is edited. It is append only, so you can always replay.",
+      "show": {
+       "t": "scene",
+       "title": "Bronze keeps *everything*",
+       "nodes": [
+        {
+         "id": "src",
+         "label": "Orders source",
+         "sub": "10M events",
+         "x": 50,
+         "y": 15,
+         "tone": "grey"
+        },
+        {
+         "id": "bronze",
+         "label": "Bronze",
+         "sub": "as arrived",
+         "x": 50,
+         "y": 45,
+         "tone": "amber",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "src",
+         "bronze"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "src"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "src",
+          "bronze"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.5,
+         "show": [
+          "bronze"
+         ]
+        },
+        {
+         "at": 0.7,
+         "count": {
+          "key": "raw",
+          "label": "Rows in bronze",
+          "to": 10000000,
+          "unit": "rows",
+          "tone": "amber"
+         }
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Append only, replayable",
+          "tone": "amber",
+          "icon": "lock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Silver has one staging model per source table. It casts types, renames columns and removes duplicates, leaving nine point eight million rows. Intermediate models then add business logic in small steps, like joining orders to payments.",
+      "show": {
+       "t": "scene",
+       "title": "Silver *cleans* in small steps",
+       "nodes": [
+        {
+         "id": "bronze",
+         "label": "Bronze",
+         "sub": "10M rows",
+         "x": 50,
+         "y": 12,
+         "tone": "amber",
+         "kind": "disk"
+        },
+        {
+         "id": "stg",
+         "label": "Staging",
+         "sub": "one per table",
+         "x": 50,
+         "y": 40,
+         "tone": "teal"
+        },
+        {
+         "id": "int",
+         "label": "Intermediate",
+         "sub": "join, rules",
+         "x": 50,
+         "y": 68,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "bronze",
+         "stg"
+        ],
+        [
+         "stg",
+         "int"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "bronze",
+          "stg"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "bronze",
+          "stg"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.5,
+         "count": {
+          "key": "clean",
+          "label": "After de-duplication",
+          "to": 9800000,
+          "unit": "rows",
+          "tone": "teal"
+         }
+        },
+        {
+         "at": 0.7,
+         "show": "int"
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "stg",
+          "int"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Gold marts hold facts, dimensions and daily revenue aggregates. Dashboards query only this layer, so every chart uses one definition of revenue.",
+      "show": {
+       "t": "scene",
+       "title": "Gold is the *only* door",
+       "nodes": [
+        {
+         "id": "int",
+         "label": "Silver",
+         "sub": "9.8M rows",
+         "x": 50,
+         "y": 12,
+         "tone": "teal"
+        },
+        {
+         "id": "mart",
+         "label": "Marts",
+         "sub": "facts, dims, aggregates",
+         "x": 50,
+         "y": 42,
+         "tone": "amber"
+        },
+        {
+         "id": "bi",
+         "label": "Dashboards",
+         "sub": "one revenue",
+         "x": 50,
+         "y": 72,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "int",
+         "mart"
+        ],
+        [
+         "mart",
+         "bi"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "int",
+          "mart"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "int",
+          "mart"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.6,
+         "show": "bi"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "mart",
+          "bi"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "One definition of revenue",
+          "tone": "amber",
+          "icon": "star"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Where should duplicate orders be removed?",
+     "opts": [
+      "In bronze, to save storage",
+      "In silver staging, leaving bronze untouched",
+      "In the dashboard query"
+     ],
+     "ans": 1,
+     "why": "Silver is where cleaning happens. Bronze stays raw so you can replay, and dashboards should not each reinvent cleaning."
+    },
+    "work": [
+     "Check that each source table has exactly one staging model that only casts, renames and de-duplicates.",
+     "Move join logic out of staging into intermediate models."
+    ]
+   },
+   {
+    "title": "Where layers go wrong",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "You find a bug in your cleaning logic from three weeks ago. How do you fix the numbers without losing data?",
+      "show": {
+       "t": "big",
+       "text": "Bug from 3 weeks ago",
+       "sub": "How do you repair history?"
+      }
+     },
+     {
+      "say": "Because bronze was never edited, you fix the silver model and rebuild from bronze. That is the whole point of keeping raw untouched. If someone had de-duplicated inside bronze, those dropped rows would be gone for good.",
+      "show": {
+       "t": "scene",
+       "title": "Fix silver, *rebuild* from bronze",
+       "nodes": [
+        {
+         "id": "bronze",
+         "label": "Bronze",
+         "sub": "intact",
+         "x": 50,
+         "y": 15,
+         "tone": "amber",
+         "kind": "disk"
+        },
+        {
+         "id": "silver",
+         "label": "Silver",
+         "sub": "fixed model",
+         "x": 50,
+         "y": 45,
+         "tone": "teal"
+        },
+        {
+         "id": "gold",
+         "label": "Gold",
+         "sub": "refreshed",
+         "x": 50,
+         "y": 75,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "bronze",
+         "silver"
+        ],
+        [
+         "silver",
+         "gold"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "bronze",
+          "silver"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "bronze",
+          "silver"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.6,
+         "show": "gold"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "silver",
+          "gold"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Rebuild beats repair",
+          "tone": "amber",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Watch for common traps. Staging should stay one to one with its source, so joins and business rules belong in intermediate. A mart that reads bronze directly skips cleaning and breaks when the source schema drifts.",
+      "show": {
+       "t": "points",
+       "title": "Traps",
+       "items": [
+        "Joins inside staging hide logic",
+        "Marts reading bronze skip cleaning",
+        "Schema drift breaks shortcuts"
+       ]
+      }
+     },
+     {
+      "say": "Also, incremental silver models miss late arriving rows unless you reprocess a lookback window, say three days.",
+      "show": {
+       "t": "big",
+       "text": "Late rows",
+       "sub": "Reprocess a 3 day lookback"
+      }
+     }
+    ],
+    "check": {
+     "q": "A dashboard model reads bronze directly to save a step. What is the main risk?",
+     "opts": [
+      "Bronze is too small",
+      "It skips cleaning and breaks on schema drift",
+      "Gold cannot be built afterwards"
+     ],
+     "ans": 1,
+     "why": "Bronze is uncleaned and mirrors the source, so duplicates, bad types and schema changes flow straight to consumers."
+    },
+    "work": [
+     "Add a rule or lint check that marts may only reference silver models.",
+     "Set a lookback window on incremental models to catch late arriving rows."
+    ]
+   },
+   {
+    "title": "When layers cost more than they give",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Are three layers always worth it? Not always.",
+      "show": {
+       "t": "big",
+       "text": "Always three layers?",
+       "sub": "Trade-offs"
+      }
+     },
+     {
+      "say": "Each layer stores data again and runs another job. Bronze on object storage is cheap, so keep it long. But materialising every intermediate step as a table adds compute for little value. Make those views.",
+      "show": {
+       "t": "points",
+       "title": "Cost",
+       "items": [
+        "Bronze: cheap object storage, long retention",
+        "Intermediate: views, not tables",
+        "Gold: materialise what is queried often"
+       ]
+      }
+     },
+     {
+      "say": "For one small source and one dashboard, a single cleaned view may beat three layers. Layers pay off when many teams share data and need one trusted definition.",
+      "show": {
+       "t": "big",
+       "text": "Small and simple?",
+       "sub": "One cleaned view may be enough"
+      }
+     },
+     {
+      "say": "At scale, gold sprawl is the risk. Fifty marts with fifty revenue definitions is worse than none. Put metrics in one semantic layer, give each mart an owner, and test its contract.",
+      "show": {
+       "t": "scene",
+       "title": "Stop gold *sprawl*",
+       "nodes": [
+        {
+         "id": "sem",
+         "label": "Semantic layer",
+         "sub": "one revenue",
+         "x": 50,
+         "y": 15,
+         "tone": "amber"
+        },
+        {
+         "id": "m1",
+         "label": "Mart A",
+         "sub": "owner, tests",
+         "x": 25,
+         "y": 50,
+         "tone": "blue"
+        },
+        {
+         "id": "m2",
+         "label": "Mart B",
+         "sub": "owner, tests",
+         "x": 75,
+         "y": 50,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "sem",
+         "m1"
+        ],
+        [
+         "sem",
+         "m2"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "sem"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "m1",
+          "m2"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "sem",
+          "m1"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "sem",
+          "m2"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Owned, tested, one definition",
+          "tone": "amber",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Which choice best controls cost and sprawl in a large layered warehouse?",
+     "opts": [
+      "Materialise every intermediate step as a table",
+      "Let each team build marts with its own revenue logic",
+      "Keep intermediate steps as views and define metrics once with owned, tested marts"
+     ],
+     "ans": 2,
+     "why": "Views avoid extra storage and compute, while shared metric definitions and ownership stop conflicting numbers."
+    },
+    "work": [
+     "Audit intermediate models and convert rarely queried tables to views.",
+     "Assign an owner and a test suite to every mart.",
+     "Check whether a small source really needs all three layers."
+    ]
+   }
+  ]
+ },
+ "4.8 Snowflake, enough for this sprint": {
+  "hash": "daa2bea9d6db",
+  "sec": "4.8",
+  "reels": [
+   {
+    "title": "Shelves and hired readers",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Imagine a library where the books never move, and you hire readers by the minute. What if they sit idle all night?",
+      "show": {
+       "t": "scene",
+       "title": "Books stay, *readers* cost money",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Storage",
+         "sub": "books on shelves",
+         "x": 50,
+         "y": 30,
+         "tone": "blue",
+         "kind": "disk"
+        },
+        {
+         "id": "w",
+         "label": "Readers",
+         "sub": "paid by the minute",
+         "x": 50,
+         "y": 65,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "w"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "s"
+        },
+        {
+         "at": 0.5,
+         "show": "w"
+        }
+       ]
+      }
+     },
+     {
+      "say": "In Snowflake, data sits in storage, like books on shelves. A virtual warehouse is a team of readers you hire to answer questions. Despite the name, it is just a group of computers.",
+      "show": {
+       "t": "scene",
+       "title": "A virtual *warehouse* is compute",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Storage",
+         "sub": "your data",
+         "x": 30,
+         "y": 30,
+         "tone": "blue",
+         "kind": "disk"
+        },
+        {
+         "id": "w",
+         "label": "Warehouse",
+         "sub": "cluster of computers",
+         "x": 70,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "q",
+         "label": "Question",
+         "sub": "your query",
+         "x": 50,
+         "y": 70,
+         "tone": "grey"
+        }
+       ],
+       "edges": [
+        [
+         "q",
+         "w"
+        ],
+        [
+         "w",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "s"
+        },
+        {
+         "at": 0.4,
+         "show": "w"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "q",
+          "w"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "The team bills while the clock runs. So set auto-suspend to one minute, and they go home when idle. The books stay on the shelves.",
+      "show": {
+       "t": "scene",
+       "title": "Idle means *stop* paying",
+       "nodes": [
+        {
+         "id": "w",
+         "label": "Warehouse",
+         "sub": "auto-suspend 1 min",
+         "x": 50,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "s",
+         "label": "Storage",
+         "sub": "data stays",
+         "x": 50,
+         "y": 70,
+         "tone": "blue",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "w",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "w",
+          "s"
+         ]
+        },
+        {
+         "at": 0.5,
+         "dim": "w"
+        },
+        {
+         "at": 0.7,
+         "chip": {
+          "text": "Idle warehouse stops the meter",
+          "tone": "teal",
+          "icon": "pause"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Your badge, called a role, decides which shelves you can open. Give an agent a read-only badge, and it can look but never change anything.",
+      "show": {
+       "t": "scene",
+       "title": "Your *role* decides what you see",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Agent",
+         "sub": "read-only role",
+         "x": 25,
+         "y": 40,
+         "tone": "plum"
+        },
+        {
+         "id": "d",
+         "label": "Data",
+         "sub": "look, no edits",
+         "x": 75,
+         "y": 40,
+         "tone": "blue",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "a",
+          "d"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "a",
+          "d"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Read-only role",
+          "tone": "teal",
+          "icon": "lock"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "In the library picture, what are the hired readers?",
+     "opts": [
+      "The stored data",
+      "A virtual warehouse that runs queries",
+      "The role that limits access"
+     ],
+     "ans": 1,
+     "why": "Readers do the work and cost money while running. That is the virtual warehouse. Storage is the shelves, and the role is the badge."
+    },
+    "work": [
+     "Find out which warehouses your team uses and what their auto-suspend is.",
+     "Explain to a colleague why stored data costs nothing extra when no warehouse is running."
+    ]
+   },
+   {
+    "title": "Two meters and a role",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Why can two teams query the same table at once without slowing each other down?",
+      "show": {
+       "t": "big",
+       "text": "Same data, separate compute",
+       "sub": "Two teams, no fighting"
+      }
+     },
+     {
+      "say": "Because storage and compute are separate. Data sits in shared storage. Each virtual warehouse is its own cluster, so a second warehouse reads the same data with its own power.",
+      "show": {
+       "t": "scene",
+       "title": "Shared *storage*, private compute",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Warehouse A",
+         "sub": "team one",
+         "x": 25,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "b",
+         "label": "Warehouse B",
+         "sub": "team two",
+         "x": 75,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "s",
+         "label": "Storage",
+         "sub": "one copy",
+         "x": 50,
+         "y": 70,
+         "tone": "blue",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "s"
+        ],
+        [
+         "b",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "a",
+          "b",
+          "s"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "a",
+          "s"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "b",
+          "s"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Warehouses come in sizes. An extra small uses one credit an hour, and each size up doubles that. Billing is per second, with a sixty second minimum each time it resumes. Auto-suspend at sixty seconds stops the meter when idle.",
+      "show": {
+       "t": "scene",
+       "title": "Each size up *doubles* the burn",
+       "nodes": [
+        {
+         "id": "x",
+         "label": "Credits per hour",
+         "sub": "by warehouse size",
+         "x": 50,
+         "y": 40,
+         "tone": "amber"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "x"
+        },
+        {
+         "at": 0.3,
+         "race": {
+          "items": [
+           [
+            "X-Small",
+            1,
+            "teal"
+           ],
+           [
+            "Small",
+            2,
+            "blue"
+           ],
+           [
+            "Medium",
+            4,
+            "amber"
+           ],
+           [
+            "Large",
+            8,
+            "red"
+           ]
+          ],
+          "unit": "credits/hr"
+         }
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Per second, 60s minimum",
+          "tone": "amber",
+          "icon": "clock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Access works through roles. Create a role, grant it usage on a warehouse, database and schema, plus select on tables. Connect as that role, and the agent can only read.",
+      "show": {
+       "t": "flow",
+       "steps": [
+        {
+         "label": "Create role"
+        },
+        {
+         "label": "Usage on warehouse, database, schema"
+        },
+        {
+         "label": "Select on tables"
+        },
+        {
+         "label": "Agent connects as role"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A Medium warehouse runs for one hour. Roughly how many credits, given X-Small is 1 and sizes double?",
+     "opts": [
+      "2",
+      "4",
+      "8"
+     ],
+     "ans": 1,
+     "why": "X-Small is 1, Small is 2, Medium is 4. Each size up doubles the rate."
+    },
+    "work": [
+     "Create a dedicated read-only role and list the exact grants it needs.",
+     "Set auto-suspend to 60 seconds on any warehouse that is not serving constant traffic."
+    ]
+   },
+   {
+    "title": "Read-only yet expensive",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your read-only agent is safe, yet it just burned a hundred credits. How?",
+      "show": {
+       "t": "big",
+       "text": "Read-only is not cost-safe",
+       "sub": "Reading can still be expensive"
+      }
+     },
+     {
+      "say": "Read-only limits what it changes, not what it spends. A huge query on a big warehouse costs money. Cap it with a resource monitor and a statement timeout.",
+      "show": {
+       "t": "scene",
+       "title": "Cap the *spend*, not just access",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Agent",
+         "sub": "read-only role",
+         "x": 25,
+         "y": 30,
+         "tone": "plum"
+        },
+        {
+         "id": "w",
+         "label": "Warehouse",
+         "sub": "big query",
+         "x": 75,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "m",
+         "label": "Limits",
+         "sub": "monitor and timeout",
+         "x": 50,
+         "y": 70,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "w"
+        ],
+        [
+         "m",
+         "w"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "a",
+          "w"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "a",
+          "w"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.6,
+         "show": "m"
+        },
+        {
+         "at": 0.8,
+         "glow": "m"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Auto-suspend has a trade-off. When a warehouse suspends, its local cache is dropped, so the next queries re-read from storage and run slower. Suspending too often can cost more than it saves.",
+      "show": {
+       "t": "points",
+       "title": "Suspend trade-off",
+       "items": [
+        "Suspend drops the local cache",
+        "Resume takes a few seconds",
+        "Next queries read from storage, slower",
+        "Frequent restarts add the sixty second minimum"
+       ]
+      }
+     },
+     {
+      "say": "Also, a grant of select on existing tables misses new ones. Grant on future tables too, or the agent will not see them. And never connect an agent as account admin.",
+      "show": {
+       "t": "points",
+       "title": "Grant gotchas",
+       "items": [
+        "Select on existing tables skips new tables",
+        "Add a grant on future tables",
+        "Never use account admin for an agent"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Your agent role has select on all existing tables. Next week a new table appears. What happens?",
+     "opts": [
+      "The agent sees it automatically",
+      "The agent cannot see it unless future grants exist",
+      "The agent can see and edit it"
+     ],
+     "ans": 1,
+     "why": "Grants on existing tables only cover tables that exist at grant time. A future grant covers tables created later."
+    },
+    "work": [
+     "Attach a resource monitor and a statement timeout to the agent's warehouse.",
+     "Add future-table grants to the read-only role and test with a new table."
+    ]
+   },
+   {
+    "title": "Choosing and sizing Snowflake",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When is Snowflake the wrong tool, and how do you stop the bill creeping?",
+      "show": {
+       "t": "big",
+       "text": "Right tool, right size",
+       "sub": "Cost follows compute time"
+      }
+     },
+     {
+      "say": "Give each workload its own warehouse: loading, dashboards, the agent. One noisy job cannot slow the others, and the bill splits cleanly by team. The cost is more warehouses to manage.",
+      "show": {
+       "t": "scene",
+       "title": "One *warehouse* per workload",
+       "nodes": [
+        {
+         "id": "l",
+         "label": "Loading",
+         "sub": "own warehouse",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "d",
+         "label": "Dashboards",
+         "sub": "own warehouse",
+         "x": 50,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "g",
+         "label": "Agent",
+         "sub": "own warehouse",
+         "x": 80,
+         "y": 30,
+         "tone": "plum"
+        },
+        {
+         "id": "s",
+         "label": "Storage",
+         "sub": "shared data",
+         "x": 50,
+         "y": 72,
+         "tone": "grey",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "l",
+         "s"
+        ],
+        [
+         "d",
+         "s"
+        ],
+        [
+         "g",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "l",
+          "d",
+          "g"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": "s"
+        },
+        {
+         "at": 0.7,
+         "chip": {
+          "text": "Isolation and clean cost split",
+          "tone": "teal",
+          "icon": "split"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Size up for one slow big query. Scale out with multi-cluster when many users arrive at once. Two different problems, two different fixes.",
+      "show": {
+       "t": "points",
+       "title": "Two different problems",
+       "items": [
+        "One slow query: bigger size",
+        "Many users at once: multi-cluster",
+        "Do not size up for concurrency"
+       ]
+      }
+     },
+     {
+      "say": "Skip it for app backends needing millisecond lookups, or for data small enough for Postgres. A dashboard polling every minute also keeps the warehouse awake all day, so auto-suspend never helps.",
+      "show": {
+       "t": "points",
+       "title": "When not to use it",
+       "items": [
+        "Millisecond app lookups: use a transactional database",
+        "Small data: Postgres is cheaper",
+        "Constant polling defeats auto-suspend"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Fifty analysts run small queries at the same time and queue up. What is the best fix?",
+     "opts": [
+      "Use a much larger single warehouse",
+      "Enable multi-cluster to scale out",
+      "Raise auto-suspend to an hour"
+     ],
+     "ans": 1,
+     "why": "Queuing from concurrency is fixed by adding clusters. A bigger size speeds one heavy query, not many small ones."
+    },
+    "work": [
+     "Split warehouses by workload and tag them so cost is attributable to teams.",
+     "Check whether any dashboard polling keeps a warehouse awake around the clock."
+    ]
+   }
+  ]
+ },
+ "4.6 dbt in practice": {
+  "hash": "0950a27126ed",
+  "sec": "4.6",
+  "reels": [
+   {
+    "title": "The kitchen that cooks itself",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "How do you keep fifty reports in sync when each one depends on another?",
+      "show": {
+       "t": "big",
+       "text": "50 reports, one tangle",
+       "sub": "Who gets built first?"
+      }
+     },
+     {
+      "say": "Think of a kitchen. Each dish has a recipe card, and some cards say: first use the sauce from card seven. dbt is the head chef reading those cards. You only write what each dish should look like. dbt works out the order and does the cooking.",
+      "show": {
+       "t": "scene",
+       "title": "dbt is the head *chef*",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Sauce card",
+         "sub": "raw ingredients",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "p",
+         "label": "Pasta card",
+         "sub": "uses the sauce",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "c",
+         "label": "dbt",
+         "sub": "reads the cards",
+         "x": 50,
+         "y": 65,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "p"
+        ],
+        [
+         "c",
+         "s"
+        ],
+        [
+         "c",
+         "p"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "s",
+          "p"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": "c"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "s",
+          "p"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "You describe, dbt cooks in order",
+          "tone": "amber",
+          "icon": "chef"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Before serving, it tastes each dish. If the sauce is bad, it does not plate the pasta that uses it. That taste check is a test. It protects the customers, who are the people reading your dashboards.",
+      "show": {
+       "t": "scene",
+       "title": "Taste before you *serve*",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Sauce",
+         "sub": "fails the taste",
+         "x": 25,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "p",
+         "label": "Pasta",
+         "sub": "held back",
+         "x": 75,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "d",
+         "label": "Dashboard",
+         "sub": "stays clean",
+         "x": 50,
+         "y": 65,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "p"
+        ],
+        [
+         "p",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "s",
+          "p",
+          "d"
+         ]
+        },
+        {
+         "at": 0.4,
+         "glow": "s"
+        },
+        {
+         "at": 0.6,
+         "dim": "p"
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Bad input stops the line",
+          "tone": "red",
+          "icon": "stop"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "In the kitchen analogy, what does dbt do when the sauce fails its taste test?",
+     "opts": [
+      "Serves the pasta anyway",
+      "Holds back dishes that depend on the sauce",
+      "Deletes every recipe card"
+     ],
+     "ans": 1,
+     "why": "dbt stops downstream models when a test fails, so bad data never reaches the people reading reports."
+    },
+    "work": [
+     "Sketch the chain of tables behind your most important dashboard on paper.",
+     "Ask which step in that chain has no check on it today."
+    ]
+   },
+   {
+    "title": "What dbt build really does",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "What actually happens when you type dbt build?",
+      "show": {
+       "t": "big",
+       "text": "dbt build",
+       "sub": "What runs, and in what order?"
+      }
+     },
+     {
+      "say": "Each model is one select statement. When it says ref to staging trips, dbt records an arrow from staging trips to this model. All the arrows form a graph, and dbt runs models in that order. You never write create table. dbt writes it for you.",
+      "show": {
+       "t": "scene",
+       "title": "ref() draws the *graph*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "stg_trips",
+         "sub": "staging",
+         "x": 25,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "dim_driver",
+         "sub": "dimension",
+         "x": 75,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "c",
+         "label": "fct_trips",
+         "sub": "mart",
+         "x": 50,
+         "y": 65,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "c"
+        ],
+        [
+         "b",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.15,
+         "show": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": "c"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "a",
+          "c"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "b",
+          "c"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "ref calls become run order",
+          "tone": "teal",
+          "icon": "graph"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Then you pick how each model is stored. A view stores nothing and reruns its query on every read. A table is rebuilt in full every run. An incremental model handles only new rows, so a billion row table might touch just three days. Ephemeral is pasted into its consumer as a subquery.",
+      "show": {
+       "t": "bars",
+       "title": "Rows touched per run",
+       "unit": "rows",
+       "items": [
+        [
+         "View",
+         0,
+         "stores nothing"
+        ],
+        [
+         "Table",
+         1000,
+         "full rebuild, in millions"
+        ],
+        [
+         "Incremental",
+         10,
+         "only recent days"
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "How does dbt know to build stg_trips before fct_trips?",
+     "opts": [
+      "Alphabetical file order",
+      "The ref function calls inside the models",
+      "The order you typed in the terminal"
+     ],
+     "ans": 1,
+     "why": "Each ref call records a dependency, and dbt builds a graph from them and runs models in that order."
+    },
+    "work": [
+     "Run dbt docs generate and read the lineage graph for one mart.",
+     "List which of your models are tables that could be incremental."
+    ]
+   },
+   {
+    "title": "Why trips showed up twice",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your trips table suddenly has two rows for the same trip. How?",
+      "show": {
+       "t": "big",
+       "text": "Duplicate trips",
+       "sub": "Same trip_id, two rows"
+      }
+     },
+     {
+      "say": "An incremental model filters to the last three days on each run, so yesterday's trips get read again. Without a unique key, dbt just inserts them, and each reprocessed trip appears twice. With unique key trip id and the merge strategy, dbt matches on trip id and updates the existing row instead.",
+      "show": {
+       "t": "scene",
+       "title": "unique_key turns insert into *merge*",
+       "nodes": [
+        {
+         "id": "src",
+         "label": "Last 3 days",
+         "sub": "re-read rows",
+         "x": 25,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "m",
+         "label": "merge on trip_id",
+         "sub": "match, then update",
+         "x": 75,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "t",
+         "label": "fct_trips",
+         "sub": "one row per trip",
+         "x": 50,
+         "y": 65,
+         "tone": "teal",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "src",
+         "m"
+        ],
+        [
+         "m",
+         "t"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.15,
+         "show": "src"
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "src",
+          "m"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.6,
+         "show": [
+          "m",
+          "t"
+         ]
+        },
+        {
+         "at": 0.75,
+         "packet": [
+          "m",
+          "t"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "No key means double rows",
+          "tone": "red",
+          "icon": "warn"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Why three days and not one? Late data. A trip may be corrected two days after it finished, and the lookback window catches that. On the first run, and on a full refresh, the filter switches off and the whole table is rebuilt. That is safe, but on a huge table it can be slow and costly.",
+      "show": {
+       "t": "points",
+       "title": "Incremental gotchas",
+       "items": [
+        "Lookback window catches late corrections",
+        "First run and full refresh build everything",
+        "Changes older than the window are missed",
+        "Full refresh on big tables costs real money"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A reprocessed trip appears twice in an incremental model. What is the most likely cause?",
+     "opts": [
+      "The view was not materialized",
+      "No unique_key, so rows are inserted again",
+      "The lookback window was too long to be safe"
+     ],
+     "ans": 1,
+     "why": "Without a unique key, dbt inserts every row it reads. Reading overlapping days then duplicates the trips."
+    },
+    "work": [
+     "Check every incremental model has a unique_key and a unique test on it.",
+     "Write down how far back late corrections can arrive, and compare it to your lookback."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Tests and snapshots",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "How does a test know your data is wrong?",
+      "show": {
+       "t": "big",
+       "text": "A test is a query",
+       "sub": "It should return zero rows"
+      }
+     },
+     {
+      "say": "A dbt test is just a query that should return no rows. Not null looks for nulls. Unique looks for ids that appear twice. Relationships looks for trips whose driver does not exist. If any row comes back, the test fails.",
+      "show": {
+       "t": "points",
+       "title": "Four built in tests",
+       "items": [
+        "unique: any id repeated?",
+        "not_null: any blanks?",
+        "accepted_values: any surprise status?",
+        "relationships: any orphan keys?"
+       ]
+      }
+     },
+     {
+      "say": "With dbt build, tests run between models. If unique fails on staging trips, the models downstream are skipped, so bad numbers never reach the mart.",
+      "show": {
+       "t": "scene",
+       "title": "A failed test *blocks* downstream",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "stg_trips",
+         "sub": "unique fails",
+         "x": 25,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "f",
+         "label": "fct_trips",
+         "sub": "skipped",
+         "x": 75,
+         "y": 30,
+         "tone": "grey"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "f"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "s",
+          "f"
+         ]
+        },
+        {
+         "at": 0.5,
+         "glow": "s"
+        },
+        {
+         "at": 0.7,
+         "dim": "f"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Bad data stops here",
+          "tone": "red",
+          "icon": "stop"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Snapshots solve a different problem. A source table shows only today's driver rating. A snapshot saves every change and adds valid from and valid to columns. That gives you a Type 2 history without writing the merge logic yourself.",
+      "show": {
+       "t": "code",
+       "title": "Snapshot output",
+       "text": "driver 7  rating 4.2  valid_from Jan 1  valid_to Mar 5\ndriver 7  rating 4.8  valid_from Mar 5  valid_to null"
+      }
+     }
+    ],
+    "check": {
+     "q": "What does a dbt test failure mean?",
+     "opts": [
+      "The test query returned at least one row",
+      "The test query returned zero rows",
+      "The model had no unique key"
+     ],
+     "ans": 0,
+     "why": "Tests select the bad rows. Any row returned is a violation, and zero rows means the check passed."
+    },
+    "work": [
+     "Add relationships tests between your fact foreign keys and dimensions.",
+     "Find one source table that overwrites history and snapshot it."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "One task or one per model",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Should Airflow run your whole dbt project as a single task?",
+      "show": {
+       "t": "big",
+       "text": "1 task or 300?",
+       "sub": "Airflow and dbt"
+      }
+     },
+     {
+      "say": "One task running dbt build is simple. But if model 140 of 300 fails, you see one red box, and a naive retry reruns everything. That is fine for a small project, and cheap to maintain.",
+      "show": {
+       "t": "scene",
+       "title": "Simple: one *build* task",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Airflow",
+         "sub": "one task",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "d",
+         "label": "dbt build",
+         "sub": "300 models inside",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "a",
+          "d"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "a",
+          "d"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "One red box hides the culprit",
+          "tone": "amber",
+          "icon": "warn"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "One Airflow task per model makes each failure visible and retryable, and lets you control parallelism. The price is hundreds of tasks, more scheduler load, and code that reads the dbt manifest to generate them.",
+      "show": {
+       "t": "points",
+       "title": "Per model tasks",
+       "items": [
+        "Failures visible at model level",
+        "Retry only what broke",
+        "Heavier scheduler, hundreds of tasks",
+        "Needs manifest parsing to stay in sync"
+       ]
+      }
+     },
+     {
+      "say": "Either way, pass the run's data interval to dbt as variables. Then a rerun of last Tuesday processes last Tuesday, not today. Without it, backfills quietly give wrong answers.",
+      "show": {
+       "t": "scene",
+       "title": "Pass the *interval*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Airflow",
+         "sub": "data interval",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "v",
+         "label": "dbt vars",
+         "sub": "start and end",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "f",
+         "label": "Incremental filter",
+         "sub": "right dates only",
+         "x": 50,
+         "y": 65,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "v"
+        ],
+        [
+         "v",
+         "f"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.15,
+         "show": "a"
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "a",
+          "v"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": [
+          "v",
+          "f"
+         ]
+        },
+        {
+         "at": 0.75,
+         "packet": [
+          "v",
+          "f"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Reruns become repeatable",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why pass the data interval from Airflow into dbt?",
+     "opts": [
+      "So dbt runs faster",
+      "So reruns and backfills process the right dates",
+      "So tests can be skipped"
+     ],
+     "ans": 1,
+     "why": "Tying dbt to the run's interval makes runs repeatable. A backfill of an old day then processes that day instead of today."
+    },
+    "work": [
+     "Start with one build task and split by model group only when failures hurt.",
+     "Pass the data interval as dbt vars and test a backfill of an old day."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "When incremental is the wrong choice",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Incremental sounds faster, so why not use it everywhere?",
+      "show": {
+       "t": "big",
+       "text": "Faster is not free",
+       "sub": "Incremental adds risk"
+      }
+     },
+     {
+      "say": "An incremental model keeps state. If a rule changes, or a late row arrives beyond the lookback, the table drifts from the truth until you do a full refresh. A plain table is rebuilt from scratch each run, so it can never drift.",
+      "show": {
+       "t": "scene",
+       "title": "State means *drift* risk",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Table",
+         "sub": "rebuilt each run",
+         "x": 25,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "i",
+         "label": "Incremental",
+         "sub": "remembers old rows",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "r",
+         "label": "Full refresh",
+         "sub": "fixes drift, costs more",
+         "x": 50,
+         "y": 68,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "i",
+         "r"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.15,
+         "show": [
+          "t",
+          "i"
+         ]
+        },
+        {
+         "at": 0.5,
+         "glow": "i"
+        },
+        {
+         "at": 0.7,
+         "show": "r"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "State must be repaired",
+          "tone": "amber",
+          "icon": "warn"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So choose by size. Under a few million rows, a table is simpler and cheap. Go incremental when a full rebuild takes too long or costs too much, and keep a scheduled full refresh to correct drift. Use views for light logic, ephemeral sparingly, since it hides queries.",
+      "show": {
+       "t": "points",
+       "title": "Choosing a materialization",
+       "items": [
+        "Small data: table, no drift",
+        "Big and append heavy: incremental",
+        "Light logic: view",
+        "Schedule a periodic full refresh"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A 2 million row model rebuilds in 20 seconds. What should you choose?",
+     "opts": [
+      "Incremental with merge",
+      "A plain table",
+      "Ephemeral"
+     ],
+     "ans": 1,
+     "why": "A cheap full rebuild avoids state and drift. Incremental only pays off when rebuilds are too slow or costly."
+    },
+    "work": [
+     "Time a full rebuild of each incremental model and convert the cheap ones to tables.",
+     "Schedule a weekly full refresh for the incremental models you keep."
+    ],
+    "part": "2 of 2"
+   }
+  ]
+ },
+ "4.9 Text-to-SQL and why it fails": {
+  "hash": "fb71289ec091",
+  "sec": "4.9",
+  "reels": [
+   {
+    "title": "The confident new colleague",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Imagine asking a brand new colleague, how many trips were completed last month? They'd give you a number. But which one?",
+      "show": {
+       "t": "big",
+       "text": "Which number?",
+       "sub": "Trips completed last month"
+      }
+     },
+     {
+      "say": "At Meridian, Operations says a trip is completed when the driver ends it. Finance says completed means the payment settled and was not refunded. Same word, two meanings, two different numbers.",
+      "show": {
+       "t": "scene",
+       "title": "One word, *two* meanings",
+       "nodes": [
+        {
+         "id": "w",
+         "label": "completed",
+         "sub": "the word",
+         "x": 50,
+         "y": 15,
+         "tone": "grey"
+        },
+        {
+         "id": "o",
+         "label": "Operations",
+         "sub": "driver ended trip",
+         "x": 25,
+         "y": 50,
+         "tone": "blue"
+        },
+        {
+         "id": "f",
+         "label": "Finance",
+         "sub": "paid, not refunded",
+         "x": 75,
+         "y": 50,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "w",
+         "o"
+        ],
+        [
+         "w",
+         "f"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "w"
+        },
+        {
+         "at": 0.35,
+         "show": "o"
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "w",
+          "o"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.65,
+         "show": "f"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "w",
+          "f"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Two numbers",
+          "tone": "red",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Text to SQL is that new colleague, but a model. It writes fluent database code, yet it has never sat in your meetings. It will guess a meaning and sound completely sure.",
+      "show": {
+       "t": "scene",
+       "title": "Fluent, but *guessing*",
+       "nodes": [
+        {
+         "id": "q",
+         "label": "Question",
+         "sub": "in English",
+         "x": 25,
+         "y": 20,
+         "tone": "blue"
+        },
+        {
+         "id": "m",
+         "label": "Model",
+         "sub": "writes SQL",
+         "x": 75,
+         "y": 20,
+         "tone": "plum"
+        },
+        {
+         "id": "a",
+         "label": "Answer",
+         "sub": "sounds sure",
+         "x": 50,
+         "y": 60,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "q",
+         "m"
+        ],
+        [
+         "m",
+         "a"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "q",
+          "m"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "q",
+          "m"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": "a"
+        },
+        {
+         "at": 0.65,
+         "packet": [
+          "m",
+          "a"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Confident is not correct",
+          "tone": "amber",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So the fix is what you would do for any new hire: hand over a short list of tidy tables, a glossary of definitions, and a few worked examples.",
+      "show": {
+       "t": "points",
+       "title": "Onboard the model",
+       "items": [
+        "A short list of tidy tables",
+        "A glossary of definitions",
+        "A few worked examples"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why can a model that writes valid SQL still give the wrong count of completed trips?",
+     "opts": [
+      "It cannot run queries on large tables",
+      "It does not know which meaning of completed your business intends",
+      "SQL cannot count rows by date"
+     ],
+     "ans": 1,
+     "why": "The SQL can be perfectly valid and still use the wrong definition, because the model has never been told which meaning applies."
+    },
+    "work": [
+     "List three business words in your company that mean different things to different teams.",
+     "Write each meaning down in one plain sentence.",
+     "Ask a colleague to read them and say if anything is unclear."
+    ]
+   },
+   {
+    "title": "The four parts of context engineering",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Why does the same English question give a wrong number from a model that writes perfect SQL?",
+      "show": {
+       "t": "big",
+       "text": "Perfect SQL, wrong number",
+       "sub": "The gap is context"
+      }
+     },
+     {
+      "say": "Because the model only sees what you put in its prompt. Managing that is context engineering, and it has four parts. First, narrow the surface. Expose twenty well named gold tables, not two thousand raw ones, so there are fewer wrong joins to pick.",
+      "show": {
+       "t": "bars",
+       "title": "Tables the model can choose from",
+       "unit": "tables",
+       "items": [
+        [
+         "Raw warehouse",
+         2000,
+         "many wrong joins"
+        ],
+        [
+         "Gold only",
+         20,
+         "few wrong joins"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Second, describe columns. Fare means settled fare in rupees, excluding tips. Third, define metrics in words: Operations completed means completed at is not null. Finance completed means payment settled at is not null and not refunded.",
+      "show": {
+       "t": "scene",
+       "title": "Say what things *mean*",
+       "nodes": [
+        {
+         "id": "c",
+         "label": "fare",
+         "sub": "settled, rupees, no tips",
+         "x": 50,
+         "y": 15,
+         "tone": "teal"
+        },
+        {
+         "id": "o",
+         "label": "Ops completed",
+         "sub": "completed_at set",
+         "x": 25,
+         "y": 55,
+         "tone": "blue"
+        },
+        {
+         "id": "f",
+         "label": "Finance completed",
+         "sub": "settled, not refunded",
+         "x": 75,
+         "y": 55,
+         "tone": "amber"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "c"
+        },
+        {
+         "at": 0.4,
+         "show": "o"
+        },
+        {
+         "at": 0.7,
+         "show": "f"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Definitions in words",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Fourth, give three or four question and SQL examples, including a join and a date filter. The model copies their patterns.",
+      "show": {
+       "t": "flow",
+       "title": "What goes in the prompt",
+       "steps": [
+        {
+         "label": "Gold tables"
+        },
+        {
+         "label": "Column notes"
+        },
+        {
+         "label": "Metric definitions"
+        },
+        {
+         "label": "Examples"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Which change is a way of narrowing the surface?",
+     "opts": [
+      "Exposing only twenty well named gold tables",
+      "Adding a row limit to every query",
+      "Writing three example question and SQL pairs"
+     ],
+     "ans": 0,
+     "why": "Narrowing the surface means limiting which tables the model can see. A row limit is a guardrail and examples are a separate context part."
+    },
+    "work": [
+     "Pick the gold tables an analyst would actually need and expose only those.",
+     "Add a plain-English description to every column in them.",
+     "Write one sentence per metric, naming the team whose definition it is."
+    ]
+   },
+   {
+    "title": "Measure it, then guard it",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your text to SQL demo looks great. How do you know a prompt change did not quietly make it worse?",
+      "show": {
+       "t": "big",
+       "text": "Looks great is not a measurement",
+       "sub": "You need an evaluation set"
+      }
+     },
+     {
+      "say": "You build an evaluation set: questions with reference SQL you wrote. Score by running both queries and comparing the results. Never compare the SQL text, because two very different queries can both be right.",
+      "show": {
+       "t": "scene",
+       "title": "Compare *results*, not text",
+       "nodes": [
+        {
+         "id": "r",
+         "label": "Reference SQL",
+         "sub": "you wrote it",
+         "x": 25,
+         "y": 20,
+         "tone": "blue"
+        },
+        {
+         "id": "g",
+         "label": "Model SQL",
+         "sub": "generated",
+         "x": 75,
+         "y": 20,
+         "tone": "plum"
+        },
+        {
+         "id": "c",
+         "label": "Same results?",
+         "sub": "run both, compare",
+         "x": 50,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "r",
+         "c"
+        ],
+        [
+         "g",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "r",
+          "g"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "r",
+          "c"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "g",
+          "c"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "c"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Different SQL can still be right",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Include traps. For an ambiguous question, the right answer states which definition it used. For a question the schema cannot answer, the right answer is to say so, not invent a column.",
+      "show": {
+       "t": "points",
+       "title": "Questions to include",
+       "items": [
+        "Ambiguous: state the definition used",
+        "Unanswerable: say so plainly",
+        "Never invent a column"
+       ]
+      }
+     },
+     {
+      "say": "Guardrails are separate from quality. Use a read only role, accept one select statement, add a row limit, and compile the query before running it. They stop damage, but they do not make answers correct.",
+      "show": {
+       "t": "points",
+       "title": "Guardrails, not accuracy",
+       "items": [
+        "Read-only role",
+        "One SELECT statement only",
+        "Row limit added",
+        "Compile before running"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why score by comparing query results rather than SQL text?",
+     "opts": [
+      "Result comparison is faster to write",
+      "Two different queries can both be correct and return the same results",
+      "SQL text cannot be stored"
+     ],
+     "ans": 1,
+     "why": "Equivalent queries can look completely different, so text matching marks right answers wrong. Comparing results tests what actually matters."
+    },
+    "work": [
+     "Write twenty questions with reference SQL, including ambiguous and unanswerable ones.",
+     "Build a script that runs both queries and compares the results.",
+     "Confirm the connection uses a read-only role with a row limit."
+    ]
+   },
+   {
+    "title": "When a model should not write the SQL",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Should every analyst question go through a model that writes SQL on the fly?",
+      "show": {
+       "t": "big",
+       "text": "Every question?",
+       "sub": "Probably not"
+      }
+     },
+     {
+      "say": "Not for numbers that must match everywhere. If Finance revenue is asked a thousand ways, a model may pick a different definition each time. Put those metrics in one governed definition and let the model use it, instead of rewriting it.",
+      "show": {
+       "t": "scene",
+       "title": "One *governed* definition",
+       "nodes": [
+        {
+         "id": "q",
+         "label": "Many questions",
+         "sub": "asked many ways",
+         "x": 25,
+         "y": 20,
+         "tone": "blue"
+        },
+        {
+         "id": "d",
+         "label": "Governed metric",
+         "sub": "one definition",
+         "x": 75,
+         "y": 20,
+         "tone": "teal"
+        },
+        {
+         "id": "n",
+         "label": "Same number",
+         "sub": "every time",
+         "x": 50,
+         "y": 60,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "q",
+         "d"
+        ],
+        [
+         "d",
+         "n"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "q"
+        },
+        {
+         "at": 0.4,
+         "show": "d"
+        },
+        {
+         "at": 0.45,
+         "packet": [
+          "q",
+          "d"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "n"
+        },
+        {
+         "at": 0.75,
+         "packet": [
+          "d",
+          "n"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Consistency over freedom",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The real cost is not the model call. It is people: someone owns the gold tables, the descriptions, and the evaluation set. Without that, quality drifts as the schema changes.",
+      "show": {
+       "t": "points",
+       "title": "The real cost is ownership",
+       "items": [
+        "Owner for gold tables",
+        "Owner for descriptions",
+        "Owner for the evaluation set",
+        "Schema changes cause drift"
+       ]
+      }
+     },
+     {
+      "say": "Work in a loop. Change one thing in the context, score the evaluation set, compare, keep or revert. Treat widening to raw tables as a change that must earn its place in the scores.",
+      "show": {
+       "t": "flow",
+       "title": "Change, measure, compare",
+       "steps": [
+        {
+         "label": "Change one thing"
+        },
+        {
+         "label": "Score eval set"
+        },
+        {
+         "label": "Compare"
+        },
+        {
+         "label": "Keep or revert"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A team wants to expose all raw tables to improve coverage. What is the sound approach?",
+     "opts": [
+      "Do it, since more tables always means better answers",
+      "Make that one change, score the evaluation set, and keep it only if scores improve",
+      "Skip evaluation and rely on read-only access"
+     ],
+     "ans": 1,
+     "why": "Every context change is a hypothesis. Changing one thing and comparing scores shows whether it helped, and guardrails do not measure correctness."
+    },
+    "work": [
+     "Move finance-critical metrics into one governed definition the model reuses.",
+     "Name an owner for the gold tables, descriptions and evaluation set.",
+     "Rerun the evaluation set after every context change and log the scores."
+    ]
+   }
+  ]
+ },
+ "4.7 Late data and backfills": {
+  "hash": "5423a766aa99",
+  "sec": "4.7",
+  "reels": [
+   {
+    "title": "The receipt that came late",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "A sale happened on Monday, but its receipt only reaches you on Wednesday. Does Monday's total ever get fixed?",
+      "show": {
+       "t": "big",
+       "kicker": "Late data",
+       "text": "Monday's receipt arrives on Wednesday",
+       "sub": "Does Monday's total ever get fixed?"
+      }
+     },
+     {
+      "say": "Picture a shop owner who counts only the receipts that arrive today. Wednesday's pile is counted. The Monday receipt sits inside it, filed under the wrong day, or skipped completely. Monday's total stays wrong.",
+      "show": {
+       "t": "scene",
+       "title": "Counting only *today's* pile",
+       "nodes": [
+        {
+         "id": "rec",
+         "label": "Monday receipt",
+         "sub": "arrives late",
+         "x": 22,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "pile",
+         "label": "Wednesday pile",
+         "sub": "counted today",
+         "x": 78,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "book",
+         "label": "Monday total",
+         "sub": "never updated",
+         "x": 50,
+         "y": 60,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "rec",
+         "pile"
+        ],
+        [
+         "pile",
+         "book"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "rec",
+          "pile"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "rec",
+          "pile"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.7,
+         "show": "book"
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Monday stays wrong",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The fix is to look back. Each evening, recheck the last three days of receipts. If a receipt is already in the book, leave it. If it is new, write it in the right day.",
+      "show": {
+       "t": "scene",
+       "title": "Recheck the last *three days*",
+       "nodes": [
+        {
+         "id": "look",
+         "label": "Recheck 3 days",
+         "sub": "every evening",
+         "x": 22,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "book",
+         "label": "Sales book",
+         "sub": "one line per receipt",
+         "x": 78,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "new",
+         "label": "New receipt",
+         "sub": "goes on its real day",
+         "x": 50,
+         "y": 60,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "look",
+         "book"
+        ],
+        [
+         "new",
+         "book"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "look",
+          "book"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "look",
+          "book"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.65,
+         "show": "new"
+        },
+        {
+         "at": 0.75,
+         "packet": [
+          "new",
+          "book"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Known ones skipped, new ones added",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Stamp every receipt twice: the day the sale happened, and the day it reached you. Report by the first date. Use the second to see what is new.",
+      "show": {
+       "t": "scene",
+       "title": "Two dates on *every* receipt",
+       "nodes": [
+        {
+         "id": "sale",
+         "label": "Sale day",
+         "sub": "use for reports",
+         "x": 22,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "got",
+         "label": "Received day",
+         "sub": "use to spot new",
+         "x": 78,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "rep",
+         "label": "Daily report",
+         "sub": "grouped by sale day",
+         "x": 50,
+         "y": 60,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "sale",
+         "rep"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "sale"
+        },
+        {
+         "at": 0.35,
+         "show": "got"
+        },
+        {
+         "at": 0.6,
+         "show": "rep"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "sale",
+          "rep"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Report by sale day",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A shop rechecks the last three days of receipts every evening. What problem does this solve?",
+     "opts": [
+      "It makes the evening count faster",
+      "It catches receipts that arrive a day or two after the sale",
+      "It removes the need to date receipts"
+     ],
+     "ans": 1,
+     "why": "Late receipts would otherwise be missed because the count only looked at today's pile. Rechecking recent days picks them up and files them on the right day."
+    },
+    "work": [
+     "Ask your team which tables could receive rows days after the event happened.",
+     "Check that each such table stores both an event date and a load date."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "The unknown guest and the fresh notebook",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "A delivery arrives for a customer who is not in your address book yet. Do you throw the parcel away?",
+      "show": {
+       "t": "big",
+       "kicker": "Missing record",
+       "text": "A parcel for someone not in your book",
+       "sub": "Throw it away?"
+      }
+     },
+     {
+      "say": "No. You write a temporary card that says, name known, details missing. The parcel is logged against that card, so nothing is lost. When the real details arrive later, you fill in the card.",
+      "show": {
+       "t": "scene",
+       "title": "A *placeholder* card",
+       "nodes": [
+        {
+         "id": "parcel",
+         "label": "Parcel",
+         "sub": "customer unknown",
+         "x": 22,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "card",
+         "label": "Temporary card",
+         "sub": "name only",
+         "x": 78,
+         "y": 25,
+         "tone": "plum"
+        },
+        {
+         "id": "real",
+         "label": "Real details",
+         "sub": "arrive later",
+         "x": 50,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "parcel",
+         "card"
+        ],
+        [
+         "real",
+         "card"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "parcel"
+        },
+        {
+         "at": 0.3,
+         "show": "card"
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "parcel",
+          "card"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.65,
+         "show": "real"
+        },
+        {
+         "at": 0.75,
+         "packet": [
+          "real",
+          "card"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Nothing lost, card completed",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Now say you must redo a whole year of records. Do not erase the book you are using. Write the new year in a fresh notebook on the side.",
+      "show": {
+       "t": "scene",
+       "title": "Rebuild in a *fresh* notebook",
+       "nodes": [
+        {
+         "id": "old",
+         "label": "Current book",
+         "sub": "readers use this",
+         "x": 22,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "fresh",
+         "label": "Fresh notebook",
+         "sub": "being written",
+         "x": 78,
+         "y": 25,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "old",
+         "fresh"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "old"
+        },
+        {
+         "at": 0.4,
+         "show": "fresh"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "old",
+          "fresh"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Readers never see it half-done",
+          "tone": "blue",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Check that its totals match the old book, and explain any difference. Only then swap the notebooks, so nobody ever reads a half-finished one.",
+      "show": {
+       "t": "scene",
+       "title": "Compare, then *swap*",
+       "nodes": [
+        {
+         "id": "cmp",
+         "label": "Compare totals",
+         "sub": "explain any gap",
+         "x": 22,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "swap",
+         "label": "Swap books",
+         "sub": "all at once",
+         "x": 78,
+         "y": 25,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "cmp",
+         "swap"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "cmp"
+        },
+        {
+         "at": 0.4,
+         "glow": "cmp"
+        },
+        {
+         "at": 0.6,
+         "show": "swap"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "cmp",
+          "swap"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Swap only after it checks out",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A delivery arrives for a customer who is not in your records yet. What is the best move?",
+     "opts": [
+      "Discard the delivery",
+      "Log it against a temporary card and fill in details later",
+      "Hold every delivery until the customer list is complete"
+     ],
+     "ans": 1,
+     "why": "A temporary card keeps the delivery and its totals. The real details are filled in when they arrive, so nothing is lost and nothing waits."
+    },
+    "work": [
+     "List which facts in your warehouse can arrive before their parent record.",
+     "Write down how you would rebuild a big table without readers noticing."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "How a lookback window rescues late rows",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "A trip ends at eleven fifty-eight at night, but its event reaches the warehouse two days later. Why does a normal incremental load never see it?",
+      "show": {
+       "t": "big",
+       "kicker": "Late-arriving facts",
+       "text": "Trip ends 23:58, event lands two days later",
+       "sub": "Why is it never loaded?"
+      }
+     },
+     {
+      "say": "A normal incremental load keeps a high-water mark, the newest date loaded so far, and takes only rows newer than it. The mark is already past that trip's date, so the row is filtered out. It is skipped silently, with no error.",
+      "show": {
+       "t": "scene",
+       "title": "The *high-water mark* hides it",
+       "nodes": [
+        {
+         "id": "src",
+         "label": "Source",
+         "sub": "late trip row",
+         "x": 22,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "filt",
+         "label": "Filter",
+         "sub": "newer than mark only",
+         "x": 78,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "tbl",
+         "label": "Trip table",
+         "sub": "row missing",
+         "x": 50,
+         "y": 60,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "src",
+         "filt"
+        ],
+        [
+         "filt",
+         "tbl"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "src",
+          "filt"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "src",
+          "filt"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.6,
+         "dim": "filt"
+        },
+        {
+         "at": 0.7,
+         "show": "tbl"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Dropped silently, no error",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Fix it with a lookback window. Each run moves the cutoff back three days, reads everything since, and merges on the trip key. Existing keys are updated, new keys are inserted, so reruns never duplicate.",
+      "show": {
+       "t": "scene",
+       "title": "Lookback plus *merge on key*",
+       "nodes": [
+        {
+         "id": "src",
+         "label": "Last 3 days",
+         "sub": "reread each run",
+         "x": 22,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "mrg",
+         "label": "Merge on trip key",
+         "sub": "update or insert",
+         "x": 78,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "tbl",
+         "label": "Trip table",
+         "sub": "no duplicates",
+         "x": 50,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "src",
+         "mrg"
+        ],
+        [
+         "mrg",
+         "tbl"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "src",
+          "mrg"
+         ]
+        },
+        {
+         "at": 0.35,
+         "packet": [
+          "src",
+          "mrg"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.6,
+         "show": "tbl"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "mrg",
+          "tbl"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Late row now caught",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Three days catches almost everything but costs three days of compute on every run. Anything later needs a scheduled wider reconciliation, say weekly over thirty days.",
+      "show": {
+       "t": "bars",
+       "title": "Rows reread per run",
+       "unit": "days",
+       "items": [
+        [
+         "Plain incremental",
+         1,
+         "misses late rows"
+        ],
+        [
+         "3-day lookback",
+         3,
+         "catches most"
+        ],
+        [
+         "Weekly reconcile",
+         30,
+         "catches the rest"
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does a lookback load merge on the key instead of just appending?",
+     "opts": [
+      "Appending is slower than merging",
+      "The same rows are read again, so appending would duplicate them",
+      "Merging reduces the lookback window"
+     ],
+     "ans": 1,
+     "why": "The window rereads rows already loaded. Merging updates existing keys and inserts new ones, so rereading is safe and nothing doubles."
+    },
+    "work": [
+     "Find one incremental model that filters on a high-water mark and add a lookback.",
+     "Pick the window from real lateness data, then add a weekly wider reconciliation."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Two timestamps and the inferred dimension",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Which timestamp should a report use: when the event happened, or when you loaded it? Both, for different jobs.",
+      "show": {
+       "t": "big",
+       "kicker": "Two clocks",
+       "text": "Event time or load time?",
+       "sub": "Both, for different jobs"
+      }
+     },
+     {
+      "say": "Event time says which day a trip belongs to, so partition and report by it. Load time says when the row arrived, so use it to find what changed since the last run.",
+      "show": {
+       "t": "scene",
+       "title": "Two clocks, *two jobs*",
+       "nodes": [
+        {
+         "id": "ev",
+         "label": "Event time",
+         "sub": "when it happened",
+         "x": 22,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "ld",
+         "label": "Load time",
+         "sub": "when we got it",
+         "x": 78,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "rep",
+         "label": "Partition and report",
+         "sub": "by event time",
+         "x": 22,
+         "y": 60,
+         "tone": "blue"
+        },
+        {
+         "id": "chg",
+         "label": "Find changes",
+         "sub": "by load time",
+         "x": 78,
+         "y": 60,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "ev",
+         "rep"
+        ],
+        [
+         "ld",
+         "chg"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "ev",
+          "ld"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": "rep"
+        },
+        {
+         "at": 0.45,
+         "packet": [
+          "ev",
+          "rep"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.65,
+         "show": "chg"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "ld",
+          "chg"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Keep both on every row",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Now a trip arrives for a driver missing from the driver dimension. Do not drop the fact. Insert a placeholder row for that driver's natural key, flag it as inferred, and the next dimension load fills in the real details.",
+      "show": {
+       "t": "scene",
+       "title": "An *inferred* driver row",
+       "nodes": [
+        {
+         "id": "trip",
+         "label": "Trip fact",
+         "sub": "driver 481",
+         "x": 22,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "dim",
+         "label": "dim_driver",
+         "sub": "481 missing",
+         "x": 78,
+         "y": 25,
+         "tone": "red"
+        },
+        {
+         "id": "ph",
+         "label": "Placeholder 481",
+         "sub": "flag: inferred",
+         "x": 78,
+         "y": 60,
+         "tone": "plum"
+        },
+        {
+         "id": "load",
+         "label": "Next dim load",
+         "sub": "real details",
+         "x": 22,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "trip",
+         "dim"
+        ],
+        [
+         "dim",
+         "ph"
+        ],
+        [
+         "load",
+         "ph"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "trip",
+          "dim"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "trip",
+          "dim"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.5,
+         "show": "ph"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "dim",
+          "ph"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.75,
+         "show": "load"
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "load",
+          "ph"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Fact kept, row completed later",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "That way the trip keeps its join, and revenue still adds up on the day it should.",
+      "show": {
+       "t": "big",
+       "kicker": "Result",
+       "text": "No dropped facts",
+       "sub": "Revenue lands on the right day"
+      }
+     }
+    ],
+    "check": {
+     "q": "A trip arrives for a driver not yet in the driver dimension. What should the pipeline do?",
+     "opts": [
+      "Drop the trip until the driver exists",
+      "Insert an inferred placeholder driver and load the trip",
+      "Load the trip with a null driver key"
+     ],
+     "ans": 1,
+     "why": "A placeholder keeps the foreign key valid and the revenue counted. The next dimension load fills in the real attributes."
+    },
+    "work": [
+     "Check whether your fact loads drop or null rows when a dimension key is missing.",
+     "Add an inferred flag column to dimensions that get placeholders."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Backfills that do not double your numbers",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "You rerun two years of history and it doubles your revenue. What went wrong?",
+      "show": {
+       "t": "big",
+       "kicker": "Backfill gone wrong",
+       "text": "Revenue doubled after a rerun",
+       "sub": "What went wrong?"
+      }
+     },
+     {
+      "say": "Almost certainly the jobs were not idempotent, meaning a rerun gives a different result than running once. An append with no key adds the same rows twice. Merge on a key, or overwrite a whole partition, so any rerun lands in the same state.",
+      "show": {
+       "t": "scene",
+       "title": "Make every run *idempotent*",
+       "nodes": [
+        {
+         "id": "app",
+         "label": "Blind append",
+         "sub": "rerun adds twice",
+         "x": 22,
+         "y": 25,
+         "tone": "red"
+        },
+        {
+         "id": "mrg",
+         "label": "Merge on key",
+         "sub": "rerun is a no-op",
+         "x": 78,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "ovr",
+         "label": "Overwrite partition",
+         "sub": "rerun replaces",
+         "x": 50,
+         "y": 60,
+         "tone": "blue"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "app"
+        },
+        {
+         "at": 0.25,
+         "chip": {
+          "text": "Duplicates",
+          "tone": "red",
+          "icon": "alert"
+         }
+        },
+        {
+         "at": 0.5,
+         "show": "mrg"
+        },
+        {
+         "at": 0.7,
+         "show": "ovr"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Same state every time",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Run the backfill by partition, in chunks, say one month at a time. If chunk nine fails, you redo chunk nine, not the whole two years.",
+      "show": {
+       "t": "scene",
+       "title": "Backfill in *chunks*",
+       "nodes": [
+        {
+         "id": "c1",
+         "label": "Months 1 to 8",
+         "sub": "done",
+         "x": 22,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "c9",
+         "label": "Month 9",
+         "sub": "failed, redo only this",
+         "x": 78,
+         "y": 25,
+         "tone": "red"
+        },
+        {
+         "id": "c10",
+         "label": "Months 10 to 24",
+         "sub": "waiting",
+         "x": 50,
+         "y": 60,
+         "tone": "grey"
+        }
+       ],
+       "edges": [
+        [
+         "c1",
+         "c9"
+        ],
+        [
+         "c9",
+         "c10"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "c1"
+        },
+        {
+         "at": 0.4,
+         "show": "c9"
+        },
+        {
+         "at": 0.5,
+         "glow": "c9"
+        },
+        {
+         "at": 0.7,
+         "show": "c10"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "A failure loses one chunk",
+          "tone": "amber",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Build into a separate table, check row counts and totals against the old one, then swap. If a total moved, explain why before publishing.",
+      "show": {
+       "t": "flow",
+       "title": "Build, validate, swap",
+       "steps": [
+        {
+         "label": "Build",
+         "sub": "into a new table"
+        },
+        {
+         "label": "Validate",
+         "sub": "counts and totals"
+        },
+        {
+         "label": "Explain",
+         "sub": "any total that moved"
+        },
+        {
+         "label": "Swap",
+         "sub": "readers see it whole"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A backfill changed last quarter's revenue total by two percent. What comes first?",
+     "opts": [
+      "Publish it, since the new number is more recent",
+      "Find and explain the difference before publishing",
+      "Rerun it until the numbers match the old ones"
+     ],
+     "ans": 1,
+     "why": "A moved total might be a real correction or a bug such as duplicates. Explain it first. Forcing a match would hide the very thing the backfill was meant to fix."
+    },
+    "work": [
+     "Test each pipeline by running it twice for one partition and diffing the output.",
+     "Write a backfill checklist: chunking, shadow table, comparison, swap, change note."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "When late data slips past the window",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "What happens to a trip that arrives ten days late when your window is three days?",
+      "show": {
+       "t": "big",
+       "kicker": "Edge case",
+       "text": "Ten days late, three day window",
+       "sub": "What happens?"
+      }
+     },
+     {
+      "say": "Nothing. It never gets merged, and no alarm fires. Totals drift quietly low until someone compares against the source. So measure lateness: track the gap between event time and load time, and watch the ninety-ninth percentile.",
+      "show": {
+       "t": "scene",
+       "title": "Silent drift, so *measure* lateness",
+       "nodes": [
+        {
+         "id": "late",
+         "label": "Trip, 10 days late",
+         "sub": "outside window",
+         "x": 22,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "win",
+         "label": "3-day window",
+         "sub": "does not reach it",
+         "x": 78,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "mon",
+         "label": "Lateness p99",
+         "sub": "load minus event time",
+         "x": 50,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "late",
+         "win"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "late",
+          "win"
+         ]
+        },
+        {
+         "at": 0.35,
+         "packet": [
+          "late",
+          "win"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.5,
+         "dim": "win"
+        },
+        {
+         "at": 0.6,
+         "chip": {
+          "text": "No error, totals drift low",
+          "tone": "red",
+          "icon": "alert"
+         }
+        },
+        {
+         "at": 0.8,
+         "show": "mon"
+        },
+        {
+         "at": 0.9,
+         "glow": "mon"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Two more traps. Merge needs a reliable unique key, or a reprocessed row duplicates or overwrites the wrong one. And inferred driver rows must be updated in place, not versioned as a real change, or history gets a false entry.",
+      "show": {
+       "t": "points",
+       "title": "Two more traps",
+       "items": [
+        "Merge needs a truly unique key, or reruns duplicate or clobber rows",
+        "Fill inferred dimension rows in place, do not version them as a real change"
+       ]
+      }
+     },
+     {
+      "say": "Fix the leak with a wider scheduled reconciliation that compares counts with the source and repairs gaps.",
+      "show": {
+       "t": "scene",
+       "title": "A wider *reconciliation*",
+       "nodes": [
+        {
+         "id": "src",
+         "label": "Source counts",
+         "sub": "per day",
+         "x": 22,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "wh",
+         "label": "Warehouse counts",
+         "sub": "per day",
+         "x": 78,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "fix",
+         "label": "Repair gaps",
+         "sub": "reload those days",
+         "x": 50,
+         "y": 60,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "src",
+         "fix"
+        ],
+        [
+         "wh",
+         "fix"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "src",
+          "wh"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "src",
+          "fix"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "wh",
+          "fix"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.7,
+         "show": "fix"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Gaps found and repaired",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Your lookback is three days and a row arrives ten days late. How will you most likely find out?",
+     "opts": [
+      "The pipeline raises an error",
+      "A lateness metric or a source-to-warehouse count check shows it",
+      "The merge step rejects the row"
+     ],
+     "ans": 1,
+     "why": "Rows outside the window are never read, so nothing fails. Only monitoring of event-to-load lag or a reconciliation against the source reveals the gap."
+    },
+    "work": [
+     "Add a metric for load time minus event time and alert on the 99th percentile.",
+     "Schedule a weekly count comparison against the source for the last 30 days."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Pricing the lookback window",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Is reprocessing the last three days on every run really the cheapest way to handle late data?",
+      "show": {
+       "t": "big",
+       "kicker": "Trade-off",
+       "text": "Reprocess three days, every run",
+       "sub": "Really the cheapest way?"
+      }
+     },
+     {
+      "say": "It is simple and self-healing, but you pay for it daily. On a table with a billion rows a day, three days means three billion rows scanned every run, most of them unchanged. Size the window from measured lateness, not guesswork.",
+      "show": {
+       "t": "bars",
+       "title": "Rows scanned per run",
+       "unit": "billion rows",
+       "items": [
+        [
+         "Plain incremental",
+         1,
+         "misses late rows"
+        ],
+        [
+         "3-day lookback",
+         3,
+         "simple, self-healing"
+        ],
+        [
+         "30-day lookback",
+         30,
+         "too costly daily"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Alternatives: use load time to pick only changed rows, with a short window and a weekly deep reconciliation. Or use a streaming engine with watermarks, which holds windows open for a set lateness. That adds state and operations cost, so use it only when freshness demands it.",
+      "show": {
+       "t": "scene",
+       "title": "Cheaper *alternatives*",
+       "nodes": [
+        {
+         "id": "lt",
+         "label": "Load-time pick",
+         "sub": "only changed rows",
+         "x": 22,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "wk",
+         "label": "Weekly deep check",
+         "sub": "catches the tail",
+         "x": 78,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "st",
+         "label": "Streaming watermark",
+         "sub": "state and ops cost",
+         "x": 50,
+         "y": 60,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "lt",
+         "wk"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "lt",
+          "wk"
+         ]
+        },
+        {
+         "at": 0.35,
+         "packet": [
+          "lt",
+          "wk"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": "st"
+        },
+        {
+         "at": 0.75,
+         "glow": "st"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Streaming only if freshness demands",
+          "tone": "amber",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A huge fact table is costly to rescan for three days each run. Which is the most sensible first step?",
+     "opts": [
+      "Switch to a streaming engine immediately",
+      "Measure lateness, then use a short window plus a weekly deep reconciliation",
+      "Remove the lookback and accept missing rows"
+     ],
+     "ans": 1,
+     "why": "Measured lateness shows how much window you need. A short window with a periodic wider check keeps cost low and still repairs the tail, without the operating cost of streaming."
+    },
+    "work": [
+     "Compute the share of rows arriving later than one, three and seven days for your biggest table.",
+     "Cost the daily lookback scan and compare it with a load-time pick plus weekly check."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "When not to backfill",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When is a backfill the wrong answer?",
+      "show": {
+       "t": "big",
+       "kicker": "Judgement",
+       "text": "When is a backfill the wrong answer?"
+      }
+     },
+     {
+      "say": "When the fix could be applied going forward. Rebuilding two years of a ten terabyte table costs real compute, and doubles storage while the shadow copy exists. If old reports were already published and signed off, restating them can hurt trust more than the error does.",
+      "show": {
+       "t": "scene",
+       "title": "The *cost* of rewriting history",
+       "nodes": [
+        {
+         "id": "cur",
+         "label": "Live table",
+         "sub": "10 TB",
+         "x": 22,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "sh",
+         "label": "Shadow copy",
+         "sub": "another 10 TB",
+         "x": 78,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "rep",
+         "label": "Signed-off reports",
+         "sub": "would change",
+         "x": 50,
+         "y": 60,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "cur",
+         "sh"
+        ],
+        [
+         "sh",
+         "rep"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "cur"
+        },
+        {
+         "at": 0.3,
+         "show": "sh"
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "cur",
+          "sh"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.6,
+         "count": {
+          "key": "tb",
+          "label": "Storage during rebuild",
+          "to": 20,
+          "unit": "TB",
+          "tone": "amber"
+         }
+        },
+        {
+         "at": 0.75,
+         "show": "rep"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Restating can cost trust",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "When you do backfill, throttle it so it doesn't starve daily jobs, run it in chunks with a ledger of done partitions, and swap atomically. Publish a change note: which totals moved, by how much, and why.",
+      "show": {
+       "t": "flow",
+       "title": "A governed backfill",
+       "steps": [
+        {
+         "label": "Throttle",
+         "sub": "protect daily jobs"
+        },
+        {
+         "label": "Chunk + ledger",
+         "sub": "track done partitions"
+        },
+        {
+         "label": "Atomic swap",
+         "sub": "no half states"
+        },
+        {
+         "label": "Change note",
+         "sub": "what moved and why"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A bug understated one metric for the last two years, and the fix is cheap going forward. What is a sound architect's approach?",
+     "opts": [
+      "Always backfill so history is perfect",
+      "Weigh backfill cost and restatement impact against labelling old data and fixing going forward",
+      "Never backfill once reports are published"
+     ],
+     "ans": 1,
+     "why": "Backfills cost compute and storage and may restate trusted numbers. Sometimes a forward fix with a clear note is better; sometimes a governed backfill is justified. It is a trade-off, not a rule."
+    },
+    "work": [
+     "Estimate compute and storage for rebuilding your largest table before agreeing to a backfill.",
+     "Create a change-note template that lists totals before, after and the reason."
+    ],
+    "part": "2 of 2"
+   }
+  ]
+ }
+}

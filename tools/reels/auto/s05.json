@@ -1,0 +1,4409 @@
+{
+ "5.1 Why streaming is harder than batch": {
+  "hash": "de1cc5b7f67f",
+  "sec": "5.1",
+  "reels": [
+   {
+    "title": "Counting what never stops",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "How do you count something that never stops happening?",
+      "show": {
+       "t": "big",
+       "text": "Count what never ends?",
+       "sub": "Streaming in plain terms"
+      }
+     },
+     {
+      "say": "A batch job is like counting cars in a car park after it closes. The lot is full, nothing moves, you finish and go home. A stream is a motorway at rush hour. There is no closing time. So you count in slices, say one minute at a time, and you must decide when a slice is done.",
+      "show": {
+       "t": "scene",
+       "title": "Car park versus *motorway*",
+       "nodes": [
+        {
+         "id": "lot",
+         "label": "Car park",
+         "sub": "closes, then count",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "road",
+         "label": "Motorway",
+         "sub": "never closes",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "slice",
+         "label": "One minute slice",
+         "sub": "count, then move on",
+         "x": 50,
+         "y": 70,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "road",
+         "slice"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "lot"
+        },
+        {
+         "at": 0.4,
+         "show": "road"
+        },
+        {
+         "at": 0.6,
+         "show": "slice"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "road",
+          "slice"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "No end, so count in slices",
+          "tone": "amber",
+          "icon": "clock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Then there is the postcard problem. A postcard has the day it was written and the day it arrived. A rider in a tunnel writes now, but the card lands ten minutes later. Which day should count?",
+      "show": {
+       "t": "scene",
+       "title": "Written day or *arrival* day",
+       "nodes": [
+        {
+         "id": "rider",
+         "label": "Rider in tunnel",
+         "sub": "writes at 9:00",
+         "x": 20,
+         "y": 30,
+         "tone": "plum"
+        },
+        {
+         "id": "post",
+         "label": "Postcard",
+         "sub": "lands at 9:10",
+         "x": 80,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "count",
+         "label": "Counter",
+         "sub": "which minute?",
+         "x": 50,
+         "y": 72,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "rider",
+         "post"
+        ],
+        [
+         "post",
+         "count"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "rider"
+        },
+        {
+         "at": 0.3,
+         "show": "post"
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "rider",
+          "post"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "count"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Two different times",
+          "tone": "amber",
+          "icon": "clock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Last, the counter works for months. If the guard changes shift, the new guard needs the notes, or the count starts again at zero.",
+      "show": {
+       "t": "points",
+       "title": "A counter that never retires",
+       "items": [
+        "It runs for months",
+        "Shifts change, crashes happen",
+        "Keep notes so the count survives"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why is counting a stream harder than counting a closed car park?",
+     "opts": [
+      "There are more cars",
+      "There is no closing time, so you must cut slices and decide when each is done",
+      "Cars are heavier",
+      "The count cannot be saved"
+     ],
+     "ans": 1,
+     "why": "A stream has no natural end, so you must choose slice boundaries and when a slice is finished. That is the root of every other streaming problem."
+    },
+    "work": [
+     "Pick one metric at work and say what slice size it would need if it were live.",
+     "Ask which of your numbers are counted by arrival time rather than by when things happened."
+    ]
+   },
+   {
+    "title": "Windows, two clocks and watermarks",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Surge pricing needs rider counts per zone, right now. Why can't last hour's batch job do it?",
+      "show": {
+       "t": "big",
+       "text": "Riders per zone, right now",
+       "sub": "Hourly batch is too slow"
+      }
+     },
+     {
+      "say": "Because a batch job reads a fixed file and stops. A stream never ends, so we cut it into windows, for example one minute each, and count requests per zone per window.",
+      "show": {
+       "t": "scene",
+       "title": "Cut the stream into *windows*",
+       "nodes": [
+        {
+         "id": "stream",
+         "label": "Trip requests",
+         "sub": "endless",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "win",
+         "label": "One minute window",
+         "sub": "per zone",
+         "x": 80,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "cnt",
+         "label": "Zone count",
+         "sub": "for example 412",
+         "x": 50,
+         "y": 70,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "stream",
+         "win"
+        ],
+        [
+         "win",
+         "cnt"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "stream"
+        },
+        {
+         "at": 0.3,
+         "show": "win"
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "stream",
+          "win"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.7,
+         "show": "cnt"
+        },
+        {
+         "at": 0.75,
+         "count": {
+          "key": "c",
+          "label": "requests in window",
+          "to": 412,
+          "unit": "",
+          "tone": "amber"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Each event carries two times. Event time is when the rider tapped the phone. Processing time is when our job saw it. A phone in a tunnel can be five minutes late. Count by processing time, and the nine o'clock window holds whatever happened to arrive.",
+      "show": {
+       "t": "scene",
+       "title": "Two clocks: *event* and processing",
+       "nodes": [
+        {
+         "id": "phone",
+         "label": "Phone",
+         "sub": "event time 9:00",
+         "x": 20,
+         "y": 30,
+         "tone": "plum"
+        },
+        {
+         "id": "job",
+         "label": "Our job",
+         "sub": "processing time 9:05",
+         "x": 80,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "wrong",
+         "label": "Wrong window",
+         "sub": "if we use 9:05",
+         "x": 50,
+         "y": 72,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "phone",
+         "job"
+        ],
+        [
+         "job",
+         "wrong"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "phone"
+        },
+        {
+         "at": 0.3,
+         "show": "job"
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "phone",
+          "job"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "wrong"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "5 minutes late",
+          "tone": "red",
+          "icon": "clock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So we use event time, plus a watermark. That is a marker saying nothing older than, say, two minutes is still coming. When it passes the window's end, we emit the count.",
+      "show": {
+       "t": "flow",
+       "title": "Watermark closes the window",
+       "steps": [
+        {
+         "label": "Events arrive"
+        },
+        {
+         "label": "Watermark moves"
+        },
+        {
+         "label": "Window end passed"
+        },
+        {
+         "label": "Emit count"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A rider taps at 9:00 but the event reaches the job at 9:05. Which window should count it for surge pricing?",
+     "opts": [
+      "9:05, when the job saw it",
+      "9:00, using event time",
+      "Whichever window is open",
+      "Neither, drop it"
+     ],
+     "ans": 1,
+     "why": "Event time reflects what really happened. Processing time would shift the count into the wrong window whenever the network is slow."
+    },
+    "work": [
+     "For each streaming job you own, write down which clock its windows use.",
+     "Find the field that holds event time and check it is set on the device, not the server."
+    ]
+   },
+   {
+    "title": "Crashes, late data and growing state",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your job crashed at three in the morning with forty thousand half-finished counts in memory. What happens now?",
+      "show": {
+       "t": "big",
+       "text": "40,000 counts in memory",
+       "sub": "The job just crashed"
+      }
+     },
+     {
+      "say": "Without protection, those counts vanish and the job restarts from the wrong place. So the engine takes a checkpoint every thirty seconds. It saves the state and the input position, such as the Kafka offset, together. On restart it reloads both and carries on.",
+      "show": {
+       "t": "scene",
+       "title": "Checkpoint state and *position* together",
+       "nodes": [
+        {
+         "id": "job",
+         "label": "Stream job",
+         "sub": "counts in memory",
+         "x": 20,
+         "y": 28,
+         "tone": "blue"
+        },
+        {
+         "id": "store",
+         "label": "Checkpoint store",
+         "sub": "state plus offset",
+         "x": 80,
+         "y": 28,
+         "tone": "teal",
+         "kind": "disk"
+        },
+        {
+         "id": "kafka",
+         "label": "Kafka",
+         "sub": "replay from offset",
+         "x": 50,
+         "y": 72,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "job",
+         "store"
+        ],
+        [
+         "store",
+         "kafka"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "job"
+        },
+        {
+         "at": 0.3,
+         "show": "store"
+        },
+        {
+         "at": 0.35,
+         "packet": [
+          "job",
+          "store"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": "kafka"
+        },
+        {
+         "at": 0.65,
+         "packet": [
+          "store",
+          "kafka"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Resume exactly where it stopped",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Now the watermark trap. Set it two minutes behind and every answer waits two minutes. Set it tight and tunnel events arrive after their window closed. Those are late events. You must choose: drop them, update the result, or send them to a side output.",
+      "show": {
+       "t": "scene",
+       "title": "The watermark *trade-off*",
+       "nodes": [
+        {
+         "id": "wide",
+         "label": "Wide watermark",
+         "sub": "slow but complete",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "tight",
+         "label": "Tight watermark",
+         "sub": "fast but misses",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "late",
+         "label": "Late event",
+         "sub": "drop, update or side output",
+         "x": 50,
+         "y": 72,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "tight",
+         "late"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "wide"
+        },
+        {
+         "at": 0.3,
+         "show": "tight"
+        },
+        {
+         "at": 0.6,
+         "show": "late"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "tight",
+          "late"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Latency versus completeness",
+          "tone": "amber",
+          "icon": "scale"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Last gotcha: state grows. A window kept open for a day across a million riders can exhaust memory, so always set an expiry on state.",
+      "show": {
+       "t": "points",
+       "title": "State needs a time to live",
+       "items": [
+        "Open windows hold memory",
+        "Millions of keys add up",
+        "Expire old state"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does a checkpoint save the input offset together with the counts?",
+     "opts": [
+      "To make the file smaller",
+      "So a restart does not double count or skip events",
+      "To speed up the watermark",
+      "To avoid using Kafka"
+     ],
+     "ans": 1,
+     "why": "If counts and position were saved at different moments, a restart would replay events already counted or skip events never counted."
+    },
+    "work": [
+     "Check how often your job checkpoints and how long recovery takes in a test.",
+     "Decide and document what happens to events later than the watermark.",
+     "Set a time to live on every keyed state store."
+    ]
+   },
+   {
+    "title": "When streaming is worth the bill",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Do you really need streaming, or does it just feel modern?",
+      "show": {
+       "t": "big",
+       "text": "Need it, or just like it?",
+       "sub": "Streaming has a price"
+      }
+     },
+     {
+      "say": "Streaming costs more. You run servers around the clock, hold state, and keep people on call for restarts and lag. A batch job runs for ten minutes and then costs nothing.",
+      "show": {
+       "t": "bars",
+       "title": "Rough running cost",
+       "unit": "hours per day",
+       "items": [
+        [
+         "Batch job",
+         1,
+         "runs then stops"
+        ],
+        [
+         "Streaming job",
+         24,
+         "always on"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "So start from the latency the business needs. Surge pricing needs seconds, so stream. A daily finance report needs hours, so batch. If five minutes is fine, a micro-batch job every five minutes is far simpler.",
+      "show": {
+       "t": "scene",
+       "title": "Start from the *latency* needed",
+       "nodes": [
+        {
+         "id": "sec",
+         "label": "Seconds",
+         "sub": "surge pricing",
+         "x": 20,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "min",
+         "label": "Minutes",
+         "sub": "micro-batch",
+         "x": 50,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "hr",
+         "label": "Hours",
+         "sub": "daily report",
+         "x": 80,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "pick",
+         "label": "Choose the simplest",
+         "sub": "that meets the need",
+         "x": 50,
+         "y": 72,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "sec",
+         "pick"
+        ],
+        [
+         "min",
+         "pick"
+        ],
+        [
+         "hr",
+         "pick"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "sec"
+        },
+        {
+         "at": 0.3,
+         "show": "min"
+        },
+        {
+         "at": 0.5,
+         "show": "hr"
+        },
+        {
+         "at": 0.7,
+         "show": "pick"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Simplest tool that fits",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "When you do stream, set the watermark by the cost of being wrong. A slightly wrong surge price for a minute is cheap, so use a short watermark. Billing is not cheap, so stream for speed, then reconcile with a batch job overnight.",
+      "show": {
+       "t": "points",
+       "title": "Match accuracy to risk",
+       "items": [
+        "Cheap errors: short watermark",
+        "Costly errors: reconcile in batch",
+        "Stream for speed, batch for truth"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A dashboard only needs to be fresh within ten minutes. What is the best choice?",
+     "opts": [
+      "Full always-on streaming",
+      "A micro-batch job every few minutes",
+      "A monthly batch",
+      "Streaming with no watermark"
+     ],
+     "ans": 1,
+     "why": "Micro-batch meets a ten minute need with far less state, on-call load and cost than an always-on stream."
+    },
+    "work": [
+     "List your pipelines with the freshness the business really needs, not what was asked for.",
+     "Move any stream whose users accept minutes of delay to micro-batch.",
+     "Add a nightly batch reconciliation for money-related streams."
+    ]
+   }
+  ]
+ },
+ "5.4 Spark Structured Streaming": {
+  "hash": "9305e7452f5c",
+  "sec": "5.4",
+  "reels": [
+   {
+    "title": "A table that keeps growing",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "What if a never-ending stream of data could be treated like a spreadsheet that just keeps getting new rows?",
+      "show": {
+       "t": "big",
+       "text": "A stream is a table that keeps growing",
+       "sub": "new rows arrive all the time"
+      }
+     },
+     {
+      "say": "That is Structured Streaming. Picture a clerk with a growing ledger. Every ten seconds, the clerk reads only the new lines added since last time, and updates the totals.",
+      "show": {
+       "t": "scene",
+       "title": "A clerk and a *growing* ledger",
+       "nodes": [
+        {
+         "id": "l",
+         "label": "Ledger",
+         "sub": "new rows",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "c",
+         "label": "Clerk",
+         "sub": "every 10 seconds",
+         "x": 50,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "t",
+         "label": "Totals",
+         "sub": "updated",
+         "x": 80,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "l",
+         "c"
+        ],
+        [
+         "c",
+         "t"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "l",
+          "c",
+          "t"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "l",
+          "c"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "c",
+          "t"
+         ],
+         "n": 1
+        }
+       ]
+      }
+     },
+     {
+      "say": "The clerk keeps a bookmark showing where they stopped. If they go home sick, the next clerk reads the bookmark and carries on. Nothing is lost, and nothing is counted twice.",
+      "show": {
+       "t": "scene",
+       "title": "The *bookmark* saves your place",
+       "nodes": [
+        {
+         "id": "c",
+         "label": "Clerk",
+         "sub": "stops",
+         "x": 25,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "b",
+         "label": "Bookmark",
+         "sub": "row 5000",
+         "x": 55,
+         "y": 30,
+         "tone": "amber",
+         "kind": "disk"
+        },
+        {
+         "id": "n",
+         "label": "New clerk",
+         "sub": "resumes",
+         "x": 80,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "c",
+         "b"
+        ],
+        [
+         "b",
+         "n"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "c",
+          "b"
+         ]
+        },
+        {
+         "at": 0.5,
+         "show": "n",
+         "packet": [
+          "b",
+          "n"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Resumes at row 5000",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "You write the same code you would for a fixed table. The engine does the repeating for you.",
+      "show": {
+       "t": "points",
+       "title": "Why it feels easy",
+       "items": [
+        "Same code as batch",
+        "Engine repeats it for new rows",
+        "Bookmark gives safe restarts"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "In the analogy, what does the bookmark protect against?",
+     "opts": [
+      "Reading rows too slowly",
+      "Losing or double counting rows after a crash",
+      "Writing code twice"
+     ],
+     "ans": 1,
+     "why": "The bookmark is the checkpoint: it records where processing stopped so a restart continues from there without gaps or repeats."
+    },
+    "work": [
+     "Explain to a colleague why a stream can be seen as an unbounded table.",
+     "Find one batch job of yours that could be rewritten as a streaming query with almost no code change."
+    ]
+   },
+   {
+    "title": "Micro-batches and the checkpoint",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How does a streaming job read Kafka without ever losing its place?",
+      "show": {
+       "t": "big",
+       "text": "Where does Spark remember its place?",
+       "sub": "hint: not in Kafka"
+      }
+     },
+     {
+      "say": "Every ten seconds, Spark starts a small batch. It reads the new Kafka records, up to fifty thousand, because max offsets per trigger sets that cap.",
+      "show": {
+       "t": "scene",
+       "title": "One *micro-batch* every 10 seconds",
+       "nodes": [
+        {
+         "id": "k",
+         "label": "Kafka",
+         "sub": "trip_events",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "s",
+         "label": "Spark batch",
+         "sub": "max 50,000 records",
+         "x": 50,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "o",
+         "label": "Output",
+         "sub": "table",
+         "x": 80,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "k",
+         "s"
+        ],
+        [
+         "s",
+         "o"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "k",
+          "s",
+          "o"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "k",
+          "s"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "count": {
+          "key": "r",
+          "label": "Records per batch",
+          "to": 50000,
+          "unit": "max",
+          "tone": "teal"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Spark also writes to the checkpoint, a folder in durable storage like S3. It stores which offsets the batch covered, plus the running state.",
+      "show": {
+       "t": "scene",
+       "title": "The *checkpoint* is Spark's memory",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Spark batch",
+         "sub": "offsets 0 to 50,000",
+         "x": 30,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "c",
+         "label": "Checkpoint",
+         "sub": "offsets + state",
+         "x": 70,
+         "y": 30,
+         "tone": "amber",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "s",
+          "c"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "s",
+          "c"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Durable storage, not Kafka",
+          "tone": "amber",
+          "icon": "disk"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "On restart, Spark reads the checkpoint and continues from there. It ignores Kafka consumer group commits. After a long outage, the cap makes it chew the backlog in steady fifty thousand record pieces, instead of choking on millions at once.",
+      "show": {
+       "t": "points",
+       "title": "On restart",
+       "items": [
+        "Read the checkpoint",
+        "Continue from saved offsets",
+        "Cap each batch at 50,000",
+        "Backlog clears in steady pieces"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Where does Structured Streaming track which Kafka offsets it has processed?",
+     "opts": [
+      "Kafka consumer group commits",
+      "The checkpoint location",
+      "The output table"
+     ],
+     "ans": 1,
+     "why": "Spark stores offsets and state in its own checkpoint. Kafka consumer group commits are not used for its progress."
+    },
+    "work": [
+     "Put every query's checkpoint on durable storage with a unique path per query.",
+     "Set max offsets per trigger so a restart after an outage does not overload the cluster."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Windows and the watermark",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How can a job count requests per minute forever without running out of memory?",
+      "show": {
+       "t": "big",
+       "text": "Counting forever needs a way to forget",
+       "sub": "or state grows without limit"
+      }
+     },
+     {
+      "say": "It keeps a running count for each open one minute window. A tumbling window is fixed, like each minute. A sliding one overlaps. A session window closes after a gap in activity.",
+      "show": {
+       "t": "points",
+       "title": "Window types",
+       "items": [
+        "Tumbling: fixed, each minute",
+        "Sliding: overlaps, 5 minutes every minute",
+        "Session: closes after a quiet gap"
+       ]
+      }
+     },
+     {
+      "say": "The watermark limits the memory. Spark tracks the latest event time seen, and subtracts two minutes. Say the latest is twelve ten. The watermark is twelve oh eight.",
+      "show": {
+       "t": "scene",
+       "title": "Watermark = latest *minus* 2 minutes",
+       "nodes": [
+        {
+         "id": "e",
+         "label": "Latest event",
+         "sub": "12:10",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "w",
+         "label": "Watermark",
+         "sub": "12:08",
+         "x": 70,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "e",
+         "w"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "e"
+        },
+        {
+         "at": 0.5,
+         "show": "w",
+         "packet": [
+          "e",
+          "w"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Nothing earlier than 12:08 expected",
+          "tone": "amber",
+          "icon": "clock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Any window ending before twelve oh eight is final, and Spark frees its memory. An event arriving later than that is dropped. A longer watermark accepts more late data, but holds more state.",
+      "show": {
+       "t": "bars",
+       "title": "Watermark trade-off",
+       "unit": "min",
+       "items": [
+        [
+         "Short watermark",
+         2,
+         "less memory, more drops"
+        ],
+        [
+         "Long watermark",
+         10,
+         "more memory, fewer drops"
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "The latest event time seen is 12:10 and the watermark delay is 2 minutes. What happens to a window ending at 12:07?",
+     "opts": [
+      "It stays open for more events",
+      "It is final and its state is freed",
+      "It is written twice"
+     ],
+     "ans": 1,
+     "why": "The watermark is 12:08. Windows ending before it are final, so Spark frees their state and drops later events for them."
+    },
+    "work": [
+     "Ask the business how late data can be before choosing a watermark.",
+     "Monitor state size per query so a long watermark does not surprise you."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Output modes and freshness",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your dashboard needs data within thirty seconds, but your append query shows each minute about three minutes late. Why?",
+      "show": {
+       "t": "big",
+       "text": "Why is append 3 minutes late?",
+       "sub": "1 minute window, 2 minute watermark"
+      }
+     },
+     {
+      "say": "Append mode writes only final windows. A one minute window with a two minute watermark becomes final about three minutes in. After that, the row never changes.",
+      "show": {
+       "t": "bars",
+       "title": "When append writes a window",
+       "unit": "min",
+       "items": [
+        [
+         "Window length",
+         1,
+         ""
+        ],
+        [
+         "Watermark wait",
+         2,
+         ""
+        ],
+        [
+         "Row appears at",
+         3,
+         "never revised"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Update mode writes every window whose count changed, so it is fresh within one batch. The catch is that rows get revised when late events arrive.",
+      "show": {
+       "t": "scene",
+       "title": "*Update* mode: fresh, but revised",
+       "nodes": [
+        {
+         "id": "b",
+         "label": "Batch",
+         "sub": "every 10 seconds",
+         "x": 25,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "r",
+         "label": "Window row",
+         "sub": "count changes",
+         "x": 70,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "b",
+         "r"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "b",
+          "r"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "b",
+          "r"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "cells": {
+          "label": "Same window revised",
+          "items": [
+           [
+            "12:05",
+            "41"
+           ],
+           [
+            "12:05",
+            "44"
+           ]
+          ]
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Complete mode rewrites the whole result table every batch, so keep it for tiny results. Surge pricing wants update. Finance wants append. The same stream can feed both.",
+      "show": {
+       "t": "points",
+       "title": "Pick by need",
+       "items": [
+        "Append: final, late by about 3 minutes",
+        "Update: fresh, rows revised",
+        "Complete: tiny results only"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Surge pricing needs numbers within 30 seconds and can tolerate revisions. Which mode fits?",
+     "opts": [
+      "Append",
+      "Update",
+      "Complete"
+     ],
+     "ans": 1,
+     "why": "Update emits changed windows every batch, so it is fresh. Append waits for finality and complete rewrites everything."
+    },
+    "work": [
+     "For each consumer of a stream, write down whether it wants fresh or final numbers.",
+     "Check whether any dashboard silently relies on append and is therefore minutes behind."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "At-least-once and idempotent merges",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your job crashes after writing to the table but before saving its checkpoint. Do you get duplicates?",
+      "show": {
+       "t": "big",
+       "text": "Crash between write and checkpoint",
+       "sub": "what happens on restart?"
+      }
+     },
+     {
+      "say": "Iceberg sinks accept append and complete only. For update behavior, use foreachBatch, which hands you each micro batch as an ordinary DataFrame.",
+      "show": {
+       "t": "code",
+       "title": "foreachBatch",
+       "text": "demand.writeStream\n  .outputMode(\"update\")\n  .foreachBatch(upsert)",
+       "note": "each micro-batch is a normal DataFrame"
+      }
+     },
+     {
+      "say": "But foreachBatch is at least once. Spark never recorded the batch as done, so on restart it runs the same batch again.",
+      "show": {
+       "t": "scene",
+       "title": "The batch runs *twice*",
+       "nodes": [
+        {
+         "id": "m",
+         "label": "Merge",
+         "sub": "done",
+         "x": 25,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "c",
+         "label": "Checkpoint",
+         "sub": "not updated",
+         "x": 70,
+         "y": 30,
+         "tone": "red",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "m",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "m"
+        },
+        {
+         "at": 0.4,
+         "show": "c",
+         "glow": "c"
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Crash here: batch replays",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The fix is a merge keyed on window start and zone id. Rerun the batch and the same rows are overwritten with the same counts. Harmless. Never delete the checkpoint, though. That makes the query forget everything.",
+      "show": {
+       "t": "points",
+       "title": "Make replays safe",
+       "items": [
+        "MERGE on window start and zone id",
+        "Same batch gives same result",
+        "Never delete the checkpoint"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why is a MERGE on (window_start, zone_id) safe inside foreachBatch?",
+     "opts": [
+      "It stops Spark replaying batches",
+      "Replaying a batch rewrites the same rows with the same values",
+      "It removes the need for a checkpoint"
+     ],
+     "ans": 1,
+     "why": "foreachBatch is at-least-once, so replays happen. An idempotent keyed merge makes a replay produce the same final table."
+    },
+    "work": [
+     "Make every foreachBatch write idempotent, using a merge or a delete-then-insert on a key.",
+     "Test a replay by killing the job mid-batch and confirming counts are unchanged."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "When to choose Structured Streaming",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When is Structured Streaming the wrong tool?",
+      "show": {
+       "t": "big",
+       "text": "When is it the wrong tool?",
+       "sub": "think latency, cost, lateness"
+      }
+     },
+     {
+      "say": "The watermark is a business decision. Two minutes means later data is silently lost. Ten minutes accepts more, but holds about five times more window state in memory.",
+      "show": {
+       "t": "bars",
+       "title": "Watermark cost",
+       "unit": "min",
+       "items": [
+        [
+         "2 minutes",
+         2,
+         "light state"
+        ],
+        [
+         "10 minutes",
+         10,
+         "about 5x the state"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Micro-batches add latency of at least a batch interval, ten seconds here. If you need sub-second response, consider an event at a time engine such as Flink.",
+      "show": {
+       "t": "scene",
+       "title": "Latency has a *floor*",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Spark micro-batch",
+         "sub": "seconds",
+         "x": 30,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "f",
+         "label": "Event at a time",
+         "sub": "sub-second",
+         "x": 70,
+         "y": 30,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "f"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "s",
+          "f"
+         ]
+        },
+        {
+         "at": 0.6,
+         "race": {
+          "items": [
+           [
+            "Micro-batch",
+            10,
+            "teal"
+           ],
+           [
+            "Event at a time",
+            0.5,
+            "plum"
+           ]
+          ],
+          "unit": "seconds"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "If a nightly report is enough, a plain batch job is cheaper than a cluster running all day. Otherwise, serve fresh update rows to pricing and final append rows to finance, from one stream.",
+      "show": {
+       "t": "points",
+       "title": "Decide",
+       "items": [
+        "Nightly is fine: use batch",
+        "Seconds are fine: Structured Streaming",
+        "Sub-second: event at a time engine",
+        "One stream can feed fresh and final outputs"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A fraud team needs decisions in under 100 milliseconds per event. What is the best fit?",
+     "opts": [
+      "Structured Streaming with a 10 second trigger",
+      "An event at a time engine",
+      "Complete output mode"
+     ],
+     "ans": 1,
+     "why": "Micro-batches have a latency floor of the trigger interval. Sub-second needs a per-event engine."
+    },
+    "work": [
+     "Write down the latency target and lateness tolerance before picking an engine.",
+     "Price a always-on streaming cluster against a scheduled batch job for the same output."
+    ]
+   }
+  ]
+ },
+ "5.5 Schemas that change": {
+  "hash": "eab78d9bf897",
+  "sec": "5.5",
+  "reels": [
+   {
+    "title": "The order slip nobody told the kitchen about",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "What happens when one person changes the order form and nobody tells the kitchen?",
+      "show": {
+       "t": "big",
+       "kicker": "Changing the form",
+       "text": "Who tells the kitchen?"
+      }
+     },
+     {
+      "say": "Picture a restaurant. Waiters write orders on slips. The kitchen reads them. Both agree on the layout: table, dish, notes. Then a waiter adds a new box for allergies. The cook has never seen it, and orders get misread.",
+      "show": {
+       "t": "scene",
+       "title": "A slip that *changed*",
+       "nodes": [
+        {
+         "id": "w",
+         "label": "Waiter",
+         "sub": "adds allergy box",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "c",
+         "label": "Cook",
+         "sub": "expects old slip",
+         "x": 80,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "m",
+         "label": "Misread order",
+         "sub": "wrong dish",
+         "x": 50,
+         "y": 70,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "w",
+         "c"
+        ],
+        [
+         "c",
+         "m"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "w",
+          "c"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "w",
+          "c"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.8,
+         "show": "m",
+         "chip": {
+          "text": "Nobody agreed on the shape",
+          "tone": "red",
+          "icon": "x"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So the restaurant keeps a binder at the front desk, with every version of the slip. Each slip carries only a page number. The cook looks up that page and reads correctly. The binder refuses any new layout that would confuse the kitchen.",
+      "show": {
+       "t": "scene",
+       "title": "The *binder* at the desk",
+       "nodes": [
+        {
+         "id": "w",
+         "label": "Waiter",
+         "sub": "slip + page number",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Binder",
+         "sub": "every version",
+         "x": 50,
+         "y": 60,
+         "tone": "teal"
+        },
+        {
+         "id": "c",
+         "label": "Cook",
+         "sub": "looks up page",
+         "x": 80,
+         "y": 25,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "w",
+         "b"
+        ],
+        [
+         "c",
+         "b"
+        ],
+        [
+         "w",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "w",
+          "b",
+          "c"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "w",
+          "c"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "c",
+          "b"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Binder rejects confusing layouts",
+          "tone": "teal",
+          "icon": "shield"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "That binder is a schema registry. A schema is just the agreed shape of a message. The safe habit: every new box gets a default answer, like none.",
+      "show": {
+       "t": "points",
+       "title": "Remember",
+       "items": [
+        "Schema = agreed shape of a message",
+        "Registry = binder of every version",
+        "New box = always give a default"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "In the restaurant picture, what does the binder at the front desk stand for?",
+     "opts": [
+      "The messages themselves",
+      "A schema registry that stores every version of the shape",
+      "The consumer that reads orders"
+     ],
+     "ans": 1,
+     "why": "The binder holds every version of the slip layout, and slips only carry a page number. That is the registry and the schema id."
+    },
+    "work": [
+     "Find one stream at work and ask who agreed on its message shape.",
+     "Ask your team whether new fields always get a default value."
+    ]
+   },
+   {
+    "title": "How a schema id replaces a schema",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How can a million messages a second all describe their own shape without drowning in overhead?",
+      "show": {
+       "t": "big",
+       "kicker": "Overhead",
+       "text": "A million messages a second"
+      }
+     },
+     {
+      "say": "They don't carry the schema. The producer registers its schema once and gets back a small id, say forty-two. Each message holds only that id, about five bytes, plus the data.",
+      "show": {
+       "t": "scene",
+       "title": "Register once, send an *id*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Producer",
+         "sub": "has schema",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "r",
+         "label": "Registry",
+         "sub": "id 42 = schema v2",
+         "x": 50,
+         "y": 65,
+         "tone": "teal"
+        },
+        {
+         "id": "t",
+         "label": "Topic",
+         "sub": "id 42 + data",
+         "x": 80,
+         "y": 25,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "r"
+        ],
+        [
+         "p",
+         "t"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "p",
+          "r"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "p",
+          "r"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.5,
+         "show": "t",
+         "chip": {
+          "text": "Id is about 5 bytes",
+          "tone": "teal",
+          "icon": "tag"
+         }
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "p",
+          "t"
+         ],
+         "n": 3
+        }
+       ]
+      }
+     },
+     {
+      "say": "The consumer sees id forty-two, fetches that schema from the registry once, and caches it. After that, no more lookups.",
+      "show": {
+       "t": "scene",
+       "title": "Fetch once, then *cache*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Topic",
+         "sub": "id 42",
+         "x": 20,
+         "y": 25,
+         "tone": "plum"
+        },
+        {
+         "id": "c",
+         "label": "Consumer",
+         "sub": "cache: 42",
+         "x": 80,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "r",
+         "label": "Registry",
+         "sub": "returns schema",
+         "x": 50,
+         "y": 65,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "c"
+        ],
+        [
+         "c",
+         "r"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "t",
+          "c"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "t",
+          "c"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.55,
+         "show": "r",
+         "packet": [
+          "c",
+          "r"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Later messages skip the lookup",
+          "tone": "amber",
+          "icon": "bolt"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "When a producer registers a changed schema, the registry checks it against the topic's compatibility rule. If it breaks the rule, registration is rejected, so the bad version never reaches the stream.",
+      "show": {
+       "t": "flow",
+       "title": "Registering a change",
+       "steps": [
+        {
+         "label": "New schema submitted"
+        },
+        {
+         "label": "Check rule vs old version"
+        },
+        {
+         "label": "Accepted or rejected"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What does each message on the topic carry to describe its shape?",
+     "opts": [
+      "The full schema text",
+      "A small schema id",
+      "Nothing, consumers guess"
+     ],
+     "ans": 1,
+     "why": "Only a small id travels with the data. Consumers fetch the schema from the registry once and cache it."
+    },
+    "work": [
+     "Check how large your schema id header is compared with the payload.",
+     "Confirm consumers cache schemas instead of calling the registry per message."
+    ]
+   },
+   {
+    "title": "Backward, forward, full",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Backward, forward, full: which one actually protects you, and who must upgrade first?",
+      "show": {
+       "t": "big",
+       "kicker": "Compatibility modes",
+       "text": "Who upgrades first?"
+      }
+     },
+     {
+      "say": "Backward means the new schema can read old data. You may delete fields, or add fields with defaults. Upgrade consumers first, so they can read both old and new messages.",
+      "show": {
+       "t": "points",
+       "title": "Backward",
+       "items": [
+        "New schema reads old data",
+        "Delete fields, or add with defaults",
+        "Upgrade consumers first"
+       ]
+      }
+     },
+     {
+      "say": "Forward means the old schema can read new data. You may add fields, or delete ones that had defaults. Upgrade producers first, since old consumers keep working.",
+      "show": {
+       "t": "points",
+       "title": "Forward",
+       "items": [
+        "Old schema reads new data",
+        "Add fields, or delete with defaults",
+        "Upgrade producers first"
+       ]
+      }
+     },
+     {
+      "say": "Full means both. You may only add or delete fields that have defaults. Then you can upgrade in any order.",
+      "show": {
+       "t": "points",
+       "title": "Full",
+       "items": [
+        "Both directions work",
+        "Only add or delete fields with defaults",
+        "Upgrade in any order"
+       ]
+      }
+     },
+     {
+      "say": "Backward is the usual default because a consumer can replay old messages from last month using the newest schema.",
+      "show": {
+       "t": "big",
+       "kicker": "Why the default",
+       "text": "Replay old data with the newest schema"
+      }
+     }
+    ],
+    "check": {
+     "q": "You choose backward compatibility. Which side do you upgrade first?",
+     "opts": [
+      "Producers",
+      "Consumers",
+      "Either, it does not matter"
+     ],
+     "ans": 1,
+     "why": "Backward means the new schema can read old data. Upgraded consumers handle both old and new messages, so they go first."
+    },
+    "work": [
+     "Look up the compatibility mode on your busiest topic.",
+     "Write down who must upgrade first for that mode."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "When the registry says yes and it still breaks",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "You added a field, the registry said yes, and the numbers are still wrong. How?",
+      "show": {
+       "t": "big",
+       "kicker": "Gotcha",
+       "text": "Approved, yet broken"
+      }
+     },
+     {
+      "say": "The registry checks shape, not meaning. If price changes from dollars to cents, the type is still a number, so the registry approves it. Every total is silently wrong by a hundred times.",
+      "show": {
+       "t": "scene",
+       "title": "Same type, new *meaning*",
+       "nodes": [
+        {
+         "id": "o",
+         "label": "Price: 12",
+         "sub": "dollars",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "n",
+         "label": "Price: 1200",
+         "sub": "cents",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "x",
+         "label": "Totals 100x off",
+         "sub": "no error raised",
+         "x": 50,
+         "y": 70,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "o",
+         "n"
+        ],
+        [
+         "n",
+         "x"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "o",
+          "n"
+         ]
+        },
+        {
+         "at": 0.5,
+         "show": "x",
+         "chip": {
+          "text": "Registry cannot see meaning",
+          "tone": "red",
+          "icon": "x"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Changing a field's type is the other trap. A number turned into text cannot be read by the old schema, or replayed from old data.",
+      "show": {
+       "t": "points",
+       "title": "Type changes",
+       "items": [
+        "Number to text breaks old readers",
+        "Replay of old data breaks too",
+        "Add a new field instead"
+       ]
+      }
+     },
+     {
+      "say": "A rename looks harmless, but it is really a delete plus an add. Without a default on the new name, old data cannot be read.",
+      "show": {
+       "t": "points",
+       "title": "Renames",
+       "items": [
+        "Rename = delete + add",
+        "New name needs a default",
+        "Old data has no value for it"
+       ]
+      }
+     },
+     {
+      "say": "The fix: give every new field a default, and never change a type or meaning. Make a new field instead.",
+      "show": {
+       "t": "big",
+       "kicker": "Safe habit",
+       "text": "Default always. Never change type or meaning."
+      }
+     }
+    ],
+    "check": {
+     "q": "A field called price changes from dollars to cents, still an integer. What happens?",
+     "opts": [
+      "The registry rejects it as a type change",
+      "The registry accepts it and totals silently go wrong",
+      "Consumers crash with a schema error"
+     ],
+     "ans": 1,
+     "why": "Compatibility rules check structure, not meaning. The shape is unchanged, so it passes while the data is wrong."
+    },
+    "work": [
+     "Add a review step for meaning changes, not just shape changes.",
+     "Ship changed meaning as a new field name with a default."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Choosing a mode and handling breaking change",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When is a schema registry more trouble than it is worth, and what do you do when you must truly break the schema?",
+      "show": {
+       "t": "big",
+       "kicker": "Trade-offs",
+       "text": "Registry: worth it?"
+      }
+     },
+     {
+      "say": "Pick the mode by who you control. If you own the consumers and want replay, use backward. If many teams read your topic and cannot upgrade quickly, use full, so any order works.",
+      "show": {
+       "t": "bars",
+       "title": "Fit by situation",
+       "unit": "flexibility",
+       "items": [
+        [
+         "Backward",
+         1,
+         "you own consumers, replay"
+        ],
+        [
+         "Forward",
+         2,
+         "producers move first"
+        ],
+        [
+         "Full",
+         3,
+         "many independent teams"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "The cost is another service. Cache schemas in clients so an outage only hurts new schemas, and run it highly available. For one team and one small topic, a registry may be overkill.",
+      "show": {
+       "t": "points",
+       "title": "Cost and limits",
+       "items": [
+        "Extra service to run",
+        "Clients cache, so outage hurts only new schemas",
+        "Small single-team topic: maybe skip"
+       ]
+      }
+     },
+     {
+      "say": "For a truly breaking change, don't force it. Create a new topic with the new schema, write to both for a while, move consumers across, then retire the old one.",
+      "show": {
+       "t": "flow",
+       "title": "Breaking change",
+       "steps": [
+        {
+         "label": "New topic, new schema"
+        },
+        {
+         "label": "Write to both"
+        },
+        {
+         "label": "Move consumers"
+        },
+        {
+         "label": "Retire old topic"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Many independent teams consume your topic and upgrade on their own schedules. Which mode fits best?",
+     "opts": [
+      "Backward",
+      "Full",
+      "No compatibility check"
+     ],
+     "ans": 1,
+     "why": "Full works in both directions, so producers and consumers can upgrade in any order without coordination."
+    },
+    "work": [
+     "Map each shared topic to its consumers and pick the mode by who can upgrade.",
+     "Write a runbook for breaking changes using a new topic and dual writes."
+    ]
+   }
+  ]
+ },
+ "5.7 Spark, Flink and Kafka Streams": {
+  "hash": "9186c5ff676d",
+  "sec": "5.7",
+  "reels": [
+   {
+    "title": "Three ways to sort a never-ending stream",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "How do you sort a never-ending stream of parcels? There are three common ways, and each streaming tool picks one.",
+      "show": {
+       "t": "big",
+       "text": "3 tools, 3 styles",
+       "sub": "Spark, Flink, Kafka Streams"
+      }
+     },
+     {
+      "say": "Spark Structured Streaming is a shuttle bus. It waits a few seconds, gathers everyone at the stop, then drives off with the whole group. Simple and efficient, but you wait for the bus.",
+      "show": {
+       "t": "scene",
+       "title": "Spark is a *shuttle bus*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Parcels",
+         "sub": "arrive all the time",
+         "x": 20,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "b",
+         "label": "Bus",
+         "sub": "leaves every few seconds",
+         "x": 75,
+         "y": 30,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "b"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "p",
+          "b"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "p",
+          "b"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Wait a few seconds, then go",
+          "tone": "blue",
+          "icon": "clock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Flink is a conveyor belt. Each parcel is handled the moment it arrives, so the delay is milliseconds. But it needs its own factory to run in, called a cluster.",
+      "show": {
+       "t": "scene",
+       "title": "Flink is a *conveyor belt*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Parcels",
+         "sub": "one by one",
+         "x": 20,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "f",
+         "label": "Flink cluster",
+         "sub": "its own factory",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "f"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "p",
+          "f"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "p",
+          "f"
+         ],
+         "n": 6
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Handled the moment it arrives",
+          "tone": "teal",
+          "icon": "bolt"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Kafka Streams is a helper who sits inside your own shop. No separate factory. It reads parcels from the Kafka mailroom and hands the results straight back.",
+      "show": {
+       "t": "scene",
+       "title": "Kafka Streams is a *helper in your shop*",
+       "nodes": [
+        {
+         "id": "k",
+         "label": "Kafka",
+         "sub": "the mailroom",
+         "x": 20,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "s",
+         "label": "Your service",
+         "sub": "library inside",
+         "x": 75,
+         "y": 30,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "k",
+         "s"
+        ],
+        [
+         "s",
+         "k"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "k",
+          "s"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "k",
+          "s"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "s",
+          "k"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "No extra cluster to run",
+          "tone": "plum",
+          "icon": "home"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Which tool is like a library that lives inside your own service, with no separate cluster?",
+     "opts": [
+      "Spark Structured Streaming",
+      "Flink",
+      "Kafka Streams"
+     ],
+     "ans": 2,
+     "why": "Kafka Streams is a library you embed in your application. Spark runs as a Spark application and Flink runs as its own cluster."
+    },
+    "work": [
+     "Write one sentence on how you would explain bus versus conveyor belt to a non-technical colleague.",
+     "List which of your current pipelines wait for a batch and which react to each event."
+    ]
+   },
+   {
+    "title": "Why seconds versus milliseconds",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Why does one streaming tool answer in seconds while another answers in milliseconds?",
+      "show": {
+       "t": "big",
+       "text": "Seconds vs milliseconds",
+       "sub": "Where does the wait come from?"
+      }
+     },
+     {
+      "say": "By default Spark cuts the stream into micro-batches. Every two seconds, say, it reads the new rows, runs the job, and writes a checkpoint. A checkpoint is a saved record of progress so the job can restart. Latency is the interval plus processing time, so seconds.",
+      "show": {
+       "t": "scene",
+       "title": "Spark waits for the *batch*",
+       "nodes": [
+        {
+         "id": "in",
+         "label": "New rows",
+         "sub": "2 second window",
+         "x": 18,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "job",
+         "label": "Batch job",
+         "sub": "run once per window",
+         "x": 50,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "cp",
+         "label": "Checkpoint",
+         "sub": "saved progress",
+         "x": 82,
+         "y": 30,
+         "tone": "amber",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "in",
+         "job"
+        ],
+        [
+         "job",
+         "cp"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "in",
+          "job",
+          "cp"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "in",
+          "job"
+         ],
+         "n": 5
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "job",
+          "cp"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Latency: seconds",
+          "tone": "blue",
+          "icon": "clock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Flink and Kafka Streams handle one event at a time. An event arrives, updates its running count, and moves on right away. That is why you see milliseconds.",
+      "show": {
+       "t": "scene",
+       "title": "One event at a *time*",
+       "nodes": [
+        {
+         "id": "e",
+         "label": "Event",
+         "sub": "arrives",
+         "x": 20,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "op",
+         "label": "Operator",
+         "sub": "updates count",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "e",
+         "op"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "e",
+          "op"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "e",
+          "op"
+         ],
+         "n": 6
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Latency: milliseconds",
+          "tone": "teal",
+          "icon": "bolt"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "That running count is state, the memory of the job. Flink manages very large state and takes savepoints, which are deliberate snapshots. Kafka Streams keeps state in local stores, backed up to Kafka topics.",
+      "show": {
+       "t": "bars",
+       "title": "Where state lives",
+       "unit": "",
+       "items": [
+        [
+         "Spark",
+         1,
+         "checkpointed store"
+        ],
+        [
+         "Flink",
+         2,
+         "managed, savepoints"
+        ],
+        [
+         "Kafka Streams",
+         3,
+         "local store plus topic"
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does default Spark Structured Streaming show latency in seconds?",
+     "opts": [
+      "It processes rows in micro-batches, so rows wait for the interval and the job",
+      "It cannot keep any state",
+      "It only reads from files"
+     ],
+     "ans": 0,
+     "why": "Rows wait for the batch window to close and then for the job to run, so latency is roughly interval plus processing time."
+    },
+    "work": [
+     "Check the trigger interval on one of your Spark streaming jobs and compare it to your latency goal.",
+     "Name the biggest piece of state in a streaming job you own and where it is stored."
+    ]
+   },
+   {
+    "title": "Real-Time Mode and state recovery",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "If Spark batches rows, how can it ever answer in milliseconds?",
+      "show": {
+       "t": "big",
+       "text": "Batch engine, millisecond answers?",
+       "sub": "Real-Time Mode"
+      }
+     },
+     {
+      "say": "Databricks Real-Time Mode, generally available for Spark Declarative Pipelines since October 2026, changes execution. All stages run at once, and each row is passed on as soon as it is produced.",
+      "show": {
+       "t": "scene",
+       "title": "All stages run *at once*",
+       "nodes": [
+        {
+         "id": "s1",
+         "label": "Stage 1",
+         "sub": "read",
+         "x": 18,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "s2",
+         "label": "Stage 2",
+         "sub": "transform",
+         "x": 50,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "s3",
+         "label": "Stage 3",
+         "sub": "write",
+         "x": 82,
+         "y": 30,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "s1",
+         "s2"
+        ],
+        [
+         "s2",
+         "s3"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "s1",
+          "s2",
+          "s3"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "s1",
+          "s2"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "s2",
+          "s3"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Rows pass on immediately",
+          "tone": "teal",
+          "icon": "bolt"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Before, every row waited for the whole batch to finish. That wait made the seconds. Removing it gives milliseconds, but processors stay busy all the time, so it costs more.",
+      "show": {
+       "t": "points",
+       "title": "The trade",
+       "items": [
+        "Old: rows wait for the whole batch",
+        "New: rows move as produced",
+        "Gain: milliseconds",
+        "Cost: always-on compute"
+       ]
+      }
+     },
+     {
+      "say": "A gotcha with Kafka Streams. Its state is a local store. If the instance dies, a new one rebuilds it by replaying the backing topic, so recovery is slow when state is large.",
+      "show": {
+       "t": "scene",
+       "title": "Rebuilding lost *state*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Backing topic",
+         "sub": "changelog in Kafka",
+         "x": 20,
+         "y": 30,
+         "tone": "amber",
+         "kind": "disk"
+        },
+        {
+         "id": "n",
+         "label": "New instance",
+         "sub": "empty local store",
+         "x": 75,
+         "y": 30,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "n"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "t",
+          "n"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "t",
+          "n"
+         ],
+         "n": 6
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Big state means slow recovery",
+          "tone": "red",
+          "icon": "warn"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A Kafka Streams instance dies and a new one starts. How does it get its state back?",
+     "opts": [
+      "It replays the backing Kafka topic into a new local store",
+      "It reads a Flink savepoint",
+      "It starts empty and ignores history"
+     ],
+     "ans": 0,
+     "why": "Local stores are backed by Kafka topics, so a replacement replays that topic, which takes longer with large state."
+    },
+    "work": [
+     "Estimate recovery time for your largest stateful job after a crash.",
+     "Ask what extra compute an always-on low latency mode would add to your bill."
+    ]
+   },
+   {
+    "title": "Choosing the engine and the architecture",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When is a faster engine worth paying for, and when is it waste?",
+      "show": {
+       "t": "big",
+       "text": "Pay for speed only when it pays back",
+       "sub": "Choose by the decision"
+      }
+     },
+     {
+      "say": "Ask one question: does a sub-second number change a decision? Blocking a fraudulent payment, yes. A demand count refreshed every few seconds, no. Then micro-batches are cheaper and simpler, especially if your team already runs Spark.",
+      "show": {
+       "t": "flow",
+       "title": "Do you need sub-second?",
+       "steps": [
+        {
+         "label": "Does sub-second change a decision?"
+        },
+        {
+         "label": "Yes: Flink or Real-Time Mode"
+        },
+        {
+         "label": "No: Spark micro-batches"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Match the tool to its home. Flink suits low latency, tricky event-time logic and very large state, such as change data capture. Kafka Streams suits Kafka-to-Kafka work inside a microservice. Spark suits shared batch and stream code and lakehouse sinks.",
+      "show": {
+       "t": "points",
+       "title": "Best fit",
+       "items": [
+        "Flink: low latency, event time, huge state",
+        "Kafka Streams: Kafka to Kafka in a service",
+        "Spark: shared code, lakehouse sinks"
+       ]
+      }
+     },
+     {
+      "say": "Lambda runs batch and streaming side by side, so you write the logic twice and the two drift apart. Kappa uses one streaming pipeline and replays the log when logic changes. A lakehouse with streaming writes is close to kappa.",
+      "show": {
+       "t": "scene",
+       "title": "Lambda versus *Kappa*",
+       "nodes": [
+        {
+         "id": "l",
+         "label": "Lambda",
+         "sub": "two pipelines, logic twice",
+         "x": 25,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "k",
+         "label": "Kappa",
+         "sub": "one pipeline, replay the log",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "l"
+         ]
+        },
+        {
+         "at": 0.5,
+         "show": [
+          "k"
+         ]
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "One codebase is easier to keep correct",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A team already runs Spark and needs demand counts refreshed every few seconds. What is the best default?",
+     "opts": [
+      "Adopt a new Flink cluster",
+      "Spark micro-batches",
+      "Build a Lambda architecture"
+     ],
+     "ans": 1,
+     "why": "Seconds of latency is enough, so cheaper and simpler micro-batches on the existing platform win. Lambda would mean writing logic twice."
+    },
+    "work": [
+     "For each streaming use case, write the decision that a faster answer would change.",
+     "Find any pipeline where logic is duplicated across batch and streaming and plan to merge it."
+    ]
+   }
+  ]
+ },
+ "5.8 Retrieval for your agent": {
+  "hash": "2cbd3871c947",
+  "sec": "5.8",
+  "reels": [
+   {
+    "title": "The librarian who fetches pages",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "How can an assistant answer questions about documents it has never read? It does not read the whole library. It fetches the right page first.",
+      "show": {
+       "t": "scene",
+       "title": "Fetch the *right* page",
+       "nodes": [
+        {
+         "id": "q",
+         "label": "Question",
+         "sub": "what do I do?",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "lib",
+         "label": "Library",
+         "sub": "all your documents",
+         "x": 80,
+         "y": 30,
+         "tone": "grey"
+        }
+       ],
+       "edges": [
+        [
+         "q",
+         "lib"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "q",
+          "lib"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "q",
+          "lib"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Picture a new engineer on call. Nobody hands them every document in the company. They ask a librarian, who comes back with the three pages that match the question.",
+      "show": {
+       "t": "scene",
+       "title": "A *librarian* brings three pages",
+       "nodes": [
+        {
+         "id": "eng",
+         "label": "Engineer",
+         "sub": "on call",
+         "x": 15,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "libn",
+         "label": "Librarian",
+         "sub": "finds matches",
+         "x": 50,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "pages",
+         "label": "3 pages",
+         "sub": "only the relevant ones",
+         "x": 85,
+         "y": 25,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "eng",
+         "libn"
+        ],
+        [
+         "libn",
+         "pages"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "eng"
+        },
+        {
+         "at": 0.4,
+         "show": "libn",
+         "packet": [
+          "eng",
+          "libn"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.7,
+         "show": "pages",
+         "packet": [
+          "libn",
+          "pages"
+         ],
+         "n": 3
+        }
+       ]
+      }
+     },
+     {
+      "say": "Retrieval-augmented generation, or RAG, works the same way. The system finds the few relevant passages, then hands them to the AI model along with your question.",
+      "show": {
+       "t": "scene",
+       "title": "*RAG* in one picture",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Search",
+         "sub": "finds passages",
+         "x": 20,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "m",
+         "label": "AI model",
+         "sub": "writes the answer",
+         "x": 80,
+         "y": 25,
+         "tone": "plum"
+        },
+        {
+         "id": "a",
+         "label": "Answer",
+         "sub": "uses your pages",
+         "x": 50,
+         "y": 65,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "m"
+        ],
+        [
+         "m",
+         "a"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "s"
+        },
+        {
+         "at": 0.5,
+         "show": "m",
+         "packet": [
+          "s",
+          "m"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.8,
+         "show": "a",
+         "packet": [
+          "m",
+          "a"
+         ],
+         "n": 1,
+         "chip": {
+          "text": "Question plus passages go in together",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So the answer is grounded in your own runbooks, and it can name which page it used. Without that, the model only guesses from general knowledge.",
+      "show": {
+       "t": "points",
+       "title": "Why it matters",
+       "items": [
+        "Answers come from your own documents",
+        "It can name the source page",
+        "No guessing from general knowledge"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does RAG fetch only a few passages instead of giving the model every document?",
+     "opts": [
+      "Models cannot read text",
+      "Sending everything is wasteful and soon impossible, so only relevant passages are fetched",
+      "Passages are always more accurate than full documents"
+     ],
+     "ans": 1,
+     "why": "Putting every document in every prompt wastes effort and quickly stops fitting. Fetching just the relevant passages at question time solves both."
+    },
+    "work": [
+     "List the documents your on-call engineers actually ask about: runbooks, schema notes, incident write-ups.",
+     "Pick one recent question a teammate asked and note which page answered it."
+    ]
+   },
+   {
+    "title": "From question to cited answer",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "A runbook set has hundreds of pages. How does a question about lag find the one right paragraph in a fraction of a second?",
+      "show": {
+       "t": "big",
+       "text": "300 chunks",
+       "sub": "one question, four winners"
+      }
+     },
+     {
+      "say": "First, chunk: split at headings, so each chunk is one complete procedure with its title. Then an embedding model turns each chunk into a vector, a list of numbers, where similar meaning gives nearby numbers.",
+      "show": {
+       "t": "scene",
+       "title": "Chunk, then *embed*",
+       "nodes": [
+        {
+         "id": "doc",
+         "label": "Runbook",
+         "sub": "split at headings",
+         "x": 20,
+         "y": 25,
+         "tone": "grey"
+        },
+        {
+         "id": "emb",
+         "label": "Embedding model",
+         "sub": "text to vector",
+         "x": 80,
+         "y": 25,
+         "tone": "plum"
+        },
+        {
+         "id": "vec",
+         "label": "Vectors",
+         "sub": "300 lists of numbers",
+         "x": 50,
+         "y": 65,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "doc",
+         "emb"
+        ],
+        [
+         "emb",
+         "vec"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "doc"
+        },
+        {
+         "at": 0.4,
+         "show": "emb",
+         "packet": [
+          "doc",
+          "emb"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "vec",
+         "packet": [
+          "emb",
+          "vec"
+         ],
+         "n": 3,
+         "count": {
+          "key": "c",
+          "label": "chunks indexed",
+          "to": 300,
+          "unit": "chunks",
+          "tone": "teal"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Store each vector with its text and source. At question time, embed the question the same way and take the four nearest chunks. Nearness is cosine similarity, a score for how closely two vectors point the same way.",
+      "show": {
+       "t": "scene",
+       "title": "Retrieve the *nearest* four",
+       "nodes": [
+        {
+         "id": "qq",
+         "label": "Question",
+         "sub": "embedded",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "idx",
+         "label": "Index",
+         "sub": "vector, text, source",
+         "x": 80,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "top",
+         "label": "Top 4",
+         "sub": "closest chunks",
+         "x": 50,
+         "y": 65,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "qq",
+         "idx"
+        ],
+        [
+         "idx",
+         "top"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "qq",
+          "idx"
+         ],
+         "packet": [
+          "qq",
+          "idx"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": "top",
+         "packet": [
+          "idx",
+          "top"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.85,
+         "race": {
+          "items": [
+           [
+            "Chunk A",
+            0.82,
+            "teal"
+           ],
+           [
+            "Chunk B",
+            0.74,
+            "teal"
+           ],
+           [
+            "Chunk C",
+            0.51,
+            "grey"
+           ]
+          ],
+          "unit": "similarity"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Finally, the model gets the question plus those four chunks. Require it to cite the source of every claim, and to say so when the chunks do not contain the answer.",
+      "show": {
+       "t": "flow",
+       "title": "Generate with rules",
+       "steps": [
+        {
+         "label": "Question plus 4 chunks"
+        },
+        {
+         "label": "Cite every source"
+        },
+        {
+         "label": "Say when the answer is missing"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "At question time, what is done with the question before finding chunks?",
+     "opts": [
+      "It is embedded with the same model and compared to the stored vectors",
+      "It is split at headings",
+      "It is deleted after the model reads it"
+     ],
+     "ans": 0,
+     "why": "The question must live in the same vector space as the chunks, so the same embedding model turns it into a vector, and the nearest stored vectors win."
+    },
+    "work": [
+     "Split one runbook at its headings and check each chunk stands alone with its title.",
+     "Prompt the model to cite a source per claim and to say when the chunks lack the answer."
+    ]
+   },
+   {
+    "title": "Why retrieval quietly fails",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your agent answers with confidence, and the answer is wrong. Is the model to blame? Often the right chunk never reached it.",
+      "show": {
+       "t": "big",
+       "text": "Wrong chunk in, wrong answer out",
+       "sub": "check retrieval first"
+      }
+     },
+     {
+      "say": "Retrieval is search, so test it as search. Write ten questions and note which chunk should answer each. Count how often that chunk lands in the top four. If it misses, no prompt can rescue the answer.",
+      "show": {
+       "t": "bars",
+       "title": "Hit rate in the top four",
+       "unit": "of 10 questions",
+       "items": [
+        [
+         "Vector only",
+         7,
+         "misses exact terms"
+        ],
+        [
+         "Hybrid",
+         9,
+         "example numbers"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Embeddings also blur exact terms. An identifier like max dot poll dot interval dot ms, or an error code, carries little meaning to capture, so a vaguely related chunk can outrank the real one.",
+      "show": {
+       "t": "scene",
+       "title": "Exact terms *blur*",
+       "nodes": [
+        {
+         "id": "id",
+         "label": "Query: error code",
+         "sub": "exact identifier",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "near",
+         "label": "Similar topic",
+         "sub": "ranks first",
+         "x": 80,
+         "y": 25,
+         "tone": "red"
+        },
+        {
+         "id": "real",
+         "label": "Real match",
+         "sub": "ranks lower",
+         "x": 50,
+         "y": 65,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "id",
+         "near"
+        ],
+        [
+         "id",
+         "real"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "id"
+        },
+        {
+         "at": 0.5,
+         "show": "near",
+         "packet": [
+          "id",
+          "near"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "show": "real",
+         "dim": "real",
+         "chip": {
+          "text": "Meaning match beats exact match",
+          "tone": "red",
+          "icon": "warn"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Hybrid search runs keyword search alongside vector search and merges the results. Keywords catch exact identifiers. Vectors catch paraphrases. Together they fix much of the problem.",
+      "show": {
+       "t": "flow",
+       "title": "Hybrid search",
+       "steps": [
+        {
+         "label": "Keyword search"
+        },
+        {
+         "label": "Vector search"
+        },
+        {
+         "label": "Merge results"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Your agent keeps giving wrong answers about a specific error code. What should you check first?",
+     "opts": [
+      "Whether the correct chunk appears in the top four retrieved results",
+      "Make the prompt longer",
+      "Switch to a larger model"
+     ],
+     "ans": 0,
+     "why": "If retrieval misses the right chunk, no prompt or model change can fix it. Measure the hit rate, and consider hybrid search for exact identifiers."
+    },
+    "work": [
+     "Write ten real questions with the chunk that should answer each, and track the top-four hit rate.",
+     "Add keyword search for identifiers and error codes, then rerun the same ten questions."
+    ]
+   },
+   {
+    "title": "Retrieval or a tool?",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Your agent is asked for the current consumer lag. Should it search the runbooks?",
+      "show": {
+       "t": "big",
+       "text": "Current lag?",
+       "sub": "search a document, or ask the system?"
+      }
+     },
+     {
+      "say": "No. Retrieval returns prose written earlier, so it hands back yesterday's document. Live facts, like current lag or today's row count, belong to a tool that queries the system right now.",
+      "show": {
+       "t": "scene",
+       "title": "Prose to *retrieval*, live to tools",
+       "nodes": [
+        {
+         "id": "ag",
+         "label": "Agent",
+         "sub": "gets a question",
+         "x": 50,
+         "y": 15,
+         "tone": "plum"
+        },
+        {
+         "id": "rag",
+         "label": "Retrieval",
+         "sub": "runbooks, incidents, definitions",
+         "x": 22,
+         "y": 55,
+         "tone": "teal"
+        },
+        {
+         "id": "tool",
+         "label": "Tool",
+         "sub": "current lag, row count",
+         "x": 78,
+         "y": 55,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "ag",
+         "rag"
+        ],
+        [
+         "ag",
+         "tool"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "ag"
+        },
+        {
+         "at": 0.4,
+         "show": "rag",
+         "packet": [
+          "ag",
+          "rag"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "tool",
+         "packet": [
+          "ag",
+          "tool"
+         ],
+         "n": 2,
+         "chip": {
+          "text": "Live number means call a tool",
+          "tone": "amber",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Scale shapes the build. For a few hundred chunks, an array in memory is plenty. A vector database earns its cost at millions of chunks, or when you need filtering and frequent updates.",
+      "show": {
+       "t": "bars",
+       "title": "Which store fits",
+       "unit": "chunks",
+       "items": [
+        [
+         "Array in memory",
+         500,
+         "hundreds: enough"
+        ],
+        [
+         "Vector database",
+         1000000,
+         "millions, filters, updates"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "So choose by kind of knowledge and by size. Prose goes to retrieval, live numbers go to tools, and start with the simplest store that works.",
+      "show": {
+       "t": "points",
+       "title": "Decision rules",
+       "items": [
+        "Prose knowledge: retrieval",
+        "Live facts: a tool",
+        "Hundreds of chunks: memory array",
+        "Millions or filters: vector database"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A user asks the agent for today's row count in a table. What is the best design?",
+     "opts": [
+      "Retrieve the nearest runbook chunk",
+      "Call a tool that queries the table now",
+      "Add the table's history to every prompt"
+     ],
+     "ans": 1,
+     "why": "Retrieval returns written documents, which are stale for live values. A tool reads the current state directly."
+    },
+    "work": [
+     "Sort your agent's questions into prose knowledge versus live facts, and route each to retrieval or a tool.",
+     "Start with an in-memory array and move to a vector database only when size, filtering or updates demand it."
+    ]
+   }
+  ]
+ },
+ "5.6 Failure handling": {
+  "hash": "bb229cb81f51",
+  "sec": "5.6",
+  "reels": [
+   {
+    "title": "The letter nobody can read",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "What happens when one letter in a huge pile of mail is impossible to read?",
+      "show": {
+       "t": "big",
+       "text": "One bad letter",
+       "sub": "What happens to everything behind it?"
+      }
+     },
+     {
+      "say": "Picture a mail sorter at a post office. Letters ride a belt to him. One is smudged, so he cannot read the address. He keeps trying again and again. Meanwhile, the belt behind him piles up with letters.",
+      "show": {
+       "t": "scene",
+       "title": "One *smudged* letter stops the belt",
+       "nodes": [
+        {
+         "id": "belt",
+         "label": "Belt",
+         "sub": "letters arrive",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "sorter",
+         "label": "Sorter",
+         "sub": "stuck retrying",
+         "x": 50,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "pile",
+         "label": "Pile",
+         "sub": "growing",
+         "x": 80,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "belt",
+         "sorter"
+        ],
+        [
+         "sorter",
+         "pile"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "belt",
+          "sorter"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "belt",
+          "sorter"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.6,
+         "show": "pile"
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Pile behind keeps growing",
+          "tone": "amber",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A smart sorter drops that letter into a special tray, writes a note saying what went wrong, and keeps going. A manager is told about the tray.",
+      "show": {
+       "t": "scene",
+       "title": "Set it aside in a *tray*",
+       "nodes": [
+        {
+         "id": "sorter",
+         "label": "Sorter",
+         "sub": "keeps going",
+         "x": 30,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "tray",
+         "label": "Problem tray",
+         "sub": "letter plus note",
+         "x": 70,
+         "y": 30,
+         "tone": "plum"
+        },
+        {
+         "id": "mgr",
+         "label": "Manager",
+         "sub": "gets alerted",
+         "x": 50,
+         "y": 65,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "sorter",
+         "tray"
+        ],
+        [
+         "tray",
+         "mgr"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "sorter",
+          "tray"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "sorter",
+          "tray"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.7,
+         "show": "mgr",
+         "glow": "mgr"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Belt never stops",
+          "tone": "teal",
+          "icon": "ok"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Later, someone fixes the cause and puts those letters back on the belt. In data work, that tray is called a dead-letter topic. The pile behind is called lag.",
+      "show": {
+       "t": "points",
+       "title": "Words to remember",
+       "items": [
+        "Dead-letter topic: the tray for records that fail",
+        "Lag: how far behind the reader is",
+        "Replay: put fixed items back on the belt"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A record can never be parsed. What is the best way to treat it?",
+     "opts": [
+      "Retry it forever until it works",
+      "Set it aside with the error, keep going, and alert",
+      "Delete it silently"
+     ],
+     "ans": 1,
+     "why": "Retrying forever stalls everything behind it. Silent deletion loses data. A side tray with the error keeps the flow moving and lets you fix and replay later."
+    },
+    "work": [
+     "Find out what your streaming jobs do today when one record fails to parse.",
+     "Ask who gets alerted if a record is set aside."
+    ]
+   },
+   {
+    "title": "Dead-letter topic in action",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "One broken record. A job that retries it forever. What does that cost you?",
+      "show": {
+       "t": "big",
+       "text": "1 bad record",
+       "sub": "can stall a whole partition"
+      }
+     },
+     {
+      "say": "Say a partition gets one thousand records a second. Record number forty two thousand cannot be parsed. The consumer fails, retries, fails again. It cannot move past that offset, so after one minute, lag is sixty thousand records.",
+      "show": {
+       "t": "bars",
+       "title": "Lag while stuck",
+       "unit": "records",
+       "items": [
+        [
+         "After 10 s",
+         10000,
+         ""
+        ],
+        [
+         "After 30 s",
+         30000,
+         ""
+        ],
+        [
+         "After 60 s",
+         60000,
+         "still growing"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "The fix: catch the parse error, write the original bytes and the error message to a dead-letter topic, commit the offset, and move on. Then alert when that topic receives records.",
+      "show": {
+       "t": "scene",
+       "title": "Route the *poison* aside",
+       "nodes": [
+        {
+         "id": "src",
+         "label": "Topic",
+         "sub": "main records",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "job",
+         "label": "Job",
+         "sub": "parse, catch error",
+         "x": 50,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "sink",
+         "label": "Sink",
+         "sub": "good records",
+         "x": 80,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "dlt",
+         "label": "Dead-letter topic",
+         "sub": "bytes plus error",
+         "x": 50,
+         "y": 65,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "src",
+         "job"
+        ],
+        [
+         "job",
+         "sink"
+        ],
+        [
+         "job",
+         "dlt"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "src",
+          "job",
+          "sink"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "src",
+          "job"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "job",
+          "sink"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": "dlt",
+         "packet": [
+          "job",
+          "dlt"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Alert fires, lag stays flat",
+          "tone": "amber",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Once engineers fix the cause, they replay the dead-letter topic back through the job.",
+      "show": {
+       "t": "points",
+       "title": "The loop",
+       "items": [
+        "Catch error",
+        "Write to dead-letter",
+        "Alert",
+        "Fix cause",
+        "Replay"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does one unparseable record make lag grow on its partition?",
+     "opts": [
+      "The consumer cannot move past its offset while it keeps retrying",
+      "Kafka deletes the records behind it",
+      "The producer slows down"
+     ],
+     "ans": 0,
+     "why": "Offsets are processed in order. If the consumer is stuck retrying one offset, nothing after it is read, so lag grows."
+    },
+    "work": [
+     "Add a catch block that writes original bytes and the error to a dead-letter topic.",
+     "Create an alert on dead-letter topic message count."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Lag is rising: what first?",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Lag grows steadily every minute. Where do you look first?",
+      "show": {
+       "t": "big",
+       "text": "Lag keeps rising",
+       "sub": "The consumer is slower than the producer"
+      }
+     },
+     {
+      "say": "Start with the cheapest check: a rebalance loop. That is when consumers keep leaving and rejoining the group, so nobody does real work. Fix timeouts and crashes first.",
+      "show": {
+       "t": "points",
+       "title": "Step 1: rebalance loop?",
+       "items": [
+        "Consumers keep leaving and rejoining",
+        "Work pauses at every rebalance",
+        "Fix crashes and timeouts first"
+       ]
+      }
+     },
+     {
+      "say": "Second, make each record cheaper. For example, batch database writes instead of one call per record. Third, add consumers, but only up to the partition count. Each partition feeds one consumer in a group, so extras sit idle.",
+      "show": {
+       "t": "scene",
+       "title": "Consumers max out at *partitions*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "6 partitions",
+         "sub": "the ceiling",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "c",
+         "label": "6 consumers",
+         "sub": "all busy",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "x",
+         "label": "7th consumer",
+         "sub": "idle",
+         "x": 50,
+         "y": 65,
+         "tone": "grey"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "c"
+        ],
+        [
+         "p",
+         "x"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "p",
+          "c"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "p",
+          "c"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "x",
+         "dim": "x"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "More than 6 helps nothing",
+          "tone": "amber",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Only last, add partitions. That raises the ceiling, but it changes which partition a key lands on.",
+      "show": {
+       "t": "points",
+       "title": "The order of attack",
+       "items": [
+        "Rebalance loop",
+        "Faster processing",
+        "More consumers",
+        "More partitions"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A topic has 8 partitions and 8 busy consumers. Lag still rises. What does adding a 9th consumer do?",
+     "opts": [
+      "Speeds things up by one ninth",
+      "Nothing, it sits idle",
+      "Doubles throughput"
+     ],
+     "ans": 1,
+     "why": "A partition is read by one consumer in a group, so the ninth has nothing to read. Speed up processing or add partitions."
+    },
+    "work": [
+     "Check rebalance counts before you scale anything.",
+     "Write down your partition count next to each consumer group."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Replay without double counting",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "You fixed a bug. Can you just rerun last week's data?",
+      "show": {
+       "t": "big",
+       "text": "Replay is easy",
+       "sub": "Replaying safely is the hard part"
+      }
+     },
+     {
+      "say": "Replay means restarting from an older offset with a new checkpoint, so the job forgets where it was. Every old message flows through again.",
+      "show": {
+       "t": "scene",
+       "title": "Rewind the *offset*",
+       "nodes": [
+        {
+         "id": "log",
+         "label": "Topic",
+         "sub": "offset 0 to 900000",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "job",
+         "label": "Job",
+         "sub": "new checkpoint",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "log",
+         "job"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "log",
+          "job"
+         ]
+        },
+        {
+         "at": 0.4,
+         "cells": {
+          "label": "Restart from",
+          "items": [
+           [
+            "offset",
+            "500000"
+           ]
+          ]
+         }
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "log",
+          "job"
+         ],
+         "n": 4
+        }
+       ]
+      }
+     },
+     {
+      "say": "The danger is duplicates. If the sink appends rows or sends emails, you do it twice. An idempotent sink, like an upsert by key, gives the same result however many times it runs.",
+      "show": {
+       "t": "points",
+       "title": "Idempotent sink",
+       "items": [
+        "Append plus replay equals duplicates",
+        "Upsert by key equals same result",
+        "Emails and payments need dedupe keys"
+       ]
+      }
+     },
+     {
+      "say": "Write the steps in a runbook before you need them. Stop the job, pick the offset, set a new checkpoint, restart, then verify counts.",
+      "show": {
+       "t": "points",
+       "title": "Replay runbook",
+       "items": [
+        "Stop job",
+        "Pick offset",
+        "New checkpoint",
+        "Restart",
+        "Verify counts"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why must the sink be idempotent before you replay?",
+     "opts": [
+      "Replay makes the topic smaller",
+      "Replayed messages are processed again and could be written twice",
+      "Checkpoints cannot be created otherwise"
+     ],
+     "ans": 1,
+     "why": "Replay re-sends messages already handled. Without idempotent writes, such as upserts by key, results are duplicated."
+    },
+    "work": [
+     "Check whether each sink uses upsert or append.",
+     "Write and rehearse a replay runbook in a test environment."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Not every failure is poison",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Is every failed record a poison message?",
+      "show": {
+       "t": "big",
+       "text": "No",
+       "sub": "Retrying the wrong failure is costly"
+      }
+     },
+     {
+      "say": "A database timeout is temporary, so a few retries with a pause will work. A bad format is permanent and fails every time. Retrying that only stalls the partition.",
+      "show": {
+       "t": "scene",
+       "title": "*Transient* or permanent?",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Timeout",
+         "sub": "transient",
+         "x": 25,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "p",
+         "label": "Bad format",
+         "sub": "permanent",
+         "x": 75,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "r",
+         "label": "Retry with pause",
+         "sub": "limited times",
+         "x": 25,
+         "y": 65,
+         "tone": "teal"
+        },
+        {
+         "id": "d",
+         "label": "Dead-letter",
+         "sub": "right away",
+         "x": 75,
+         "y": 65,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "r"
+        ],
+        [
+         "p",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "t",
+          "p"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": "r",
+         "packet": [
+          "t",
+          "r"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.7,
+         "show": "d",
+         "packet": [
+          "p",
+          "d"
+         ],
+         "n": 1
+        }
+       ]
+      }
+     },
+     {
+      "say": "So classify errors. Retry temporary ones a limited number of times, then dead-letter. Keep the original bytes, not just the parsed result, or you cannot replay after fixing the parser.",
+      "show": {
+       "t": "points",
+       "title": "Gotchas",
+       "items": [
+        "Cap retries, then dead-letter",
+        "Store original bytes plus the error",
+        "Keep enough retention to replay"
+       ]
+      }
+     },
+     {
+      "say": "Also alert on the rate. A sudden flood in the dead-letter topic usually means an upstream schema change, not bad luck.",
+      "show": {
+       "t": "big",
+       "text": "Flood of dead letters",
+       "sub": "Think: upstream schema change"
+      }
+     }
+    ],
+    "check": {
+     "q": "Why store the original bytes in the dead-letter record?",
+     "opts": [
+      "It saves disk space",
+      "You can replay after fixing the parser",
+      "It speeds up the main job"
+     ],
+     "ans": 1,
+     "why": "If only a partly parsed form is saved, you cannot reprocess it once the parser is fixed. The raw bytes keep every option open."
+    },
+    "work": [
+     "Separate retryable errors from permanent ones in your error handler.",
+     "Set dead-letter topic retention longer than your fix time."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Skip, halt, or scale: the trade-offs",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Dead-letter everything and sleep well? Not quite.",
+      "show": {
+       "t": "big",
+       "text": "Skipping has a price",
+       "sub": "Missing data downstream"
+      }
+     },
+     {
+      "say": "Skipping a record means that data is missing downstream until replayed. Where completeness or order matters, such as account balances, you may prefer to halt and page someone.",
+      "show": {
+       "t": "bars",
+       "title": "Choose by cost of a gap",
+       "unit": "risk",
+       "items": [
+        [
+         "Click analytics",
+         1,
+         "dead-letter and alert"
+        ],
+        [
+         "Order events",
+         5,
+         "threshold, then halt"
+        ],
+        [
+         "Ledger",
+         10,
+         "halt and page"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Adding consumers costs money and stops helping at the partition count. Adding partitions is hard to undo and changes where existing keys land, which can break per-key order. Size partitions with headroom early.",
+      "show": {
+       "t": "points",
+       "title": "Scaling limits",
+       "items": [
+        "Consumers cap at partition count",
+        "More partitions cannot be removed later",
+        "Key to partition mapping changes"
+       ]
+      }
+     },
+     {
+      "say": "Set a threshold too. If more than about one percent of records fail, stop the job, because that signals a systemic fault, not a few bad records.",
+      "show": {
+       "t": "points",
+       "title": "Failure policy",
+       "items": [
+        "Few failures: dead-letter",
+        "Rate over threshold: halt",
+        "Fix cause",
+        "Replay"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Which pipeline most justifies halting on a bad record instead of dead-lettering it?",
+     "opts": [
+      "Page view counts for a dashboard",
+      "A ledger of account balances",
+      "Debug log collection"
+     ],
+     "ans": 1,
+     "why": "A skipped ledger entry makes balances wrong, so correctness outweighs availability. Analytics can tolerate a temporary gap."
+    },
+    "work": [
+     "Classify each pipeline as skip-and-alert or halt, and record why.",
+     "Add a failure-rate threshold that stops the job automatically."
+    ]
+   }
+  ]
+ }
+}

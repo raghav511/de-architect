@@ -71,16 +71,18 @@ def main(a):
         return
     data = json.load(open('data/reels.json'))
     os.makedirs(OUT, exist_ok=True)
-    n = 0
+    n = 0  # --shard I/N records every Nth reel, so N recorders can run side by side (build.py links the files after)
+    si, sn = map(int, a[a.index('--shard') + 1].split('/')) if '--shard' in a else (0, 1)
     for mid, reels in data.items():
-        for r in reels:
+        for ri, r in enumerate(reels):
+            if ri % sn != si: continue
             for i, b in enumerate(r['beats']):
                 h = hashlib.sha1((ENGINE + '|' + voice + '|' + (STYLE if ENGINE == 'openai' else '') + '|' + b['say']).encode()).hexdigest()[:10]
                 p = '%s/%s-%d-%s.m4a' % (OUT, r['id'], i, h)
                 if not os.path.exists(p):
                     speak(b['say'], voice, p); n += 1
                 b['audio'] = p
-    json.dump(data, open('data/reels.json', 'w'), ensure_ascii=False, separators=(',', ':'))
+    if sn == 1: json.dump(data, open('data/reels.json', 'w'), ensure_ascii=False, separators=(',', ':'))
     print('recorded', n, 'new beats with the', voice, 'voice')
 
 

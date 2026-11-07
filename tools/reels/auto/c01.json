@@ -1,0 +1,2204 @@
+{
+ "C1.1 What Claude Code actually is": {
+  "hash": "c8218d05d057",
+  "sec": "C1.1",
+  "reels": [
+   {
+    "title": "A helper inside your workshop",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "What is the difference between asking a stranger for advice, and hiring a helper who walks into your workshop?",
+      "show": {
+       "t": "big",
+       "text": "Advice vs. a helper",
+       "sub": "on the spot"
+      }
+     },
+     {
+      "say": "Pasting code into a chat is like describing your kitchen over the phone. The advice is a guess. Claude Code is the helper standing in the kitchen. It opens your files, searches them, and runs your tests, so it answers from what is really there.",
+      "show": {
+       "t": "scene",
+       "title": "A helper in your *project*",
+       "nodes": [
+        {
+         "id": "you",
+         "label": "You",
+         "sub": "plain English task",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "cc",
+         "label": "Claude Code",
+         "sub": "the helper",
+         "x": 50,
+         "y": 45,
+         "tone": "teal"
+        },
+        {
+         "id": "files",
+         "label": "Your files",
+         "sub": "code and tests",
+         "x": 50,
+         "y": 78,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "you",
+         "cc"
+        ],
+        [
+         "cc",
+         "files"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "you",
+          "cc"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": "files"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "cc",
+          "files"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Answers from real code",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "But a helper in your kitchen can also break things. So it asks before anything risky, like running a command. You stay the boss, and you can say stop any time by pressing Escape.",
+      "show": {
+       "t": "points",
+       "title": "You stay the boss",
+       "items": [
+        "Risky steps ask first",
+        "You approve or refuse",
+        "Escape stops it"
+       ]
+      }
+     },
+     {
+      "say": "One catch. Each visit starts with a blank memory. Anything it should always know goes on a note on the fridge: a file in your project called CLAUDE dot M D.",
+      "show": {
+       "t": "big",
+       "text": "Blank memory each visit",
+       "sub": "notes live in CLAUDE.md"
+      }
+     }
+    ],
+    "check": {
+     "q": "What main advantage does Claude Code have over pasting code into a chat window?",
+     "opts": [
+      "It can see and run your real project",
+      "It never makes mistakes",
+      "It remembers every past session",
+      "It works without any approvals"
+     ],
+     "ans": 0,
+     "why": "It opens real files, searches and runs tests, so answers are grounded in your code rather than a guess. It can still be wrong, asks for approval on risky steps, and forgets between sessions."
+    },
+    "work": [
+     "Pick one small bug in your repo and describe it to Claude Code in a single plain sentence.",
+     "Write down three facts about your project a newcomer would need, as a first draft of a CLAUDE.md note."
+    ]
+   },
+   {
+    "title": "The loop behind every task",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "What actually happens between you typing one sentence and Claude changing your code?",
+      "show": {
+       "t": "big",
+       "text": "One sentence in, edits out",
+       "sub": "what happens between?"
+      }
+     },
+     {
+      "say": "You type a task, like: why does this dbt model double count. Claude does not just answer. It calls tools. It reads the model file, searches the repo for the join, and runs the tests. Each result comes back to it as new information.",
+      "show": {
+       "t": "scene",
+       "title": "Think, use a tool, *read*",
+       "nodes": [
+        {
+         "id": "task",
+         "label": "Task",
+         "sub": "double counts",
+         "x": 50,
+         "y": 14,
+         "tone": "blue"
+        },
+        {
+         "id": "claude",
+         "label": "Claude",
+         "sub": "model in a loop",
+         "x": 50,
+         "y": 46,
+         "tone": "teal"
+        },
+        {
+         "id": "tools",
+         "label": "Tools",
+         "sub": "read, grep, run tests",
+         "x": 50,
+         "y": 78,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "task",
+         "claude"
+        ],
+        [
+         "claude",
+         "tools"
+        ],
+        [
+         "tools",
+         "claude"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "task",
+          "claude"
+         ]
+        },
+        {
+         "at": 0.35,
+         "show": "tools"
+        },
+        {
+         "at": 0.55,
+         "packet": [
+          "claude",
+          "tools"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "tools",
+          "claude"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.95,
+         "count": {
+          "key": "calls",
+          "label": "Tool calls",
+          "to": 15,
+          "unit": "calls",
+          "tone": "teal"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "That is the loop. Think, use a tool, read the result, repeat. One task may take ten or twenty tool calls. Risky ones, like editing a file or running a shell command, pause and wait for your approval.",
+      "show": {
+       "t": "flow",
+       "title": "The agent loop",
+       "steps": [
+        {
+         "label": "Think"
+        },
+        {
+         "label": "Use a tool"
+        },
+        {
+         "label": "You approve risky ones"
+        },
+        {
+         "label": "Read the result"
+        }
+       ]
+      }
+     },
+     {
+      "say": "The loop ends when Claude gives you an answer, or when you press Escape. Then you review the changes, because the edits are real.",
+      "show": {
+       "t": "big",
+       "text": "Review the diff",
+       "sub": "edits are real"
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does Claude Code call several tools before giving an answer?",
+     "opts": [
+      "To slow itself down on purpose",
+      "Each tool result gives it facts to decide the next step",
+      "Because chat models cannot produce text alone",
+      "Because you must approve every answer"
+     ],
+     "ans": 1,
+     "why": "It works in a loop: each tool result, such as a file read or a test run, becomes new information that guides the next step until the task is done."
+    },
+    "work": [
+     "Watch one session and count how many tool calls it makes before answering.",
+     "Read each approval prompt fully before you accept it, for one whole day."
+    ]
+   },
+   {
+    "title": "Where the gotchas hide",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Why did Claude forget everything you told it yesterday?",
+      "show": {
+       "t": "big",
+       "text": "Why the amnesia?",
+       "sub": "yesterday is gone"
+      }
+     },
+     {
+      "say": "Because every session starts empty. Only files on disk carry over. Rules like use our naming convention, or never run against production, must live in CLAUDE dot M D in the repo, which it reads at the start.",
+      "show": {
+       "t": "scene",
+       "title": "Memory lives in the *repo*",
+       "nodes": [
+        {
+         "id": "s1",
+         "label": "Session 1",
+         "sub": "gone when closed",
+         "x": 22,
+         "y": 20,
+         "tone": "grey"
+        },
+        {
+         "id": "md",
+         "label": "CLAUDE.md",
+         "sub": "in the repo",
+         "x": 50,
+         "y": 55,
+         "tone": "teal"
+        },
+        {
+         "id": "s2",
+         "label": "Session 2",
+         "sub": "starts fresh",
+         "x": 78,
+         "y": 20,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "md",
+         "s2"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "s1"
+        },
+        {
+         "at": 0.3,
+         "dim": "s1"
+        },
+        {
+         "at": 0.5,
+         "show": "md"
+        },
+        {
+         "at": 0.7,
+         "show": "s2"
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "md",
+          "s2"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Rules persist in files",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Second gotcha: it acts. A backfill run against the wrong warehouse is a real incident. Approval prompts are your guardrail, but if you click yes without reading, the guardrail is gone.",
+      "show": {
+       "t": "points",
+       "title": "It acts, so be careful",
+       "items": [
+        "Wrong target means real damage",
+        "Read every approval",
+        "Blind yes removes the guardrail"
+       ]
+      }
+     },
+     {
+      "say": "Third: it only knows what it has opened. A long session fills its working memory, and early details blur. Start fresh for each new task, and run the tests yourself.",
+      "show": {
+       "t": "points",
+       "title": "Limits of its view",
+       "items": [
+        "Only sees what it opened",
+        "Long sessions blur early details",
+        "New task, new session",
+        "Run the tests yourself"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A rule such as never run against production keeps being ignored in new sessions. What is the best fix?",
+     "opts": [
+      "Repeat it louder in every chat",
+      "Put it in CLAUDE.md in the repo",
+      "Hope the model remembers",
+      "Use one very long session"
+     ],
+     "ans": 1,
+     "why": "Sessions start fresh, so durable rules must be in a file the agent reads at the start. Long sessions also blur early details, so they are not a fix."
+    },
+    "work": [
+     "Add a short never-do list, such as no production writes, to your repo's CLAUDE.md.",
+     "Start a new session for each unrelated task instead of reusing one long chat."
+    ]
+   },
+   {
+    "title": "When not to reach for the agent",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When is an agent in your terminal the wrong tool?",
+      "show": {
+       "t": "big",
+       "text": "Wrong tool when?",
+       "sub": "agent trade-offs"
+      }
+     },
+     {
+      "say": "When the job is mechanical and repeatable, like renaming a column across two hundred models. A scripted codemod is cheaper, gives the same result every run, and is easy to test. An agent costs tokens at every step, and can vary.",
+      "show": {
+       "t": "bars",
+       "title": "Same rename, two ways",
+       "unit": "relative",
+       "items": [
+        [
+         "Agent: cost per run",
+         8,
+         "tokens each step"
+        ],
+        [
+         "Codemod: cost per run",
+         1,
+         "deterministic"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Use the agent where the work is fuzzy: debugging, exploring unfamiliar code, drafting tests. Give it read-only warehouse credentials and a dev schema, so its worst mistake is cheap.",
+      "show": {
+       "t": "scene",
+       "title": "Make mistakes *cheap*",
+       "nodes": [
+        {
+         "id": "agent",
+         "label": "Agent",
+         "sub": "fuzzy work",
+         "x": 50,
+         "y": 15,
+         "tone": "teal"
+        },
+        {
+         "id": "dev",
+         "label": "Dev schema",
+         "sub": "safe to break",
+         "x": 25,
+         "y": 65,
+         "tone": "blue"
+        },
+        {
+         "id": "prod",
+         "label": "Production",
+         "sub": "read-only or blocked",
+         "x": 75,
+         "y": 65,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "agent",
+         "dev"
+        ],
+        [
+         "agent",
+         "prod"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "agent"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "dev",
+          "prod"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "agent",
+          "dev"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.8,
+         "dim": "prod"
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Worst case stays small",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The real limit is not typing speed. It is review. If it writes in minutes what takes you an hour to check, you gain nothing. Keep tasks small, so each change can be reviewed in minutes.",
+      "show": {
+       "t": "big",
+       "text": "Review is the bottleneck",
+       "sub": "small tasks, small diffs"
+      }
+     }
+    ],
+    "check": {
+     "q": "You must rename one column in 200 dbt models in an identical way. What is the best choice?",
+     "opts": [
+      "Ask the agent to edit each file by hand",
+      "A scripted codemod, reviewed once",
+      "Skip tests because the change is simple",
+      "Give the agent production write access"
+     ],
+     "ans": 1,
+     "why": "Mechanical, repeatable edits suit a deterministic script: cheaper, identical every run, easy to test. Save the agent for fuzzy work, and keep review effort in mind."
+    },
+    "work": [
+     "List your team's repeated mechanical changes and write scripts for them, not agent prompts.",
+     "Set up a dev schema and read-only credentials for agent sessions."
+    ]
+   }
+  ]
+ },
+ "C1.2 Install and sign in": {
+  "hash": "946349d02439",
+  "sec": "C1.2",
+  "reels": [
+   {
+    "title": "Install and sign in, the everyday version",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "What does it take to bring a helper into your computer? Two things: let it in, and prove who is paying.",
+      "show": {
+       "t": "scene",
+       "title": "Bring in a *helper*",
+       "nodes": [
+        {
+         "id": "you",
+         "label": "You",
+         "sub": "on your Mac",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "helper",
+         "label": "Claude Code",
+         "sub": "the helper",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "you",
+         "helper"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "you",
+          "helper"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "you",
+          "helper"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Installing is like moving a new tool into your toolbox. You paste one line into the Terminal, the text window where you type commands to your Mac. That line fetches Claude Code and puts it where your Mac can find it.",
+      "show": {
+       "t": "scene",
+       "title": "Install is a *toolbox*",
+       "nodes": [
+        {
+         "id": "term",
+         "label": "Terminal",
+         "sub": "text window",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "net",
+         "label": "Download",
+         "sub": "one pasted line",
+         "x": 50,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "box",
+         "label": "Toolbox",
+         "sub": "your Mac",
+         "x": 80,
+         "y": 25,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "term",
+         "net"
+        ],
+        [
+         "net",
+         "box"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "term"
+        },
+        {
+         "at": 0.4,
+         "show": "net",
+         "packet": [
+          "term",
+          "net"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "box",
+         "packet": [
+          "net",
+          "box"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "One line installs it",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Signing in is like showing a membership card at the gym door. The first time you start it, it asks who is paying: your Claude subscription, or a developer account that charges for each use.",
+      "show": {
+       "t": "scene",
+       "title": "Sign in is a *card*",
+       "nodes": [
+        {
+         "id": "door",
+         "label": "Claude Code",
+         "sub": "asks who you are",
+         "x": 50,
+         "y": 20,
+         "tone": "teal"
+        },
+        {
+         "id": "sub",
+         "label": "Subscription",
+         "sub": "flat monthly",
+         "x": 25,
+         "y": 50,
+         "tone": "blue"
+        },
+        {
+         "id": "con",
+         "label": "Console",
+         "sub": "pay per use",
+         "x": 75,
+         "y": 50,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "door",
+         "sub"
+        ],
+        [
+         "door",
+         "con"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "door"
+        },
+        {
+         "at": 0.4,
+         "show": "sub",
+         "packet": [
+          "door",
+          "sub"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "con",
+         "packet": [
+          "door",
+          "con"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Pick one way to pay",
+          "tone": "amber",
+          "icon": "card"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "In the analogy, what does signing in correspond to?",
+     "opts": [
+      "Moving the tool into the toolbox",
+      "Showing a membership card to prove who is paying",
+      "Opening the Terminal window"
+     ],
+     "ans": 1,
+     "why": "Installing puts the tool on your Mac. Signing in proves which account is paying for your use."
+    },
+    "work": [
+     "Open Terminal on your Mac and find out which of the two install lines you will use.",
+     "Decide before you start whether you will sign in with a subscription or a Console account."
+    ]
+   },
+   {
+    "title": "What the install line and first run really do",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "What actually happens when you paste that install line?",
+      "show": {
+       "t": "big",
+       "text": "One pasted line, four moves",
+       "sub": "download, run, place, ready"
+      }
+     },
+     {
+      "say": "Curl downloads a small script from claude dot ai. Bash runs it. The script fetches the Claude Code program and drops it in a folder your terminal searches for commands, so typing claude works from anywhere.",
+      "show": {
+       "t": "flow",
+       "steps": [
+        {
+         "label": "curl",
+         "sub": "downloads script"
+        },
+        {
+         "label": "bash",
+         "sub": "runs script"
+        },
+        {
+         "label": "program",
+         "sub": "fetched"
+        },
+        {
+         "label": "PATH folder",
+         "sub": "claude works anywhere"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Now go into a project folder and type claude. It treats that folder as its workspace, so it only works on the files you chose. The first run opens a browser to sign in.",
+      "show": {
+       "t": "scene",
+       "title": "Run it in a *project*",
+       "nodes": [
+        {
+         "id": "folder",
+         "label": "Project folder",
+         "sub": "your files",
+         "x": 25,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "cc",
+         "label": "claude",
+         "sub": "workspace is here",
+         "x": 75,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "br",
+         "label": "Browser",
+         "sub": "first run sign in",
+         "x": 50,
+         "y": 55,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "folder",
+         "cc"
+        ],
+        [
+         "cc",
+         "br"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "folder"
+        },
+        {
+         "at": 0.4,
+         "show": "cc",
+         "packet": [
+          "folder",
+          "cc"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "br",
+         "packet": [
+          "cc",
+          "br"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Pick a Pro or Max subscription for a flat monthly price, or a Console account billed per token, a token being a small chunk of text. Then run slash doctor to check the setup.",
+      "show": {
+       "t": "points",
+       "title": "Two ways to sign in",
+       "items": [
+        "Pro or Max: flat monthly price",
+        "Console: billed per token",
+        "Slash doctor checks the setup"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why can you type claude from any folder after the install?",
+     "opts": [
+      "The script placed the program in a folder the terminal searches for commands",
+      "Curl runs every time you type claude",
+      "Your browser keeps a copy running"
+     ],
+     "ans": 0,
+     "why": "The install script puts the program in a folder on your search path, so the terminal finds it by name."
+    },
+    "work": [
+     "Run the install line, then check it with claude in a small project folder.",
+     "Finish sign in in the browser and run slash doctor once to see a healthy report."
+    ]
+   },
+   {
+    "title": "Command not found, two copies, and surprise bills",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "You installed it, typed claude, and got command not found. What went wrong?",
+      "show": {
+       "t": "big",
+       "text": "command not found",
+       "sub": "installed, but the terminal cannot see it"
+      }
+     },
+     {
+      "say": "Usually the terminal started before the install changed its search path, the list of folders it checks for programs. Open a fresh terminal window and try again. If it still fails, run slash doctor, which reports the version, how it was installed, and config problems.",
+      "show": {
+       "t": "scene",
+       "title": "The *search path* is stale",
+       "nodes": [
+        {
+         "id": "old",
+         "label": "Old terminal",
+         "sub": "old path list",
+         "x": 25,
+         "y": 25,
+         "tone": "red"
+        },
+        {
+         "id": "new",
+         "label": "Fresh terminal",
+         "sub": "new path list",
+         "x": 75,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "doc",
+         "label": "Slash doctor",
+         "sub": "version, install, config",
+         "x": 50,
+         "y": 55,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "old",
+         "new"
+        ],
+        [
+         "new",
+         "doc"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "old",
+         "glow": "old"
+        },
+        {
+         "at": 0.5,
+         "show": "new",
+         "packet": [
+          "old",
+          "new"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "show": "doc",
+         "packet": [
+          "new",
+          "doc"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Watch for two copies. If you used both the native installer and Homebrew, the terminal may run the older one. Also, the native install updates itself, while Homebrew needs a manual upgrade.",
+      "show": {
+       "t": "points",
+       "title": "Duplicate installs",
+       "items": [
+        "Native plus Homebrew means two copies",
+        "The terminal runs whichever it finds first",
+        "Native self updates, Homebrew does not"
+       ]
+      }
+     },
+     {
+      "say": "And billing differs. A subscription hits usage limits and waits. A Console account never stops, but every token costs money, so a runaway session becomes a bill.",
+      "show": {
+       "t": "bars",
+       "title": "What happens at heavy use",
+       "unit": "",
+       "items": [
+        [
+         "Subscription",
+         2,
+         "hits a limit, then waits"
+        ],
+        [
+         "Console",
+         9,
+         "keeps going, cost grows"
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "After install, claude says command not found. What do you try first?",
+     "opts": [
+      "Reinstall with Homebrew on top",
+      "Open a fresh terminal window, then run slash doctor if it still fails",
+      "Create a new Console account"
+     ],
+     "ans": 1,
+     "why": "A terminal opened before the install often has a stale search path. A fresh window fixes it, and slash doctor diagnoses the rest."
+    },
+    "work": [
+     "Run which claude and confirm only one install exists.",
+     "Note how you update: automatic for native, manual upgrade for Homebrew.",
+     "If using a Console account, set a spend limit before long sessions."
+    ]
+   },
+   {
+    "title": "Rolling out sign in and install across a team",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Fifty engineers need Claude Code. Do you let each person pick their own install and login?",
+      "show": {
+       "t": "big",
+       "text": "50 engineers",
+       "sub": "50 installs, 50 logins, 50 bills?"
+      }
+     },
+     {
+      "say": "Probably not. Personal subscriptions tie company code to private accounts, and you cannot see or cap the spend. Console accounts give central billing, usage visibility, and spend limits, at the price of paying per token.",
+      "show": {
+       "t": "scene",
+       "title": "Who *owns* the account",
+       "nodes": [
+        {
+         "id": "pers",
+         "label": "Personal plans",
+         "sub": "no central view",
+         "x": 25,
+         "y": 25,
+         "tone": "red"
+        },
+        {
+         "id": "cons",
+         "label": "Console",
+         "sub": "central billing, limits",
+         "x": 75,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "team",
+         "label": "Company code",
+         "sub": "needs control",
+         "x": 50,
+         "y": 55,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "pers",
+         "team"
+        ],
+        [
+         "cons",
+         "team"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "team"
+        },
+        {
+         "at": 0.4,
+         "show": "pers",
+         "packet": [
+          "pers",
+          "team"
+         ],
+         "n": 2,
+         "dim": "pers"
+        },
+        {
+         "at": 0.7,
+         "show": "cons",
+         "packet": [
+          "cons",
+          "team"
+         ],
+         "n": 3,
+         "glow": "cons"
+        }
+       ]
+      }
+     },
+     {
+      "say": "For installs, native auto-updates keep everyone current but move versions under you. Homebrew or a pinned image gives control and repeatability, but someone must own upgrades.",
+      "show": {
+       "t": "points",
+       "title": "Install trade-off",
+       "items": [
+        "Native: current, but versions drift",
+        "Homebrew or pinned image: repeatable",
+        "Pinning needs an owner for upgrades"
+       ]
+      }
+     },
+     {
+      "say": "For iPad users or locked laptops, a Codespace avoids local installs entirely. You trade setup pain for hourly cloud cost and a network dependency.",
+      "show": {
+       "t": "scene",
+       "title": "The *Codespace* option",
+       "nodes": [
+        {
+         "id": "ipad",
+         "label": "iPad Safari",
+         "sub": "no local install",
+         "x": 25,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "cs",
+         "label": "Codespace",
+         "sub": "Linux, preinstalled",
+         "x": 75,
+         "y": 25,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "ipad",
+         "cs"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "ipad",
+          "cs"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "ipad",
+          "cs"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Pay hourly, skip setup",
+          "tone": "amber",
+          "icon": "cloud"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why prefer a central Console account over personal subscriptions for a company team?",
+     "opts": [
+      "It is always cheaper per developer",
+      "It gives central billing, visibility and spend limits for company work",
+      "It removes the need to install anything"
+     ],
+     "ans": 1,
+     "why": "Control and visibility matter at team scale. Per-token billing is not always cheaper, but you can see and cap it."
+    },
+    "work": [
+     "Pick one sign-in route for work use and write it in the onboarding doc.",
+     "Decide whether to let native auto-update or pin a version, and name who owns upgrades.",
+     "Offer the Codespace for people who cannot install locally."
+    ]
+   }
+  ]
+ },
+ "C1.4 The workflow that works: explore, plan, code, commit": {
+  "hash": "b4954861ce1a",
+  "sec": "C1.4",
+  "reels": [
+   {
+    "title": "Look before you build",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Would you let a builder knock down a wall before looking at the house?",
+      "show": {
+       "t": "big",
+       "text": "Look first",
+       "sub": "before anything gets changed"
+      }
+     },
+     {
+      "say": "Of course not. A good builder walks through first, looks around, and touches nothing. That is exploring. Claude Code should start the same way: read, then report.",
+      "show": {
+       "t": "scene",
+       "title": "Walk through, *touch nothing*",
+       "nodes": [
+        {
+         "id": "b",
+         "label": "Builder",
+         "sub": "Claude",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "h",
+         "label": "House",
+         "sub": "your code",
+         "x": 75,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "r",
+         "label": "Report",
+         "sub": "what is wrong",
+         "x": 50,
+         "y": 70,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "b",
+         "h"
+        ],
+        [
+         "h",
+         "r"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "b",
+          "h"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "b",
+          "h"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "r"
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Read first, change nothing",
+          "tone": "teal",
+          "icon": "eye"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Next, the builder shows you a plan. Which walls, what it costs, how they will check it is safe. Only after you say yes do they pick up tools.",
+      "show": {
+       "t": "points",
+       "title": "The plan",
+       "items": [
+        "Which walls will change",
+        "What it will cost",
+        "How we check it is safe",
+        "You say yes, then work starts"
+       ]
+      }
+     },
+     {
+      "say": "At the end, you inspect the work yourself, then sign. The signature is your commit, a saved snapshot with a note about what changed. Your name is on it.",
+      "show": {
+       "t": "flow",
+       "title": "Explore, plan, code, commit",
+       "steps": [
+        {
+         "label": "Explore"
+        },
+        {
+         "label": "Plan"
+        },
+        {
+         "label": "Code"
+        },
+        {
+         "label": "Inspect and sign"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "In the builder story, what should happen before any tools come out?",
+     "opts": [
+      "The builder starts with the biggest wall",
+      "The builder looks around and shares a plan you approve",
+      "You sign the work",
+      "Nothing, the builder decides alone"
+     ],
+     "ans": 1,
+     "why": "Exploring and planning come first, so mistakes are caught while they are still cheap."
+    },
+    "work": [
+     "Next time you ask for a fix, start with: read these files and change nothing.",
+     "Ask for a plan before you approve any edit."
+    ]
+   },
+   {
+    "title": "Explore, plan, code, commit",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Why does asking Claude to just fix the bug so often go wrong?",
+      "show": {
+       "t": "big",
+       "text": "Just fix it",
+       "sub": "is a guess"
+      }
+     },
+     {
+      "say": "Because it guesses. So step one, explore. Say: read the ingest file and its test file, change nothing, tell me which tests fail and why. Reading is free. Mistakes are not.",
+      "show": {
+       "t": "scene",
+       "title": "Step one: *explore*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Prompt",
+         "sub": "change nothing",
+         "x": 25,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "f",
+         "label": "ingest.py",
+         "sub": "and its test",
+         "x": 75,
+         "y": 25,
+         "tone": "grey"
+        },
+        {
+         "id": "a",
+         "label": "Diagnosis",
+         "sub": "which tests fail, why",
+         "x": 50,
+         "y": 70,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "f"
+        ],
+        [
+         "f",
+         "a"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "p",
+          "f"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "p",
+          "f"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "a"
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Reading is free",
+          "tone": "teal",
+          "icon": "eye"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Step two, plan mode. Ask for the smallest fix for the date window bug, the files it will touch, and how it will prove the fix works. Maybe two files and one test.",
+      "show": {
+       "t": "points",
+       "title": "Step two: plan mode",
+       "items": [
+        "Smallest fix for the date window bug",
+        "List the files it will touch",
+        "State how it will prove the fix",
+        "Example: two files, one test"
+       ]
+      }
+     },
+     {
+      "say": "Step three, approve and let it edit, then run the tests itself. Step four, read the git diff yourself, ask what could this break, and commit with a message explaining the bug.",
+      "show": {
+       "t": "flow",
+       "title": "Code, review, commit",
+       "steps": [
+        {
+         "label": "Approve plan"
+        },
+        {
+         "label": "Edit and run tests"
+        },
+        {
+         "label": "Read git diff"
+        },
+        {
+         "label": "Commit with the why"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What belongs in the explore step?",
+     "opts": [
+      "Letting Claude edit and test in one go",
+      "Reading the files and diagnosing failing tests without changes",
+      "Committing the fix",
+      "Writing the commit message"
+     ],
+     "ans": 1,
+     "why": "Explore is read-only diagnosis so the later plan rests on facts, not guesses."
+    },
+    "work": [
+     "Write an explore prompt that ends with: do not change anything yet.",
+     "Ask every plan to name the files and the proof, such as which test."
+    ]
+   },
+   {
+    "title": "Green tests that lie",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "What goes wrong when the plan looks great but the tests are green for the wrong reason?",
+      "show": {
+       "t": "big",
+       "text": "Green is not proof",
+       "sub": "until you know what changed"
+      }
+     },
+     {
+      "say": "Claude can make tests pass by editing the test, loosening an assertion, or special casing the input. Green only means something if you know which files changed. So read the diff, not the summary.",
+      "show": {
+       "t": "scene",
+       "title": "Three ways to fake *green*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Edit the test",
+         "sub": "expected value moved",
+         "x": 20,
+         "y": 25,
+         "tone": "red"
+        },
+        {
+         "id": "l",
+         "label": "Loosen assert",
+         "sub": "weaker check",
+         "x": 50,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "s",
+         "label": "Special case",
+         "sub": "hardcode input",
+         "x": 80,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "d",
+         "label": "Read the diff",
+         "sub": "the real answer",
+         "x": 50,
+         "y": 70,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "d"
+        ],
+        [
+         "l",
+         "d"
+        ],
+        [
+         "s",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "t"
+        },
+        {
+         "at": 0.3,
+         "show": "l"
+        },
+        {
+         "at": 0.5,
+         "show": "s"
+        },
+        {
+         "at": 0.75,
+         "show": "d"
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Trust the diff, not the summary",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Gotchas. Explore without a no change instruction and it may edit early. A fix to a date window can shift boundaries, so ask what could this break: time zones, midnight, empty days. Stage only the intended files.",
+      "show": {
+       "t": "points",
+       "title": "Gotchas",
+       "items": [
+        "Say change nothing, or it may edit early",
+        "Date fixes shift boundaries",
+        "Ask what could this break",
+        "Check time zones, midnight, empty days",
+        "Stage only intended files"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Tests pass after Claude's fix. What is the best next move?",
+     "opts": [
+      "Commit straight away",
+      "Read the diff, including test files, and ask what could break",
+      "Ask Claude if it is sure",
+      "Rerun the tests until they pass twice"
+     ],
+     "ans": 1,
+     "why": "Passing tests can be gamed or can miss edge cases. Only the diff shows what actually changed."
+    },
+    "work": [
+     "Check that test files in the diff changed only when you meant them to.",
+     "Add edge cases for time zones and boundaries before you accept date logic."
+    ]
+   },
+   {
+    "title": "Right-sizing the workflow",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When is the four step workflow too heavy, and when is it too light?",
+      "show": {
+       "t": "big",
+       "text": "Match process to risk",
+       "sub": "too heavy or too light"
+      }
+     },
+     {
+      "say": "For a typo or a rename, planning costs more than the change. Just do it and check the diff. For a migration touching forty files, one session is too small.",
+      "show": {
+       "t": "bars",
+       "title": "Effort by task size",
+       "unit": "files touched",
+       "items": [
+        [
+         "Typo",
+         1,
+         "just do it"
+        ],
+        [
+         "Bug fix",
+         3,
+         "full workflow"
+        ],
+        [
+         "Migration",
+         40,
+         "split it up"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Scale it with risk. Large work, split into plans that each commit separately, so you can revert one piece. Add guardrails that do not rely on memory: required tests in CI, protected branches, and human review before merge. Exploration burns context, so keep it narrow.",
+      "show": {
+       "t": "points",
+       "title": "Scale it safely",
+       "items": [
+        "Split big work into small commits",
+        "Each piece can be reverted alone",
+        "CI tests are required",
+        "Protected branches and human review",
+        "Keep exploration narrow"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A forty file migration is planned. What is the best approach?",
+     "opts": [
+      "One huge plan and one commit",
+      "Skip the plan and iterate",
+      "Several small plans, each tested and committed separately",
+      "Let CI be the only review"
+     ],
+     "ans": 2,
+     "why": "Small committed steps keep diffs reviewable and let you revert one piece without losing the rest."
+    },
+    "work": [
+     "Define which change types skip planning, such as typos and renames.",
+     "Make CI tests and human review mandatory for merges of AI-written code."
+    ]
+   }
+  ]
+ },
+ "C1.3 The keys and commands you use every day": {
+  "hash": "653a3dacfd19",
+  "sec": "C1.3",
+  "reels": [
+   {
+    "title": "Driving with a hand on the brake",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "What if you could hire a very fast assistant, but keep a hand on the brake the whole time?",
+      "show": {
+       "t": "big",
+       "text": "Fast helper. Your hand on the brake.",
+       "sub": "Claude Code, day to day"
+      }
+     },
+     {
+      "say": "Think of Claude as the driver and you as the passenger holding the map. Typing the at sign and a file name is like pointing at a building on that map. Pressing Escape is the brake. It stops, waits, and loses nothing.",
+      "show": {
+       "t": "scene",
+       "title": "You steer, Claude *drives*",
+       "nodes": [
+        {
+         "id": "you",
+         "label": "You",
+         "sub": "hold the map",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "cc",
+         "label": "Claude",
+         "sub": "drives",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "file",
+         "label": "A file",
+         "sub": "the building",
+         "x": 75,
+         "y": 65,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "you",
+         "cc"
+        ],
+        [
+         "cc",
+         "file"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "you",
+          "cc"
+         ]
+        },
+        {
+         "at": 0.35,
+         "show": "file",
+         "packet": [
+          "you",
+          "file"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "chip": {
+          "text": "Escape = brake, nothing lost",
+          "tone": "red",
+          "icon": "stop"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Plan mode is sketching the route before you drive. Clear is starting a fresh trip, so old directions do not confuse the new one. And when it asks permission, you can simply say no and explain why.",
+      "show": {
+       "t": "points",
+       "title": "Your everyday controls",
+       "items": [
+        "Plan mode: sketch the route first",
+        "Clear: a fresh trip for a new task",
+        "Say no: it adapts when you explain why"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "You press Escape while Claude is in the middle of a step. What happens?",
+     "opts": [
+      "Everything so far is deleted",
+      "It stops and waits, and nothing is lost",
+      "The session closes",
+      "It finishes the step anyway"
+     ],
+     "ans": 1,
+     "why": "Escape is a brake, not an eject. Claude pauses and waits for your next instruction, and the work done so far stays."
+    },
+    "work": [
+     "Practice pressing Escape once during a harmless task, to see it stop and wait.",
+     "Next time a permission prompt looks odd, say no and give a one-line reason."
+    ]
+   },
+   {
+    "title": "The keys that steer a session",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How do you steer Claude without leaving the keyboard?",
+      "show": {
+       "t": "big",
+       "text": "Four moves cover most of the day",
+       "sub": "at, bang, Escape, Shift Tab"
+      }
+     },
+     {
+      "say": "Type at, then pick a file, like explain at pipeline slash ingest dot py. Claude reads exactly that file instead of guessing. Start a line with an exclamation mark to run a shell command yourself, like python three dash m unittest dash q. The output lands in the conversation, so Claude sees the test result.",
+      "show": {
+       "t": "scene",
+       "title": "Point, then *run*",
+       "nodes": [
+        {
+         "id": "me",
+         "label": "You",
+         "sub": "@ and !",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "cc",
+         "label": "Claude",
+         "sub": "conversation",
+         "x": 80,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "f",
+         "label": "ingest.py",
+         "sub": "@ pointed here",
+         "x": 20,
+         "y": 65,
+         "tone": "amber"
+        },
+        {
+         "id": "sh",
+         "label": "Shell",
+         "sub": "unittest -q",
+         "x": 80,
+         "y": 65,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "me",
+         "cc"
+        ],
+        [
+         "f",
+         "cc"
+        ],
+        [
+         "sh",
+         "cc"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "me",
+          "cc"
+         ]
+        },
+        {
+         "at": 0.3,
+         "show": "f",
+         "packet": [
+          "f",
+          "cc"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": "sh",
+         "packet": [
+          "sh",
+          "cc"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Output goes into the conversation",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Press Escape to stop mid-step. Press it twice, or type slash rewind, to jump back to an earlier message and carry on from there.",
+      "show": {
+       "t": "flow",
+       "title": "Undo path",
+       "steps": [
+        {
+         "label": "Esc",
+         "sub": "stop and wait"
+        },
+        {
+         "label": "Esc Esc or /rewind",
+         "sub": "pick a message"
+        },
+        {
+         "label": "Carry on",
+         "sub": "from that point"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Shift plus Tab cycles modes. Stop at plan mode to get a plan before any edit.",
+      "show": {
+       "t": "big",
+       "text": "Shift+Tab: plan mode",
+       "sub": "Plan first, edit second"
+      }
+     }
+    ],
+    "check": {
+     "q": "You want Claude to see your test results without it running them. What do you do?",
+     "opts": [
+      "Type an at sign before the test name",
+      "Start the line with an exclamation mark and run the command",
+      "Press Escape twice",
+      "Use slash model"
+     ],
+     "ans": 1,
+     "why": "A line starting with the exclamation mark runs the shell command yourself, and its output goes into the conversation where Claude can read it."
+    },
+    "work": [
+     "Use at to point to a file in your next question instead of describing where it lives.",
+     "Run your test command with a leading exclamation mark and ask Claude to fix what fails."
+    ]
+   },
+   {
+    "title": "Context, resume and permission traps",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Why does Claude seem to get worse an hour into a session?",
+      "show": {
+       "t": "big",
+       "text": "A full context is a foggy context",
+       "sub": "Check it with /context"
+      }
+     },
+     {
+      "say": "Everything you say, every file it reads, every command output sits in its context, a fixed-size working memory. As it fills, early details get crowded out. Type slash context to see what is eating the space.",
+      "show": {
+       "t": "scene",
+       "title": "Context is *finite*",
+       "nodes": [
+        {
+         "id": "ctx",
+         "label": "Context",
+         "sub": "fixed size",
+         "x": 50,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "files",
+         "label": "Files read",
+         "sub": "big",
+         "x": 22,
+         "y": 65,
+         "tone": "amber"
+        },
+        {
+         "id": "logs",
+         "label": "Command output",
+         "sub": "noisy",
+         "x": 50,
+         "y": 65,
+         "tone": "red"
+        },
+        {
+         "id": "chat",
+         "label": "Chat",
+         "sub": "your words",
+         "x": 78,
+         "y": 65,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "files",
+         "ctx"
+        ],
+        [
+         "logs",
+         "ctx"
+        ],
+        [
+         "chat",
+         "ctx"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "ctx"
+        },
+        {
+         "at": 0.3,
+         "show": [
+          "files",
+          "logs",
+          "chat"
+         ],
+         "packet": [
+          "logs",
+          "ctx"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "/context shows what fills it",
+          "tone": "amber",
+          "icon": "gauge"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Bang commands help, but a noisy test log pastes hundreds of lines into that memory. Slash clear between unrelated tasks. To resume yesterday, run claude dash c, or claude dash r to choose.",
+      "show": {
+       "t": "points",
+       "title": "Keep it tidy",
+       "items": [
+        "Noisy output eats context",
+        "/clear between unrelated tasks",
+        "claude -c continues, claude -r lets you choose"
+       ]
+      }
+     },
+     {
+      "say": "Allow always applies to that kind of command in this project, so read the prompt before you click it. Rewind rolls back the conversation, but do not assume it undoes something outside, like a database write.",
+      "show": {
+       "t": "points",
+       "title": "Two gotchas",
+       "items": [
+        "Allow always covers a kind of command, in this project",
+        "Rewind is not a promise to undo outside effects"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Two unrelated tasks later, Claude keeps mixing up details from the first. Best fix?",
+     "opts": [
+      "Rewind twice",
+      "Run slash clear before the new task",
+      "Switch to accept edits",
+      "Allow always"
+     ],
+     "ans": 1,
+     "why": "Old context from an unrelated task crowds and confuses the new one. Clearing gives a clean conversation."
+    },
+    "work": [
+     "Run slash context during a long session and note which item is largest.",
+     "Review your allow always rules for this project and remove any that are too broad."
+    ]
+   },
+   {
+    "title": "When not to trust the autopilot",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When is pressing accept edits a mistake?",
+      "show": {
+       "t": "big",
+       "text": "Accept edits trades review for speed",
+       "sub": "Know when to pay for review"
+      }
+     },
+     {
+      "say": "It is safe after an approved plan, for a small change, with tests that give a fast verdict. It is risky on unfamiliar code, shared configuration, or anything touching production data. There, keep the prompts on.",
+      "show": {
+       "t": "bars",
+       "title": "Risk if you skip review",
+       "unit": "relative",
+       "items": [
+        [
+         "Small tested change",
+         1,
+         "safe"
+        ],
+        [
+         "Unfamiliar code",
+         3,
+         ""
+        ],
+        [
+         "Shared config",
+         4,
+         ""
+        ],
+        [
+         "Production data",
+         5,
+         "keep prompts"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Permissions control your blast radius. Allow always is scoped to this project, so a loose rule in a scratch repo is a different risk than in a deploy repo. Prefer narrow rules, and say no with a reason.",
+      "show": {
+       "t": "scene",
+       "title": "Scope your *blast radius*",
+       "nodes": [
+        {
+         "id": "rule",
+         "label": "Allow always",
+         "sub": "one kind of command",
+         "x": 50,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "scratch",
+         "label": "Scratch repo",
+         "sub": "low risk",
+         "x": 28,
+         "y": 65,
+         "tone": "teal"
+        },
+        {
+         "id": "deploy",
+         "label": "Deploy repo",
+         "sub": "high risk",
+         "x": 72,
+         "y": 65,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "rule",
+         "scratch"
+        ],
+        [
+         "rule",
+         "deploy"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "rule"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "scratch",
+          "deploy"
+         ],
+         "packet": [
+          "rule",
+          "deploy"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "glow": "deploy",
+         "chip": {
+          "text": "Narrow rules, per project",
+          "tone": "red",
+          "icon": "lock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Cost matters too. Long sessions carry big context, so clear often. Use slash model to match effort: a lighter model for renames, a stronger one for design. Plan first, accept edits second, then verify with a bang test run.",
+      "show": {
+       "t": "flow",
+       "title": "A disciplined loop",
+       "steps": [
+        {
+         "label": "Plan mode",
+         "sub": "review the plan"
+        },
+        {
+         "label": "Accept edits",
+         "sub": "once trusted"
+        },
+        {
+         "label": "! run tests",
+         "sub": "verify"
+        },
+        {
+         "label": "/clear",
+         "sub": "next task"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Which situation best justifies staying out of accept edits mode?",
+     "opts": [
+      "A renamed variable in a tested file",
+      "An approved plan for a small change",
+      "Editing shared deployment configuration you do not know well",
+      "Fixing a typo in a comment"
+     ],
+     "ans": 2,
+     "why": "Shared, unfamiliar configuration has a large blast radius and weak fast feedback, so per-edit review is worth its cost."
+    },
+    "work": [
+     "Write a team rule: plan mode first, accept edits only for small, tested changes.",
+     "Audit allow always rules per repo, with the strictest in deploy and production repos.",
+     "Pick a lighter model for mechanical tasks and a stronger one for design work."
+    ]
+   }
+  ]
+ }
+}

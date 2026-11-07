@@ -1,0 +1,4987 @@
+{
+ "P1.1 How this track works": {
+  "hash": "c5dd0f7e9acd",
+  "sec": "P1.1",
+  "reels": [
+   {
+    "title": "Guess the cost before you run",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Would you drive across a city without glancing at how far it is? Code has a distance too, and you can estimate it before you run anything.",
+      "show": {
+       "t": "scene",
+       "title": "Every program has a *distance*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Start",
+         "sub": "your data",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Answer",
+         "sub": "your result",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "b"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "a",
+          "b"
+         ],
+         "n": 3
+        }
+       ]
+      }
+     },
+     {
+      "say": "Picture finding one name in a phone book. Reading every page from the front is slow. Jumping straight to the right page using the index is fast. Programmers call that difference cost, or Big-O.",
+      "show": {
+       "t": "scene",
+       "title": "Two ways to find a *name*",
+       "nodes": [
+        {
+         "id": "book",
+         "label": "Phone book",
+         "sub": "1000 pages",
+         "x": 50,
+         "y": 20,
+         "tone": "grey"
+        },
+        {
+         "id": "scan",
+         "label": "Read every page",
+         "sub": "up to 1000 steps",
+         "x": 25,
+         "y": 60,
+         "tone": "red"
+        },
+        {
+         "id": "idx",
+         "label": "Use the index",
+         "sub": "about 1 step",
+         "x": 75,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "book",
+         "scan"
+        ],
+        [
+         "book",
+         "idx"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "book"
+        },
+        {
+         "at": 0.4,
+         "show": "scan",
+         "packet": [
+          "book",
+          "scan"
+         ],
+         "n": 5
+        },
+        {
+         "at": 0.7,
+         "show": "idx",
+         "packet": [
+          "book",
+          "idx"
+         ],
+         "n": 1
+        }
+       ]
+      }
+     },
+     {
+      "say": "So before you run, ask: how many times do I touch each item? Once, or once for every other item? Saying that out loud takes five seconds and catches slow code early.",
+      "show": {
+       "t": "big",
+       "text": "Touch each item once, or once per other item?",
+       "kicker": "Ask before you run"
+      }
+     }
+    ],
+    "check": {
+     "q": "What does saying the Big-O before running your code help you catch?",
+     "opts": [
+      "Typing mistakes in variable names",
+      "Code that will get very slow as the data grows",
+      "Whether the output is formatted nicely"
+     ],
+     "ans": 1,
+     "why": "Big-O describes how work grows with the amount of data, so it warns you about slow approaches before you spend time running them."
+    },
+    "work": [
+     "Before running any loop at work, say aloud how many times each item is touched.",
+     "Look for a loop inside a loop over the same data, and ask if a lookup table could replace the inner one."
+    ]
+   },
+   {
+    "title": "List versus set on a million events",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "You have one million events and must drop duplicates. Why does one version finish in a second while another runs for hours?",
+      "show": {
+       "t": "big",
+       "text": "1,000,000 events. Same job. Seconds or hours?",
+       "kicker": "Dedupe"
+      }
+     },
+     {
+      "say": "Version one keeps a list of seen ids. Every check scans that list, about half a million comparisons on average. Times a million events, that is roughly five hundred billion steps.",
+      "show": {
+       "t": "scene",
+       "title": "The *list* scans everything",
+       "nodes": [
+        {
+         "id": "ev",
+         "label": "Event",
+         "sub": "id 884213",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "list",
+         "label": "Seen list",
+         "sub": "scan all items",
+         "x": 75,
+         "y": 30,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "ev",
+         "list"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "ev",
+          "list"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "ev",
+          "list"
+         ],
+         "n": 6
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "About 500 billion steps",
+          "tone": "red",
+          "icon": "clock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Version two keeps a set. A set turns the id into a number, called a hash, and jumps straight to that slot. One check is about one step, so a million events cost about a million steps.",
+      "show": {
+       "t": "bars",
+       "title": "Total steps",
+       "unit": "steps",
+       "items": [
+        [
+         "List, O of n squared",
+         500000000000,
+         "hours"
+        ],
+        [
+         "Set, O of n",
+         1000000,
+         "under a second"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "That is n squared against n. Say it before you run, and you pick the set the first time.",
+      "show": {
+       "t": "code",
+       "title": "Dedupe with a set",
+       "text": "seen = set()\nfor e in events:\n    if e['id'] not in seen:\n        seen.add(e['id'])\n        out.append(e)"
+      }
+     }
+    ],
+    "check": {
+     "q": "Why is checking membership in a set faster than in a list?",
+     "opts": [
+      "A set sorts its items first",
+      "A set hashes the value and jumps straight to its slot",
+      "A set stores fewer items"
+     ],
+     "ans": 1,
+     "why": "Hashing lets a set go directly to where the value would live, so a check is about one step. A list must compare against items one by one."
+    },
+    "work": [
+     "Replace any 'if x in some_list' inside a loop with a set built once before the loop.",
+     "Write the Big-O in a comment above each solution before you run it."
+    ]
+   },
+   {
+    "title": "Read the expected and got line",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "A test fails. Do you start changing code right away? That is the slowest move you can make.",
+      "show": {
+       "t": "big",
+       "text": "Test failed. Change code now?",
+       "kicker": "Pause"
+      }
+     },
+     {
+      "say": "The failure prints two values: what was expected, and what your code got. That pair is the whole clue. Expected three rows but got four? You kept a duplicate. Got an empty list? Your filter was too strict.",
+      "show": {
+       "t": "scene",
+       "title": "Compare *expected* with got",
+       "nodes": [
+        {
+         "id": "exp",
+         "label": "Expected",
+         "sub": "3 rows",
+         "x": 25,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "got",
+         "label": "Got",
+         "sub": "4 rows",
+         "x": 75,
+         "y": 35,
+         "tone": "red"
+        },
+        {
+         "id": "diag",
+         "label": "Diagnosis",
+         "sub": "a duplicate slipped through",
+         "x": 50,
+         "y": 70,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "exp",
+         "diag"
+        ],
+        [
+         "got",
+         "diag"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "exp",
+          "got"
+         ]
+        },
+        {
+         "at": 0.6,
+         "show": "diag",
+         "packet": [
+          "got",
+          "diag"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Reading code works the same way. Before you run, say what each line prints. Then run it and compare. A mismatch points to exactly where your mental model is wrong.",
+      "show": {
+       "t": "points",
+       "title": "Predict, run, compare",
+       "items": [
+        "Say the output first",
+        "Run it",
+        "A mismatch shows your wrong assumption"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A test says expected 3 rows, got 4. What is the best first step?",
+     "opts": [
+      "Rewrite the whole function",
+      "Compare the extra row with the expected ones to see why it slipped through",
+      "Rerun the test until it passes"
+     ],
+     "ans": 1,
+     "why": "The expected and got difference localizes the bug. Inspecting the extra row tells you which rule failed, so you fix one thing instead of guessing."
+    },
+    "work": [
+     "On every failing test, copy the expected and got lines into your notes before editing.",
+     "Predict the output of a snippet in code review before running it."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Why a set of dicts crashes",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "You try to dedupe events by putting each event dictionary into a set. Python raises an error. Why?",
+      "show": {
+       "t": "code",
+       "title": "TypeError",
+       "text": "seen = set()\nseen.add({'id': 1})\n# TypeError: unhashable type: dict"
+      }
+     },
+     {
+      "say": "A set finds items by hash, a number computed from the contents. A dictionary can change after it is stored, so its hash could change and the set would lose it. Python refuses.",
+      "show": {
+       "t": "scene",
+       "title": "Mutable means no *hash*",
+       "nodes": [
+        {
+         "id": "d",
+         "label": "Dict",
+         "sub": "can change",
+         "x": 25,
+         "y": 35,
+         "tone": "red"
+        },
+        {
+         "id": "s",
+         "label": "Set",
+         "sub": "needs a stable hash",
+         "x": 75,
+         "y": 35,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "d",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "d",
+          "s"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "d",
+          "s"
+         ],
+         "n": 2,
+         "chip": {
+          "text": "Rejected: unhashable",
+          "tone": "red",
+          "icon": "x"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Fix it by hashing a stable key instead: the event id, or a tuple of the fields that define a duplicate. A dictionary keyed by id also keeps first-seen order and lets you choose which duplicate wins.",
+      "show": {
+       "t": "points",
+       "title": "Safer dedupe",
+       "items": [
+        "Key on the id or a tuple of fields",
+        "Tuples hash, lists and dicts do not",
+        "A dict keyed by id keeps order and picks the winner"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why can a tuple of strings go in a set but a list cannot?",
+     "opts": [
+      "Tuples are shorter",
+      "A tuple cannot change, so its hash stays stable",
+      "Lists are always too large"
+     ],
+     "ans": 1,
+     "why": "Hashable objects must keep the same hash for life. Tuples of immutable values qualify, while lists can change and so are refused."
+    },
+    "work": [
+     "Define in writing which fields make two events duplicates before coding the key.",
+     "Decide whether first or last duplicate should win, and test it."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "When the set is the wrong answer",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "The set solves dedupe in linear time. So why not use it everywhere?",
+      "show": {
+       "t": "big",
+       "text": "Fast is not the same as fits",
+       "kicker": "Memory"
+      }
+     },
+     {
+      "say": "A set holds every id in memory. In Python, one hundred million ids can take eight gigabytes or more. At a billion events the job simply dies. Then you sort and compare neighbours, or let PySpark shuffle rows by key across machines.",
+      "show": {
+       "t": "bars",
+       "title": "Approx memory for ids in a Python set",
+       "unit": "GB",
+       "items": [
+        [
+         "1 million",
+         0.08,
+         ""
+        ],
+        [
+         "100 million",
+         8,
+         ""
+        ],
+        [
+         "1 billion",
+         80,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "A Bloom filter uses far less memory but sometimes wrongly says seen, so it is fine for caching and bad for billing. And for ten thousand rows, simple code wins. Match the tool to the scale and to the cost of being wrong.",
+      "show": {
+       "t": "points",
+       "title": "Choose by scale and risk",
+       "items": [
+        "Thousands of rows: simple code",
+        "Millions: set in memory",
+        "Billions: sort or distributed shuffle",
+        "Approximate filters only if errors are cheap"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "You must dedupe five billion payment events exactly. What fits best?",
+     "opts": [
+      "A Python set on one machine",
+      "A Bloom filter",
+      "A distributed dedupe that shuffles by key"
+     ],
+     "ans": 2,
+     "why": "The ids will not fit in one machine's memory, and a Bloom filter gives false positives that would drop real payments. A shuffle by key is exact and scales out."
+    },
+    "work": [
+     "Estimate memory as rows times roughly 80 bytes before choosing an in-memory set.",
+     "Record the scale at which your dedupe approach must change."
+    ]
+   }
+  ]
+ },
+ "P1.2 Names point at objects": {
+  "hash": "b68af7a624f0",
+  "sec": "P1.2",
+  "reels": [
+   {
+    "title": "A name is a tag, not a box",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Is a Python variable a box that holds a value? Actually, no.",
+      "show": {
+       "t": "big",
+       "text": "Not a box",
+       "sub": "A variable is a name tag"
+      }
+     },
+     {
+      "say": "Picture a name tag stuck on an object. When you write b equals a, you do not copy the list. You just stick a second tag on the same list.",
+      "show": {
+       "t": "scene",
+       "title": "One list, two *tags*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "a",
+         "sub": "name tag",
+         "x": 25,
+         "y": 20,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "b",
+         "sub": "name tag",
+         "x": 75,
+         "y": 20,
+         "tone": "teal"
+        },
+        {
+         "id": "l",
+         "label": "list 1, 2, 3",
+         "sub": "the real object",
+         "x": 50,
+         "y": 60,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "l"
+        ],
+        [
+         "b",
+         "l"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "a",
+          "l"
+         ]
+        },
+        {
+         "at": 0.5,
+         "show": "b"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "b",
+          "l"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "No copy was made",
+          "tone": "amber",
+          "icon": "tag"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Now add a four through b. Look through a, and the four is there too. One list, two names. That is the classic bug where your data changes by itself.",
+      "show": {
+       "t": "scene",
+       "title": "Change it once, *both* see it",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "a",
+         "sub": "sees 1, 2, 3, 4",
+         "x": 25,
+         "y": 20,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "b",
+         "sub": "appends 4",
+         "x": 75,
+         "y": 20,
+         "tone": "teal"
+        },
+        {
+         "id": "l",
+         "label": "list 1, 2, 3, 4",
+         "sub": "one object",
+         "x": 50,
+         "y": 60,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "l"
+        ],
+        [
+         "b",
+         "l"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "a",
+          "b",
+          "l"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "b",
+          "l"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.6,
+         "cells": {
+          "label": "the one list",
+          "items": [
+           [
+            "0",
+            "1"
+           ],
+           [
+            "1",
+            "2"
+           ],
+           [
+            "2",
+            "3"
+           ],
+           [
+            "3",
+            "4"
+           ]
+          ]
+         }
+        },
+        {
+         "at": 0.9,
+         "glow": "a",
+         "chip": {
+          "text": "Data changed by itself",
+          "tone": "red",
+          "icon": "bug"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Want a separate list? Ask for a copy. Then you get a brand new list, and the new tag points only at that.",
+      "show": {
+       "t": "scene",
+       "title": "A copy is a *new* object",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "a",
+         "sub": "original",
+         "x": 25,
+         "y": 20,
+         "tone": "blue"
+        },
+        {
+         "id": "c",
+         "label": "c",
+         "sub": "from a.copy()",
+         "x": 75,
+         "y": 20,
+         "tone": "teal"
+        },
+        {
+         "id": "l1",
+         "label": "list",
+         "sub": "original",
+         "x": 25,
+         "y": 60,
+         "tone": "amber"
+        },
+        {
+         "id": "l2",
+         "label": "new list",
+         "sub": "separate",
+         "x": 75,
+         "y": 60,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "l1"
+        ],
+        [
+         "c",
+         "l2"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "a",
+          "l1"
+         ]
+        },
+        {
+         "at": 0.6,
+         "show": [
+          "c",
+          "l2"
+         ]
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Copy on purpose",
+          "tone": "teal",
+          "icon": "copy"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "You write b = a where a is a list, then b.append(4). What does a show?",
+     "opts": [
+      "The original list, unchanged",
+      "The list with 4 added",
+      "An error, because b is a copy"
+     ],
+     "ans": 1,
+     "why": "b = a only adds a second name to the same list object. Appending through b changes that one list, so a sees it too."
+    },
+    "work": [
+     "Next time data changes unexpectedly, ask how many names point at that object.",
+     "When you need an independent list, write a.copy() on purpose instead of b = a."
+    ]
+   },
+   {
+    "title": "Mutable, immutable, equal, same",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "What really happens when you write x plus equals one?",
+      "show": {
+       "t": "code",
+       "title": "x += 1",
+       "text": "x = 5\nx += 1"
+      }
+     },
+     {
+      "say": "An int cannot change. So Python builds a new int, say six from five, and moves the name x onto it. Any other name on the old five stays put.",
+      "show": {
+       "t": "scene",
+       "title": "Ints make a *new* object",
+       "nodes": [
+        {
+         "id": "x",
+         "label": "x",
+         "sub": "name tag",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "o",
+         "label": "5",
+         "sub": "old int",
+         "x": 25,
+         "y": 60,
+         "tone": "grey"
+        },
+        {
+         "id": "n",
+         "label": "6",
+         "sub": "new int",
+         "x": 75,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "x",
+         "o"
+        ],
+        [
+         "x",
+         "n"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "x",
+          "o"
+         ]
+        },
+        {
+         "at": 0.5,
+         "show": "n"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "x",
+          "n"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.7,
+         "dim": "o"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "The tag moved",
+          "tone": "teal",
+          "icon": "tag"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Lists are different. They change in place. Append on a list mutates the one object, so every name pointing at it sees the change. Lists, dicts and sets are mutable. Ints, strings and tuples are not.",
+      "show": {
+       "t": "points",
+       "title": "Mutable or not",
+       "items": [
+        "Mutable: list, dict, set, your own objects",
+        "Immutable: int, float, str, tuple, frozenset",
+        "Mutating changes the one shared object"
+       ]
+      }
+     },
+     {
+      "say": "Two checks exist. Double equals asks if values are equal. Is asks if it is the same object. Two lists holding one and two are equal, but not the same.",
+      "show": {
+       "t": "scene",
+       "title": "== versus *is*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "a",
+         "sub": "[1, 2]",
+         "x": 25,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "b",
+         "sub": "[1, 2]",
+         "x": 75,
+         "y": 25,
+         "tone": "teal"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "at": 0.5,
+         "chip": {
+          "text": "a == b is True",
+          "tone": "teal",
+          "icon": "check"
+         }
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "a is b is False",
+          "tone": "red",
+          "icon": "x"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "a = [1, 2] and b = [1, 2] are built separately. What are a == b and a is b?",
+     "opts": [
+      "True and True",
+      "True and False",
+      "False and False"
+     ],
+     "ans": 1,
+     "why": "The values are equal, so == is True. They are two different list objects, so is is False."
+    },
+    "work": [
+     "Before mutating an argument, check whether its type is mutable.",
+     "Use == to compare values and keep is for checking None."
+    ]
+   },
+   {
+    "title": "Shallow copies share the insides",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "You copied a list of dicts, changed the copy, and the original changed too. Why?",
+      "show": {
+       "t": "big",
+       "text": "Copy changed the original",
+       "sub": "A shallow copy surprise"
+      }
+     },
+     {
+      "say": "List of a, a dot copy, and a slice all make a shallow copy. The outer list is new, but the dicts inside are shared. Two lists, same three dict objects.",
+      "show": {
+       "t": "scene",
+       "title": "Shallow copy shares the *items*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "original",
+         "sub": "outer list",
+         "x": 25,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "c",
+         "label": "copy",
+         "sub": "new outer list",
+         "x": 75,
+         "y": 15,
+         "tone": "teal"
+        },
+        {
+         "id": "d",
+         "label": "dict objects",
+         "sub": "shared rows",
+         "x": 50,
+         "y": 60,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "d"
+        ],
+        [
+         "c",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "a",
+          "d"
+         ]
+        },
+        {
+         "at": 0.5,
+         "show": "c"
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "New outer, same inner",
+          "tone": "amber",
+          "icon": "link"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So setting copy at zero, fare, to nine changes the original row as well. Deepcopy fixes this by copying everything, but it is slow on big data.",
+      "show": {
+       "t": "scene",
+       "title": "Edit the copy, hit the *original*",
+       "nodes": [
+        {
+         "id": "c",
+         "label": "copy[0][fare] = 9",
+         "sub": "edit",
+         "x": 50,
+         "y": 15,
+         "tone": "teal"
+        },
+        {
+         "id": "d",
+         "label": "row 0 dict",
+         "sub": "fare is now 9",
+         "x": 50,
+         "y": 55,
+         "tone": "red"
+        },
+        {
+         "id": "o",
+         "label": "original[0]",
+         "sub": "also sees 9",
+         "x": 50,
+         "y": 85,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "c",
+         "d"
+        ],
+        [
+         "o",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "c",
+          "d"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "c",
+          "d"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.6,
+         "show": "o"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "deepcopy fixes it, slowly",
+          "tone": "amber",
+          "icon": "clock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Functions bite the same way. Pass a list in, append inside, and the caller's list grows. Return a new list instead. And use is only for None, never to compare values.",
+      "show": {
+       "t": "points",
+       "title": "Gotchas",
+       "items": [
+        "Appending to an argument changes the caller's list",
+        "Return a new list instead of mutating",
+        "Use is only for None checks"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "You make c = a.copy() where a is a list of dicts, then set c[0][\"fare\"] = 9. What happens to a[0][\"fare\"]?",
+     "opts": [
+      "It stays unchanged",
+      "It becomes 9",
+      "It raises an error"
+     ],
+     "ans": 1,
+     "why": "copy() is shallow: the outer list is new but both lists hold the same dict objects, so editing a dict through the copy changes the original."
+    },
+    "work": [
+     "Review functions that append to or edit a passed-in list, and return a new one instead.",
+     "Use copy.deepcopy only where nested data is truly edited, and measure its cost."
+    ]
+   },
+   {
+    "title": "Share by default, copy at the edge",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Should you deepcopy your data to be safe? Usually not.",
+      "show": {
+       "t": "big",
+       "text": "Deepcopy everywhere?",
+       "sub": "Usually the wrong default"
+      }
+     },
+     {
+      "say": "Sharing is the cheap default: a name costs one pointer. A deep copy of a million row list doubles memory and walks every item. At scale that hurts.",
+      "show": {
+       "t": "bars",
+       "title": "Cost of each choice",
+       "unit": "relative",
+       "items": [
+        [
+         "New name (b = a)",
+         1,
+         "one pointer"
+        ],
+        [
+         "Shallow copy",
+         50,
+         "copies outer list"
+        ],
+        [
+         "Deep copy",
+         100,
+         "copies every item"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Pick by who owns the data. Copy at the boundary, once, if a function must change input. Otherwise build and return a new object, so nothing is surprising.",
+      "show": {
+       "t": "flow",
+       "title": "Ownership rule",
+       "steps": [
+        {
+         "label": "Caller owns data"
+        },
+        {
+         "label": "Function copies once if it must edit"
+        },
+        {
+         "label": "Returns a new object"
+        }
+       ]
+      }
+     },
+     {
+      "say": "For safety without cost, use immutable types like tuples and frozensets for shared data. Then nobody can change it, and sharing is safe. Copy only the part you edit.",
+      "show": {
+       "t": "points",
+       "title": "Safer sharing",
+       "items": [
+        "Immutable types make sharing safe",
+        "Tuples and frozensets for shared data",
+        "Copy only the part you edit"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A function receives a large list and must not alter the caller's data. What is the best approach?",
+     "opts": [
+      "Deepcopy it on every call, always",
+      "Build and return a new list, copying only if it must edit",
+      "Use is to check the list first"
+     ],
+     "ans": 1,
+     "why": "Returning a new object avoids side effects without paying for a full deep copy. Copy once at the boundary only when mutation is needed."
+    },
+    "work": [
+     "Set a team rule: functions do not mutate their arguments unless documented.",
+     "Store shared reference data as tuples or frozensets.",
+     "Profile before adding deepcopy to a hot path."
+    ]
+   }
+  ]
+ },
+ "P1.3 Lists and tuples, and what they cost": {
+  "hash": "c9193dad84d4",
+  "sec": "P1.3",
+  "reels": [
+   {
+    "title": "Lockers and sealed envelopes",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Why can you open locker five instantly, but adding a locker at the front is painful?",
+      "show": {
+       "t": "big",
+       "text": "Lockers vs envelopes",
+       "sub": "lists and tuples in plain terms"
+      }
+     },
+     {
+      "say": "A Python list is like a row of numbered lockers. You can open locker five instantly, without walking past lockers one to four. Adding one at the far end is easy. Adding one at the front means everyone shifts down one place.",
+      "show": {
+       "t": "scene",
+       "title": "A list is a row of *lockers*",
+       "nodes": [
+        {
+         "id": "l0",
+         "label": "0",
+         "sub": "slot",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "l1",
+         "label": "1",
+         "sub": "slot",
+         "x": 50,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "l2",
+         "label": "2",
+         "sub": "slot",
+         "x": 80,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "new",
+         "label": "New",
+         "sub": "at the front",
+         "x": 50,
+         "y": 65,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "l0",
+         "l1"
+        ],
+        [
+         "l1",
+         "l2"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "l0",
+          "l1",
+          "l2"
+         ]
+        },
+        {
+         "at": 0.4,
+         "seek": "l2"
+        },
+        {
+         "at": 0.6,
+         "show": "new"
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "new",
+          "l0"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Front insert shifts everyone",
+          "tone": "amber",
+          "icon": "warn"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A tuple is a sealed envelope. Latitude and longitude go in, and nobody can change them afterwards. Because it never changes, it can be used as a label to file things under.",
+      "show": {
+       "t": "points",
+       "title": "A tuple is sealed",
+       "items": [
+        "Fixed size, fixed contents",
+        "Example: latitude and longitude",
+        "Safe to use as a label for filing"
+       ]
+      }
+     },
+     {
+      "say": "So use a list for a collection that grows. Use a tuple for one small record with a fixed shape.",
+      "show": {
+       "t": "points",
+       "title": "Rule of thumb",
+       "items": [
+        "List: a collection that grows",
+        "Tuple: one small fixed record"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "You store a map point as latitude and longitude, and want to file trip counts under each point. What fits best?",
+     "opts": [
+      "A list for each point",
+      "A tuple for each point",
+      "Neither can work"
+     ],
+     "ans": 1,
+     "why": "A tuple cannot change, so it is safe as a filing label. A list can change, so it cannot be one."
+    },
+    "work": [
+     "Pick one place in your code that uses a list for a fixed pair or triple, and ask whether a tuple fits better.",
+     "Explain lists versus tuples to a colleague using the lockers and envelope picture."
+    ]
+   },
+   {
+    "title": "Why the end is fast and the front is slow",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Why is appending to a list instant, but inserting at the front slow?",
+      "show": {
+       "t": "big",
+       "text": "Append: fast. Insert at front: slow.",
+       "sub": "same list, very different cost"
+      }
+     },
+     {
+      "say": "A list is an array of references, sitting side by side in memory. To read slot seven, Python computes the address and jumps there. That is constant time, whatever the size.",
+      "show": {
+       "t": "scene",
+       "title": "Index jumps *straight* to the slot",
+       "nodes": [
+        {
+         "id": "code",
+         "label": "xs[7]",
+         "sub": "index",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "arr",
+         "label": "Array",
+         "sub": "references side by side",
+         "x": 70,
+         "y": 30,
+         "tone": "teal",
+         "kind": "disk"
+        },
+        {
+         "id": "item",
+         "label": "Item",
+         "sub": "found in one step",
+         "x": 70,
+         "y": 70,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "code",
+         "arr"
+        ],
+        [
+         "arr",
+         "item"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "code",
+          "arr"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "code",
+          "arr"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.7,
+         "show": "item"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "O(1) at any size",
+          "tone": "teal",
+          "icon": "bolt"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Append writes into spare room at the end. When the room runs out, Python copies everything to a bigger array. That is rare, so the average stays constant. We call it amortised.",
+      "show": {
+       "t": "points",
+       "title": "Amortised O(1)",
+       "items": [
+        "Most appends use spare room",
+        "Rare resize copies everything",
+        "Average cost per append stays flat"
+       ]
+      }
+     },
+     {
+      "say": "Insert at zero is different. With one million items, every one shifts one place. That is a million moves, for a single insert. Same for a membership check: it scans from the start.",
+      "show": {
+       "t": "bars",
+       "title": "Work for one operation, one million items",
+       "unit": "steps",
+       "items": [
+        [
+         "xs[i]",
+         1,
+         "jump"
+        ],
+        [
+         "append",
+         1,
+         "amortised"
+        ],
+        [
+         "insert(0, v)",
+         1000000,
+         "shift all"
+        ],
+        [
+         "v in xs",
+         1000000,
+         "scan"
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why is xs.insert(0, v) O(n) on a list?",
+     "opts": [
+      "Python must sort the list afterwards",
+      "Every existing item shifts one slot to make room",
+      "The list is copied to a bigger array every time"
+     ],
+     "ans": 1,
+     "why": "Items sit side by side, so opening slot zero means moving all n items one place along."
+    },
+    "work": [
+     "Search your code for pop(0) or insert(0, ...) inside loops.",
+     "Time append versus insert(0) on a million items to see the gap yourself."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Unpacking: pairs without indexes",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How does Python loop over index and item, without you ever writing an index?",
+      "show": {
+       "t": "big",
+       "text": "Tuples and unpacking",
+       "sub": "two names, one step"
+      }
+     },
+     {
+      "say": "The enumerate function hands back pairs. Each pair is a tuple: the position and the item. Unpacking splits the pair straight into two names.",
+      "show": {
+       "t": "code",
+       "title": "Index and item",
+       "text": "for i, trip in enumerate(trips):\n    print(i, trip)"
+      }
+     },
+     {
+      "say": "Dictionary items work the same way. Each pass gives a key and a value pair, and you name both in the loop. For a city count, that is city and n.",
+      "show": {
+       "t": "code",
+       "title": "Key and value",
+       "text": "for city, n in counts.items():\n    print(city, n)"
+      }
+     },
+     {
+      "say": "Star unpacking grabs the rest. Given one, two, three, first becomes one, and rest becomes the list two, three. Swapping, returning two values, and reading a coordinate all use the same trick.",
+      "show": {
+       "t": "code",
+       "title": "Star unpacking",
+       "text": "first, *rest = [1, 2, 3]\nlat, lon = point"
+      }
+     }
+    ],
+    "check": {
+     "q": "After first, *rest = [1, 2, 3], what is rest?",
+     "opts": [
+      "2",
+      "[2, 3]",
+      "(2, 3)"
+     ],
+     "ans": 1,
+     "why": "Star unpacking collects all remaining items into a new list, so rest is the list two, three."
+    },
+    "work": [
+     "Replace range(len(xs)) loops with enumerate in one module.",
+     "Return two values from a helper as a tuple and unpack them at the call site."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Hidden costs and gotchas",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Why can one innocent slice quietly double your memory?",
+      "show": {
+       "t": "big",
+       "text": "Slicing copies",
+       "sub": "xs[a:b] costs b minus a"
+      }
+     },
+     {
+      "say": "Slicing copies. Take the first million items of a big list, and Python builds a new million-slot list. Not the objects, only the references, but still real time and memory.",
+      "show": {
+       "t": "scene",
+       "title": "A slice builds a *new* list",
+       "nodes": [
+        {
+         "id": "big",
+         "label": "Big list",
+         "sub": "10 million refs",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "cut",
+         "label": "xs[0:1000000]",
+         "sub": "slice",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "copy",
+         "label": "New list",
+         "sub": "1 million refs",
+         "x": 50,
+         "y": 70,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "big",
+         "cut"
+        ],
+        [
+         "cut",
+         "copy"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "big",
+          "cut"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "big",
+          "copy"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "copy"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Copy costs time and memory",
+          "tone": "red",
+          "icon": "warn"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Appends over-allocate, so growth adds a little extra each time, and a resize briefly needs both old and new arrays in memory. Pop from the front, or run the in check on a long list inside a loop, and you get quadratic slowdowns.",
+      "show": {
+       "t": "points",
+       "title": "Where it bites",
+       "items": [
+        "Resize briefly holds old and new arrays",
+        "pop(0) in a loop is quadratic",
+        "in on a long list inside a loop is quadratic"
+       ]
+      }
+     },
+     {
+      "say": "Tuples are shallow. A tuple holding a list is frozen, but that inner list can still change, so it cannot be a dict key. Sort is stable: equal items keep their original order.",
+      "show": {
+       "t": "points",
+       "title": "Edge cases",
+       "items": [
+        "Tuple freezes slots, not what they point to",
+        "Tuple containing a list is not hashable",
+        "sort is stable, so equal items keep order"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What happens if you use the tuple (1, [2, 3]) as a dict key?",
+     "opts": [
+      "It works, since tuples are immutable",
+      "It raises an error, because the inner list is not hashable",
+      "It works but the list is copied"
+     ],
+     "ans": 1,
+     "why": "A tuple's hash depends on its contents. A list inside cannot be hashed, so the whole tuple cannot be a key."
+    },
+    "work": [
+     "Look for large slices in hot paths and use iterators or index ranges instead.",
+     "Test whether any dict keys contain nested lists, and convert them to tuples."
+    ]
+   },
+   {
+    "title": "When a list is the wrong choice",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When is a Python list the wrong tool, even though it works?",
+      "show": {
+       "t": "big",
+       "text": "Works is not the same as right",
+       "sub": "match the structure to the access pattern"
+      }
+     },
+     {
+      "say": "Used as a queue, pop at the front is linear. Use a deque, which removes from either end in constant time. Used for lookups, the in check is linear. Build a set or dict once, and each check becomes constant.",
+      "show": {
+       "t": "flow",
+       "title": "Swap the structure",
+       "steps": [
+        {
+         "label": "Queue with pop(0)",
+         "sub": "linear"
+        },
+        {
+         "label": "deque",
+         "sub": "constant at both ends"
+        },
+        {
+         "label": "Lookup with in",
+         "sub": "linear"
+        },
+        {
+         "label": "set or dict",
+         "sub": "constant"
+        }
+       ]
+      }
+     },
+     {
+      "say": "For millions of numbers, a list stores a pointer to each boxed object, so it costs perhaps thirty-two bytes per float. A NumPy array or the array module stores raw eight-byte values, and is far smaller and faster.",
+      "show": {
+       "t": "bars",
+       "title": "Bytes per float",
+       "unit": "bytes",
+       "items": [
+        [
+         "list of floats",
+         32,
+         "pointer plus object"
+        ],
+        [
+         "array or NumPy",
+         8,
+         "raw value"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "For records, prefer a named tuple or a dataclass over a bare tuple once fields pass three. Names beat positions when someone reads your code in a year.",
+      "show": {
+       "t": "points",
+       "title": "Records",
+       "items": [
+        "Bare tuple: two or three obvious fields",
+        "Named tuple: immutable, readable",
+        "Dataclass: when you need behaviour or defaults"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A job checks whether each of 5 million IDs is in a 1 million item list. What is the best fix?",
+     "opts": [
+      "Sort the list before every check",
+      "Load the IDs into a set once, then check against it",
+      "Use a tuple instead of a list"
+     ],
+     "ans": 1,
+     "why": "A list check scans, so this is about n times m work. A set check is constant time on average, so the job drops to roughly 5 million cheap lookups."
+    },
+    "work": [
+     "Review code using lists as queues or lookup tables and switch to deque or set.",
+     "For big numeric columns, measure memory with a list versus a NumPy array before choosing.",
+     "Set a team convention for when a bare tuple should become a named tuple or dataclass."
+    ]
+   }
+  ]
+ },
+ "P1.4 Dicts and sets: the hash table you use every day": {
+  "hash": "4afb42315628",
+  "sec": "P1.4",
+  "reels": [
+   {
+    "title": "The coat check that never searches",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "How can a coat check find your coat among a thousand, without looking at every hook?",
+      "show": {
+       "t": "scene",
+       "title": "Finding one *coat* fast",
+       "nodes": [
+        {
+         "id": "you",
+         "label": "You",
+         "sub": "ticket 5",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "rack",
+         "label": "Rack of hooks",
+         "sub": "1000 hooks",
+         "x": 70,
+         "y": 30,
+         "tone": "grey"
+        }
+       ],
+       "edges": [
+        [
+         "you",
+         "rack"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "you",
+          "rack"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "you",
+          "rack"
+         ],
+         "n": 1
+        }
+       ]
+      }
+     },
+     {
+      "say": "You hand over a ticket. The number on it says exactly which hook to walk to. No searching. Python calls that number a hash, and the hook is a slot.",
+      "show": {
+       "t": "scene",
+       "title": "Ticket number picks the *hook*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Ticket",
+         "sub": "the hash",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "h",
+         "label": "Hook 5",
+         "sub": "the slot",
+         "x": 70,
+         "y": 25,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "h"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "t"
+        },
+        {
+         "at": 0.5,
+         "show": "h",
+         "packet": [
+          "t",
+          "h"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Ticket points straight to the hook",
+          "tone": "teal",
+          "icon": "key"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A dict is a coat check that keeps a value on each hook, like Pune with one hundred twenty. A set is the same, but you only ask whether a coat is there.",
+      "show": {
+       "t": "scene",
+       "title": "Dict keeps *values*, set keeps names",
+       "nodes": [
+        {
+         "id": "d",
+         "label": "Dict",
+         "sub": "Pune: 120",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "s",
+         "label": "Set",
+         "sub": "is Pune here?",
+         "x": 72,
+         "y": 30,
+         "tone": "plum"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.3,
+         "show": "d"
+        },
+        {
+         "at": 0.7,
+         "show": "s"
+        }
+       ]
+      }
+     },
+     {
+      "say": "So asking is quick whether you hold ten coats or ten million. A list is like walking the whole row, checking every hook.",
+      "show": {
+       "t": "scene",
+       "title": "Jump versus *walk*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Hash lookup",
+         "sub": "one jump",
+         "x": 25,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "b",
+         "label": "List scan",
+         "sub": "every hook",
+         "x": 72,
+         "y": 30,
+         "tone": "red"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "at": 0.6,
+         "race": {
+          "items": [
+           [
+            "Hash",
+            1,
+            "teal"
+           ],
+           [
+            "List",
+            1000,
+            "red"
+           ]
+          ],
+          "unit": "steps"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "In the coat check analogy, why is finding a coat fast?",
+     "opts": [
+      "The ticket number points straight to one hook",
+      "The staff check hooks in alphabetical order",
+      "Coats are sorted by size",
+      "The rack is small"
+     ],
+     "ans": 0,
+     "why": "A hash works like the ticket number: it points directly to a slot, so nothing is scanned."
+    },
+    "work": [
+     "Name one place in your code where you search a list again and again.",
+     "Say aloud what a hash and a slot are, in your own words."
+    ]
+   },
+   {
+    "title": "One hash, one jump, one compare",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How does Python find Pune in a dict of a million cities without scanning any of them?",
+      "show": {
+       "t": "scene",
+       "title": "A million keys, one *jump*",
+       "nodes": [
+        {
+         "id": "k",
+         "label": "Key",
+         "sub": "Pune",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "t",
+         "label": "Table",
+         "sub": "1 million entries",
+         "x": 72,
+         "y": 30,
+         "tone": "grey"
+        }
+       ],
+       "edges": [
+        [
+         "k",
+         "t"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.3,
+         "show": [
+          "k",
+          "t"
+         ]
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "k",
+          "t"
+         ],
+         "n": 1
+        }
+       ]
+      }
+     },
+     {
+      "say": "It runs a hash function on the key, which turns the text into a big number. That number, reduced to fit the table size, picks a slot. Pune lands in slot five.",
+      "show": {
+       "t": "scene",
+       "title": "Hash picks the *slot*",
+       "nodes": [
+        {
+         "id": "k",
+         "label": "Pune",
+         "sub": "key",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "h",
+         "label": "hash",
+         "sub": "big number",
+         "x": 50,
+         "y": 50,
+         "tone": "amber"
+        },
+        {
+         "id": "s",
+         "label": "Slot 5",
+         "sub": "of 8",
+         "x": 78,
+         "y": 75,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "k",
+         "h"
+        ],
+        [
+         "h",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "k"
+        },
+        {
+         "at": 0.5,
+         "show": "h",
+         "packet": [
+          "k",
+          "h"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.8,
+         "show": "s",
+         "packet": [
+          "h",
+          "s"
+         ],
+         "n": 1
+        }
+       ]
+      }
+     },
+     {
+      "say": "Python jumps to slot five, checks the stored key equals Pune, and returns the value. One hash, one jump, one compare. That is constant time on average.",
+      "show": {
+       "t": "scene",
+       "title": "Compare, then *return*",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Slot 5",
+         "sub": "Pune, 120",
+         "x": 30,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "r",
+         "label": "Result",
+         "sub": "120",
+         "x": 72,
+         "y": 30,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "r"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.3,
+         "show": "s",
+         "cells": {
+          "label": "slot 5",
+          "items": [
+           [
+            "Pune",
+            "120"
+           ]
+          ]
+         }
+        },
+        {
+         "at": 0.7,
+         "show": "r",
+         "packet": [
+          "s",
+          "r"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "O(1) on average",
+          "tone": "teal",
+          "icon": "bolt"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Set intersection costs the two sizes added together, not multiplied. Looping over a whole dict touches every entry, so that part is linear.",
+      "show": {
+       "t": "bars",
+       "title": "Cost by operation",
+       "unit": "steps for 1000 items",
+       "items": [
+        [
+         "d[k] lookup",
+         1,
+         ""
+        ],
+        [
+         "loop over d",
+         1000,
+         ""
+        ],
+        [
+         "list membership in a loop",
+         1000000,
+         "n squared"
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "You check x in seen inside a loop over 100000 items. What makes the loop fast?",
+     "opts": [
+      "seen is a list kept sorted",
+      "seen is a set, so each check is one hash and jump",
+      "The loop runs in C",
+      "Python caches the loop"
+     ],
+     "ans": 1,
+     "why": "A set lookup hashes x and jumps to a slot, so the whole loop is linear. A list makes each check a scan, giving n squared."
+    },
+    "work": [
+     "Time a membership loop with a list and with a set, using 100000 items.",
+     "Replace one list lookup in your code with a set or dict built once."
+    ]
+   },
+   {
+    "title": "Hashing gotchas interviewers probe",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Why can a tuple be a dict key, but a list cannot?",
+      "show": {
+       "t": "scene",
+       "title": "Who can be a *key*?",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Tuple, str, int",
+         "sub": "never change",
+         "x": 25,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "l",
+         "label": "List, dict",
+         "sub": "can change",
+         "x": 72,
+         "y": 30,
+         "tone": "red"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.3,
+         "show": "t"
+        },
+        {
+         "at": 0.7,
+         "show": "l"
+        }
+       ]
+      }
+     },
+     {
+      "say": "A key's hash must never change, or the dict would look in the wrong slot and lose it. Lists can change, so Python refuses them. A tuple holding a list fails too.",
+      "show": {
+       "t": "scene",
+       "title": "Changing a key *loses* it",
+       "nodes": [
+        {
+         "id": "k",
+         "label": "Key hash 5",
+         "sub": "stored in slot 5",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "m",
+         "label": "Key mutates",
+         "sub": "hash now 9",
+         "x": 72,
+         "y": 30,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "k",
+         "m"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.3,
+         "show": "k"
+        },
+        {
+         "at": 0.6,
+         "show": "m",
+         "packet": [
+          "k",
+          "m"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Lookup checks slot 9 and misses",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Two different keys can land in the same slot. That is a collision. Python probes another slot and compares keys. Many collisions push lookups toward linear, so constant time is only average.",
+      "show": {
+       "t": "scene",
+       "title": "Collisions slow the *worst case*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Key A",
+         "sub": "slot 3",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Key B",
+         "sub": "slot 3",
+         "x": 75,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "s",
+         "label": "Slot 3",
+         "sub": "taken, probe on",
+         "x": 48,
+         "y": 65,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "s"
+        ],
+        [
+         "b",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "at": 0.6,
+         "show": "s",
+         "packet": [
+          "a",
+          "s"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "b",
+          "s"
+         ],
+         "n": 1,
+         "glow": "s"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Two more traps. Adding or deleting keys while looping raises an error, so loop over a copy. And dicts keep insertion order since Python three seven, but sets do not.",
+      "show": {
+       "t": "points",
+       "title": "More traps",
+       "items": [
+        "Do not resize a dict while looping over it",
+        "Loop over list of keys to be safe",
+        "Dict order is insertion order",
+        "Set order is arbitrary"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does Python reject a list as a dict key?",
+     "opts": [
+      "Lists are too large",
+      "Lists have no length",
+      "A list can change, so its hash could change and the entry would be lost",
+      "Lists are slower to compare"
+     ],
+     "ans": 2,
+     "why": "Keys must keep the same hash for life. A mutable list could change, so the dict could not find it again."
+    },
+    "work": [
+     "Try using a list as a key and read the error message.",
+     "Fix any loop that deletes from a dict while iterating it by looping over list of its keys."
+    ]
+   },
+   {
+    "title": "When a hash table is the wrong tool",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When is a Python dict the wrong tool for a billion keys?",
+      "show": {
+       "t": "big",
+       "text": "1,000,000,000 keys",
+       "sub": "Will a dict fit?"
+      }
+     },
+     {
+      "say": "Hash tables trade memory for speed. They keep spare empty slots, plus an object for every key and value, so a million small entries can cost many tens of megabytes. A numpy array or sorted column is far smaller.",
+      "show": {
+       "t": "bars",
+       "title": "Memory for a million integer pairs",
+       "unit": "megabytes, rough",
+       "items": [
+        [
+         "Python dict",
+         100,
+         "objects and spare slots"
+        ],
+        [
+         "Sorted numpy array",
+         16,
+         "packed numbers"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Everything lives in one process's memory. Beyond that, use a key value store like Redis, a database index, or a sorted file with binary search. For approximate membership on huge data, a Bloom filter needs only a few bits per item.",
+      "show": {
+       "t": "flow",
+       "title": "Choose by scale",
+       "steps": [
+        {
+         "label": "Fits in RAM"
+        },
+        {
+         "label": "Dict or set"
+        },
+        {
+         "label": "Too big"
+        },
+        {
+         "label": "Redis, database, Bloom filter"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Inside a pipeline step, though, dict and set are ideal for dedup, joins and lookups. Build the set once, then probe it. Never test membership against a list in a loop.",
+      "show": {
+       "t": "scene",
+       "title": "Build once, *probe* many",
+       "nodes": [
+        {
+         "id": "b",
+         "label": "Build set",
+         "sub": "once",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "p",
+         "label": "Probe rows",
+         "sub": "1 jump each",
+         "x": 72,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "b",
+         "p"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.3,
+         "show": "b"
+        },
+        {
+         "at": 0.7,
+         "show": "p",
+         "packet": [
+          "b",
+          "p"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Hash join in miniature",
+          "tone": "teal",
+          "icon": "bolt"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "You must test membership for 2 billion IDs against a reference of 500 million IDs on one small machine. What is the best first thought?",
+     "opts": [
+      "Put them all in a Python set",
+      "Keep the reference in a list",
+      "Use a disk-based store or a Bloom filter, because a set will not fit in memory",
+      "Loop twice"
+     ],
+     "ans": 2,
+     "why": "A Python set spends memory on spare slots and objects, so 500 million entries will not fit. An external store or a Bloom filter trades space for speed or accuracy."
+    },
+    "work": [
+     "Measure memory of your largest dict with sys.getsizeof and a sample, then scale it up.",
+     "Write down the size limit where you would move a lookup to Redis or a database."
+    ]
+   }
+  ]
+ },
+ "P1.5 Big-O in ten minutes": {
+  "hash": "6979a5363e02",
+  "sec": "P1.5",
+  "reels": [
+   {
+    "title": "Big-O as a guest list",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Your friend hands you a guest list. How long does it take to find one name? It depends on how the list is built.",
+      "show": {
+       "t": "big",
+       "text": "Finding one name",
+       "sub": "how long does it take?"
+      }
+     },
+     {
+      "say": "Big-O is a way to say how the work grows when the list grows. Forget the stopwatch. Just ask: if the list gets ten times longer, what happens to my effort?",
+      "show": {
+       "t": "scene",
+       "title": "Work grows with the *list*",
+       "nodes": [
+        {
+         "id": "list",
+         "label": "Guest list",
+         "sub": "gets 10x longer",
+         "x": 30,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "effort",
+         "label": "My effort",
+         "sub": "how much more?",
+         "x": 70,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "list",
+         "effort"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "list",
+          "effort"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "list",
+          "effort"
+         ],
+         "n": 3
+        }
+       ]
+      }
+     },
+     {
+      "say": "A coat check with numbered hooks takes one step, however big the crowd. Flipping through a dictionary, halving the pages each time, barely grows. Reading every name grows with the list. Comparing every guest with every other guest explodes.",
+      "show": {
+       "t": "points",
+       "title": "Four kinds of growth",
+       "items": [
+        "Numbered hook: one step, always",
+        "Dictionary flip: barely grows",
+        "Read every name: grows with the list",
+        "Everyone with everyone: explodes"
+       ]
+      }
+     },
+     {
+      "say": "So Big-O is a warning label. It tells you which jobs stay calm when the crowd gets big, and which ones quietly melt your laptop.",
+      "show": {
+       "t": "big",
+       "text": "Big-O is a warning label",
+       "sub": "calm jobs versus melting jobs"
+      }
+     }
+    ],
+    "check": {
+     "q": "Your list grows from 1,000 to 10,000 names. Which job grows the most?",
+     "opts": [
+      "Grabbing a coat from a numbered hook",
+      "Reading every name once",
+      "Comparing every guest with every other guest",
+      "Flipping a dictionary to the right page"
+     ],
+     "ans": 2,
+     "why": "Comparing everyone with everyone grows with the square of the list: ten times more names means about a hundred times more work. The others grow far less."
+    },
+    "work": [
+     "Next time something is slow, ask what happens to the runtime if the data grows ten times.",
+     "Spot any place where you look through a whole list once for every item in another list."
+    ]
+   },
+   {
+    "title": "The five classes with real numbers",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How many steps does a job take on one hundred thousand rows? It depends on one thing: the shape of your loops.",
+      "show": {
+       "t": "big",
+       "text": "n = 100,000 rows",
+       "sub": "how many steps?"
+      }
+     },
+     {
+      "say": "A dict lookup is one step. Binary search is about seventeen. One pass is a hundred thousand. Sorting is about one point seven million. A loop inside a loop is ten billion.",
+      "show": {
+       "t": "bars",
+       "title": "Steps for n = 100,000",
+       "unit": "steps",
+       "items": [
+        [
+         "O(1) dict lookup",
+         1,
+         ""
+        ],
+        [
+         "O(log n) binary search",
+         17,
+         ""
+        ],
+        [
+         "O(n) one pass",
+         100000,
+         ""
+        ],
+        [
+         "O(n log n) sort",
+         1700000,
+         ""
+        ],
+        [
+         "O(n²) nested loop",
+         10000000000,
+         "explodes"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "To count, walk the code from the inside out and multiply nested loops. We loop over trips, n times. Inside, checking an id in a list scans m items. So the cost is n times m.",
+      "show": {
+       "t": "code",
+       "title": "Count from the inside out",
+       "text": "for t in trips:\n    if t[\"driver_id\"] in ids:\n        ...",
+       "note": "n times, times m per check when ids is a list"
+      }
+     },
+     {
+      "say": "Swap the list for a set, and each check becomes one step. Now the whole loop is just n.",
+      "show": {
+       "t": "scene",
+       "title": "List scan versus *set* lookup",
+       "nodes": [
+        {
+         "id": "l",
+         "label": "ids as list",
+         "sub": "n times m",
+         "x": 30,
+         "y": 35,
+         "tone": "red"
+        },
+        {
+         "id": "s",
+         "label": "ids as set",
+         "sub": "n times 1",
+         "x": 70,
+         "y": 35,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "l",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "l"
+        },
+        {
+         "at": 0.5,
+         "show": "s",
+         "packet": [
+          "l",
+          "s"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "O(n·m) becomes O(n)",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "You loop over n trips and, inside, test membership in a list of m ids. What is the time cost?",
+     "opts": [
+      "O(n)",
+      "O(n + m)",
+      "O(n·m)",
+      "O(log n)"
+     ],
+     "ans": 2,
+     "why": "Each of the n iterations may scan all m items of the list, so the costs multiply. A set makes each check O(1) and the total O(n)."
+    },
+    "work": [
+     "Annotate one slow loop at work with its cost per line, working from the inside out.",
+     "Replace one list membership test in a hot loop with a set and time it."
+    ]
+   },
+   {
+    "title": "Hidden costs and fine print",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Why can a loop that is supposedly linear still crawl?",
+      "show": {
+       "t": "big",
+       "text": "Linear, yet slow?",
+       "sub": "the fine print of Big-O"
+      }
+     },
+     {
+      "say": "Big-O hides constants. Two passes and ten passes are both O of n, yet one takes five times longer. And with a small n, a fancy method can lose to a plain one.",
+      "show": {
+       "t": "bars",
+       "title": "Same class, different cost",
+       "unit": "passes",
+       "items": [
+        [
+         "2 passes, O(n)",
+         2,
+         ""
+        ],
+        [
+         "10 passes, O(n)",
+         10,
+         "5x slower"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Hidden costs sit in innocent lines. The in check on a list scans every item. Inserting at the front of a list shifts every item along. Adding strings in a loop copies the growing string each time, which becomes n squared.",
+      "show": {
+       "t": "points",
+       "title": "Innocent lines, hidden cost",
+       "items": [
+        "x in list: scans every item, O(n)",
+        "list.insert at front: shifts everything, O(n)",
+        "string plus string in a loop: O(n²)",
+        "Fix: set, deque, or join once"
+       ]
+      }
+     },
+     {
+      "say": "Even the fast ones have fine print. A set lookup is one step on average, because hashing spreads items out. Append is one step amortized: sometimes it copies everything, but rarely enough that the average stays flat.",
+      "show": {
+       "t": "scene",
+       "title": "Fast, on *average*",
+       "nodes": [
+        {
+         "id": "h",
+         "label": "Hash spreads keys",
+         "sub": "O(1) on average",
+         "x": 30,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "c",
+         "label": "Rare big copy",
+         "sub": "amortized away",
+         "x": 70,
+         "y": 35,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "h",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "h"
+        },
+        {
+         "at": 0.6,
+         "show": "c",
+         "packet": [
+          "h",
+          "c"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Average case, not guaranteed",
+          "tone": "amber",
+          "icon": "info"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A loop builds a big report by doing text = text + line for 200,000 lines. What is the likely problem?",
+     "opts": [
+      "Each add copies the growing string, so the total is about O(n²)",
+      "Appending to a string is always O(1)",
+      "The loop is O(log n)",
+      "Strings cannot be added in a loop"
+     ],
+     "ans": 0,
+     "why": "Strings are immutable, so every add copies everything built so far. Collect the pieces in a list and join once to get O(n)."
+    },
+    "work": [
+     "Search your code for string building or insert-at-front inside loops.",
+     "Remember that O(1) for sets and appends is average or amortized, and say so in interviews."
+    ]
+   },
+   {
+    "title": "Trading time for memory",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Your set made the join O of n. So why did the job crash with out of memory?",
+      "show": {
+       "t": "big",
+       "text": "O(n) time, but it crashed",
+       "sub": "what did the set cost?"
+      }
+     },
+     {
+      "say": "Because speed was bought with space. Ten million ids in a Python set can take over a gigabyte. Time and space trade against each other, so always state both.",
+      "show": {
+       "t": "scene",
+       "title": "Time bought with *space*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Fast lookups",
+         "sub": "O(n) time",
+         "x": 30,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "m",
+         "label": "Big set in RAM",
+         "sub": "O(n) space, 1 GB+",
+         "x": 70,
+         "y": 35,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "m"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "t"
+        },
+        {
+         "at": 0.5,
+         "show": "m",
+         "packet": [
+          "t",
+          "m"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Fast but memory hungry",
+          "tone": "red",
+          "icon": "warn"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "When memory is the limit, choose differently. Sort both sides and merge in one pass with almost no extra memory. Stream the file line by line, which is constant space. Or push the join into the warehouse, which does this for you.",
+      "show": {
+       "t": "points",
+       "title": "When RAM is the limit",
+       "items": [
+        "Sort both sides, then merge in one pass",
+        "Stream line by line: O(1) space",
+        "Push the join to the warehouse",
+        "Choose by n and memory, not habit"
+       ]
+      }
+     },
+     {
+      "say": "And when n is a few thousand, skip all this. Clear code beats clever code. Optimise where n is large or growing, and say the trade-off out loud.",
+      "show": {
+       "t": "big",
+       "text": "Clear code first",
+       "sub": "optimise where n is large or growing"
+      }
+     }
+    ],
+    "check": {
+     "q": "You must join two files, each far larger than memory. Which approach fits best?",
+     "opts": [
+      "Load one file into a set and scan the other",
+      "Sort both and merge in one streaming pass, or use the warehouse",
+      "Use nested loops to avoid extra memory",
+      "Load both files into lists"
+     ],
+     "ans": 1,
+     "why": "Sorting and merging uses little memory and is O(n log n) time. Hash sets and lists need memory proportional to the data, which is the very thing you lack."
+    },
+    "work": [
+     "For your biggest job, write down time and space cost and check it against the machine's memory.",
+     "Ask whether a streaming or sort-merge version would remove a memory risk before scaling data up."
+    ]
+   }
+  ]
+ },
+ "P1.6 The collections module": {
+  "hash": "a9589910342c",
+  "sec": "P1.6",
+  "reels": [
+   {
+    "title": "Four helpers, in everyday terms",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "What if four tiny tools could each replace ten lines of boring code?",
+      "show": {
+       "t": "big",
+       "text": "4 tools",
+       "sub": "each saves about ten lines"
+      }
+     },
+     {
+      "say": "A Counter is a tally sheet. You read through a list of words, and it makes a mark next to each one. At the end, you can see how many times every word showed up.",
+      "show": {
+       "t": "scene",
+       "title": "Counter is a *tally* sheet",
+       "nodes": [
+        {
+         "id": "w",
+         "label": "Words",
+         "sub": "a, b, a",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "c",
+         "label": "Counter",
+         "sub": "a 2, b 1",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "w",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "w",
+          "c"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "w",
+          "c"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "One mark per word",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A defaultdict is a mail room with bins. A letter arrives for Boston, and if there is no Boston bin yet, one appears on its own. A deque is a short line of people. New ones join the back, and the oldest leave from the front.",
+      "show": {
+       "t": "scene",
+       "title": "Bins that *appear* when needed",
+       "nodes": [
+        {
+         "id": "l",
+         "label": "Letter",
+         "sub": "for Boston",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Boston bin",
+         "sub": "created for you",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "q",
+         "label": "Line of people",
+         "sub": "join back, leave front",
+         "x": 50,
+         "y": 65,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "l",
+         "b"
+        ],
+        [
+         "b",
+         "q"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "l",
+          "b"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "l",
+          "b"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "q"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "No setup code",
+          "tone": "amber",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A namedtuple is a form with labeled boxes, so you say fare, not slot two. Each tool saves you from writing dull bookkeeping by hand.",
+      "show": {
+       "t": "points",
+       "title": "Labeled boxes",
+       "items": [
+        "trip.fare instead of trip[2]",
+        "Reads like the form it is",
+        "Less bookkeeping to write"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Which everyday picture best matches a defaultdict of lists?",
+     "opts": [
+      "A mail room where a new bin appears when a letter needs one",
+      "A stopwatch that counts seconds",
+      "A locked safe with one slot"
+     ],
+     "ans": 0,
+     "why": "A defaultdict creates a missing entry, here an empty list, the first time you ask for it, just like a new bin."
+    },
+    "work": [
+     "Find a loop in your code that counts things by hand and note it.",
+     "Find a loop that groups rows by a key and note it.",
+     "Say each of the four types in one sentence using a picture."
+    ]
+   },
+   {
+    "title": "How the four helpers work",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How do you count a million trips per city without writing a single if statement?",
+      "show": {
+       "t": "big",
+       "text": "1,000,000",
+       "sub": "trips, zero if statements"
+      }
+     },
+     {
+      "say": "With a plain dictionary you check whether the key exists, create it if not, then add. Counter does that check for you. Counter of words gives a count per word, and most common three returns the top three pairs.",
+      "show": {
+       "t": "code",
+       "title": "Counter",
+       "text": "c = Counter(words)\nc.most_common(3)\n# [('a', 2), ('b', 1), ...]",
+       "note": "Same idea as GROUP BY with COUNT"
+      }
+     },
+     {
+      "say": "With defaultdict of list, ask for a missing city and it creates an empty list. Then you append the trip. That is grouping rows, like a SQL group by.",
+      "show": {
+       "t": "flow",
+       "title": "Grouping rows",
+       "steps": [
+        {
+         "label": "Read trip"
+        },
+        {
+         "label": "Look up city"
+        },
+        {
+         "label": "Missing? make []"
+        },
+        {
+         "label": "Append trip"
+        }
+       ]
+      }
+     },
+     {
+      "say": "A deque with max length three keeps only the newest three items. Append a fourth and the first drops off. Both ends cost constant time, so it is a cheap sliding window.",
+      "show": {
+       "t": "scene",
+       "title": "Window of *three*",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Stream",
+         "sub": "1 2 3 4 5",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "d",
+         "label": "deque maxlen 3",
+         "sub": "3 4 5",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "s",
+          "d"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "s",
+          "d"
+         ],
+         "n": 5
+        },
+        {
+         "at": 0.6,
+         "cells": {
+          "label": "Window",
+          "items": [
+           [
+            "0",
+            "3"
+           ],
+           [
+            "1",
+            "4"
+           ],
+           [
+            "2",
+            "5"
+           ]
+          ]
+         }
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Oldest drops off",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What does deque with maxlen equal to 3 do when you append a fourth item?",
+     "opts": [
+      "Raises an error",
+      "Drops the oldest item and keeps the newest three",
+      "Drops the newest item"
+     ],
+     "ans": 1,
+     "why": "A bounded deque discards from the opposite end, so it always holds the newest three, a sliding window."
+    },
+    "work": [
+     "Replace one manual count loop with Counter and compare the line count.",
+     "Replace one if key not in d grouping loop with defaultdict of list.",
+     "Use deque with maxlen for a rolling average of the last N values."
+    ]
+   },
+   {
+    "title": "Gotchas inside the collections types",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Why is removing from the front of a list slow, but fast on a deque?",
+      "show": {
+       "t": "big",
+       "text": "pop(0)",
+       "sub": "O(n) on a list, O(1) on a deque"
+      }
+     },
+     {
+      "say": "A list is a row of slots in memory. Remove the first, and every other item shifts left by one. With a million items, that is a million moves for every pop. A deque links blocks together, so popleft just moves a pointer.",
+      "show": {
+       "t": "bars",
+       "title": "Cost of draining 100,000 items",
+       "unit": "relative work",
+       "items": [
+        [
+         "list pop(0)",
+         100,
+         "shifts everything"
+        ],
+        [
+         "deque popleft",
+         1,
+         "moves a pointer"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Gotcha with defaultdict: just reading a missing key creates it. Look up a mistyped city and you silently add an empty list. Use the in operator, or get, when you only want to look.",
+      "show": {
+       "t": "code",
+       "title": "Reading inserts!",
+       "text": "d = defaultdict(list)\nd[\"Bostn\"]        # adds empty list\n\"Bostn\" in d      # True now\nd.get(\"Paris\")    # safe, adds nothing",
+       "note": "Lookup changes the dict"
+      }
+     },
+     {
+      "say": "Also, a deque is slow in the middle, and a namedtuple cannot be changed after creation. A Counter returns zero for a missing key, without adding it.",
+      "show": {
+       "t": "points",
+       "title": "More edges",
+       "items": [
+        "deque middle index is O(n)",
+        "namedtuple is immutable",
+        "Counter missing key gives 0, not inserted"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "After d = defaultdict(list), you run x = d[\"paris\"] on a key never set. What happens?",
+     "opts": [
+      "KeyError is raised",
+      "None is returned and d is unchanged",
+      "An empty list is returned and the key is now in d"
+     ],
+     "ans": 2,
+     "why": "defaultdict calls its factory on a missing key and stores the result, so a plain read grows the dict."
+    },
+    "work": [
+     "Search for list.pop(0) used as a queue and switch to deque popleft.",
+     "Use in or get for existence checks on a defaultdict.",
+     "Remember namedtuple is read-only when you need to update a field."
+    ]
+   },
+   {
+    "title": "When to outgrow the collections types",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When should you stop using Counter and defaultdict?",
+      "show": {
+       "t": "big",
+       "text": "RAM limit",
+       "sub": "all keys live in one process"
+      }
+     },
+     {
+      "say": "When the data outgrows one machine's memory. A Counter or defaultdict holds every key in RAM. Ten million distinct keys can cost over a gigabyte. Past that, push the group by into SQL or Spark, which spill to disk and run in parallel.",
+      "show": {
+       "t": "flow",
+       "title": "Scale path",
+       "steps": [
+        {
+         "label": "Counter in memory"
+        },
+        {
+         "label": "Too many keys"
+        },
+        {
+         "label": "SQL or Spark group by"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Prefer aggregating over storing. A defaultdict of lists keeps every row. A Counter or running sum keeps one number per key. Same answer, far less memory.",
+      "show": {
+       "t": "bars",
+       "title": "Memory held for 1 million rows, 1,000 keys",
+       "unit": "relative",
+       "items": [
+        [
+         "defaultdict of lists",
+         1000,
+         "every row kept"
+        ],
+        [
+         "Counter or sums",
+         1,
+         "one number per key"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "A deque is a bounded buffer inside one process only. If the window must survive a crash or span workers, use a durable queue like Kafka. For records that need types, choose a dataclass or typed NamedTuple.",
+      "show": {
+       "t": "points",
+       "title": "Choose instead",
+       "items": [
+        "Durable or shared window: Kafka or a queue service",
+        "Typed records: dataclass or typing.NamedTuple",
+        "Huge group by: SQL or Spark"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "You must group 2 billion rows by user. What is the best choice?",
+     "opts": [
+      "defaultdict of lists in one Python process",
+      "A distributed group by in SQL or Spark",
+      "A deque with a large maxlen"
+     ],
+     "ans": 1,
+     "why": "Two billion rows will not fit in one process's memory. A distributed engine partitions the work and spills to disk."
+    },
+    "work": [
+     "Estimate distinct keys and bytes per key before using a Counter on big data.",
+     "Replace stored lists with running aggregates where only totals are needed.",
+     "Move windows that must survive restarts into a durable queue or stream."
+    ]
+   }
+  ]
+ },
+ "P1.7 Strings and files": {
+  "hash": "27f8da3e2455",
+  "sec": "P1.7",
+  "reels": [
+   {
+    "title": "Rewriting the letter",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Why would adding one word to a sentence ever mean rewriting the whole page?",
+      "show": {
+       "t": "big",
+       "text": "One word added. Whole page rewritten?",
+       "sub": "Strings in Python"
+      }
+     },
+     {
+      "say": "Picture a printed letter. A string in Python is like that: once written, it cannot be changed. To add a word, you must print a whole new copy.",
+      "show": {
+       "t": "scene",
+       "title": "A string is a *printed* letter",
+       "nodes": [
+        {
+         "id": "old",
+         "label": "Old letter",
+         "sub": "cannot be edited",
+         "x": 25,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "new",
+         "label": "New copy",
+         "sub": "old text plus one word",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "old",
+         "new"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "old"
+        },
+        {
+         "at": 0.5,
+         "show": "new"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "old",
+          "new"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Every addition means a full copy",
+          "tone": "amber",
+          "icon": "copy"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Do that ten thousand times and you copy the letter ten thousand times. Better: jot each word on a sticky note, then write the letter once. That is a list, then join.",
+      "show": {
+       "t": "scene",
+       "title": "Sticky notes, then *one* letter",
+       "nodes": [
+        {
+         "id": "notes",
+         "label": "List of parts",
+         "sub": "sticky notes",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "join",
+         "label": "join",
+         "sub": "write it once",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "notes",
+         "join"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "notes"
+        },
+        {
+         "at": 0.4,
+         "show": "join"
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "notes",
+          "join"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Collect in a list, join once",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Files work the same way. Reading a giant log is like reading a book one page at a time, not carrying the whole library home. Go line by line.",
+      "show": {
+       "t": "scene",
+       "title": "Read one *page* at a time",
+       "nodes": [
+        {
+         "id": "file",
+         "label": "Giant log",
+         "sub": "20 GB",
+         "kind": "disk",
+         "x": 25,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "line",
+         "label": "One line",
+         "sub": "in your hands",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "file",
+         "line"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "file"
+        },
+        {
+         "at": 0.4,
+         "show": "line"
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "file",
+          "line"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Memory stays small",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why is collecting parts in a list and joining once better than adding to a string in a loop?",
+     "opts": [
+      "Lists store text more compactly",
+      "Each addition to a string makes a new full copy, while join writes the result once",
+      "Join sorts the parts first",
+      "Strings cannot hold more than a few thousand characters"
+     ],
+     "ans": 1,
+     "why": "Strings cannot change, so every addition copies all the text so far. Join builds the final string in a single pass."
+    },
+    "work": [
+     "Search your code for plus equals on strings inside loops and swap them for a list and join.",
+     "Check where logs or large files are read in one go and switch them to a line by line loop."
+    ]
+   },
+   {
+    "title": "Fifty billion copies",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Why is building a string with plus equals in a loop so slow?",
+      "show": {
+       "t": "big",
+       "text": "s += piece, in a loop",
+       "sub": "why does it get slow?"
+      }
+     },
+     {
+      "say": "Strings cannot change. Each plus equals allocates a new string and copies the old text plus the new piece. Add one hundred thousand pieces of ten characters, and the copies grow longer every pass. That adds up to about fifty billion characters copied.",
+      "show": {
+       "t": "scene",
+       "title": "Copies grow every *pass*",
+       "nodes": [
+        {
+         "id": "loop",
+         "label": "Loop",
+         "sub": "100,000 pieces",
+         "x": 25,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "alloc",
+         "label": "New string",
+         "sub": "allocate and copy",
+         "x": 75,
+         "y": 25,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "loop",
+         "alloc"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "loop"
+        },
+        {
+         "at": 0.3,
+         "show": "alloc"
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "loop",
+          "alloc"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.8,
+         "count": {
+          "key": "copied",
+          "label": "Characters copied",
+          "to": 50000000000,
+          "unit": "chars",
+          "tone": "red"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Join does it differently. It adds up the total length first, one million characters, allocates once, and copies each piece once. One million copies instead of fifty billion.",
+      "show": {
+       "t": "bars",
+       "title": "Characters copied",
+       "unit": "chars",
+       "items": [
+        [
+         "plus equals loop",
+         50000000000,
+         "quadratic growth"
+        ],
+        [
+         "join once",
+         1000000,
+         "linear"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Files follow the same logic. A for loop over a file reads a buffered chunk and hands you one line at a time, so memory stays flat.",
+      "show": {
+       "t": "scene",
+       "title": "A buffer feeds *one line* at a time",
+       "nodes": [
+        {
+         "id": "disk",
+         "label": "trips.log",
+         "sub": "20 GB",
+         "kind": "disk",
+         "x": 20,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "buf",
+         "label": "Buffer",
+         "sub": "small chunk",
+         "x": 50,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "ln",
+         "label": "Your loop",
+         "sub": "one line",
+         "x": 80,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "disk",
+         "buf"
+        ],
+        [
+         "buf",
+         "ln"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "disk"
+        },
+        {
+         "at": 0.3,
+         "show": "buf"
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "disk",
+          "buf"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": "ln"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "buf",
+          "ln"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Memory stays flat",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "You join 100,000 pieces of 10 characters. Roughly how many characters does join copy in total?",
+     "opts": [
+      "About 50 billion",
+      "About 1 million",
+      "About 100 thousand",
+      "About 10 trillion"
+     ],
+     "ans": 1,
+     "why": "Join works out the total length of one million characters, allocates once, and copies each piece one time. The plus equals loop is the one that copies tens of billions."
+    },
+    "work": [
+     "Time a plus equals loop against list and join on 100,000 pieces and note the gap.",
+     "Use split with maxsplit when only the first few fields matter, so the message stays whole."
+    ]
+   },
+   {
+    "title": "Where the shortcuts break",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your loop with plus equals ran fast on your laptop. So why does it crawl in production?",
+      "show": {
+       "t": "big",
+       "text": "Fast on a laptop, slow in production",
+       "sub": "what changed?"
+      }
+     },
+     {
+      "say": "CPython sometimes grows a string in place when nothing else points to it. That trick is an implementation detail. It fails when another reference exists, and other Python runtimes do not do it. Never rely on it.",
+      "show": {
+       "t": "scene",
+       "title": "An optimisation you can't *trust*",
+       "nodes": [
+        {
+         "id": "fast",
+         "label": "In place growth",
+         "sub": "only one reference",
+         "x": 25,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "slow",
+         "label": "Full copy",
+         "sub": "extra reference or other runtime",
+         "x": 75,
+         "y": 30,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "fast",
+         "slow"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "fast"
+        },
+        {
+         "at": 0.5,
+         "show": "slow"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "fast",
+          "slow"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Implementation detail, not a promise",
+          "tone": "amber",
+          "icon": "warn"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "File gotchas. Each line keeps its newline, so strip it. Split on commas breaks on quoted fields like a quoted name containing a comma; use the csv module. Set the encoding, or the machine default decides. Use split with maxsplit two to keep a message intact.",
+      "show": {
+       "t": "points",
+       "title": "Line parsing gotchas",
+       "items": [
+        "Each line keeps its newline: strip it",
+        "Split on commas breaks on quoted fields: use csv",
+        "Always set the encoding",
+        "maxsplit keeps the message whole"
+       ]
+      }
+     },
+     {
+      "say": "Calling read on a twenty gigabyte log pulls all twenty gigabytes into memory and can kill the job. The with block closes the file even on error.",
+      "show": {
+       "t": "scene",
+       "title": "read() loads *everything*",
+       "nodes": [
+        {
+         "id": "big",
+         "label": "20 GB log",
+         "kind": "disk",
+         "sub": "on disk",
+         "x": 25,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "ram",
+         "label": "Memory",
+         "sub": "out of space",
+         "x": 75,
+         "y": 30,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "big",
+         "ram"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "big"
+        },
+        {
+         "at": 0.4,
+         "show": "ram"
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "big",
+          "ram"
+         ],
+         "n": 5
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Use with and iterate lines",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why is relying on CPython's in place string growth for plus equals risky?",
+     "opts": [
+      "It only works for strings shorter than 100 characters",
+      "It is an implementation detail that fails with extra references or other runtimes",
+      "It changes the string's contents",
+      "It is slower than join in every case"
+     ],
+     "ans": 1,
+     "why": "The speedup depends on there being a single reference and on CPython. Code that leans on it can silently become quadratic elsewhere."
+    },
+    "work": [
+     "Replace manual comma splitting with the csv module wherever fields may be quoted.",
+     "Pass encoding explicitly on every open call.",
+     "Strip the trailing newline from each line before parsing."
+    ]
+   },
+   {
+    "title": "Streaming is not the whole answer",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Line by line keeps memory flat. Does that make it the right way to process twenty gigabytes?",
+      "show": {
+       "t": "big",
+       "text": "Flat memory. Right answer?",
+       "sub": "20 GB of logs"
+      }
+     },
+     {
+      "say": "Not always. Memory is safe, but one Python loop uses one core, so a big file takes a long time. Split the data into many files and run workers in parallel, or hand it to an engine like DuckDB or Spark.",
+      "show": {
+       "t": "scene",
+       "title": "One loop, one *core*",
+       "nodes": [
+        {
+         "id": "one",
+         "label": "Python loop",
+         "sub": "one core",
+         "x": 25,
+         "y": 20,
+         "tone": "amber"
+        },
+        {
+         "id": "parts",
+         "label": "Many files",
+         "sub": "split the data",
+         "x": 25,
+         "y": 55,
+         "tone": "blue"
+        },
+        {
+         "id": "eng",
+         "label": "Parallel engine",
+         "sub": "DuckDB, Spark",
+         "x": 75,
+         "y": 55,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "one",
+         "parts"
+        ],
+        [
+         "parts",
+         "eng"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "one"
+        },
+        {
+         "at": 0.4,
+         "show": "parts"
+        },
+        {
+         "at": 0.6,
+         "show": "eng"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "parts",
+          "eng"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Scale across cores, not just memory",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Text logs are also costly: every field is parsed from characters each time. For data you read often, convert once to a columnar format like Parquet, which is smaller and skips unneeded columns.",
+      "show": {
+       "t": "flow",
+       "title": "Convert once, read many times",
+       "steps": [
+        {
+         "label": "Text log",
+         "sub": "parse every read"
+        },
+        {
+         "label": "Convert once",
+         "sub": "one pass"
+        },
+        {
+         "label": "Parquet",
+         "sub": "smaller, column skipping"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Keep it simple for small jobs. Read a config file whole. Build output with join. Stream only when size is unbounded.",
+      "show": {
+       "t": "points",
+       "title": "Pick by size",
+       "items": [
+        "Small config: read it whole",
+        "Building output: list and join",
+        "Unbounded input: stream line by line",
+        "Repeated analytics: columnar format and an engine"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A nightly job streams a 20 GB log line by line and takes hours, though memory is fine. What is the best next step?",
+     "opts": [
+      "Use read to load the whole file",
+      "Add plus equals to build the output",
+      "Split the input and process in parallel, or use a columnar engine",
+      "Shorten the lines"
+     ],
+     "ans": 2,
+     "why": "Streaming solves memory but a single Python loop is limited to one core. Parallel workers or an engine over columnar data attack the real bottleneck."
+    },
+    "work": [
+     "Measure the time and memory of your largest file job before choosing streaming or an engine.",
+     "Convert logs that are queried repeatedly into Parquet.",
+     "Document the size limit above which a read-whole approach is not allowed."
+    ]
+   }
+  ]
+ },
+ "P1.8 Architect's lens: Python in a data platform": {
+  "hash": "de3e59ce3a47",
+  "sec": "P1.8",
+  "reels": [
+   {
+    "title": "Python is the expediter",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Who in a restaurant never cooks, yet keeps every dish coming out on time?",
+      "show": {
+       "t": "big",
+       "text": "Who never cooks?",
+       "sub": "Yet every dish arrives on time"
+      }
+     },
+     {
+      "say": "The expediter. They call the grill, check the plate, send it out, and redo it if something burns. Python plays that role in a data platform.",
+      "show": {
+       "t": "scene",
+       "title": "Python is the *expediter*",
+       "nodes": [
+        {
+         "id": "py",
+         "label": "Python",
+         "sub": "calls and checks",
+         "x": 50,
+         "y": 20,
+         "tone": "amber"
+        },
+        {
+         "id": "sp",
+         "label": "Spark",
+         "sub": "heavy cooking",
+         "x": 25,
+         "y": 60,
+         "tone": "blue"
+        },
+        {
+         "id": "wh",
+         "label": "Warehouse",
+         "sub": "heavy cooking",
+         "x": 75,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "py",
+         "sp"
+        ],
+        [
+         "py",
+         "wh"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "py"
+        },
+        {
+         "at": 0.5,
+         "show": [
+          "sp",
+          "wh"
+         ]
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "py",
+          "sp"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "The heavy cooking, like crunching billions of rows, happens in big engines such as Spark or the warehouse. Python tells them when to start, calls outside services, retries failures, and checks the results.",
+      "show": {
+       "t": "points",
+       "title": "Python's job",
+       "items": [
+        "Start the engines on schedule",
+        "Call outside services",
+        "Retry failures",
+        "Check the results"
+       ]
+      }
+     },
+     {
+      "say": "So keep Python as the expediter. If you carry every ingredient by hand through Python lists, the kitchen jams.",
+      "show": {
+       "t": "big",
+       "text": "Direct, don't haul",
+       "sub": "Heavy data flows through engines"
+      }
+     }
+    ],
+    "check": {
+     "q": "What is Python's best role in a data platform?",
+     "opts": [
+      "Doing all heavy row processing itself",
+      "Scheduling, calling and checking the engines",
+      "Replacing the warehouse",
+      "Storing the data"
+     ],
+     "ans": 1,
+     "why": "Python is the glue that orchestrates and verifies. The heavy data work belongs in Spark, DuckDB or the warehouse."
+    },
+    "work": [
+     "List your pipelines and mark which steps only orchestrate and which move heavy data.",
+     "Move any row-by-row data crunching in a DAG task into SQL or Spark."
+    ]
+   },
+   {
+    "title": "Why loops are slow, vectors are fast",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Why can NumPy add a million numbers in about a millisecond, while a plain Python loop takes dozens?",
+      "show": {
+       "t": "bars",
+       "title": "Sum of a million numbers",
+       "unit": "ms",
+       "items": [
+        [
+         "Python loop",
+         50,
+         ""
+        ],
+        [
+         "NumPy",
+         1,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "In a Python loop, every number is a full object on the heap, holding a type, a reference count and a value. Each plus means checking types, creating a new object, and updating counts.",
+      "show": {
+       "t": "flow",
+       "title": "One plus in Python",
+       "steps": [
+        {
+         "label": "Look up types"
+        },
+        {
+         "label": "Allocate result object"
+        },
+        {
+         "label": "Update reference counts"
+        }
+       ]
+      }
+     },
+     {
+      "say": "NumPy stores raw machine numbers side by side in one block. A compiled loop in C runs straight over it, with the CPU cache and SIMD instructions handling batches at once.",
+      "show": {
+       "t": "scene",
+       "title": "One *block* of raw numbers",
+       "nodes": [
+        {
+         "id": "np",
+         "label": "NumPy array",
+         "sub": "contiguous raw values",
+         "x": 30,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "c",
+         "label": "Compiled C loop",
+         "sub": "cache and SIMD",
+         "x": 70,
+         "y": 65,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "np",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "np"
+        },
+        {
+         "at": 0.5,
+         "show": "c"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "np",
+          "c"
+         ],
+         "n": 3
+        }
+       ]
+      }
+     },
+     {
+      "say": "Same algorithm, about a hundred times less work per element. So vectorise, or push the work down to Spark or SQL.",
+      "show": {
+       "t": "big",
+       "text": "Vectorise or push down",
+       "sub": "Same algorithm, far less work per element"
+      }
+     }
+    ],
+    "check": {
+     "q": "Why is a NumPy sum so much faster than a Python loop?",
+     "opts": [
+      "Python cannot add numbers",
+      "It runs a compiled loop over raw contiguous values with no per-element objects",
+      "It uses more threads",
+      "It skips some numbers"
+     ],
+     "ans": 1,
+     "why": "Avoiding per-element objects and interpreter overhead, and using cache and SIMD, cuts the work per element enormously."
+    },
+    "work": [
+     "Find loops over large columns in your code and replace them with pandas, Polars or NumPy operations.",
+     "Profile before rewriting, so you fix the real hot path."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Lists versus arrays in memory",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Why does a list of a million integers eat around thirty-six megabytes, when an array holds them in eight?",
+      "show": {
+       "t": "bars",
+       "title": "Memory for a million ints",
+       "unit": "MB",
+       "items": [
+        [
+         "list",
+         36,
+         ""
+        ],
+        [
+         "array",
+         8,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "A list stores a million pointers, eight bytes each. Each pointer leads to a separate integer object of about twenty-eight bytes. That is roughly thirty-six bytes per value.",
+      "show": {
+       "t": "scene",
+       "title": "A list is *pointers*",
+       "nodes": [
+        {
+         "id": "l",
+         "label": "list",
+         "sub": "8 byte pointers",
+         "x": 25,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "o",
+         "label": "int objects",
+         "sub": "about 28 bytes each",
+         "x": 75,
+         "y": 30,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "l",
+         "o"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "l"
+        },
+        {
+         "at": 0.5,
+         "show": "o"
+        },
+        {
+         "at": 0.7,
+         "count": {
+          "key": "b",
+          "label": "bytes per value",
+          "to": 36,
+          "unit": "B",
+          "tone": "red"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "An array, or a NumPy array, stores the raw eight-byte values side by side. Smaller, and the CPU cache reads it in order, which is faster.",
+      "show": {
+       "t": "big",
+       "text": "8 bytes per value",
+       "sub": "Raw values, side by side"
+      }
+     },
+     {
+      "say": "One trap: Python shares small integers from minus five to two fifty-six, so tiny tests can hide the difference. Test with realistic sizes.",
+      "show": {
+       "t": "points",
+       "title": "Benchmark trap",
+       "items": [
+        "Small ints are shared objects",
+        "Tiny tests understate list cost",
+        "Measure at realistic size"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does a list of ints use far more memory than an array of ints?",
+     "opts": [
+      "Lists compress badly",
+      "Each list slot is a pointer to a separate int object",
+      "Arrays are stored on disk",
+      "Lists store strings"
+     ],
+     "ans": 1,
+     "why": "A list holds pointers plus separate int objects, about 36 bytes per value, while an array holds raw 8-byte values."
+    },
+    "work": [
+     "Use array or NumPy for large numeric data instead of lists.",
+     "Measure memory with realistic data sizes, not toy samples."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "What a PySpark UDF really costs",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Why can a single Python function make a fast Spark job crawl?",
+      "show": {
+       "t": "big",
+       "text": "One UDF, slow job",
+       "sub": "Why?"
+      }
+     },
+     {
+      "say": "Spark runs on the JVM. For a plain Python UDF, rows are serialised out of the JVM, sent over a socket to a Python worker, unpickled, and your function runs once per row. Results travel back the same way.",
+      "show": {
+       "t": "scene",
+       "title": "The *round trip* per row",
+       "nodes": [
+        {
+         "id": "jvm",
+         "label": "JVM executor",
+         "sub": "Spark engine",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "pw",
+         "label": "Python worker",
+         "sub": "your function",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "jvm",
+         "pw"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "jvm",
+          "pw"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "jvm",
+          "pw"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "pw",
+          "jvm"
+         ],
+         "n": 4
+        }
+       ]
+      }
+     },
+     {
+      "say": "Worse, the optimizer cannot see inside your function, so it cannot push filters past it.",
+      "show": {
+       "t": "scene",
+       "title": "A *black box* to the optimizer",
+       "nodes": [
+        {
+         "id": "opt",
+         "label": "Optimizer",
+         "sub": "cannot look inside",
+         "x": 30,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "udf",
+         "label": "UDF",
+         "sub": "opaque",
+         "x": 70,
+         "y": 30,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "opt",
+         "udf"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.3,
+         "show": [
+          "opt",
+          "udf"
+         ]
+        },
+        {
+         "at": 0.6,
+         "chip": {
+          "text": "No filter pushdown",
+          "tone": "red",
+          "icon": "x"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A pandas UDF sends whole column batches in Arrow format, and runs vectorised. Fastest is a built-in from pyspark dot sql dot functions, which never leaves the JVM.",
+      "show": {
+       "t": "bars",
+       "title": "Typical speed order (higher is faster)",
+       "unit": "relative",
+       "items": [
+        [
+         "Python UDF",
+         1,
+         ""
+        ],
+        [
+         "pandas UDF",
+         10,
+         ""
+        ],
+        [
+         "Built-in function",
+         30,
+         ""
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why are pandas (Arrow) UDFs faster than plain Python UDFs?",
+     "opts": [
+      "They run inside the JVM",
+      "They ship column batches in Arrow and run vectorised instead of row by row",
+      "They skip serialisation entirely",
+      "They use the GPU"
+     ],
+     "ans": 1,
+     "why": "Arrow batches avoid per-row conversion and let your code run vectorised, though data still crosses to Python workers."
+    },
+    "work": [
+     "Replace UDFs with pyspark.sql.functions built-ins where possible.",
+     "Where Python is unavoidable, switch to a pandas UDF.",
+     "Check query plans to confirm filters still push down."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "What the GIL blocks and what it doesn't",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "You add eight threads to a Python script, and it gets no faster. Why?",
+      "show": {
+       "t": "big",
+       "text": "8 threads, no speedup",
+       "sub": "Why?"
+      }
+     },
+     {
+      "say": "The global interpreter lock lets only one thread run Python bytecode at a time in a process. For CPU-bound work, threads just take turns.",
+      "show": {
+       "t": "scene",
+       "title": "One *lock*, one thread at a time",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Threads",
+         "sub": "CPU-bound",
+         "x": 25,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "g",
+         "label": "GIL",
+         "sub": "one holder",
+         "x": 75,
+         "y": 30,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "g"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.3,
+         "show": [
+          "t",
+          "g"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "t",
+          "g"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Threads take turns",
+          "tone": "red",
+          "icon": "lock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "But the lock is released while a thread waits on a network call, disk, or database, and inside C libraries like NumPy. So threads do speed up an ingestion script calling many APIs.",
+      "show": {
+       "t": "points",
+       "title": "GIL released during",
+       "items": [
+        "Network calls",
+        "Disk and database waits",
+        "NumPy, compression, hashing"
+       ]
+      }
+     },
+     {
+      "say": "For heavy computation, use processes, a vectorised library, or the engine. Python 3.13 offers an optional free-threaded build, but treat it as new.",
+      "show": {
+       "t": "big",
+       "text": "CPU-bound: processes or engine",
+       "sub": "I/O-bound: threads work"
+      }
+     }
+    ],
+    "check": {
+     "q": "Which job benefits most from adding threads in CPython?",
+     "opts": [
+      "Hashing in pure Python loops",
+      "Calling 200 slow APIs",
+      "Computing a pure Python sum",
+      "Sorting a list in Python"
+     ],
+     "ans": 1,
+     "why": "Threads waiting on network I/O release the GIL, so many waits overlap. Pure Python CPU work stays serialised."
+    },
+    "work": [
+     "Use a thread pool for API ingestion and processes for CPU-bound steps.",
+     "Before parallelising, label each step I/O-bound or CPU-bound."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "When Python should step aside",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When should a Python job not be Python at all?",
+      "show": {
+       "t": "big",
+       "text": "When not Python?",
+       "sub": "Know the exits"
+      }
+     },
+     {
+      "say": "Three cases. A transformation the warehouse can do in SQL belongs in dbt, where it is tested and costed. A hot loop over millions of rows should be vectorised or pushed to Spark or SQL.",
+      "show": {
+       "t": "points",
+       "title": "Step aside when",
+       "items": [
+        "Warehouse can do it in SQL: use dbt",
+        "Hot loop over millions of rows: vectorise or push down",
+        "Low-latency stateful streaming: JVM"
+       ]
+      }
+     },
+     {
+      "say": "And a low-latency stream processor with large state belongs on the JVM, in Flink or Kafka Streams.",
+      "show": {
+       "t": "scene",
+       "title": "Stateful streaming on the *JVM*",
+       "nodes": [
+        {
+         "id": "k",
+         "label": "Kafka",
+         "sub": "events",
+         "x": 25,
+         "y": 30,
+         "tone": "plum"
+        },
+        {
+         "id": "f",
+         "label": "Flink",
+         "sub": "large state, low latency",
+         "x": 75,
+         "y": 30,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "k",
+         "f"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.3,
+         "show": [
+          "k",
+          "f"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "k",
+          "f"
+         ],
+         "n": 3
+        }
+       ]
+      }
+     },
+     {
+      "say": "When a job's cost or latency is dominated by Python itself, rewrite the hot path in SQL, Spark built-ins or a vectorised library first. Reach for another language last.",
+      "show": {
+       "t": "flow",
+       "title": "Escalation ladder",
+       "steps": [
+        {
+         "label": "Profile"
+        },
+        {
+         "label": "SQL or Spark built-ins"
+        },
+        {
+         "label": "Vectorised library"
+        },
+        {
+         "label": "Another language"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A Python task's runtime is dominated by a row-by-row loop. What do you try first?",
+     "opts": [
+      "Rewrite the whole pipeline in Java",
+      "Vectorise it or push it down to SQL or Spark",
+      "Add more threads",
+      "Buy a bigger machine"
+     ],
+     "ans": 1,
+     "why": "Moving the hot path to vectorised or engine-side code usually fixes it without changing language."
+    },
+    "work": [
+     "Audit Python transformations the warehouse could run as tested dbt models.",
+     "Profile your slowest task before choosing a rewrite."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Who owns the Python base",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "A hundred pipelines, a hundred different Python versions. What goes wrong?",
+      "show": {
+       "t": "big",
+       "text": "100 pipelines, 100 setups",
+       "sub": "What goes wrong?"
+      }
+     },
+     {
+      "say": "Works on my machine. Dependency drift breaks jobs at night, and nobody can reproduce the bug.",
+      "show": {
+       "t": "points",
+       "title": "Drift costs",
+       "items": [
+        "Night-time breakages",
+        "Unreproducible bugs",
+        "Painful upgrades"
+       ]
+      }
+     },
+     {
+      "say": "So the platform team owns the base: one pinned Python version, a shared package template, a lockfile, and a base container image.",
+      "show": {
+       "t": "scene",
+       "title": "Platform owns the *base*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Platform team",
+         "sub": "pin, template, lockfile, image",
+         "x": 50,
+         "y": 20,
+         "tone": "teal"
+        },
+        {
+         "id": "a",
+         "label": "Team A",
+         "sub": "own code",
+         "x": 25,
+         "y": 60,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Team B",
+         "sub": "own code",
+         "x": 75,
+         "y": 60,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "a"
+        ],
+        [
+         "p",
+         "b"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "p"
+        },
+        {
+         "at": 0.5,
+         "show": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "p",
+          "a"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Pipeline teams own their code and pay for its runtime and memory. Data stays in Spark, DuckDB or the warehouse, never in big Python lists, or memory blows up.",
+      "show": {
+       "t": "big",
+       "text": "Teams own code and cost",
+       "sub": "Platform owns the base"
+      }
+     },
+     {
+      "say": "That split gives repeatable builds and cheap upgrades.",
+      "show": {
+       "t": "big",
+       "text": "Repeatable builds",
+       "sub": "Cheap upgrades"
+      }
+     }
+    ],
+    "check": {
+     "q": "What should a platform team standardise for Python?",
+     "opts": [
+      "Every team's business logic",
+      "Python version, package template, lockfile and base image",
+      "Only the editor",
+      "Nothing; teams choose freely"
+     ],
+     "ans": 1,
+     "why": "A shared base prevents dependency drift and makes builds reproducible, while teams keep ownership of their own code."
+    },
+    "work": [
+     "Pin one Python version and a lockfile for every pipeline repo.",
+     "Publish a base container image and a project template."
+    ],
+    "part": "2 of 2"
+   }
+  ]
+ }
+}

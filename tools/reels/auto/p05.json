@@ -1,0 +1,3896 @@
+{
+ "P5.2 Retries belong to transient errors only": {
+  "hash": "bf458c07e191",
+  "sec": "P5.2",
+  "reels": [
+   {
+    "title": "Busy line or wrong number",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "You call a friend and the line is busy. Should you try again? Now imagine you dialed a number that does not exist. Should you try again?",
+      "show": {
+       "t": "scene",
+       "title": "Busy line or *wrong* number",
+       "nodes": [
+        {
+         "id": "you",
+         "label": "You",
+         "sub": "calling",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "busy",
+         "label": "Busy line",
+         "sub": "free soon",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "bad",
+         "label": "No such number",
+         "sub": "never works",
+         "x": 75,
+         "y": 65,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "you",
+         "busy"
+        ],
+        [
+         "you",
+         "bad"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "you",
+          "busy"
+         ]
+        },
+        {
+         "at": 0.5,
+         "show": "bad"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "you",
+          "bad"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "A busy line fixes itself. Wait a bit, and it is free. That is a transient error, one that goes away on its own. Network blips and rate limits are like this. So you retry.",
+      "show": {
+       "t": "scene",
+       "title": "*Transient* means it passes",
+       "nodes": [
+        {
+         "id": "you",
+         "label": "You",
+         "sub": "redial",
+         "x": 25,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "busy",
+         "label": "Busy line",
+         "sub": "transient",
+         "x": 75,
+         "y": 35,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "you",
+         "busy"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "you",
+          "busy"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "you",
+          "busy"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Transient: retry it",
+          "tone": "teal",
+          "icon": "refresh"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A number that does not exist will never connect. Redialing a hundred times just wastes your afternoon. A missing field or a bad file is the same. Do not retry. Raise the error right away so someone fixes it.",
+      "show": {
+       "t": "scene",
+       "title": "A bug will *never* heal",
+       "nodes": [
+        {
+         "id": "you",
+         "label": "Your code",
+         "sub": "bad data",
+         "x": 25,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "bad",
+         "label": "KeyError",
+         "sub": "a bug",
+         "x": 75,
+         "y": 35,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "you",
+         "bad"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "you",
+          "bad"
+         ]
+        },
+        {
+         "at": 0.5,
+         "glow": "bad"
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Bug: raise at once",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Between tries, wait a little longer each time, so you never hammer a struggling line.",
+      "show": {
+       "t": "points",
+       "title": "Wait longer each time",
+       "items": [
+        "Try, then wait a little",
+        "Try again, wait longer",
+        "Give up after a few tries"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Which failure is worth retrying?",
+     "opts": [
+      "A missing column in a file",
+      "A short network blip",
+      "A typo in a dictionary key"
+     ],
+     "ans": 1,
+     "why": "A network blip passes by itself, so waiting and retrying works. The other two are bugs or bad data and fail the same way every time."
+    },
+    "work": [
+     "List the errors your jobs hit last month and mark each as transient or a bug.",
+     "Check that your code raises bad data errors immediately instead of looping."
+    ]
+   },
+   {
+    "title": "Backoff and jitter in numbers",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "A thousand clients all fail at once. If every one retries after exactly two seconds, what happens?",
+      "show": {
+       "t": "scene",
+       "title": "A thousand clients, one *instant*",
+       "nodes": [
+        {
+         "id": "c",
+         "label": "1000 clients",
+         "sub": "all failed",
+         "x": 25,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "s",
+         "label": "Server",
+         "sub": "recovering",
+         "x": 75,
+         "y": 35,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "c",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "c",
+          "s"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "c",
+          "s"
+         ],
+         "n": 5
+        }
+       ]
+      }
+     },
+     {
+      "say": "The server gets another thousand requests in the same instant, and falls over again. That is a retry storm. The fix is exponential backoff. Wait one second, then two, then four, then eight. Each wait doubles, giving the server room to recover.",
+      "show": {
+       "t": "bars",
+       "title": "Exponential backoff",
+       "unit": "seconds",
+       "items": [
+        [
+         "Retry 1",
+         1,
+         ""
+        ],
+        [
+         "Retry 2",
+         2,
+         ""
+        ],
+        [
+         "Retry 3",
+         4,
+         ""
+        ],
+        [
+         "Retry 4",
+         8,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Backoff alone still lines clients up. So add jitter, a random extra wait. Client one waits two point three seconds, client two waits one point seven. Now the thousand retries spread across a window instead of landing together.",
+      "show": {
+       "t": "scene",
+       "title": "Add *jitter*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Client A",
+         "sub": "2.3 s",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Client B",
+         "sub": "1.7 s",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "s",
+         "label": "Server",
+         "sub": "load spread out",
+         "x": 50,
+         "y": 70,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "s"
+        ],
+        [
+         "b",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "a",
+          "b",
+          "s"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "b",
+          "s"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.75,
+         "packet": [
+          "a",
+          "s"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Spread, not stampede",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Cap the attempts, say five, then raise the last error. Retry only transient types like connection and timeout errors.",
+      "show": {
+       "t": "code",
+       "title": "The shape of it",
+       "text": "def retry_call(fn, attempts, base_delay, sleep, retry_on=(ConnectionError, TimeoutError)):\n    for i in range(attempts):\n        try:\n            return fn()\n        except retry_on:\n            if i == attempts - 1:\n                raise\n            sleep(base_delay * 2 ** i + jitter)"
+      }
+     }
+    ],
+    "check": {
+     "q": "Why add jitter on top of exponential backoff?",
+     "opts": [
+      "So the waits are longer",
+      "So clients do not all retry at the same moment",
+      "So errors are logged"
+     ],
+     "ans": 1,
+     "why": "Without randomness, clients that failed together still retry together on every round. Jitter spreads them out."
+    },
+    "work": [
+     "Add random jitter to every retry loop you own.",
+     "Cap attempts and total wait time so retries always end."
+    ]
+   },
+   {
+    "title": "Retry traps interviewers probe",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your retry loop catches every exception. What could go wrong?",
+      "show": {
+       "t": "big",
+       "text": "except Exception",
+       "sub": "What could go wrong?"
+      }
+     },
+     {
+      "say": "A KeyError is a bug. Retrying it five times just delays the crash by thirty seconds and hides the cause. So catch only a named tuple, like connection error and timeout error. Anything else propagates at once.",
+      "show": {
+       "t": "scene",
+       "title": "Catch a *named* list",
+       "nodes": [
+        {
+         "id": "fn",
+         "label": "fn()",
+         "sub": "fails",
+         "x": 20,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "t",
+         "label": "Connection, Timeout",
+         "sub": "retry",
+         "x": 75,
+         "y": 20,
+         "tone": "teal"
+        },
+        {
+         "id": "k",
+         "label": "KeyError",
+         "sub": "raise now",
+         "x": 75,
+         "y": 60,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "fn",
+         "t"
+        ],
+        [
+         "fn",
+         "k"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "fn",
+          "t",
+          "k"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "fn",
+          "t"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "fn",
+          "k"
+         ],
+         "n": 1
+        }
+       ]
+      }
+     },
+     {
+      "say": "Second trap: the operation itself. If a payment call timed out, it may have succeeded. Retrying could charge twice. Retried work must be idempotent, meaning running it twice has the same effect as once.",
+      "show": {
+       "t": "scene",
+       "title": "Retry can *double* the work",
+       "nodes": [
+        {
+         "id": "app",
+         "label": "App",
+         "sub": "timed out",
+         "x": 25,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "pay",
+         "label": "Payment API",
+         "sub": "charged twice?",
+         "x": 75,
+         "y": 35,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "app",
+         "pay"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "app",
+          "pay"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "app",
+          "pay"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Use an idempotency key",
+          "tone": "amber",
+          "icon": "key"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Third, off by one errors. After the last failed attempt, do not sleep. Just raise the original error. And to test it, inject sleep, so tests record the waits instead of actually waiting.",
+      "show": {
+       "t": "points",
+       "title": "Edge cases",
+       "items": [
+        "No sleep after the final attempt",
+        "Re-raise the original error",
+        "Pass sleep in; tests use a list append"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A payment call times out. What must be true before you retry it?",
+     "opts": [
+      "The call is idempotent or carries a unique key",
+      "The wait is exactly one second",
+      "You catch every exception"
+     ],
+     "ans": 0,
+     "why": "A timeout does not tell you the work failed. Without idempotency, a retry may repeat a side effect like a charge."
+    },
+    "work": [
+     "Search your code for bare except blocks around retries and replace them with named exceptions.",
+     "Add idempotency keys to retried writes and payments.",
+     "Write a test that passes a fake sleep and asserts the exact delays."
+    ]
+   },
+   {
+    "title": "When retries make outages worse",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Three services call each other, and each retries three times. How many requests hit the database?",
+      "show": {
+       "t": "scene",
+       "title": "Retries *multiply*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Service A",
+         "sub": "3 tries",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Service B",
+         "sub": "3 tries",
+         "x": 50,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "c",
+         "label": "Service C",
+         "sub": "3 tries",
+         "x": 80,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "db",
+         "label": "Database",
+         "sub": "struggling",
+         "x": 50,
+         "y": 70,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "b"
+        ],
+        [
+         "b",
+         "c"
+        ],
+        [
+         "c",
+         "db"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "a",
+          "b",
+          "c"
+         ]
+        },
+        {
+         "at": 0.5,
+         "show": "db"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "c",
+          "db"
+         ],
+         "n": 5
+        }
+       ]
+      }
+     },
+     {
+      "say": "Up to twenty seven, from one user click. Retries multiply across layers, and they hit a database that is already struggling. Retry at one layer only, usually the layer closest to the failing call.",
+      "show": {
+       "t": "bars",
+       "title": "Requests per click",
+       "unit": "requests",
+       "items": [
+        [
+         "No retries",
+         1,
+         ""
+        ],
+        [
+         "One layer retries",
+         3,
+         ""
+        ],
+        [
+         "Three layers retry",
+         27,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Add guardrails. A retry budget caps retries at, say, ten percent of traffic. A circuit breaker stops calling a dependency that is clearly down. And a total deadline stops retries outliving the user's patience.",
+      "show": {
+       "t": "points",
+       "title": "Guardrails",
+       "items": [
+        "Retry budget: about 10 percent of traffic",
+        "Circuit breaker for dead dependencies",
+        "Total deadline per request"
+       ]
+      }
+     },
+     {
+      "say": "For long outages, in process retries are the wrong tool. Put the job on a queue with a dead letter queue, so failed work waits and can be replayed hours later.",
+      "show": {
+       "t": "flow",
+       "title": "Outlast the outage",
+       "nodes": [
+        {
+         "id": "q",
+         "label": "Queue"
+        },
+        {
+         "id": "w",
+         "label": "Worker"
+        },
+        {
+         "id": "d",
+         "label": "Dead letter queue"
+        }
+       ],
+       "edges": [
+        [
+         "q",
+         "w"
+        ],
+        [
+         "w",
+         "d"
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A dependency is down for two hours. What is the best design?",
+     "opts": [
+      "Retry in each service up to ten times",
+      "Queue the work with a dead letter queue and replay later",
+      "Remove the timeout"
+     ],
+     "ans": 1,
+     "why": "In-process retries cannot outlast a long outage and add load. A queue holds the work durably, and a dead letter queue lets you replay it once the dependency recovers."
+    },
+    "work": [
+     "Map which layers in your call chain retry and pick one owner.",
+     "Add a circuit breaker and a total deadline to your busiest outbound call.",
+     "Route permanently failing jobs to a dead letter queue with an alert."
+    ]
+   }
+  ]
+ },
+ "P5.1 Exceptions: catch narrowly, fail loudly": {
+  "hash": "16473b9af694",
+  "sec": "P5.1",
+  "reels": [
+   {
+    "title": "The kitchen that hides its mistakes",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "What if your program hit a problem, and quietly carried on as if nothing happened?",
+      "show": {
+       "t": "big",
+       "text": "Quiet failure",
+       "sub": "the problem nobody sees"
+      }
+     },
+     {
+      "say": "Picture a kitchen sorting order tickets. One ticket has no price. A good cook sets it aside, writes it on a list, and keeps cooking. That is catching one specific problem you know how to handle.",
+      "show": {
+       "t": "scene",
+       "title": "Handle the *known* problem",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Tickets",
+         "sub": "one has no price",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "c",
+         "label": "Good cook",
+         "x": 80,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "l",
+         "label": "Side list",
+         "sub": "set aside, written down",
+         "x": 50,
+         "y": 65,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "c"
+        ],
+        [
+         "c",
+         "l"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "t",
+          "c"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "t",
+          "c"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.6,
+         "show": "l"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "c",
+          "l"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Specific problem, specific action",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A bad cook throws a blanket over the whole kitchen. Burnt toast, a fire, a missing chef: all ignored. Dinner goes out wrong and nobody knows. That is catching every error.",
+      "show": {
+       "t": "scene",
+       "title": "The *blanket* over everything",
+       "nodes": [
+        {
+         "id": "b",
+         "label": "Blanket",
+         "sub": "catch every error",
+         "x": 50,
+         "y": 20,
+         "tone": "red"
+        },
+        {
+         "id": "f",
+         "label": "Fire",
+         "x": 20,
+         "y": 60,
+         "tone": "red"
+        },
+        {
+         "id": "m",
+         "label": "Missing chef",
+         "x": 50,
+         "y": 60,
+         "tone": "amber"
+        },
+        {
+         "id": "w",
+         "label": "Wrong dinner",
+         "x": 80,
+         "y": 60,
+         "tone": "grey"
+        }
+       ],
+       "edges": [
+        [
+         "f",
+         "b"
+        ],
+        [
+         "m",
+         "b"
+        ],
+        [
+         "b",
+         "w"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "b"
+        },
+        {
+         "at": 0.3,
+         "show": [
+          "f",
+          "m"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "f",
+          "b"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "m",
+          "b"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "show": "w"
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Nobody knows",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So in code, name the exact problem you expect and handle only that. Let anything surprising stop the job with a loud message. A loud failure is cheaper than quiet wrong data.",
+      "show": {
+       "t": "points",
+       "title": "The habit",
+       "items": [
+        "Name the exact problem",
+        "Handle only that one",
+        "Let surprises stop the job loudly"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A cook finds one ticket with no price. Which response matches good error handling?",
+     "opts": [
+      "Throw away every ticket and start again",
+      "Set that ticket aside, note it on a list, keep cooking",
+      "Ignore it and hope nobody notices"
+     ],
+     "ans": 1,
+     "why": "Handle the specific, expected problem visibly and carry on. Hiding it or overreacting both cause worse outcomes."
+    },
+    "work": [
+     "Find one place in your code that catches every error and list what it could hide.",
+     "Write down the exact problems you expect in your data, such as missing fields or bad numbers."
+    ]
+   },
+   {
+    "title": "How Python picks an except clause",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Ten thousand rows, and one has the amount abc. What does Python do when int fails to read it?",
+      "show": {
+       "t": "code",
+       "title": "One risky line",
+       "text": "try:\n    amount = int(row[\"amount\"])\nexcept KeyError:\n    amount = None\nexcept ValueError as e:\n    raise BadRow(...) from e"
+      }
+     },
+     {
+      "say": "Python raises a ValueError. That stops the line and Python scans the except clauses from top to bottom, picking the first one whose type matches.",
+      "show": {
+       "t": "flow",
+       "title": "Matching by type",
+       "nodes": [
+        {
+         "id": "r",
+         "label": "int of abc"
+        },
+        {
+         "id": "v",
+         "label": "ValueError raised"
+        },
+        {
+         "id": "k",
+         "label": "except KeyError? no"
+        },
+        {
+         "id": "h",
+         "label": "except ValueError? yes"
+        }
+       ],
+       "edges": [
+        [
+         "r",
+         "v"
+        ],
+        [
+         "v",
+         "k"
+        ],
+        [
+         "k",
+         "h"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "A missing amount key raises KeyError instead, so it lands in a different branch: log a warning, set amount to None. For bad text, raise your own BadRow, chained from the original error, so the traceback keeps the real cause.",
+      "show": {
+       "t": "scene",
+       "title": "Two failures, two *branches*",
+       "nodes": [
+        {
+         "id": "row",
+         "label": "Row",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "ke",
+         "label": "KeyError",
+         "sub": "warn, amount None",
+         "x": 25,
+         "y": 55,
+         "tone": "amber"
+        },
+        {
+         "id": "ve",
+         "label": "ValueError",
+         "sub": "raise BadRow from e",
+         "x": 75,
+         "y": 55,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "row",
+         "ke"
+        ],
+        [
+         "row",
+         "ve"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "row"
+        },
+        {
+         "at": 0.3,
+         "show": "ke"
+        },
+        {
+         "at": 0.35,
+         "packet": [
+          "row",
+          "ke"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.6,
+         "show": "ve"
+        },
+        {
+         "at": 0.65,
+         "packet": [
+          "row",
+          "ve"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "from e keeps the cause",
+          "tone": "teal",
+          "icon": "link"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The else block runs only when nothing failed. The finally block always runs, for cleanup. Keep the try around that one line, so you always know what failed.",
+      "show": {
+       "t": "points",
+       "title": "Four blocks",
+       "items": [
+        "try: the one risky line",
+        "except: handle a matching type",
+        "else: runs only on success",
+        "finally: always runs, for cleanup"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A row has no amount key at all. Which clause runs in the example?",
+     "opts": [
+      "except ValueError",
+      "except KeyError",
+      "else"
+     ],
+     "ans": 1,
+     "why": "A missing dictionary key raises KeyError. Python matches by exception type, not by what you meant."
+    },
+    "work": [
+     "Shrink any try block that wraps more than the one line that can fail.",
+     "Use raise ... from e whenever you wrap an error in your own type."
+    ]
+   },
+   {
+    "title": "Bare except and other traps",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Why does a job with a bare except refuse to stop when you press Control C?",
+      "show": {
+       "t": "big",
+       "text": "Control C won't stop it",
+       "sub": "a bare except is the cause"
+      }
+     },
+     {
+      "say": "Because Control C raises KeyboardInterrupt, which sits beside Exception, not under it. A bare except catches it. Even except Exception swallows a NameError from a typo, so a bug becomes a skipped row and quietly wrong data.",
+      "show": {
+       "t": "scene",
+       "title": "Who catches *what*",
+       "nodes": [
+        {
+         "id": "base",
+         "label": "BaseException",
+         "x": 50,
+         "y": 12,
+         "tone": "grey"
+        },
+        {
+         "id": "ki",
+         "label": "KeyboardInterrupt",
+         "sub": "bare except catches",
+         "x": 22,
+         "y": 50,
+         "tone": "red"
+        },
+        {
+         "id": "ex",
+         "label": "Exception",
+         "sub": "includes NameError",
+         "x": 78,
+         "y": 50,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "base",
+         "ki"
+        ],
+        [
+         "base",
+         "ex"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "base"
+        },
+        {
+         "at": 0.3,
+         "show": [
+          "ki",
+          "ex"
+         ]
+        },
+        {
+         "at": 0.5,
+         "glow": "ki"
+        },
+        {
+         "at": 0.75,
+         "glow": "ex"
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Typos look like bad data",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Make BadRow a subclass of ValueError. Old callers catching ValueError still work, new callers can catch BadRow alone. Order your clauses specific first, because the first match wins.",
+      "show": {
+       "t": "flow",
+       "title": "Custom exception",
+       "nodes": [
+        {
+         "id": "b",
+         "label": "BadRow"
+        },
+        {
+         "id": "v",
+         "label": "ValueError"
+        },
+        {
+         "id": "e",
+         "label": "Exception"
+        }
+       ],
+       "edges": [
+        [
+         "b",
+         "v"
+        ],
+        [
+         "v",
+         "e"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "If you skip a row, count it and log it, or send it to a dead-letter store. Otherwise a five percent loss looks exactly like a healthy run.",
+      "show": {
+       "t": "points",
+       "title": "Never swallow silently",
+       "items": [
+        "Count every skipped row",
+        "Log the row id and reason",
+        "Or send it to a dead-letter store"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why is except Exception around a whole job still dangerous?",
+     "opts": [
+      "It catches Control C",
+      "It also swallows bugs like NameError, turning them into silent wrong data",
+      "It makes the job slower"
+     ],
+     "ans": 1,
+     "why": "Exception does not include KeyboardInterrupt, but it does include programming bugs, which then hide as skipped rows."
+    },
+    "work": [
+     "Search your repo for bare except and except Exception and review each one.",
+     "Add a skipped-row counter and log it at the end of every job."
+    ]
+   },
+   {
+    "title": "Fail fast or skip: the architect call",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "A million rows arrive, two thousand are bad. Do you fail the whole job, or skip them?",
+      "show": {
+       "t": "bars",
+       "title": "Bad rows",
+       "unit": "rows",
+       "items": [
+        [
+         "Good",
+         998000,
+         ""
+        ],
+        [
+         "Bad",
+         2000,
+         "0.2 percent"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "It depends on what wrong data costs. For payments, fail fast. For clickstream, quarantine bad rows in a dead-letter store, but set a threshold, say one percent. Above that, abort, because something upstream broke.",
+      "show": {
+       "t": "scene",
+       "title": "A *threshold* decides",
+       "nodes": [
+        {
+         "id": "in",
+         "label": "Input",
+         "x": 50,
+         "y": 12,
+         "tone": "blue"
+        },
+        {
+         "id": "dl",
+         "label": "Dead-letter store",
+         "sub": "under 1 percent",
+         "x": 25,
+         "y": 55,
+         "tone": "amber"
+        },
+        {
+         "id": "ab",
+         "label": "Abort job",
+         "sub": "over 1 percent",
+         "x": 75,
+         "y": 55,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "in",
+         "dl"
+        ],
+        [
+         "in",
+         "ab"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "in"
+        },
+        {
+         "at": 0.3,
+         "show": "dl"
+        },
+        {
+         "at": 0.35,
+         "packet": [
+          "in",
+          "dl"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": "ab"
+        },
+        {
+         "at": 0.65,
+         "packet": [
+          "in",
+          "ab"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Cost of wrong sets the policy",
+          "tone": "teal",
+          "icon": "scale"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Catch only at boundaries, where you can decide to retry, skip or abort. Retry transient errors like timeouts, never bad data, since retrying a bad row never fixes it.",
+      "show": {
+       "t": "points",
+       "title": "Where to catch",
+       "items": [
+        "Only at boundaries that can decide",
+        "Retry timeouts and dropped connections",
+        "Never retry bad data"
+       ]
+      }
+     },
+     {
+      "say": "Raising an exception per bad row is slow at millions of rows. For bulk loads, validate with a schema or a set-based check first, and route failures in one pass.",
+      "show": {
+       "t": "flow",
+       "title": "Bulk path",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Schema check"
+        },
+        {
+         "id": "g",
+         "label": "Good rows load"
+        },
+        {
+         "id": "q",
+         "label": "Failures to quarantine"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "g"
+        ],
+        [
+         "s",
+         "q"
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A nightly job quarantines bad rows. Suddenly 40 percent are bad. What should it do?",
+     "opts": [
+      "Keep quarantining and finish",
+      "Abort and alert, since a threshold breach signals an upstream break",
+      "Retry each bad row three times"
+     ],
+     "ans": 1,
+     "why": "A sudden jump means a systemic cause, not stray bad rows. Retrying bad data never fixes it, and finishing hides the break."
+    },
+    "work": [
+     "Set a bad-row percentage threshold per pipeline, based on what wrong data costs.",
+     "Alert on dead-letter volume, not just job failure.",
+     "Move bulk validation into a schema check instead of per-row try blocks."
+    ]
+   }
+  ]
+ },
+ "P5.4 Logging instead of print": {
+  "hash": "4cc270af8bf7",
+  "sec": "P5.4",
+  "reels": [
+   {
+    "title": "Logging is a ship's logbook",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Why does a ship's captain keep a logbook instead of just shouting updates across the deck?",
+      "show": {
+       "t": "big",
+       "text": "Logbook or shout?",
+       "sub": "Why write it down?"
+      }
+     },
+     {
+      "say": "A shout has no time, no urgency, and no name attached. A logbook entry says when it happened, how serious it was, and who wrote it.",
+      "show": {
+       "t": "scene",
+       "title": "A *logbook* entry has three facts",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "When",
+         "sub": "time",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "l",
+         "label": "How serious",
+         "sub": "level",
+         "x": 50,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "w",
+         "label": "Who wrote it",
+         "sub": "source",
+         "x": 80,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "t"
+        },
+        {
+         "at": 0.4,
+         "show": "l"
+        },
+        {
+         "at": 0.7,
+         "show": "w"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Shouts carry none of these",
+          "tone": "red",
+          "icon": "x"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Python's print is the shout. It just dumps text on screen. Logging is the logbook. Every message automatically carries a timestamp, a severity level, and the name of the part of the program that wrote it.",
+      "show": {
+       "t": "scene",
+       "title": "print vs *logging*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "print",
+         "sub": "bare text",
+         "x": 25,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "g",
+         "label": "logging",
+         "sub": "time, level, source",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "s",
+         "label": "Screen or file",
+         "sub": "",
+         "x": 50,
+         "y": 65,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "s"
+        ],
+        [
+         "g",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "p"
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "p",
+          "s"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.5,
+         "show": "g"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "g",
+          "s"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Same message, far more context",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Severity works like a dial. Debug is fine detail for investigating. Info is normal milestones. Warning is something odd. Error is a failure. The person running the program turns the dial up or down, and nobody edits the code.",
+      "show": {
+       "t": "points",
+       "title": "The severity dial",
+       "items": [
+        "Debug: detail for investigating",
+        "Info: normal milestones",
+        "Warning: odd but handled",
+        "Error: something failed",
+        "Operators turn the dial, no code change"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What does a log message give you that print does not?",
+     "opts": [
+      "Faster output",
+      "A timestamp, a severity level and the source",
+      "Automatic encryption"
+     ],
+     "ans": 1,
+     "why": "Logging attaches time, level and source to every message, and lets operators control detail without editing code."
+    },
+    "work": [
+     "Find one print call in your pipeline code and replace it with a log call.",
+     "Decide which of your messages are milestones and which are only detail."
+    ]
+   },
+   {
+    "title": "How a log line gets made",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How do you turn one line of code into a log line with a time, level and source?",
+      "show": {
+       "t": "big",
+       "text": "One call, three facts",
+       "sub": "time, level, source"
+      }
+     },
+     {
+      "say": "At the top of each module, get a logger named after the module. Then configure once, at startup: set the level to info, and a format with time, level, name and message.",
+      "show": {
+       "t": "scene",
+       "title": "One logger per *module*, one config",
+       "nodes": [
+        {
+         "id": "m",
+         "label": "Module",
+         "sub": "get logger by name",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "c",
+         "label": "Config",
+         "sub": "level info + format",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "o",
+         "label": "Output",
+         "sub": "",
+         "x": 50,
+         "y": 65,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "m",
+         "o"
+        ],
+        [
+         "c",
+         "o"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "m"
+        },
+        {
+         "at": 0.5,
+         "show": "c"
+        },
+        {
+         "at": 0.8,
+         "show": "o"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Configure once, at startup",
+          "tone": "amber",
+          "icon": "gear"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Now call info with loaded 50000 rows into orders. It prints with a timestamp, the word INFO, and the module name. A debug call is silently dropped, because debug sits below info.",
+      "show": {
+       "t": "scene",
+       "title": "The *level* filter",
+       "nodes": [
+        {
+         "id": "i",
+         "label": "info call",
+         "sub": "loaded 50000 rows",
+         "x": 25,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "d",
+         "label": "debug call",
+         "sub": "row detail",
+         "x": 75,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "f",
+         "label": "Level: INFO",
+         "sub": "filter",
+         "x": 50,
+         "y": 55,
+         "tone": "amber"
+        },
+        {
+         "id": "out",
+         "label": "Log line",
+         "sub": "",
+         "x": 50,
+         "y": 85,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "i",
+         "f"
+        ],
+        [
+         "d",
+         "f"
+        ],
+        [
+         "f",
+         "out"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "i",
+          "d",
+          "f"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "i",
+          "f"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "f",
+          "out"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.8,
+         "dim": "d"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Debug dropped below info",
+          "tone": "grey",
+          "icon": "x"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Pass values as arguments, not inside an f string. Logging only builds the text if the message passes the level check, so a million skipped debug calls cost almost nothing.",
+      "show": {
+       "t": "points",
+       "title": "Lazy formatting",
+       "items": [
+        "Pass the format and the values separately",
+        "Text is built only if the level passes",
+        "A million skipped debug calls stay cheap",
+        "An f string always builds the text first"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why pass values as arguments instead of using an f string in a log call?",
+     "opts": [
+      "The text is built only if the message passes the level check",
+      "It makes the log line colored",
+      "It stops the traceback being printed"
+     ],
+     "ans": 0,
+     "why": "Arguments are formatted lazily, so skipped messages cost almost nothing."
+    },
+    "work": [
+     "Configure logging once in your entry point, with time, level and name in the format.",
+     "Create a logger per module using the module name."
+    ]
+   },
+   {
+    "title": "Logging traps that bite in production",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "You caught an error, logged it with error, and the traceback vanished. Why?",
+      "show": {
+       "t": "big",
+       "text": "Where did the traceback go?",
+       "sub": "Caught, logged, and lost"
+      }
+     },
+     {
+      "say": "Error records only your message. Inside an except block, call log dot exception instead. It logs at error level and attaches the full traceback, the chain of calls that led to the failure.",
+      "show": {
+       "t": "scene",
+       "title": "error vs *exception*",
+       "nodes": [
+        {
+         "id": "e",
+         "label": "log.error",
+         "sub": "message only",
+         "x": 25,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "x",
+         "label": "log.exception",
+         "sub": "message + traceback",
+         "x": 75,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "r",
+         "label": "Log record",
+         "sub": "",
+         "x": 50,
+         "y": 65,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "e",
+         "r"
+        ],
+        [
+         "x",
+         "r"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "e"
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "e",
+          "r"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.6,
+         "show": "x"
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "x",
+          "r"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Use exception inside except",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Second gotcha: basic config does nothing if the root logger already has handlers, so a library that configures first silently wins. Configure once, in the entry point, never inside library modules.",
+      "show": {
+       "t": "points",
+       "title": "Config gotcha",
+       "items": [
+        "Basic config is skipped if handlers already exist",
+        "A library that configures first silently wins",
+        "Configure only in the entry point",
+        "Library modules just get a logger"
+       ]
+      }
+     },
+     {
+      "say": "Third: secrets and personal data. A logged password or email lives in log storage for months and is copied to many systems. Log ids, never the values. And in production, log JSON fields like run id, table, and rows so you can search and count them.",
+      "show": {
+       "t": "scene",
+       "title": "Log *ids*, not secrets",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Password, email",
+         "sub": "never log",
+         "x": 25,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "j",
+         "label": "JSON fields",
+         "sub": "run id, table, rows",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "st",
+         "label": "Log store",
+         "sub": "searchable",
+         "x": 50,
+         "y": 65,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "st"
+        ],
+        [
+         "j",
+         "st"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "s"
+        },
+        {
+         "at": 0.4,
+         "glow": "s"
+        },
+        {
+         "at": 0.6,
+         "show": [
+          "j",
+          "st"
+         ]
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "j",
+          "st"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Structured, safe, searchable",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "You catch an exception in a pipeline step and want the full traceback in the logs. What do you call inside the except block?",
+     "opts": [
+      "log.info with the error text",
+      "log.exception",
+      "print the error"
+     ],
+     "ans": 1,
+     "why": "log.exception logs at error level and attaches the traceback automatically."
+    },
+    "work": [
+     "Search your code for except blocks that log only a message and switch them to log.exception.",
+     "Check that no log call includes tokens, passwords or personal data."
+    ]
+   },
+   {
+    "title": "Logs have a bill and a limit",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Is logging every row a good idea at ten million rows an hour?",
+      "show": {
+       "t": "big",
+       "text": "10 million rows an hour",
+       "sub": "Log every one?"
+      }
+     },
+     {
+      "say": "No. Log volume is a bill. Log stores charge per gigabyte ingested, and slow synchronous handlers can stall your pipeline. Log milestones and counts per batch, not per row. Sample the rest.",
+      "show": {
+       "t": "scene",
+       "title": "Log volume is a *bill*",
+       "nodes": [
+        {
+         "id": "r",
+         "label": "Per row logs",
+         "sub": "10M lines an hour",
+         "x": 25,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "b",
+         "label": "Per batch logs",
+         "sub": "counts and milestones",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "c",
+         "label": "Log store",
+         "sub": "billed per GB",
+         "x": 50,
+         "y": 65,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "r",
+         "c"
+        ],
+        [
+         "b",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "r",
+          "c"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "r",
+          "c"
+         ],
+         "n": 5
+        },
+        {
+         "at": 0.6,
+         "show": "b"
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "b",
+          "c"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Log per batch, sample the rest",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Logs are not metrics. If you want an alert when rows loaded drops, emit a metric, a number that is cheap to store and fast to query. Use logs to explain why, metrics to tell you that.",
+      "show": {
+       "t": "scene",
+       "title": "Metrics tell *that*, logs tell why",
+       "nodes": [
+        {
+         "id": "m",
+         "label": "Metric",
+         "sub": "rows loaded",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "a",
+         "label": "Alert",
+         "sub": "rows dropped",
+         "x": 75,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "l",
+         "label": "Logs",
+         "sub": "explain the cause",
+         "x": 50,
+         "y": 65,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "m",
+         "a"
+        ],
+        [
+         "a",
+         "l"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "m"
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "m",
+          "a"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.6,
+         "show": [
+          "a",
+          "l"
+         ]
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "a",
+          "l"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Alert on metrics, diagnose with logs",
+          "tone": "plum",
+          "icon": "search"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Standardize across teams: one JSON schema, a run id on every line, and a correlation id passed between services. Then one search follows a failure across the whole pipeline, and your on-call tooling gets clean evidence to diagnose from.",
+      "show": {
+       "t": "points",
+       "title": "Standardize",
+       "items": [
+        "One JSON schema for every team",
+        "A run id on every line",
+        "A correlation id passed between services",
+        "One search follows a failure end to end"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "You need an alert when rows loaded per hour drops sharply. What is the best fit?",
+     "opts": [
+      "Log each row and count lines by hand",
+      "Emit a metric and alert on it, keeping logs for the cause",
+      "Raise the log level to debug"
+     ],
+     "ans": 1,
+     "why": "Metrics are cheap and fast to query for alerting. Logs then explain why it happened."
+    },
+    "work": [
+     "Estimate your monthly log volume in gigabytes and what it costs.",
+     "Define a shared JSON log schema with run id and correlation id.",
+     "Move count-based alerts from log searches to metrics."
+    ]
+   }
+  ]
+ },
+ "P5.5 Testing with pytest": {
+  "hash": "8f942b059002",
+  "sec": "P5.5",
+  "reels": [
+   {
+    "title": "A robot inspector for your code",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "How do you know your code still works after you change it? You could check by hand every time. Or you could hire a tiny robot inspector.",
+      "show": {
+       "t": "scene",
+       "title": "Hire a robot *inspector*",
+       "nodes": [
+        {
+         "id": "you",
+         "label": "You",
+         "sub": "change code",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "bot",
+         "label": "Robot",
+         "sub": "checks it",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "you",
+         "bot"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "you",
+          "bot"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "you",
+          "bot"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Checks run themselves",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Think of a bakery. Before any tray goes out, a worker checks one thing: is this cookie sweet, round, and cooked? A test is that check, written as code. pytest is the worker who walks the whole kitchen and runs every check.",
+      "show": {
+       "t": "scene",
+       "title": "The bakery *checker*",
+       "nodes": [
+        {
+         "id": "tray",
+         "label": "Tray",
+         "sub": "cookies",
+         "x": 20,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "worker",
+         "label": "pytest",
+         "sub": "the checker",
+         "x": 50,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "out",
+         "label": "Shop",
+         "sub": "only good ones",
+         "x": 80,
+         "y": 30,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "tray",
+         "worker"
+        ],
+        [
+         "worker",
+         "out"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "tray"
+        },
+        {
+         "at": 0.45,
+         "show": "worker",
+         "glow": "worker"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "tray",
+          "worker"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "show": "out",
+         "chip": {
+          "text": "A test is a check written as code",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "You only need two habits. Name your files starting with test underscore, and name your checks the same way. Then write assert, which just means, I claim this is true. If the claim is false, pytest shouts and tells you which one.",
+      "show": {
+       "t": "points",
+       "title": "Two habits",
+       "items": [
+        "Name files and checks starting with test_",
+        "Write assert: I claim this is true",
+        "False claim means pytest shouts and names it"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What does the word assert mean in a pytest test?",
+     "opts": [
+      "Run this file twice",
+      "Claim that something is true, and fail loudly if it is not",
+      "Skip this check for now"
+     ],
+     "ans": 1,
+     "why": "An assert states a claim. If the claim is false, pytest reports the failure and shows which check broke."
+    },
+    "work": [
+     "Pick one small function you rely on and write one test for it in a file starting with test_.",
+     "Run pytest after your next change instead of checking by hand."
+    ]
+   },
+   {
+    "title": "How pytest finds and runs tests",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How does pytest know what to run, and how do you test three bad inputs without writing three tests?",
+      "show": {
+       "t": "big",
+       "text": "One test, many inputs",
+       "sub": "Find, assert, repeat"
+      }
+     },
+     {
+      "say": "pytest walks your folders and picks up files named test underscore star dot py. Inside, it runs every function starting with test. Plain assert is enough. If parse amount of rupee twelve fifty returns twelve point five, it passes. Otherwise you see both values side by side.",
+      "show": {
+       "t": "scene",
+       "title": "Discover, run, *report*",
+       "nodes": [
+        {
+         "id": "files",
+         "label": "test_*.py",
+         "sub": "found by name",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "fn",
+         "label": "test_*()",
+         "sub": "assert result",
+         "x": 50,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "rep",
+         "label": "Report",
+         "sub": "pass or diff",
+         "x": 80,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "files",
+         "fn"
+        ],
+        [
+         "fn",
+         "rep"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.15,
+         "show": "files"
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "files",
+          "fn"
+         ],
+         "n": 2,
+         "show": "fn"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "fn",
+          "rep"
+         ],
+         "n": 2,
+         "show": "rep"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "12.5 == 12.5 passes",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Parametrize runs one test over many inputs. Give it three bad strings and you get three separate results, each named. A fixture builds shared data, like a list of two sample rows, and pytest hands it to any test that asks by name.",
+      "show": {
+       "t": "scene",
+       "title": "Parametrize and *fixtures*",
+       "nodes": [
+        {
+         "id": "inp",
+         "label": "3 bad inputs",
+         "sub": "empty, 12,5x, abc",
+         "x": 20,
+         "y": 25,
+         "tone": "red"
+        },
+        {
+         "id": "test",
+         "label": "One test",
+         "sub": "raises BadAmount",
+         "x": 50,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "fix",
+         "label": "Fixture",
+         "sub": "2 sample rows",
+         "x": 50,
+         "y": 65,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "inp",
+         "test"
+        ],
+        [
+         "fix",
+         "test"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "inp"
+        },
+        {
+         "at": 0.4,
+         "show": "test",
+         "packet": [
+          "inp",
+          "test"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.4,
+         "count": {
+          "key": "runs",
+          "label": "Separate results",
+          "to": 3,
+          "unit": "runs",
+          "tone": "teal"
+         }
+        },
+        {
+         "at": 0.75,
+         "show": "fix",
+         "packet": [
+          "fix",
+          "test"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Fixture is passed in by name",
+          "tone": "plum",
+          "icon": "link"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "You want to check that three different bad strings all raise BadAmount. What is the cleanest way?",
+     "opts": [
+      "Write one test with a loop that stops at the first failure",
+      "Use parametrize so each input is its own named test result",
+      "Copy the test three times"
+     ],
+     "ans": 1,
+     "why": "Parametrize gives one test body and a separate pass or fail for each input, so you see exactly which input broke."
+    },
+    "work": [
+     "Replace any copy-pasted tests that differ only by input with one parametrized test.",
+     "Move repeated sample data into a fixture."
+    ]
+   },
+   {
+    "title": "What your passing tests still miss",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your tests all pass, yet production breaks. What did they miss?",
+      "show": {
+       "t": "big",
+       "text": "Green tests, broken prod",
+       "sub": "Usually the edges"
+      }
+     },
+     {
+      "say": "Usually the edges. Empty input, None, duplicates, boundary values, and the failure path. Test that a bad row lands in the dead letter list, not just that good rows load. Use pytest raises to prove the right error is thrown, not just any error.",
+      "show": {
+       "t": "points",
+       "title": "Test the edges",
+       "items": [
+        "Empty input and None",
+        "Duplicates and boundary values",
+        "Failure path: bad row goes to dead letter",
+        "pytest.raises with the specific error"
+       ]
+      }
+     },
+     {
+      "say": "Keep tests isolated. tmp_path gives each test its own temporary folder, so files never leak between tests. monkeypatch swaps an environment variable or function, then restores it afterward. Without that, one test's change can break another, and failures depend on run order.",
+      "show": {
+       "t": "scene",
+       "title": "Isolation keeps tests *honest*",
+       "nodes": [
+        {
+         "id": "t1",
+         "label": "Test A",
+         "sub": "own tmp_path",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "t2",
+         "label": "Test B",
+         "sub": "own tmp_path",
+         "x": 75,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "mp",
+         "label": "monkeypatch",
+         "sub": "swap, then restore",
+         "x": 50,
+         "y": 70,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "mp",
+         "t1"
+        ],
+        [
+         "mp",
+         "t2"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "t1",
+          "t2"
+         ]
+        },
+        {
+         "at": 0.5,
+         "show": "mp",
+         "packet": [
+          "mp",
+          "t1"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "mp",
+          "t2"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Undone after every test",
+          "tone": "amber",
+          "icon": "undo"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Also compare floats with pytest approx, because point one plus point two is not exactly point three.",
+      "show": {
+       "t": "code",
+       "title": "Floats lie slightly",
+       "text": "assert 0.1 + 0.2 == pytest.approx(0.3)"
+      }
+     }
+    ],
+    "check": {
+     "q": "A test passes alone but fails when the whole suite runs. What is the most likely cause?",
+     "opts": [
+      "pytest is too slow",
+      "Shared state, such as a changed environment variable or file, leaking between tests",
+      "The assert keyword is broken"
+     ],
+     "ans": 1,
+     "why": "Tests that share state depend on run order. tmp_path and monkeypatch give each test its own clean, restored setup."
+    },
+    "work": [
+     "Use tmp_path for any test that writes files, and monkeypatch for environment variables.",
+     "Add a test for empty input and one for the failure path to each pipeline function."
+    ]
+   },
+   {
+    "title": "Choosing how much to test, and where",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Why do pipelines with a thousand passing tests still ship bad data?",
+      "show": {
+       "t": "big",
+       "text": "Code tests are not data tests",
+       "sub": "Logic passes, data still breaks"
+      }
+     },
+     {
+      "say": "Because code tests check logic, not the data. Build three layers. Many unit tests of pure functions, running in milliseconds. A few integration tests against a real local database or DuckDB. Then data quality checks on real tables, which catch what no fixture imagined.",
+      "show": {
+       "t": "bars",
+       "title": "Three layers, by count",
+       "unit": "relative number",
+       "items": [
+        [
+         "Unit tests",
+         100,
+         "milliseconds each"
+        ],
+        [
+         "Integration tests",
+         15,
+         "real DuckDB"
+        ],
+        [
+         "Data quality checks",
+         5,
+         "real tables"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "The trade-off is speed against realism. Mocks are fast but can lie about how the database behaves. So mock only at the edges you don't own, like a paid API, and use real DuckDB for your SQL. Keep the pure logic separate from input and output, so most of it needs no setup at all.",
+      "show": {
+       "t": "scene",
+       "title": "Speed versus *realism*",
+       "nodes": [
+        {
+         "id": "pure",
+         "label": "Pure logic",
+         "sub": "no setup, fast",
+         "x": 25,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "duck",
+         "label": "DuckDB",
+         "sub": "real SQL",
+         "x": 75,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "api",
+         "label": "Paid API",
+         "sub": "mock it",
+         "x": 50,
+         "y": 70,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "pure",
+         "duck"
+        ],
+        [
+         "pure",
+         "api"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "pure",
+         "glow": "pure"
+        },
+        {
+         "at": 0.5,
+         "show": "duck",
+         "packet": [
+          "pure",
+          "duck"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.75,
+         "show": "api",
+         "packet": [
+          "pure",
+          "api"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Mock only what you don't own",
+          "tone": "amber",
+          "icon": "scissors"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Your pipeline's SQL transforms are heavily mocked and all tests pass, but a join duplicates rows in production. What is the best fix?",
+     "opts": [
+      "Add more mocks of the database",
+      "Run the SQL in an integration test against real DuckDB and add a data quality check for duplicate keys",
+      "Delete the unit tests"
+     ],
+     "ans": 1,
+     "why": "Mocks cannot show how real SQL behaves. A real local engine tests the join, and a data quality check catches duplicates on actual tables."
+    },
+    "work": [
+     "Separate pure transformation functions from code that reads or writes, so they can be unit tested without setup.",
+     "Add one DuckDB integration test per critical SQL transform.",
+     "Add a duplicate-key and null check on your most important output table."
+    ]
+   }
+  ]
+ },
+ "P5.6 Project layout, environments and config": {
+  "hash": "94de6aa402de",
+  "sec": "P5.6",
+  "reels": [
+   {
+    "title": "Why it worked on my laptop",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Why does a program work on your laptop, then break on the server?",
+      "show": {
+       "t": "scene",
+       "title": "Same code, *different* machine",
+       "nodes": [
+        {
+         "id": "l",
+         "label": "Laptop",
+         "sub": "works",
+         "x": 25,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "s",
+         "label": "Server",
+         "sub": "breaks",
+         "x": 75,
+         "y": 35,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "l",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "l",
+          "s"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "l",
+          "s"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Different tools, different results",
+          "tone": "amber",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Think of a kitchen. Each project gets its own kitchen, with its own pots and ingredients. That is a virtual environment. It stops one project's tools from messing with another's.",
+      "show": {
+       "t": "scene",
+       "title": "One *kitchen* per project",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Project A",
+         "sub": "own kitchen",
+         "x": 25,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Project B",
+         "sub": "own kitchen",
+         "x": 75,
+         "y": 35,
+         "tone": "plum"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "a"
+        },
+        {
+         "at": 0.5,
+         "show": "b"
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Virtual environment = private toolbox",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The recipe card lists exact brands and amounts. That is pinning. Next month, a new brand cannot spoil dinner.",
+      "show": {
+       "t": "points",
+       "title": "Pin the *recipe*",
+       "items": [
+        "Exact brand and amount",
+        "Written on a lock file",
+        "New release cannot surprise you"
+       ]
+      }
+     },
+     {
+      "say": "And the safe combination is never written on the recipe. It sits in a drawer, outside the card. That is config from the environment.",
+      "show": {
+       "t": "scene",
+       "title": "Secrets stay *outside* the code",
+       "nodes": [
+        {
+         "id": "c",
+         "label": "Code",
+         "sub": "the recipe",
+         "x": 25,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "e",
+         "label": "Environment",
+         "sub": "the drawer",
+         "x": 75,
+         "y": 35,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "c",
+         "e"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "c",
+          "e"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "c",
+          "e"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Code asks, environment answers",
+          "tone": "teal",
+          "icon": "🔑"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "In the kitchen analogy, what does pinning dependencies protect you from?",
+     "opts": [
+      "A new release of a library changing behaviour unexpectedly",
+      "Someone reading your password",
+      "Your laptop running out of disk space"
+     ],
+     "ans": 0,
+     "why": "Pinning fixes exact versions, like an exact brand on the recipe, so a new release cannot silently change a working job."
+    },
+    "work": [
+     "Check that every project you run has its own virtual environment, not the system Python.",
+     "Find one password or URL written inside code and note where it should live instead."
+    ]
+   },
+   {
+    "title": "Layout, venv, lock and config step by step",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How do you make a Python job run the same way on every machine?",
+      "show": {
+       "t": "big",
+       "text": "Same job, every machine",
+       "sub": "Four steps get you there"
+      }
+     },
+     {
+      "say": "First, create a virtual environment: python three, dash m, venv, dot venv. It is a private folder holding its own packages, so installs never touch the system Python.",
+      "show": {
+       "t": "code",
+       "title": "Isolate",
+       "text": "python3 -m venv .venv\nsource .venv/bin/activate",
+       "note": "Packages now install into .venv only"
+      }
+     },
+     {
+      "say": "Second, lay out the project. A source folder holds the package, a tests folder holds the tests, and pyproject dot toml lists name, version and dependencies. Third, pin versions in a lock file, so version two point one stays two point one, even after two point two ships.",
+      "show": {
+       "t": "scene",
+       "title": "A *predictable* layout",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "pyproject.toml",
+         "sub": "deps and settings",
+         "x": 50,
+         "y": 15,
+         "tone": "amber"
+        },
+        {
+         "id": "s",
+         "label": "src/meridian_ingest",
+         "sub": "extract, transform",
+         "x": 25,
+         "y": 45,
+         "tone": "blue"
+        },
+        {
+         "id": "t",
+         "label": "tests/",
+         "sub": "test_transform",
+         "x": 75,
+         "y": 45,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "s"
+        ],
+        [
+         "p",
+         "t"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "p"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "s",
+          "t"
+         ]
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Lock file: 2.1 stays 2.1",
+          "tone": "amber",
+          "icon": "🔒"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Fourth, read settings from the environment. Code asks for WAREHOUSE URL at startup. Dev, test and prod each set a different value, and the code never changes.",
+      "show": {
+       "t": "scene",
+       "title": "One code, *three* configs",
+       "nodes": [
+        {
+         "id": "j",
+         "label": "Job",
+         "sub": "reads WAREHOUSE_URL",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "d",
+         "label": "Dev",
+         "sub": "dev db",
+         "x": 20,
+         "y": 50,
+         "tone": "teal"
+        },
+        {
+         "id": "te",
+         "label": "Test",
+         "sub": "test db",
+         "x": 50,
+         "y": 50,
+         "tone": "amber"
+        },
+        {
+         "id": "pr",
+         "label": "Prod",
+         "sub": "prod warehouse",
+         "x": 80,
+         "y": 50,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "j",
+         "d"
+        ],
+        [
+         "j",
+         "te"
+        ],
+        [
+         "j",
+         "pr"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "j"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "d",
+          "te",
+          "pr"
+         ]
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "j",
+          "pr"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does the job read WAREHOUSE_URL from the environment?",
+     "opts": [
+      "It makes Python run faster",
+      "The same code can run in dev, test and prod with different values",
+      "It removes the need for a virtual environment"
+     ],
+     "ans": 1,
+     "why": "Config outside the code lets one unchanged build target different systems just by setting different values."
+    },
+    "work": [
+     "Create a pyproject.toml and a lock file for one job and rebuild its environment from scratch.",
+     "Replace one hard-coded connection string with an environment variable and add it to .env.example."
+    ]
+   },
+   {
+    "title": "Import side effects, silent defaults, leaked secrets",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "What happens when you import a file that loads data on the first line?",
+      "show": {
+       "t": "big",
+       "text": "Import runs the file",
+       "sub": "Every top-level line executes"
+      }
+     },
+     {
+      "say": "It runs. Importing executes the whole file. So a test that imports your module could hit the real warehouse. Wrap the entry point in if name equals main, so it runs only when executed directly, not when imported.",
+      "show": {
+       "t": "scene",
+       "title": "Guard the *entry point*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Test",
+         "sub": "imports module",
+         "x": 25,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "m",
+         "label": "Module",
+         "sub": "loads data?",
+         "x": 75,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "w",
+         "label": "Warehouse",
+         "sub": "real one",
+         "x": 75,
+         "y": 65,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "m"
+        ],
+        [
+         "m",
+         "w"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "t",
+          "m"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "t",
+          "m"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.6,
+         "show": "w"
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Guard with __main__ check",
+          "tone": "amber",
+          "icon": "🛡"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Environment lookups have a trap too. Square bracket access fails loudly with a KeyError if the variable is missing. A get with a default silently carries on, and might point a job at the wrong database. For required settings, fail fast at startup.",
+      "show": {
+       "t": "points",
+       "title": "Missing *config*",
+       "items": [
+        "environ[...] raises KeyError: loud",
+        "get(..., default) continues: silent",
+        "Required settings: fail at startup"
+       ]
+      }
+     },
+     {
+      "say": "And secrets: committing a dot env file puts the password in history forever. Deleting it later does not help. Commit dot env dot example with placeholders, and rotate any leaked key.",
+      "show": {
+       "t": "points",
+       "title": "Secrets in *Git*",
+       "items": [
+        "Real .env stays in .gitignore",
+        "Commit .env.example, placeholders only",
+        "Leaked once means rotate the key"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A required variable is missing in production. Which approach is safest?",
+     "opts": [
+      "os.environ.get with a default pointing at dev",
+      "os.environ with square brackets, so the job fails at startup",
+      "Catch the error and carry on with an empty string"
+     ],
+     "ans": 1,
+     "why": "Failing fast with a KeyError stops the job before it does any damage, whereas a silent default can write to the wrong place."
+    },
+    "work": [
+     "Add a main guard to every module that currently does work on import.",
+     "Run a secrets scanner over your repository history and rotate anything it finds."
+    ]
+   },
+   {
+    "title": "Where config lives and how far layout scales",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Is an environment variable always the right home for config?",
+      "show": {
+       "t": "big",
+       "text": "Env vars: always right?",
+       "sub": "Simple, but not free"
+      }
+     },
+     {
+      "say": "For a handful of settings, yes. It is simple and works everywhere, containers included. But environment variables are plain text, visible to anyone who can inspect the process, and they get dumped into crash logs.",
+      "show": {
+       "t": "points",
+       "title": "Env vars: *good* and *risky*",
+       "items": [
+        "Simple, portable, works in containers",
+        "Plain text, visible to process inspectors",
+        "Often leaked into crash dumps"
+       ]
+      }
+     },
+     {
+      "say": "At scale, use a secrets manager. Jobs fetch short-lived credentials at runtime, access is audited, and rotation needs no redeploy. Cost is one more dependency, and a failure mode if it is down.",
+      "show": {
+       "t": "scene",
+       "title": "Fetch secrets at *runtime*",
+       "nodes": [
+        {
+         "id": "j",
+         "label": "Job",
+         "sub": "starts up",
+         "x": 25,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "v",
+         "label": "Secrets manager",
+         "sub": "audited, rotated",
+         "x": 75,
+         "y": 35,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "j",
+         "v"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "j",
+          "v"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "j",
+          "v"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Short-lived credentials, no redeploy",
+          "tone": "teal",
+          "icon": "🔑"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Same for layout. One package per job is simple. With fifty jobs, share a library, but version it, or one change breaks everyone. Pin each job, and rebuild the lock on a schedule so you still get security fixes.",
+      "show": {
+       "t": "points",
+       "title": "Layout at *fifty jobs*",
+       "items": [
+        "Shared library, versioned",
+        "Each job pins its own lock file",
+        "Scheduled lock rebuilds for security fixes"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "When is a secrets manager worth its extra dependency over plain environment variables?",
+     "opts": [
+      "Never, environment variables are always better",
+      "When you need auditing, rotation without redeploys, and many jobs sharing credentials",
+      "Only when the project has fewer than three settings"
+     ],
+     "ans": 1,
+     "why": "Auditing, short-lived credentials and easy rotation matter as jobs and people multiply; for a few settings the extra moving part is not worth it."
+    },
+    "work": [
+     "List which of your secrets could be rotated today without a redeploy.",
+     "Decide a schedule for rebuilding lock files so pinned jobs still receive security patches."
+    ]
+   }
+  ]
+ },
+ "P5.3 Context managers: cleanup you cannot forget": {
+  "hash": "bb6db278a1be",
+  "sec": "P5.3",
+  "reels": [
+   {
+    "title": "The library book promise",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Ever left a tap running or a fridge door open? Code does that too, and it costs real money.",
+      "show": {
+       "t": "big",
+       "text": "Left open",
+       "sub": "Forgotten cleanup in code"
+      }
+     },
+     {
+      "say": "A with block is like borrowing a library book with a promise attached. You take the book, you read, and the librarian makes sure it goes back on the shelf, even if you spill coffee on it or run out in a panic.",
+      "show": {
+       "t": "scene",
+       "title": "Borrow, use, *return*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Borrow",
+         "sub": "setup",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Use it",
+         "sub": "your code",
+         "x": 50,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "c",
+         "label": "Return",
+         "sub": "always",
+         "x": 80,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "b"
+        ],
+        [
+         "b",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "a"
+        },
+        {
+         "at": 0.4,
+         "show": "b",
+         "packet": [
+          "a",
+          "b"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "c",
+         "packet": [
+          "b",
+          "c"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Returned even after a mess",
+          "tone": "amber",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "In code, the book is a file, a lock, or a database connection. If you forget to close them, they stay stuck open, and other work waits in line. The with block does the closing for you, every single time.",
+      "show": {
+       "t": "points",
+       "title": "Things that must be given back",
+       "items": [
+        "A file",
+        "A lock",
+        "A database connection"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What is the main promise of a with block?",
+     "opts": [
+      "Your code runs faster",
+      "Cleanup runs even if the body fails",
+      "Errors are never raised"
+     ],
+     "ans": 1,
+     "why": "With guarantees the teardown step, such as closing a file or releasing a lock, whether the body succeeds or fails. It does not speed things up or hide errors."
+    },
+    "work": [
+     "Find places in your code that open files or connections without a with block.",
+     "Replace manual close calls with with statements."
+    ]
+   },
+   {
+    "title": "What with really calls",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "What actually happens when Python meets the word with?",
+      "show": {
+       "t": "big",
+       "text": "with",
+       "sub": "What runs behind it?"
+      }
+     },
+     {
+      "say": "First it calls a method named enter. That does the setup, like opening a file or starting a transaction. Then your indented code runs. When it ends, Python calls exit, and exit gets three things: the error type, the error, and the traceback. On a clean finish, all three are None.",
+      "show": {
+       "t": "scene",
+       "title": "Enter, body, *exit*",
+       "nodes": [
+        {
+         "id": "e",
+         "label": "enter",
+         "sub": "setup",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "body",
+         "sub": "your code",
+         "x": 50,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "x",
+         "label": "exit",
+         "sub": "type, error, traceback",
+         "x": 80,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "e",
+         "b"
+        ],
+        [
+         "b",
+         "x"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "e"
+        },
+        {
+         "at": 0.4,
+         "show": "b",
+         "packet": [
+          "e",
+          "b"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "x",
+         "packet": [
+          "b",
+          "x"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Clean exit: all three are None",
+          "tone": "amber",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Here is a transaction. Enter sends BEGIN. Exit sends COMMIT if the error type is None, and ROLLBACK otherwise. So a hundred row load either lands whole or not at all.",
+      "show": {
+       "t": "flow",
+       "title": "Transaction as a context manager",
+       "steps": [
+        {
+         "label": "BEGIN"
+        },
+        {
+         "label": "100 inserts"
+        },
+        {
+         "label": "No error: COMMIT"
+        },
+        {
+         "label": "Error: ROLLBACK"
+        }
+       ]
+      }
+     },
+     {
+      "say": "For short cases, use the contextmanager decorator. Code before yield is setup. Code after is teardown. Wrap yield in try finally so teardown runs on errors too.",
+      "show": {
+       "t": "code",
+       "title": "Generator version",
+       "text": "@contextmanager\ndef timer(stats, name):\n    t0 = time.perf_counter()\n    try:\n        yield\n    finally:\n        stats[name] = time.perf_counter() - t0"
+      }
+     }
+    ],
+    "check": {
+     "q": "In a class based context manager, what does exit receive when the body finishes without error?",
+     "opts": [
+      "Three None values",
+      "A True flag",
+      "The return value of the body"
+     ],
+     "ans": 0,
+     "why": "Exit gets exc_type, exc and tb. On a clean exit all three are None, which is how a transaction knows to commit."
+    },
+    "work": [
+     "Write a small Transaction class and watch exit receive None versus an error.",
+     "Turn a repeated setup and teardown pair into a contextmanager function."
+    ]
+   },
+   {
+    "title": "Swallowed errors and missing finally",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "What happens to your error if exit returns True?",
+      "show": {
+       "t": "big",
+       "text": "return True",
+       "sub": "Where does the error go?"
+      }
+     },
+     {
+      "say": "It vanishes. Returning True tells Python the exception is handled, so the program carries on as if nothing broke. Return False, or nothing, and the error continues upward. A transaction class should almost always return False, otherwise a failed load looks like a success.",
+      "show": {
+       "t": "scene",
+       "title": "Exit decides the error's *fate*",
+       "nodes": [
+        {
+         "id": "er",
+         "label": "Error in body",
+         "sub": "raised",
+         "x": 50,
+         "y": 15,
+         "tone": "red"
+        },
+        {
+         "id": "t",
+         "label": "exit returns True",
+         "sub": "swallowed",
+         "x": 25,
+         "y": 55,
+         "tone": "amber"
+        },
+        {
+         "id": "f",
+         "label": "exit returns False",
+         "sub": "propagates",
+         "x": 75,
+         "y": 55,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "er",
+         "t"
+        ],
+        [
+         "er",
+         "f"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "er"
+        },
+        {
+         "at": 0.4,
+         "show": "t",
+         "packet": [
+          "er",
+          "t"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": "f",
+         "packet": [
+          "er",
+          "f"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "True hides failures",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "With the contextmanager decorator, there is a trap. An error is thrown into the generator at the yield line. Without try and finally, the teardown after yield never runs, and a lock stays held forever.",
+      "show": {
+       "t": "points",
+       "title": "Generator trap",
+       "items": [
+        "Errors are thrown in at yield",
+        "No finally means no teardown",
+        "A held lock blocks everyone"
+       ]
+      }
+     },
+     {
+      "say": "Also, if exit itself raises, the new error takes over, and the original is only attached as context. Keep teardown simple.",
+      "show": {
+       "t": "big",
+       "text": "Keep exit simple",
+       "sub": "A failing exit hides the real cause"
+      }
+     }
+    ],
+    "check": {
+     "q": "A contextmanager function has cleanup after yield but no try and finally. The body raises. What happens to the cleanup?",
+     "opts": [
+      "It still runs",
+      "It is skipped",
+      "It runs twice"
+     ],
+     "ans": 1,
+     "why": "The exception is raised at the yield line, so code after it is skipped unless it sits in a finally block."
+    },
+    "work": [
+     "Audit your exit methods for return True and justify each one.",
+     "Check every contextmanager function wraps yield in try and finally."
+    ]
+   },
+   {
+    "title": "When with is the wrong tool",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When is a with block the wrong tool?",
+      "show": {
+       "t": "big",
+       "text": "Not always with",
+       "sub": "Scope is the limit"
+      }
+     },
+     {
+      "say": "It only guards one scope. If a resource must outlive the function, like a connection pool shared by a service, or a stream handed to a caller, a with block closes it too early. Give the pool an owner, and close it at shutdown.",
+      "show": {
+       "t": "scene",
+       "title": "Resource lifetime vs *scope*",
+       "nodes": [
+        {
+         "id": "w",
+         "label": "with block",
+         "sub": "short scope",
+         "x": 25,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "p",
+         "label": "Connection pool",
+         "sub": "service lifetime",
+         "x": 75,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "o",
+         "label": "Owner closes at shutdown",
+         "sub": "",
+         "x": 50,
+         "y": 65,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "o"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "w"
+        },
+        {
+         "at": 0.4,
+         "show": "p"
+        },
+        {
+         "at": 0.7,
+         "show": "o",
+         "packet": [
+          "p",
+          "o"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Match cleanup to lifetime",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Also, a rollback cannot undo side effects outside the database. An email sent or a file uploaded inside the transaction stays. Keep those after commit, or make them idempotent.",
+      "show": {
+       "t": "points",
+       "title": "Rollback limits",
+       "items": [
+        "Emails stay sent",
+        "Uploads stay uploaded",
+        "Do them after commit",
+        "Or make them idempotent"
+       ]
+      }
+     },
+     {
+      "say": "For many resources, use ExitStack to enter a dynamic number of them and unwind in reverse. For async code, use async with. Prefer with over try finally, because reviewers see the cleanup in one line.",
+      "show": {
+       "t": "points",
+       "title": "Scaling the pattern",
+       "items": [
+        "ExitStack for dynamic resources",
+        "Unwinds in reverse order",
+        "async with for async code"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A transaction block uploads a file to cloud storage, then the database commit fails and rolls back. What is true?",
+     "opts": [
+      "The upload is undone automatically",
+      "The upload stays, so do it after commit or make it idempotent",
+      "The upload never ran"
+     ],
+     "ans": 1,
+     "why": "Rollback only covers the database. External side effects remain, so order them after commit or design them to be safely repeated."
+    },
+    "work": [
+     "List side effects inside your transaction blocks and move them after commit.",
+     "Use ExitStack where the number of files or connections varies.",
+     "Give long lived pools a clear owner and a shutdown hook."
+    ]
+   }
+  ]
+ }
+}
