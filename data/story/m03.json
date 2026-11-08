@@ -1,0 +1,29 @@
+{
+ "season": 1,
+ "title": "Finale: one platform, many shapes",
+ "arc": "The season's last arc. Data science wants features, the BI team wants a star, the new agent wants a semantic layer, and the raw data has to stay replayable underneath all of it. You lay out the model for every stage, from raw to serving, and hold your first data modelling interview round. The weekend finale is the season's incident review: the double-charged fare, the three rider counts and the overwritten history, explained to Asha in one story.",
+ "previously": [
+  "Which model fits the raw layer, and which fits the business layer?",
+  "What does \"no peeking\" mean for a feature, in one sentence?",
+  "Recall: what is a quality gate between stages for?",
+  "Before the finale: name the three season one incidents and their fixes."
+ ],
+ "cliff": [
+  "Three teams, three shapes. Which one is right?",
+  "The pricing feature looks brilliant in testing. Why is that a warning?",
+  "You are the interviewer now. What do you listen for?",
+  "Season two: Meridian has no platform yet. What do you build first, and how badly?"
+ ],
+ "scenes": {
+  "monday": "Three teams ask for three shapes of the same data, each sure theirs is the right one. Grace suggests you stop arguing about shape and start with stages. Read the stage-by-model table.",
+  "midweek": "A feature for the pricing model \"peeks\" at the future and looks brilliant in testing. Build a point-in-time feature that only sees what was known at the time.",
+  "friday": "You run your first data modelling round, from the interviewer's side of the table. Then pick the model for every layer of Meridian's platform in the design problem.",
+  "finale": "Sunday is the season one incident review with Asha. The double charge, the three rider counts, the history that moved: she wants the causes, the fixes and what stops them coming back. It is a boss round, and a weak answer earns a rematch, never a loss."
+ },
+ "to": {
+  "monday": "#/learn/m03/chapter",
+  "midweek": "#/sql/qm031",
+  "friday": "#/design/m03",
+  "finale": "#/quiz/m03"
+ }
+}

@@ -1,0 +1,29 @@
+{
+ "season": 2,
+ "title": "Finale: the source of truth",
+ "arc": "The season's last arc. The trips database and the warehouse disagree, and nobody can say which is right. You bring change data capture to Meridian: log-based capture, applying changes in order, Flink SQL, reconciliation, and an agent that proposes fixes a person approves. The database team says no at first; their last replication slot filled a disk at 3 a.m. You win them over with controls, not slides. The weekend finale is New Year's Eve.",
+ "previously": [
+  "Why do the database and the warehouse disagree, in one sentence?",
+  "Recall: how does log-based capture know the order of changes?",
+  "What does reconciliation compare, and how often?",
+  "Before the finale: what must never happen when a CDC connector is paused?"
+ ],
+ "cliff": [
+  "312 trips more in the warehouse. Which system is the truth?",
+  "A deleted trip came back. Which event arrived late?",
+  "The connector paused for maintenance and the source disk is growing. Why?",
+  "Season three: Meridian is moving to the cloud, and the first bill arrives. What tripled?"
+ ],
+ "scenes": {
+  "monday": "The warehouse says 312 more trips than the database for one day. Asha asks which one is the truth. Start with why the two systems disagree.",
+  "midweek": "A late change event brought a deleted trip back to life. Read and fix the apply step, then let the CDC pipeline catch up in the simulator without filling the source disk.",
+  "friday": "The database team says no to CDC: their last slot filled a disk at 3 a.m. Lead it: the controls, the contract and a two-week pilot they can stop.",
+  "finale": "New Year's Eve is season two's finale. Demand spikes, the stream lags, and the warehouse and the database drift apart at midnight. Asha runs the incident review on Sunday. It is a boss round, and a weak answer earns a rematch, never a loss."
+ },
+ "to": {
+  "monday": "#/learn/s06/chapter",
+  "midweek": "#/step/s06/fix",
+  "friday": "#/step/s06/lead",
+  "finale": "#/quiz/s06"
+ }
+}

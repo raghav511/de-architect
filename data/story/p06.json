@@ -1,0 +1,27 @@
+{
+ "season": 1,
+ "title": "Two hundred thousand API calls",
+ "arc": "Meridian needs weather for every trip to price surge fairly, and the weather partner allows ten calls a second. A loop would take a week; a thousand threads would get you blocked. This week you learn when work is waiting and when it is computing: threads, the GIL, processes, asyncio, rate limits and backpressure, and measuring before optimising. By Friday the enrichment runs within the partner's limit and you can say why each tool fits.",
+ "previously": [
+  "Is calling an API waiting or computing? Why does that decide the tool?",
+  "Why didn't threads speed up the CPU-heavy part?",
+  "Recall: what does a token bucket allow, and what does it smooth out?",
+  "What should you measure before you optimise anything?"
+ ],
+ "cliff": [
+  "Ten calls a second, two hundred thousand trips. How long, and how do you shorten it?",
+  "The GIL is real. When does it not matter at all?",
+  "The partner blocked your key. What should have stopped you?",
+  "Next: Meridian's trips table has three different \"trip counts\". Which one is right?"
+ ],
+ "scenes": {
+  "monday": "Tomas wants weather on every trip by next week. The partner allows ten calls a second. A plain loop would take days. Start with waiting versus computing.",
+  "midweek": "Someone ran the enrichment with a hundred threads and the partner blocked Meridian's key for an hour. Build a token bucket and limit concurrent calls so it never happens again.",
+  "friday": "The job is still slower than it should be. Measure before you change anything: find the slow part, then decide between threads, processes and asyncio with numbers."
+ },
+ "to": {
+  "monday": "#/learn/p06/chapter",
+  "midweek": "#/py/y062",
+  "friday": "#/py/y065"
+ }
+}

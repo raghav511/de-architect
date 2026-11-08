@@ -1,0 +1,27 @@
+{
+ "season": 2,
+ "title": "Build it badly, end to end",
+ "arc": "Season two opens with a promise to Asha: a working path from the first ride event to a number on a dashboard in one week, ugly but complete. Dev is sceptical; he has seen platforms that were all plans. You build the walking skeleton: events into Kafka, raw files in the lake, a Spark job, an Airflow DAG, and the idea that ties it together, idempotency. Midweek a rerun doubles every row, and you learn why every step must be safe to run twice.",
+ "previously": [
+  "Why build the whole path badly before building any part well?",
+  "Where does a ride event live between Kafka and the dashboard?",
+  "Recall: what makes a job safe to rerun?",
+  "What does an orchestrator give you that cron does not?"
+ ],
+ "cliff": [
+  "Dev bets it won't run end to end by Friday. Which part breaks first?",
+  "A rerun doubled every row. What was missing?",
+  "Airflow ran the job twice for one hour. Whose fault is that?",
+  "The lake is filling with tiny files. Why does that slow every query?"
+ ],
+ "scenes": {
+  "monday": "Asha's ask: one week, one ride event, all the way to a dashboard. Dev bets you a coffee it won't run end to end by Friday. Start with why you build everything first, badly.",
+  "midweek": "A rerun of last night's job doubles every row on the dashboard. Nobody noticed until Tomas did. Read and fix the hour that counts a row twice, and make the load safe to rerun.",
+  "friday": "The skeleton runs end to end: Kafka, the lake, Spark and Airflow. Run it under load in the simulator, then answer Grace: forty cron jobs or one orchestrator?"
+ },
+ "to": {
+  "monday": "#/learn/s01/chapter",
+  "midweek": "#/step/s01/fix",
+  "friday": "#/sim/sc/skeleton"
+ }
+}

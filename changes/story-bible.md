@@ -1,0 +1,3 @@
+# Meridian story bible and Season 1 and 2 story files
+- The program now has a story: you are the new staff data architect at Meridian, with a recurring cast (the CTO, an on-call engineer, a finance partner, a product manager, a rival architect, a mentor and an interview panel) and five seasons that follow the program.
+- Every module in Seasons 1 and 2 has its week as a story (a stakeholder problem on Monday, an incident midweek, the fix on Friday) plus a recall question and a cliffhanger for each day, each leading into the real lesson, exercise, step or simulator challenge. The cold open and cliffhanger screens will use them.

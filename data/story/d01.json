@@ -1,0 +1,27 @@
+{
+ "season": 2,
+ "title": "The replica that lied",
+ "arc": "A rider updates their address, then sees the old one on the next screen. Support logs it as a bug; it is a law of physics, or close to it. This week you go underneath every data tool Meridian uses: storage engines, replication and lag, partitioning and hot spots, transactions and isolation, consensus and clocks, exactly-once, and the serving side. By Friday you can explain read-your-writes to support in one sentence and to an interviewer in five.",
+ "previously": [
+  "Why did the rider see their old address right after changing it?",
+  "What does a quorum read promise that a single replica does not?",
+  "Recall: which isolation level stops a lost update?",
+  "Why can a Postgres replication slot fill a disk?"
+ ],
+ "cliff": [
+  "A rider saw their old address. Bug, or physics?",
+  "Two replicas disagree. Which one is right?",
+  "Two clocks disagree by 40 milliseconds. Whose event came first?",
+  "Surge pricing needs demand per minute, now. Can a nightly batch do that?"
+ ],
+ "scenes": {
+  "monday": "Support escalates: a rider changed their address and the app showed the old one. Dev says \"replication lag\" and shrugs. Start with why a data engineer needs this.",
+  "midweek": "Two services read the same trip and disagree. Build a quorum read with read repair, then compare vector clocks to see which version came first.",
+  "friday": "Design a trip store that survives a lost data centre, then read the Postgres lens: MVCC, vacuum and why a replication slot can fill a disk."
+ },
+ "to": {
+  "monday": "#/learn/d01/chapter",
+  "midweek": "#/py/yd013",
+  "friday": "#/design/d01"
+ }
+}

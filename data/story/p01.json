@@ -1,0 +1,27 @@
+{
+ "season": 1,
+ "title": "The forty-minute script",
+ "arc": "Tomas, the product manager for rides, has a fare-estimate script that takes forty minutes and he runs it before every pricing meeting. You read it and find the reason in one line: a membership test on a list inside a loop over two million trips. The week is about what each Python operation really costs, and about saying so in a way Tomas can repeat to his boss. By Friday the script runs in under a minute and you have the architect's answer to \"should this even be Python?\"",
+ "previously": [
+  "Why is \"x in a_list\" slow on two million rows, and \"x in a_set\" not?",
+  "Yesterday: what does Big-O tell you, and what does it hide?",
+  "Which collections type counts things for you in one line?",
+  "Recall the lens: when should a pipeline step stop being plain Python?"
+ ],
+ "cliff": [
+  "Tomas's loop looks harmless. Which one line makes it quadratic?",
+  "A dict lookup is fast. When is it not?",
+  "The log report counts levels by hand. What does the standard library already have?",
+  "Friday: should Tomas's script be Python, SQL or Spark?"
+ ],
+ "scenes": {
+  "monday": "Tomas shows you his fare script with real pride. It works. It also takes forty minutes, and the pricing meeting is at ten. You open it and read the loop. Start with lists, tuples and what they cost.",
+  "midweek": "Dev pings you: the overnight dedupe job is still running at nine. Same pattern, bigger list. Fix it with a structure that remembers what it has seen, and keep the order the report expects.",
+  "friday": "The script now runs in fifty seconds. Tomas asks whether it should be Python at all. Read the architect's lens, then give him an answer he can take upstairs."
+ },
+ "to": {
+  "monday": "#/learn/p01/chapter",
+  "midweek": "#/py/y011",
+  "friday": "#/learn/p01/chapter"
+ }
+}

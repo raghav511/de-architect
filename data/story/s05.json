@@ -1,0 +1,27 @@
+{
+ "season": 2,
+ "title": "Surge, in real time",
+ "arc": "Tomas wants surge pricing that reacts within a minute, not the next morning. That means streaming: Kafka, delivery guarantees, Structured Streaming, schemas that change, and failure handling. Midweek a single poison message stalls a partition and lag climbs past a million. By Friday demand per zone updates every minute, a bad record waits in a dead-letter queue instead of stopping the stream, and you have argued for one shared Kafka instead of one per team.",
+ "previously": [
+  "Why is \"exactly once\" harder in a stream than in a batch?",
+  "Recall: what does a Kafka consumer commit, the last offset read or the next one?",
+  "What does a watermark decide about a late event?",
+  "Why does adding consumers past the partition count do nothing?"
+ ],
+ "cliff": [
+  "A concert ends at 10:30. When should prices move, and from which data?",
+  "One bad event stopped a partition. What keeps the rest of the stream moving?",
+  "After a restart, one record is processed twice. Which number was committed?",
+  "The warehouse and the trips database disagree by 312 rows. Which one is the truth?"
+ ],
+ "scenes": {
+  "monday": "Tomas: \"When a concert ends, prices should move in a minute, not tomorrow.\" You sketch a stream. Start with why streaming is harder than batch.",
+  "midweek": "Lag passes 1.8 million. One malformed event, after an app release, stops a partition cold. Send it to a dead-letter queue and fix the offset that replays a record after a restart.",
+  "friday": "Partitions cap parallelism: prove it in the simulator. Then three teams each want their own Kafka \"so nobody breaks it\". Decide, and bring them along."
+ },
+ "to": {
+  "monday": "#/learn/s05/chapter",
+  "midweek": "#/step/s05/fix",
+  "friday": "#/sim/sc/partitions"
+ }
+}

@@ -1,0 +1,27 @@
+{
+ "season": 2,
+ "title": "Two correct numbers",
+ "arc": "Finance says revenue last month was 41.2 million and product says 42.6, and both are right by their own definitions. Asha wants one number in the board deck. This week you build a warehouse people trust: definitions first, facts and grain, keys, slowly changing dimensions, layers, dbt in practice, and late data. Midweek late trips and a backfill double-count a week. By Friday one revenue number has one definition, tests and an owner.",
+ "previously": [
+  "Why are both revenue numbers \"correct\"?",
+  "What is the grain of the trips fact, in one sentence?",
+  "Recall: why did the incremental model miss late trips?",
+  "Who owns a metric definition once it is agreed?"
+ ],
+ "cliff": [
+  "Finance and product disagree. Is it a SQL bug or a definition?",
+  "A trip arrives a day late. Which incremental filter misses it?",
+  "The backfill counted a week twice. What should have stopped it?",
+  "Next: the systems underneath. Why does a replica sometimes show old data?"
+ ],
+ "scenes": {
+  "monday": "Two revenue numbers, both \"correct\". Mei and Tomas each bring their spreadsheet. Asha wants one by the board meeting. Start with the problem: a definition.",
+  "midweek": "Trips that arrive a day late are missing from the incremental model, and the backfill counted a week twice. Read and fix the incremental model that misses late rows.",
+  "friday": "Design a warehouse people trust, then lead the conversation: two correct numbers for active customers, one meeting, and a definition both teams sign."
+ },
+ "to": {
+  "monday": "#/learn/s04/chapter",
+  "midweek": "#/step/s04/fix",
+  "friday": "#/step/s04/lead"
+ }
+}

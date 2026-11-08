@@ -1,0 +1,27 @@
+{
+ "season": 1,
+ "title": "Three answers to one question",
+ "arc": "The weekly business review shows three different numbers for active riders, and Asha wants one by Friday. The cause is not SQL; it is modelling: nobody agreed on the grain, a rider who changed city is counted twice, and history was overwritten. This week you design Meridian's first proper dimensional model: the four steps, keys, slowly changing dimensions, cumulative tables, and a graph for riders who bring in other riders.",
+ "previously": [
+  "What is a grain, and why does every fact table need exactly one?",
+  "Which slowly changing dimension type keeps the past true?",
+  "Recall: what does an as-of join protect you from?",
+  "Why might a cumulative table beat recomputing history every day?"
+ ],
+ "cliff": [
+  "Three numbers for active riders. Which modelling step went missing?",
+  "A rider moved city and last month's revenue moved too. What was overwritten?",
+  "Revenue by tier: today's tier or the tier at trip time?",
+  "Next week a fare is charged twice and nobody notices. Which kind of fact hides it?"
+ ],
+ "scenes": {
+  "monday": "Three dashboards, three answers to \"how many active riders?\". Asha wants one number by Friday and a reason the other two were wrong. Start with why model at all.",
+  "midweek": "A rider moved from Pune to Goa, and last month's revenue moved with them. History was overwritten. Build a type 2 dimension so the past stays true.",
+  "friday": "Join revenue to the rider's tier at the time of the trip, not today's. Then read the architect's lens: when a star is the right shape, and when it is not."
+ },
+ "to": {
+  "monday": "#/learn/m01/chapter",
+  "midweek": "#/sql/qm011",
+  "friday": "#/sql/qm012"
+ }
+}

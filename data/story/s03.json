@@ -1,0 +1,27 @@
+{
+ "season": 2,
+ "title": "One city has eighty percent of the rows",
+ "arc": "The nightly enrichment job joins every trip to driver and zone data and now takes three hours. Mei has noticed the cluster bill. One task in a thousand runs for two hours while the rest finish in minutes: one city holds most of the rows. This week you go inside Spark: plans, the shuffle, join strategies, skew, adaptive execution, memory and spill, and sizing a job from evidence. By Friday the job runs in twenty minutes and the stage summary proves why.",
+ "previously": [
+  "Which operations cause a shuffle, and why are they expensive?",
+  "Recall: when does Spark broadcast a table instead of shuffling both sides?",
+  "What does a stage summary tell you that the plan does not?",
+  "Why does salting a key fix skew, and what does it cost?"
+ ],
+ "cliff": [
+  "The bill says \"join\". Which join strategy did Spark pick?",
+  "One task in a thousand runs for two hours. What is it waiting on?",
+  "You salted the key and rows went missing. Where did they go?",
+  "Finance and product report different revenue. Which one is right?"
+ ],
+ "scenes": {
+  "monday": "Mei forwards the cluster bill with one question: \"Why does a join cost this much?\" You open the job's plan. Start with how your code becomes tasks.",
+  "midweek": "One task runs for two hours while 999 finish in minutes. One city has 80% of the rows. Find the hot key, then fix it without losing rows when you salt it.",
+  "friday": "Run Spark under load in the simulator, then answer the architect's question from the team: should we replace Spark with single-node engines?"
+ },
+ "to": {
+  "monday": "#/learn/s03/chapter",
+  "midweek": "#/step/s03/fix",
+  "friday": "#/sim/sc/spark"
+ }
+}

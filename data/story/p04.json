@@ -1,0 +1,27 @@
+{
+ "season": 1,
+ "title": "The trip that had two currencies",
+ "arc": "A ride that started in one country and ended in another produced a fare that added rupees to euros. Nothing failed; the total was simply wrong. This week you model Meridian's data with classes that refuse invalid states: a validated Trip, Money that will not mix currencies, a buffer that flushes itself, and validation rules as objects. On Friday Grace runs you through a first low-level design round, the kind staff interviews still use.",
+ "previously": [
+  "When is a dict good enough, and when do you want a class?",
+  "Why should Money raise an error instead of adding two currencies?",
+  "What does a dataclass write for you?",
+  "Recall Grace's round: why composition over inheritance for a ride?"
+ ],
+ "cliff": [
+  "The fare added rupees to euros. Which type should have stopped it?",
+  "A Trip with a negative distance got into the warehouse. Where do you check?",
+  "The buffer must flush every 500 rows or every minute. How does it know?",
+  "Friday's design round: what do interviewers listen for first?"
+ ],
+ "scenes": {
+  "monday": "Mei finds a fare of 1,240 that is half euros and half rupees. No error, just a wrong number. Start with when to use a class, a dict or a function.",
+  "midweek": "Build Money that refuses to add different currencies, so the bug becomes an error you can see. Then a Trip class that cannot exist with a negative distance.",
+  "friday": "Grace plays interviewer: \"Design the classes for a ride's life, from request to payout.\" Use dataclasses, composition and type hints, then read how low-level design rounds are scored."
+ },
+ "to": {
+  "monday": "#/learn/p04/chapter",
+  "midweek": "#/py/y042",
+  "friday": "#/learn/p04/chapter"
+ }
+}

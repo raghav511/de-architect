@@ -1,0 +1,27 @@
+{
+ "season": 1,
+ "title": "The fare charged twice",
+ "arc": "A rider is charged twice for one trip, and the finance ledger agrees with the bank while the trips dashboard does not. Mei wants to know which number is lying. This week you learn facts properly: the four fact types, deduplication by event, accumulating snapshots for a trip's life, ledgers and event sourcing, how wide a fact should be, and reduced facts that make a month cheap to query. The season is nearly over, and its finale is waiting.",
+ "previously": [
+  "Name the four fact types. Which one follows a trip from request to payout?",
+  "Why did a retry create a second payment event, and how do you dedupe it?",
+  "Recall: what makes a ledger different from a status column?",
+  "What do you give up when a month becomes one row?"
+ ],
+ "cliff": [
+  "Two numbers differ by one trip. Which one is lying?",
+  "The same payment arrived twice. What key tells you it is one event?",
+  "Refunds change a trip after it ended. Where does that change live?",
+  "The data scientists, the BI team and the agent all want different shapes. One model or several?"
+ ],
+ "scenes": {
+  "monday": "Mei holds up two numbers that should match: rides revenue in the dashboard and in the ledger. They differ by exactly one trip, charged twice. Start with what a fact is.",
+  "midweek": "The payment events arrived twice after a retry. Build a deduplicated event fact, then an accumulating snapshot that follows a trip from request to payout.",
+  "friday": "The dashboard queries a year of trips every morning and the warehouse bill climbs. Build a reduced fact that holds a month in one row, and explain the trade-off to Mei."
+ },
+ "to": {
+  "monday": "#/learn/m02/chapter",
+  "midweek": "#/sql/qm021",
+  "friday": "#/sql/qm024"
+ }
+}

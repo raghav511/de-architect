@@ -1,0 +1,27 @@
+{
+ "season": 1,
+ "title": "The job that failed silently",
+ "arc": "The nightly load reported success for three days while dropping every row with a bad date. A bare except swallowed the errors. This week you make Meridian's code survive production: narrow exceptions with context, retries only for errors that can heal, context managers that always clean up, logging instead of print, a dead-letter list for bad rows, and tests that prove it. Friday ends with the load failing loudly when it should, and quietly parking what it cannot load.",
+ "previously": [
+  "Why is a bare except worse than a crash?",
+  "Which errors deserve a retry, and which never do?",
+  "What does a context manager guarantee that try/finally makes you remember?",
+  "Recall: what goes into a dead-letter list, and who reads it?"
+ ],
+ "cliff": [
+  "Two percent of rows vanish nightly. Where would you put the first log line?",
+  "The load died halfway. How do you make it all or nothing?",
+  "How do you test a retry with backoff without sleeping for a minute?",
+  "Season one's Python ends next week. What is the fastest way to find the slow part of a job?"
+ ],
+ "scenes": {
+  "monday": "Dev notices the trips table is short by about two percent, every night, for three days. The job says success. You open it and find a bare except. Start with catching narrowly and failing loudly.",
+  "midweek": "The warehouse connection dropped mid-batch and left half a load behind. Wrap the write so it commits all or nothing, then load with a dead-letter list for the rows that cannot be fixed.",
+  "friday": "Write the tests that would have caught Monday's bug, and a retry with backoff you can test without waiting. Grace asks what you would log, and at what level."
+ },
+ "to": {
+  "monday": "#/learn/p05/chapter",
+  "midweek": "#/py/y054",
+  "friday": "#/py/y055"
+ }
+}

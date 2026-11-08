@@ -1,0 +1,27 @@
+{
+ "season": 2,
+ "title": "The lake that slowed down",
+ "arc": "The lake works, and every week it gets slower. Analysts wait minutes for queries that used to take seconds, and the storage bill grows faster than the data. This week you learn why: file formats, partitioning, the metastore, and why Iceberg treats a table as a tree of metadata. Midweek ten thousand tiny files and a renamed column break the morning report. By Friday the trip events live in an Iceberg table that Spark writes and Trino reads, and you can defend the choice over Delta and Hudi.",
+ "previously": [
+  "Why does reading less data beat every other speed-up?",
+  "What does a partition prune, and what can over-partitioning cost?",
+  "Recall: what is in an Iceberg manifest, and why does it make planning fast?",
+  "Why does compaction add storage until you expire snapshots?"
+ ],
+ "cliff": [
+  "One day's rides take four minutes. How much of the lake did the query read?",
+  "Ten thousand files of 50 KB. Why is that slower than one of 500 MB?",
+  "A column was renamed. Why did old files still read fine in Iceberg?",
+  "The enrichment job takes three hours and one city is the reason. Why one city?"
+ ],
+ "scenes": {
+  "monday": "Tomas complains that \"yesterday's rides\" takes four minutes to load. The query reads the whole lake to find one day. Start with the only way to make a query fast.",
+  "midweek": "A streaming job wrote ten thousand tiny files overnight, and someone renamed a column. The morning report is slow and wrong. Compact each day, and see why old files still read fine.",
+  "friday": "Design a lake that survives growth, then the architect's lens: Iceberg or Delta for the new lake, and who pays for the catalog."
+ },
+ "to": {
+  "monday": "#/learn/s02/chapter",
+  "midweek": "#/py/ys023",
+  "friday": "#/step/s02/design"
+ }
+}

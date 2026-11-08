@@ -1,0 +1,27 @@
+{
+ "season": 1,
+ "title": "The helper that remembered too much",
+ "arc": "Meridian's analysts share a file of helper functions, and one of them has started returning yesterday's results. The culprit is a default argument that is created once and shared forever. This week you make the helpers safe to reuse: closures that keep state on purpose, comprehensions where they help and loops where they don't, sorting by several keys, and a retry decorator Dev can put on flaky API calls. By Friday the shared file is something you would let a new hire use.",
+ "previously": [
+  "Why did the refund helper remember yesterday's refunds?",
+  "A closure keeps state. When is that a feature, and when is it a bug?",
+  "Yesterday: which errors should a retry decorator never retry?",
+  "Why is a pure function the safest step in a pipeline?"
+ ],
+ "cliff": [
+  "The default argument is created once. When exactly?",
+  "The analysts sort by city, then fare, then time. Can one sort do it?",
+  "The partner API fails sometimes. Is every failure worth retrying?",
+  "Grace's question for Friday: what makes a pipeline step safe to rerun?"
+ ],
+ "scenes": {
+  "monday": "Mei from finance asks why the refund report \"remembers\" refunds from the day before. You find a helper with a list as its default argument. Start with functions as values and the mutable default trap.",
+  "midweek": "The payments partner's API fails one call in fifty. Dev has pasted try/except into nine places. Write one retry decorator instead, and decide which errors it should never retry.",
+  "friday": "You turn the shared helpers into a small pipeline of pure functions, each tested on its own. Grace asks why pure functions matter in a data pipeline. Have an answer ready."
+ },
+ "to": {
+  "monday": "#/learn/p02/chapter",
+  "midweek": "#/py/y024",
+  "friday": "#/py/y023"
+ }
+}

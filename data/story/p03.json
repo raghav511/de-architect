@@ -1,0 +1,27 @@
+{
+ "season": 1,
+ "title": "Twenty gigabytes on a laptop",
+ "arc": "Meridian's access logs for one month are twenty gigabytes, and the support team wants a latency report from them by Thursday on a laptop with sixteen. Reading it all into a list is not an option. This week you learn to process data bigger than memory: generators that pause, pipelines of them, the trap of an iterator used twice, chunking for batch writes, and late events that need a watermark. Friday's report runs in constant memory and you can explain why.",
+ "previously": [
+  "What does a for loop call under the hood?",
+  "Why did the second pass over the logs find nothing?",
+  "Which itertools function cuts a stream into batches?",
+  "Recall: what does a watermark promise about late events?"
+ ],
+ "cliff": [
+  "How can a function pause halfway and carry on later?",
+  "Your error count is zero on the second run. Good news, or a bug?",
+  "Batching writes to the warehouse: how big should a batch be?",
+  "A click from 9:58 arrives at 10:07. Which hour does it count in?"
+ ],
+ "scenes": {
+  "monday": "Support asks for p95 latency per endpoint from a month of logs. The file is bigger than your laptop's memory. Start with what a for loop really does, and with generators.",
+  "midweek": "Your pipeline reports zero errors on the second pass. The logs did not get better: the generator was already used up. Find the \"used once\" trap, then build the latency report properly.",
+  "friday": "Clicks arrive late from phones on bad networks. Reorder them with a watermark so the hourly numbers stop changing after you publish them."
+ },
+ "to": {
+  "monday": "#/learn/p03/chapter",
+  "midweek": "#/py/y036",
+  "friday": "#/py/y037"
+ }
+}

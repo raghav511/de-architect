@@ -212,6 +212,17 @@ swsrc = open('sw.js').read()
 listed = set(re.findall(r"'([a-z]\d\d)'", swsrc[swsrc.index('const PROGRAM'):swsrc.index(';', swsrc.index('const PROGRAM'))]))
 for f in glob.glob('data/program/*.txt'):
     if os.path.basename(f)[:-4] not in listed: err('sw.js PROGRAM list misses', f, '(it would not work offline)')
+# the Meridian story (tools/story): every arc's links open real content, and each data/story file matches its arc
+import subprocess
+sr = subprocess.run([sys.executable, 'tools/story/build.py', '--check'], capture_output=True, text=True)
+if sr.returncode: [err('story:', l) for l in sr.stdout.splitlines() if l and not l.endswith('problems')]
+sys.path.insert(0, 'tools/story'); from arcs import ARCS
+for f in glob.glob('data/story/*.json'):
+    sm = os.path.basename(f)[:-5]; sd = json.load(open(f)); sa = ARCS.get(sm)
+    if sm not in mods: err('data/story file for unknown module', sm)
+    elif not sa or sd.get('arc') != sa['arc'] or sd.get('cliff') != sa['cliff'] or sd.get('previously') != sa['previously'] or sd.get('to') != sa['to']: err('data/story/%s.json is out of date: run python3 tools/story/build.py' % sm)
+for sm in ARCS:
+    if not os.path.exists('data/story/%s.json' % sm): err('data/story/%s.json missing: run python3 tools/story/build.py' % sm)
 for w in W: print('WARN ', w)
 for e in E: print('ERROR', e)
 print('%d modules, %d coding tests, %d errors, %d warnings' % (len(mods), len(coding_all), len(E), len(W)))

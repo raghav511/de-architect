@@ -1,0 +1,27 @@
+{
+ "season": 1,
+ "title": "Day one",
+ "arc": "Your first week as Meridian's staff data architect. Asha, the CTO, hired you to turn a pile of scripts into a data platform the company can trust, and she wants to know where you stand before she hands you anything that matters. Dev shows you round on-call, Mei asks what all this will cost, and Grace, an architect who has done this twice before, offers to be your sounding board. The week ends with a diagnostic that tells you, and Asha, where to start.",
+ "previously": [
+  "Before your first day ends: what would Meridian need from data in a year, in one sentence?",
+  "Yesterday you set up the machine. Which step would you write down first for the next hire?",
+  "Recall: what are the two rules about using AI in this program?",
+  "Yesterday's diagnostic counted trips per city. What data structure did you reach for, and why?"
+ ],
+ "cliff": [
+  "Asha wants the platform in one picture. What are its five layers?",
+  "Your setup script failed on step three. What will you check first tomorrow?",
+  "The diagnostic is tomorrow. Which kind of task will slow you down most?",
+  "Tomas from product says the fare script takes forty minutes. Where would you look first?"
+ ],
+ "scenes": {
+  "monday": "Asha drops a sticky note on your new desk: \"In a year, what does Meridian need from data?\" She wants an answer you can defend, not a slide. Start with how the program works and the platform you will build.",
+  "midweek": "Your laptop refuses the setup script, and Dev, who is supposed to be on leave, talks you through it from a café. You get a working environment and a promise to write down every step for the next hire.",
+  "friday": "Friday is your own diagnostic: a handful of Python tasks that show where you are strong and where to start. Asha says she cares less about the score than about how you work."
+ },
+ "to": {
+  "monday": "#/learn/s00/chapter",
+  "midweek": "#/learn/s00/lab",
+  "friday": "#/py/y001"
+ }
+}
