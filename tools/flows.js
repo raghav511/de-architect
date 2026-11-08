@@ -1118,7 +1118,7 @@ async function T(name, fn, opt) {
       await p.waitForFunction(() => { const v = document.querySelector('.verdict'); return v && v.style.display !== 'none' && /pass|Error/.test(v.textContent); }, null, { timeout: 120000 });
       ok((await text(p, '.verdict')) === 'All checks pass', id + ' did not pass in the browser: ' + await text(p, '.out .body'));
     }
-    const left = await p.evaluate(() => schedule().units.filter(u => (u.mid === 's01' || u.mid === 's02' || u.mid === 's03' || u.mid === 's05' || u.mid === 's06' || u.mid === 's08') && (u.kind === 'build' || u.kind === 'incident' || u.kind === 'ai') && /walking skeleton|rerun|streaming|poison|schema evolution|change data capture|disagree|approves|Iceberg table: MERGE|tiny files|enrichment job, measured|80% of the rows|Delta from the inside|one rider everywhere|LLM step inside a batch/i.test(u.title) && !u.isDone).map(u => u.title));
+    const left = await p.evaluate(() => schedule().units.filter(u => !/:st\./.test(u.uid) && (u.mid === 's01' || u.mid === 's02' || u.mid === 's03' || u.mid === 's05' || u.mid === 's06' || u.mid === 's08') && (u.kind === 'build' || u.kind === 'incident' || u.kind === 'ai') && /walking skeleton|rerun|streaming|poison|schema evolution|change data capture|disagree|approves|Iceberg table: MERGE|tiny files|enrichment job, measured|80% of the rows|Delta from the inside|one rider everywhere|LLM step inside a batch/i.test(u.title) && !u.isDone).map(u => u.title));
     ok(!left.length, 'steps not ticked: ' + left.join(', '));
     await go(p, '#/learn/s01/lab', 900); ok(/without Docker/.test(await text(p, '#page')), 'lab page does not lead with the in-app lab');
     await go(p, '#/learn/s02/lab', 900); ok(/without a cluster/.test(await text(p, '#page')), 'module 2 lab page does not lead with the in-app lab');
@@ -1137,7 +1137,7 @@ async function T(name, fn, opt) {
       await p.waitForFunction(() => { const v = document.querySelector('.verdict'); return v && v.style.display !== 'none' && /pass|Error/.test(v.textContent); }, null, { timeout: 120000 });
       ok((await text(p, '.verdict')) === 'All checks pass', id + ' did not pass in the browser: ' + await text(p, '.out .body'));
     }
-    const left = await p.evaluate(() => schedule().units.filter(u => u.mid === 's07' && (u.kind === 'build' || u.kind === 'incident') && !u.isDone).map(u => u.title));
+    const left = await p.evaluate(() => schedule().units.filter(u => !/:st\./.test(u.uid) && u.mid === 's07' && (u.kind === 'build' || u.kind === 'incident') && !u.isDone).map(u => u.title));
     ok(!left.length, 'module 7 steps not ticked: ' + left.join(', '));
     /* a starter must not pass: the least-privilege exercise with the broad policy still fails */
     await hash(p, '#/path/s07', 600); await hash(p, '#/py/ys074', 600);  /* a fresh page, so the earlier pass is not still on screen */
@@ -1161,7 +1161,7 @@ async function T(name, fn, opt) {
       await p.waitForFunction(() => { const v = document.querySelector('.verdict'); return v && v.style.display !== 'none' && /pass|Error/.test(v.textContent); }, null, { timeout: 120000 });
       ok((await text(p, '.verdict')) === 'All checks pass', id + ' did not pass in the browser: ' + await text(p, '.out .body'));
     }
-    const left = await p.evaluate(() => schedule().units.filter(u => (u.mid === 'a04' || u.mid === 'a05') && u.kind === 'build' && !u.isDone).map(u => u.title));
+    const left = await p.evaluate(() => schedule().units.filter(u => !/:st\./.test(u.uid) && (u.mid === 'a04' || u.mid === 'a05') && u.kind === 'build' && !u.isDone).map(u => u.title));
     ok(!left.length, 'lab steps not ticked: ' + left.join(', '));
     await go(p, '#/learn/a05/readings', 900); ok(!(await p.$('#page a[href^="http"]')), 'A5 readings send you out of the app');
     await go(p, '#/design/a04', 900); ok(/Ask-your-data/.test(await text(p, '#page')), 'A4 design problem missing');
@@ -1228,8 +1228,8 @@ async function T(name, fn, opt) {
     await go(p, '#/today');
     /* the Org modules (o01, o02, o03, … as they land) sit in order between DE 10 and Leadership 1; AI 6 follows AI 5 */
     const pos = await p.evaluate(() => { const org = MODS.filter(m => /^o\d\d$/.test(m)), i = m => MODS.indexOf(m);
-      return { j01: i('j01') - i('s07'), d01: i('d01') - i('a04'), a06: i('a06') - i('a05'), between: MODS.slice(i('s10') + 1, i('r01')).join(' '), org: org.slice().sort().join(' '), orgs: org.length }; });
-    ok(pos.j01 === 1 && pos.d01 === 1 && pos.a06 === 1 && pos.orgs >= 1 && pos.between === pos.org, 'Platform 1 should follow DE 7, Systems 1 the AI data stack module after DE 4, AI 6 follow AI 5, and only the Org modules, in order, sit between DE 10 and Leadership 1: ' + JSON.stringify(pos));
+      return { j01: i('j01') - i('s07'), d01: i('d01') - i('a04'), a06: i('a06') - i('a05'), between: MODS.slice(i('s10') + 1, i('r01')).join(' '), org: org.slice().sort().join(' '), orgs: org.length, o05: MODS.includes('o05') ? i('o05') - i('r01') : undefined }; }); /* O5, the capstone blueprint, comes after Leadership 1 */
+    ok(pos.j01 === 1 && pos.d01 === 1 && pos.a06 === 1 && pos.orgs >= 1 && pos.between === pos.org.split(' ').filter(m => m !== 'o05').join(' ') && (pos.o05 === undefined || pos.o05 === 1), 'Platform 1 should follow DE 7, Systems 1 the AI data stack module after DE 4, AI 6 follow AI 5, the Org modules O1 to O4, in order, sit between DE 10 and Leadership 1, and the O5 capstone comes right after Leadership 1: ' + JSON.stringify(pos));
     const sols = await p.evaluate(() => DATA.spark.filter(x => x.m === 'j01').map(x => [x.id, x.sol]));
     ok(sols.length === 3, 'expected 3 Scala exercises');
     for (const [id, sol] of sols) {
