@@ -315,6 +315,8 @@ function vToday(off) {
   const paneOf = ([id, n, xs, t]) => {
     const secs = DAY_SECS.filter(s => s[0] === t).map(s => [s, xs.filter(x => x.s === s[1])]).filter(z => z[1].length), s0 = sum(xs), done = xs.every(x => x.done);
     const kids = secs.map(([s, ys]) => { const z = sum(ys); return el('div', { class: 'xgroup stack tsec', id: 'sec-' + s[1], style: { gap: '8px' } }, [el('div', { class: 'row wrap xghead' }, [el('h3', { class: 'grow', text: s[2] }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: z.xpd + ' / ' + z.xp + ' XP · ' + z.m + ' min' })])].concat(ys.filter(x => x !== cur).map(row))); });
+    if (t === 'interview' && off === 0) { const cn = typeof coachNote === 'function' ? coachNote() : null; if (cn) kids.push(el('div', { class: 'xgroup stack tsec', id: 'grp-coach', style: { gap: '8px' } }, [el('h3', { text: 'Coaching' }), cn]));
+      kids.push(el('a', { class: 'tlink', href: '#/mock', style: { fontWeight: 600, fontSize: '14px' }, text: 'Prefer writing? The written mock ›' })); }
     if (done && off === 0) kids.push(el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'muted', style: { fontSize: '14px' }, text: n + ' is done for today. Want more? Each adds its XP; none is required.' }), el('div', { class: 'row wrap', style: { gap: '8px' } }, DAY_SECS.filter(s => s[0] === t).map(s => el('button', { class: 'btn sm', onclick: () => dayMore(k, s[1]), text: 'One more: ' + s[2].toLowerCase() })))]));
     const pane = el('div', { class: 'stack tpane', id, role: 'tabpanel', 'aria-label': n + ': ' + s0.xpd + ' of ' + s0.xp + ' XP, ' + s0.m + ' minutes', style: { gap: '14px' } }, kids);
     if (PARTS.length > 1 && id !== tabNow) pane.hidden = true;

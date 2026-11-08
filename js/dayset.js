@@ -91,7 +91,11 @@ function dayItem(ref, k, sc) {
 /* the day's references: chosen once for today (with at most one carried item per section), stored; other days are read back or previewed */
 function dayRefs(k) {
   const st = dayState(), today = iso(new Date()), sc = schedule();
-  if (st[k] && Array.isArray(st[k].items)) return st[k].items;
+  if (st[k] && Array.isArray(st[k].items)) {
+    /* a section that had no work when the day began (recall due later, a new company question, a coach item) joins once it has some; sections already in the set stay as chosen */
+    if (k === today) { const have = new Set(st[k].items.map(r => r.s)); let add = 0; DAY_SECS.forEach(([, sec]) => { if (have.has(sec)) return; const c = dayCands(sec, k, sc)[0]; if (c) { st[k].items.push(c); add = 1; } }); if (add) save(false); }
+    return st[k].items;
+  }
   const refs = [];
   DAY_SECS.forEach(([, sec]) => {
     const picks = dayCands(sec, k, sc).slice(0, daySize());
