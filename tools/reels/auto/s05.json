@@ -4654,7 +4654,7 @@
       }
      },
      {
-      "say": "Reads mostly come from memory. The operating system keeps recent data in its page cache, and zero copy sends it from there straight to the network, skipping the application.",
+      "say": "Reads mostly come from memory. The operating system keeps recent data in its page cache, and zero copy sends it from there straight to the network, skipping the application. One catch: with TLS the broker must encrypt each byte itself, so that shortcut is lost.",
       "show": {
        "t": "scene",
        "title": "Memory to *network*",
@@ -4724,6 +4724,14 @@
           "tone": "teal",
           "icon": "bolt"
          }
+        },
+        {
+         "at": 0.92,
+         "chip": {
+          "text": "Plaintext only: TLS copies again",
+          "tone": "amber",
+          "icon": "alert"
+         }
         }
        ]
       }
@@ -4752,9 +4760,9 @@
     "check": {
      "q": "Which choice best explains why Kafka's disk writes are fast?",
      "opts": [
-      "It keeps everything only in the JVM heap",
+      "It keeps every message only in the JVM heap",
       "It appends sequentially and avoids seeking",
-      "It writes each message to a different disk"
+      "It spreads each message over a different disk"
      ],
      "ans": 1,
      "why": "Appending to the end of a log gives sequential writes, which disks handle far faster than random ones."
@@ -5188,14 +5196,14 @@
       }
      },
      {
-      "say": "Fixes: cooperative sticky assignment, so only the moving partitions pause. And static membership with a group instance id, so a restarting pod gets its partitions back with no rebalance.",
+      "say": "Fixes: cooperative sticky assignment, so only the moving partitions pause. Static membership with a group instance id, so a restarting pod gets its partitions back. And in Kafka 4, the new consumer protocol lets the broker plan assignments, but clients must opt in with group protocol set to consumer.",
       "show": {
        "t": "points",
        "title": "Fixes",
        "items": [
         "Cooperative sticky assignor",
         "Static membership: group.instance.id",
-        "Kafka 4 incremental protocol"
+        "Kafka 4: group.protocol=consumer (opt in)"
        ]
       }
      },
@@ -5215,8 +5223,8 @@
      "q": "A pod restarts often during deploys and triggers rebalances. Which helps most?",
      "opts": [
       "Static membership with a group instance id",
-      "More partitions",
-      "Lower heartbeat interval"
+      "Adding many more partitions to the topic",
+      "A much lower consumer heartbeat interval"
      ],
      "ans": 0,
      "why": "Static membership lets the restarted pod reclaim its partitions without a rebalance."

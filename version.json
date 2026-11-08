@@ -1,11 +1,12 @@
 {
-  "version": "1.36.34",
+  "version": "1.36.35",
   "date": "2026-11-08",
   "notes": [
-    "Staff questions in a live mock say which Meridian colleague asks them",
-    "Weekend rounds name your interviewer, Priya or Sam",
-    "The coach speaks as Grace, your mentor",
-    "Monday to Saturday, a full set opens a case file: a harder follow-up, a field report or a question from the architect's lens; no XP",
-    "1489 of 1489 reels now play in the natural Heart voice."
+    "Kafka reels: zero-copy works only on plain connections; with TLS the broker encrypts in its own memory.",
+    "Kafka rebalance reel: Kafka 4's new consumer protocol is opt-in (group.protocol=consumer).",
+    "Parquet reels: row-group size depends on the writer (128 MB in Spark; PyArrow and DuckDB cap by rows).",
+    "Python GIL reels: the free-threaded build is officially supported since 3.14, still a separate install.",
+    "New reel: linearizable is not serializable; Spanner reel now says strictly serializable.",
+    "Fairer quick checks: wrong options reworded to the same length as the right one in 12 reels."
   ]
 }

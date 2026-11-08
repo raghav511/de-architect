@@ -2303,7 +2303,7 @@
       }
      },
      {
-      "say": "A file is split into row groups, about 128 megabytes each. Inside each group, every column is stored as its own chunk. At the end sits a footer with the schema and, for every chunk, its minimum, maximum and null count.",
+      "say": "A file is split into row groups. Spark aims for about 128 megabytes each, while PyArrow and DuckDB cap them by row count instead. Inside each group, every column is stored as its own chunk. At the end sits a footer with the schema and, for every chunk, its minimum, maximum and null count.",
       "show": {
        "t": "scene",
        "title": "File layout and its *footer*",
@@ -2490,8 +2490,8 @@
      "q": "What lets a reader skip a row group without reading its data?",
      "opts": [
       "The min and max statistics in the footer",
-      "A sorted file name",
-      "The dictionary of each page"
+      "A sorted and dated file name on disk",
+      "The dictionary stored with every page"
      ],
      "ans": 0,
      "why": "The footer records min, max and null count per column chunk, so if the filter value falls outside that range the group cannot contain a match."
@@ -2661,7 +2661,7 @@
       }
      },
      {
-      "say": "The opposite trap is tiny files. A streaming job writing a file every minute makes thousands of small files. Each one needs its own footer read and a storage request, and row groups far under 128 megabytes waste the layout. Compact them regularly.",
+      "say": "The opposite trap is tiny files. A streaming job writing a file every minute makes thousands of small files. Each one needs its own footer read and a storage request, and row groups far below the writer's target waste the layout. Compact them regularly.",
       "show": {
        "t": "scene",
        "title": "Too many *small* files",
@@ -2748,9 +2748,9 @@
     "check": {
      "q": "A table's queries filter on fare but still scan every row group. What is the most likely cause?",
      "opts": [
-      "Fares are scattered randomly, so each group's min and max cover the whole range",
-      "Parquet does not support filters",
-      "The footer is missing the schema"
+      "Fares are random, so each group spans the whole range",
+      "Parquet files cannot answer any filter on a number",
+      "The footer was written without the table schema"
      ],
      "ans": 0,
      "why": "Min and max only rule out a group when its range excludes the filter value. Random data makes every range wide, so nothing is skipped."

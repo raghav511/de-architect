@@ -391,9 +391,9 @@
     "check": {
      "q": "Why can eight processes beat eight threads on pure Python number crunching?",
      "opts": [
-      "Processes have faster memory",
-      "Each process has its own GIL, so all cores run Python at once",
-      "Threads cannot use more than one file"
+      "Processes get faster memory than threads",
+      "Each process has its own GIL and its own core",
+      "Threads can only work on one file at a time"
      ],
      "ans": 1,
      "why": "Threads in one process share a single GIL, so only one runs Python code at a time. Separate processes each have their own interpreter and GIL."
@@ -4026,9 +4026,9 @@
     "check": {
      "q": "Why do 16 threads fetch URLs faster than a loop?",
      "opts": [
-      "Each thread runs Python on its own core",
-      "Waiting threads release the GIL so others can send requests",
-      "The GIL is turned off for network code"
+      "Each thread runs Python code on its own core",
+      "Waiting threads release the GIL for others",
+      "Python turns the GIL off for network code"
      ],
      "ans": 1,
      "why": "While a thread waits on the network it releases the GIL, so many requests wait in parallel even though only one runs Python at a time."
@@ -4140,14 +4140,14 @@
       }
      },
      {
-      "say": "Also know this. NumPy, hashing and compression release the GIL, so threads can use many cores there. And Python 3.13 added an optional free-threaded build with no GIL, but it is opt-in, and libraries are still catching up.",
+      "say": "Also know this. NumPy, hashing and compression release the GIL, so threads can use many cores there. And since Python 3.14 a free-threaded build with no GIL is officially supported. It is a separate install, and without the GIL, races like this one get more likely, not less.",
       "show": {
        "t": "points",
        "title": "Good to know",
        "items": [
-        "C extensions can release the GIL",
-        "3.13 free-threaded build is opt-in",
-        "Standard build still has the GIL"
+        "NumPy, hashlib, zlib release the GIL",
+        "3.14: free-threaded build supported, separate install",
+        "No GIL means more races, not fewer"
        ]
       }
      }
@@ -4156,8 +4156,8 @@
      "q": "Which design best avoids lost updates across threads?",
      "opts": [
       "Rely on the GIL to protect shared dicts",
-      "Each thread returns its own result and the main thread merges",
-      "Add more threads so updates average out"
+      "Each thread returns a result; main merges",
+      "Add more threads so the updates average out"
      ],
      "ans": 1,
      "why": "The GIL can switch threads mid-update. No shared mutable state means no race; otherwise protect it with a Lock."
@@ -4300,14 +4300,14 @@
       }
      },
      {
-      "say": "For thousands of connections, asyncio uses less memory than threads. And don't bet on free-threaded Python yet. The standard build still has the GIL.",
+      "say": "For thousands of connections, asyncio uses less memory than threads. Free-threaded Python, supported since 3.14, lets threads use every core, but it is a separate build, single-threaded code runs a little slower, and each C library must support it. Benchmark before you bet on it.",
       "show": {
        "t": "points",
        "title": "Choosing",
        "items": [
-        "Few dozen I/O calls: threads",
         "Thousands of connections: asyncio",
-        "CPU-heavy: processes or compiled code"
+        "Free-threaded 3.14: separate build",
+        "Check every C library, then benchmark"
        ]
       }
      }
