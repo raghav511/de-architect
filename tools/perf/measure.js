@@ -35,7 +35,7 @@ async function main() {
     const E = res.engines[engine] = {};
     const quiet = async () => { let last = -1, still = 0; for (let t = 0; t < 180 && still < 3; t++) { await new Promise(r => setTimeout(r, 1000)); const now = n.bytes(); still = now === last ? still + 1 : 0; last = now; } }; /* no bytes on the wire for 3 s */
     if (ONLY.includes('load')) {
-      const L = { cold: [], warm: [], coldLoad: [], warmLoad: [], bytes: [] };
+      const L = { cold: [], warm: [], coldLoad: [], warmLoad: [], bytes: [], reelsTab: [] };
       for (let i = 0; i < RUNS; i++) {
         const c = await ctx(), p = await c.newPage(); await slow(p);
         const by = {}; p.on('response', async r => { try { const k = kind(r.url()); const h = await r.allHeaders(); const l = +(h['content-length'] || 0) || (await r.body().catch(() => Buffer.alloc(0))).length; if (!r.fromServiceWorker()) by[k] = (by[k] || 0) + l; } catch (e) { } });
@@ -45,10 +45,12 @@ async function main() {
         await within(p.evaluate(() => navigator.serviceWorker && navigator.serviceWorker.ready), 60000); await within(p.evaluate(() => DATA.reelsP), 60000); await quiet();
         if (i === 0) { E.wire_kb = Math.round((n.bytes() - b0) / 1024); E.first_visit_kb = Object.fromEntries(Object.entries(by).map(([k, v]) => [k, Math.round(v / 1024)])); }
         await p.reload({ waitUntil: 'commit' }); L.warm.push(await usable(p)); L.warmLoad.push(await p.evaluate(() => Math.round(performance.getEntriesByType('navigation')[0].loadEventEnd || performance.now())));
+        /* Reels tapped as soon as Today appears on a return visit: the reel scripts come from the service worker's copy */
+        L.reelsTab.push(await p.evaluate(async () => { const t = performance.now(); location.hash = '#/reels'; for (;;) { await new Promise(r => requestAnimationFrame(r)); const e = document.querySelector('.rslide .rcap, .rslide .rstart'); if (e && e.getBoundingClientRect().height > 0) return Math.round(performance.now() - t); if (performance.now() - t > 60000) return null; } }));
         await c.close();
         console.log(new Date().toISOString().slice(11, 19), engine, 'load run', i + 1, 'cold', L.cold[i], 'warm', L.warm[i]);
       }
-      Object.assign(E, { today_usable_cold_ms: med(L.cold), today_usable_warm_ms: med(L.warm), load_event_cold_ms: med(L.coldLoad), load_event_warm_ms: med(L.warmLoad), raw_load: L });
+      Object.assign(E, { today_usable_cold_ms: med(L.cold), today_usable_warm_ms: med(L.warm), reels_tab_warm_ms: med(L.reelsTab), load_event_cold_ms: med(L.coldLoad), load_event_warm_ms: med(L.warmLoad), raw_load: L });
     }
     if (ONLY.includes('actions')) {
       const A = {};
