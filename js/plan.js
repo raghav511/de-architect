@@ -339,7 +339,7 @@ function vToday(off) {
     el('details', { class: 'modmenu' }, [el('summary', { class: 'btn', text: 'Open module' }), el('div', { class: 'stack', style: { gap: '10px', marginTop: '10px' } }, [modLinks(m), D ? el('a', { class: 'tlink', href: '#/design/' + m, style: { fontWeight: 600, fontSize: '14px' }, text: 'Design problem: ' + D.title + ' ›' }) : null, el('a', { class: 'tlink', href: '#/path/' + m, style: { fontWeight: 600, fontSize: '14px' }, text: 'See every step of this module ›' })])])]);
   shell(off === 0 ? 'Today' : 'Plan · ' + shortDate(k), 'Module ' + modLabel(m), [
     el('div', { class: 'row greet' }, [el('div', { class: 'grow stack', style: { gap: '2px' } }, [el('h1', { text: (hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + (userName() ? ', ' + userName() : '') }), pre ? null : el('span', { class: 'muted', style: { fontSize: '14px' }, text: dayName(k) + ' ' + shortDate(k).slice(4) + ' · ' + all.xpd + ' of ' + all.xp + ' XP' })]), off === 0 ? gameMini() : null]),
-    upNext,
+    off === 0 && !pre && typeof storyColdOpen === 'function' && storyColdOpen(k) || (off === 0 && !pre && full && typeof storyCliff === 'function' ? storyCliff(k) : upNext), /* the Meridian series (js/story.js): Previously on, then Up next; Tomorrow on, once the set is done */
     off === 0 ? whatsNewCard() : null,
     el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [modCard, off === 0 ? el('div', { id: 'rtodayslot' }) : null])]),
     off === 0 ? el('div', { id: 'gcardslot' }) : null,

@@ -208,6 +208,16 @@ for q in rec.get('items', []):
     if q.get('url') and not q['url'].startswith('https://'): err('recent question', q.get('id'), 'url must be https')
     if not re.match(r'^\d{4}-\d\d-\d\d$', q.get('found') or ''): err('recent question', q.get('id'), 'found must be YYYY-MM-DD')
 
+# the Meridian series (data/story.json, built by tools/story/build.py): every main module has an arc with 6 scenes and 6 teasers
+try:
+    story = json.load(open('data/story.json'))
+    arcs = {a['mid']: a for s in story.get('seasons', []) for a in s.get('modules', [])}
+    base = re.findall(r"'([a-z]\d\d)'", re.search(r'const BASE_MODS = \[([^\]]*)\]', open('js/plan.js').read()).group(1))
+    for m in base:
+        a = arcs.get(m)
+        if not a: err('story: no arc for module', m, '(tools/story/build.py)')
+        elif len(a.get('scenes', [])) != 6 or len(a.get('teasers', [])) != 6 or not a.get('finale') or not a.get('boss'): err('story: arc', m, 'needs 6 scenes, 6 teasers, a boss line and a finale')
+except FileNotFoundError: err('data/story.json missing (python3 tools/story/build.py)')
 swsrc = open('sw.js').read()
 listed = set(re.findall(r"'([a-z]\d\d)'", swsrc[swsrc.index('const PROGRAM'):swsrc.index(';', swsrc.index('const PROGRAM'))]))
 for f in glob.glob('data/program/*.txt'):

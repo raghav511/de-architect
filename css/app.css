@@ -740,3 +740,6 @@ label.row:has(> input[type=checkbox]:first-child){min-height:44px;margin-left:-1
 select.btn{max-width:100%;text-overflow:ellipsis} /* a long module title never makes a lesson page scroll sideways on a phone (1.36.6) */
 .main{overflow-x:clip} /* WebKit counted wide code blocks (each in its own scroll box) in the page width: lesson pages panned sideways on iPhone (1.36.6) */
 .card{overflow-wrap:break-word} /* a long unbroken title wraps instead of running out of its card */
+
+/* the Meridian series (js/story.js): Previously on and Tomorrow on cards take Up next's place */
+.storycard{border-left:4px solid var(--teal)}.storycard .storytag{display:block;margin-bottom:8px}.storycard .acts{margin-top:4px}
