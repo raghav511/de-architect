@@ -1060,5 +1060,4317 @@
     "part": "2 of 2"
    }
   ]
+ },
+ "O2.2 Which journeys to pave": {
+  "hash": "97f9a2e28970",
+  "sec": "O2.2",
+  "reels": [
+   {
+    "title": "Pave the busy, bumpy roads",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "If you could pave only one road in a town, which would you pick?",
+      "show": {
+       "t": "big",
+       "text": "Which road first?",
+       "sub": "Paving costs real money"
+      }
+     },
+     {
+      "say": "Not the road nobody drives. Not the one that is already smooth. You pave the road where many people travel, and every trip is bumpy and slow.",
+      "show": {
+       "t": "scene",
+       "title": "Pave the *busy* and bumpy road",
+       "nodes": [
+        {
+         "id": "town",
+         "label": "Team",
+         "sub": "needs to get somewhere",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "busy",
+         "label": "Busy bumpy road",
+         "sub": "many trips, slow",
+         "x": 25,
+         "y": 55,
+         "tone": "amber"
+        },
+        {
+         "id": "quiet",
+         "label": "Quiet dirt track",
+         "sub": "few trips",
+         "x": 75,
+         "y": 55,
+         "tone": "grey"
+        }
+       ],
+       "edges": [
+        [
+         "town",
+         "busy"
+        ],
+        [
+         "town",
+         "quiet"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "town",
+          "busy",
+          "quiet"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "town",
+          "busy"
+         ],
+         "n": 5
+        },
+        {
+         "at": 0.8,
+         "glow": "busy",
+         "chip": {
+          "text": "Pave where traffic and pain meet",
+          "tone": "amber",
+          "icon": "road"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A data team is the same. Publishing a new data product happens twenty times a quarter and takes six weeks. That is a busy, bumpy road. Building a one-off feature table happens twice a quarter. A dirt track is fine there.",
+      "show": {
+       "t": "points",
+       "title": "Count the trips",
+       "items": [
+        "Publish a data product: 20 a quarter, 6 weeks",
+        "One-off feature table: 2 a quarter, 2 weeks",
+        "Pave the first, leave the second"
+       ]
+      }
+     },
+     {
+      "say": "So you count the trips, time them, and pave the worst first. A few roads done well beat ten done badly.",
+      "show": {
+       "t": "big",
+       "text": "Few roads, done well",
+       "sub": "Not ten done badly"
+      }
+     }
+    ],
+    "check": {
+     "q": "Which journey is the best candidate for a paved path?",
+     "opts": [
+      "One that happens often and takes teams a long time",
+      "One that is rare but very interesting to build",
+      "One that is already quick and has no waiting",
+      "One that the platform team finds easiest to build"
+     ],
+     "ans": 0,
+     "why": "Paving pays back when many people take the journey and each trip is slow. Rare, quick or merely convenient journeys do not repay the effort."
+    },
+    "work": [
+     "List the journeys your teams repeat most and write down how often each happens.",
+     "Ask two teams which trip feels slowest and note the answer."
+    ]
+   },
+   {
+    "title": "Multiply to rank the journeys",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How do you decide which journey gets a paved road? You multiply.",
+      "show": {
+       "t": "big",
+       "text": "Frequency × time",
+       "sub": "Total waiting per quarter"
+      }
+     },
+     {
+      "say": "Take how often a journey happens and how long it takes today. Publishing a batch data product is twenty a quarter at six weeks each. That is one hundred twenty weeks of waiting. Access requests are three hundred a quarter at four days each, about two hundred forty weeks.",
+      "show": {
+       "t": "bars",
+       "title": "Weeks of waiting per quarter",
+       "unit": "weeks",
+       "items": [
+        [
+         "Access requests",
+         240,
+         "300 × 4 days"
+        ],
+        [
+         "Publish batch product",
+         120,
+         "20 × 6 weeks"
+        ],
+        [
+         "Streaming job",
+         32,
+         "4 × 8 weeks"
+        ],
+        [
+         "CDC source",
+         30,
+         "10 × 3 weeks"
+        ],
+        [
+         "ML feature table",
+         4,
+         "2 × 2 weeks"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "A change data capture source adds thirty weeks. A streaming job adds thirty-two, but only four happen a quarter, so it can wait. The feature table adds four weeks. Skip it.",
+      "show": {
+       "t": "points",
+       "title": "Decide",
+       "items": [
+        "Pave now: access, batch publish, CDC",
+        "Later: streaming job",
+        "No: one-off feature table"
+       ]
+      }
+     },
+     {
+      "say": "Then shadow two teams doing the journey the hard way. Write down every wait, every question, every copy and paste. That list is your backlog.",
+      "show": {
+       "t": "flow",
+       "title": "From numbers to backlog",
+       "steps": [
+        {
+         "label": "Rank by frequency times time"
+        },
+        {
+         "label": "Shadow two teams"
+        },
+        {
+         "label": "Log waits, questions, copy-pastes"
+        },
+        {
+         "label": "Backlog for the path"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Streaming jobs take eight weeks each, yet are paved later. Why?",
+     "opts": [
+      "They happen only four times a quarter, so total pain is small",
+      "They are too complex for any platform team to ever pave",
+      "They are faster than batch jobs, so teams do not mind",
+      "They need no approval, so there is nothing to speed up"
+     ],
+     "ans": 0,
+     "why": "Ranking uses frequency times time. Four jobs a quarter gives modest total waiting, so streaming comes after journeys that hurt many more people."
+    },
+    "work": [
+     "Build your own table of journeys with count per quarter and time today.",
+     "Multiply the two columns and sort to get a first ranking.",
+     "Book shadow sessions with two teams for the top journey."
+    ]
+   },
+   {
+    "title": "Traps when choosing journeys",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Why would a four day wait be paved before an eight week job?",
+      "show": {
+       "t": "big",
+       "text": "4 days before 8 weeks?",
+       "sub": "Volume wins"
+      }
+     },
+     {
+      "say": "Because volume wins. Access requests happen three hundred times a quarter. Streaming jobs happen four. And you keep the approval step. Self-service means the request is automatic, with a person approving only where the risk needs it.",
+      "show": {
+       "t": "scene",
+       "title": "Self-service, *with* approval",
+       "nodes": [
+        {
+         "id": "req",
+         "label": "Request",
+         "sub": "form, not ticket",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "rule",
+         "label": "Policy check",
+         "sub": "low risk auto-approves",
+         "x": 50,
+         "y": 55,
+         "tone": "teal"
+        },
+        {
+         "id": "human",
+         "label": "Owner approves",
+         "sub": "only sensitive data",
+         "x": 80,
+         "y": 30,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "req",
+         "rule"
+        ],
+        [
+         "rule",
+         "human"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "req",
+          "rule"
+         ],
+         "packet": [
+          "req",
+          "rule"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.6,
+         "show": "human",
+         "packet": [
+          "rule",
+          "human"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Approval stays, the waiting goes",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Second trap: the time today column can mislead. Six weeks may be queues and handoffs, not real work. Shadow two teams so you pave the actual waits, not your guess.",
+      "show": {
+       "t": "points",
+       "title": "Measure the real wait",
+       "items": [
+        "Elapsed time is not effort",
+        "Shadow two teams the hard way",
+        "Log every wait, question, copy-paste"
+       ]
+      }
+     },
+     {
+      "say": "Third trap: ten thin paths. Each needs an owner, docs and upgrades. Spread thin, they rot, and teams drift back to the hard way. Do one or two well.",
+      "show": {
+       "t": "big",
+       "text": "One or two, done well",
+       "sub": "Thin paths rot and get skipped"
+      }
+     }
+    ],
+    "check": {
+     "q": "What does self-service mean for dataset access requests?",
+     "opts": [
+      "Requests flow automatically and people approve only risky ones",
+      "Anyone gets any dataset instantly with no approval at all",
+      "Teams email owners directly but get a template for wording",
+      "The platform team approves every request faster than before"
+     ],
+     "ans": 0,
+     "why": "Self-service removes manual routing and waiting while keeping governance. Policy handles low-risk requests, and an owner approves only where the data is sensitive."
+    },
+    "work": [
+     "Split the last 50 access requests into those policy could approve and those needing a person.",
+     "Compare elapsed time with real effort for your slowest journey."
+    ]
+   },
+   {
+    "title": "When not to pave",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When is not paving the smart architect move?",
+      "show": {
+       "t": "big",
+       "text": "When paving does not pay back",
+       "sub": "Roads need owners"
+      }
+     },
+     {
+      "say": "Paving costs build time and a standing owner. Suppose the batch path cuts six weeks to one. Twenty journeys a quarter then save a hundred team-weeks. That pays for a small team fast.",
+      "show": {
+       "t": "bars",
+       "title": "Batch path payback per quarter",
+       "unit": "weeks",
+       "items": [
+        [
+         "Today",
+         120,
+         "20 × 6 weeks"
+        ],
+        [
+         "Paved",
+         20,
+         "20 × 1 week"
+        ],
+        [
+         "Saved",
+         100,
+         "per quarter"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "A feature table twice a quarter never pays back. Leave it unpaved, with good docs and office hours. Streaming waits until volume grows or the pattern settles, because paving a moving target means rebuilding it.",
+      "show": {
+       "t": "points",
+       "title": "Leave unpaved on purpose",
+       "items": [
+        "Rare one-offs: docs and office hours",
+        "Streaming: wait for volume and a stable pattern",
+        "Moving targets get rebuilt, wasting the paving"
+       ]
+      }
+     },
+     {
+      "say": "Measure choice, not mandate. Track adoption and time to first publish each quarter, and re-rank the list. If teams skip the road, the road is wrong.",
+      "show": {
+       "t": "flow",
+       "title": "Quarterly loop",
+       "steps": [
+        {
+         "label": "Track adoption and time to publish"
+        },
+        {
+         "label": "Re-rank journeys"
+        },
+        {
+         "label": "Fix the path or pave the next"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Teams keep avoiding a new paved path. What is the best reading?",
+     "opts": [
+      "The path is worse than the hard way, so fix it",
+      "The teams are resisting change, so mandate the path",
+      "The journey is too rare, so remove the path docs",
+      "The adoption metric is flawed, so stop tracking it"
+     ],
+     "ans": 0,
+     "why": "Paved roads are chosen, not forced. Low adoption is a signal that the path costs more than the hard way, so improve it using what you learn from watching teams."
+    },
+    "work": [
+     "Estimate the weeks saved per quarter for your top journey before asking for headcount.",
+     "Pick adoption and time to first publish as the two metrics and review them quarterly.",
+     "Write a short note for unpaved journeys pointing to docs and office hours."
+    ]
+   }
+  ]
+ },
+ "O2.1 What a golden path is": {
+  "hash": "8f30a81c645a",
+  "sec": "O2.1",
+  "reels": [
+   {
+    "title": "A paved road to production",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Thirty teams need to reach the same place. Why would each one build its own road?",
+      "show": {
+       "t": "big",
+       "text": "30 teams, 30 roads?",
+       "sub": "Same destination every time"
+      }
+     },
+     {
+      "say": "Picture a town where every family paves a private route to the market. Each route works. But when a family is away, nobody else knows the turns, the bridges or the potholes.",
+      "show": {
+       "t": "scene",
+       "title": "Many private *routes*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Team A",
+         "sub": "own route",
+         "x": 20,
+         "y": 20,
+         "tone": "amber"
+        },
+        {
+         "id": "b",
+         "label": "Team B",
+         "sub": "own route",
+         "x": 50,
+         "y": 20,
+         "tone": "amber"
+        },
+        {
+         "id": "c",
+         "label": "Team C",
+         "sub": "own route",
+         "x": 80,
+         "y": 20,
+         "tone": "amber"
+        },
+        {
+         "id": "m",
+         "label": "Market",
+         "sub": "working pipeline",
+         "x": 50,
+         "y": 70,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "m"
+        ],
+        [
+         "b",
+         "m"
+        ],
+        [
+         "c",
+         "m"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "a",
+          "b",
+          "c"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": "m"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "a",
+          "m"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Only the builder knows the route",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A golden path is a road the town builds once. It is the easiest way to the market, and a crew keeps it repaired.",
+      "show": {
+       "t": "scene",
+       "title": "One shared *road*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Any team",
+         "sub": "starts here",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "r",
+         "label": "Golden path",
+         "sub": "paved, maintained",
+         "x": 50,
+         "y": 45,
+         "tone": "amber"
+        },
+        {
+         "id": "m",
+         "label": "Market",
+         "sub": "working pipeline",
+         "x": 50,
+         "y": 75,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "r"
+        ],
+        [
+         "r",
+         "m"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "t",
+          "r",
+          "m"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "t",
+          "r"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "r",
+          "m"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Easiest and supported",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "You may still cut across the field if you have a good reason. But then you carry your own boots, and your own repairs.",
+      "show": {
+       "t": "points",
+       "title": "Optional, with a price",
+       "items": [
+        "Leaving the road is allowed",
+        "Off the road, you own the repairs",
+        "Roads win by being better"
+       ]
+      }
+     },
+     {
+      "say": "In data, the market is a working pipeline. The road bundles the layout, tests, deployment and alerts, so nobody starts from a blank field.",
+      "show": {
+       "t": "points",
+       "title": "What the road bundles",
+       "items": [
+        "Folder layout",
+        "Tests",
+        "Deployment",
+        "Alerts"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What best describes a golden path?",
+     "opts": [
+      "A supported, easiest way to do a common job that teams may leave",
+      "A required standard that every team must follow without exception",
+      "A shared document listing the tools that teams could consider",
+      "A one time starter project that teams then maintain on their own"
+     ],
+     "ans": 0,
+     "why": "A golden path is supported and easiest, but optional. Teams can leave for a good reason, and then they own what they build."
+    },
+    "work": [
+     "List the jobs your teams repeat most, such as starting a pipeline or adding alerts.",
+     "Ask three teams how they set up their last pipeline and note what differed.",
+     "Pick one repeated job as the first candidate for a paved road."
+    ]
+   },
+   {
+    "title": "How a template becomes production in an hour",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How does a new pipeline reach production in one hour instead of one month?",
+      "show": {
+       "t": "big",
+       "text": "1 hour, not 1 month",
+       "sub": "Decisions made once, reused many times"
+      }
+     },
+     {
+      "say": "A team picks the template and answers a few questions, like name, owner and schedule. The platform then generates a repository with the folder layout, a data contract file, test stubs, a deploy pipeline and alert rules.",
+      "show": {
+       "t": "scene",
+       "title": "Template to *repository*",
+       "nodes": [
+        {
+         "id": "q",
+         "label": "Team answers",
+         "sub": "name, owner, schedule",
+         "x": 50,
+         "y": 12,
+         "tone": "blue"
+        },
+        {
+         "id": "p",
+         "label": "Platform",
+         "sub": "generates repo",
+         "x": 50,
+         "y": 42,
+         "tone": "amber"
+        },
+        {
+         "id": "r",
+         "label": "New repo",
+         "sub": "layout, contract, tests",
+         "x": 30,
+         "y": 75,
+         "tone": "teal"
+        },
+        {
+         "id": "d",
+         "label": "Deploy and alerts",
+         "sub": "ready to run",
+         "x": 72,
+         "y": 75,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "q",
+         "p"
+        ],
+        [
+         "p",
+         "r"
+        ],
+        [
+         "p",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "q",
+          "p"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "q",
+          "p"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.55,
+         "show": [
+          "r",
+          "d"
+         ]
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "p",
+          "r"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.85,
+         "packet": [
+          "p",
+          "d"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Every decision that most teams should not debate is already made. The tool is chosen, tests run on every change, and ownership metadata is filled in, so the catalog and on call rota know who to page.",
+      "show": {
+       "t": "flow",
+       "title": "Built in from day one",
+       "steps": [
+        {
+         "label": "Tool chosen"
+        },
+        {
+         "label": "Tests on every change"
+        },
+        {
+         "label": "Owner recorded"
+        },
+        {
+         "label": "Catalog and paging"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Three properties make it golden. It is the easiest way. The platform team supports and upgrades it. And it is optional, so it wins by being better, not by being forced.",
+      "show": {
+       "t": "points",
+       "title": "Three golden properties",
+       "items": [
+        "Easiest way",
+        "Supported by the platform team",
+        "Optional"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why can a template get a team to production in an hour?",
+     "opts": [
+      "Common decisions on layout, tests, deploy and alerts are already made",
+      "Teams skip testing and monitoring until after the first release",
+      "The platform team writes each pipeline's business logic for them",
+      "Every team must use the same tool, which removes all choices"
+     ],
+     "ans": 0,
+     "why": "The speed comes from decisions being made once and generated for each team, not from skipping steps or writing their logic."
+    },
+    "work": [
+     "Write down the checklist a new pipeline needs before it counts as production ready.",
+     "Time how long your last new pipeline took from idea to first alert.",
+     "Draft the five questions a template should ask a team up front."
+    ]
+   },
+   {
+    "title": "When the path drifts, stalls or becomes a cage",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "You generated a pipeline from the template last year. Then the template improved. Did your pipeline get better?",
+      "show": {
+       "t": "big",
+       "text": "Did your copy improve?",
+       "sub": "Template changed, repo did not"
+      }
+     },
+     {
+      "say": "Usually not. A copied template drifts. After a year you may have 30 repositories on 30 slightly different versions. So good paths ship upgrades as versioned libraries or automated pull requests, not just a one time copy.",
+      "show": {
+       "t": "scene",
+       "title": "Copies *drift*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Template v3",
+         "sub": "latest",
+         "x": 50,
+         "y": 15,
+         "tone": "teal"
+        },
+        {
+         "id": "a",
+         "label": "Repo v1",
+         "sub": "stale",
+         "x": 20,
+         "y": 65,
+         "tone": "red"
+        },
+        {
+         "id": "b",
+         "label": "Repo v2",
+         "sub": "stale",
+         "x": 50,
+         "y": 65,
+         "tone": "amber"
+        },
+        {
+         "id": "c",
+         "label": "Repo v3",
+         "sub": "current",
+         "x": 80,
+         "y": 65,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "a"
+        ],
+        [
+         "t",
+         "b"
+        ],
+        [
+         "t",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "t",
+          "a",
+          "b",
+          "c"
+         ]
+        },
+        {
+         "at": 0.4,
+         "dim": "a"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "t",
+          "b"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Ship upgrades as pull requests",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A second failure is the path that fits only the common case. If it blocks a streaming job or a big backfill, teams leave, and that is fine. The signal to watch is why they leave. Count exits and fix the top reason.",
+      "show": {
+       "t": "points",
+       "title": "Exits are a signal",
+       "items": [
+        "Path misses streaming or backfills",
+        "Teams leave, and that is allowed",
+        "Count the reasons",
+        "Fix the top one"
+       ]
+      }
+     },
+     {
+      "say": "The third failure is quiet mandates. If leaving the path needs executive sign off, it is no longer optional, and you lose the honest feedback that keeps it good. Off the path, the team owns its own on call and upgrades.",
+      "show": {
+       "t": "points",
+       "title": "Keep it truly optional",
+       "items": [
+        "Sign off to leave means a mandate",
+        "Mandates hide bad feedback",
+        "Off path means you own on call and upgrades"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A year after launch, teams run many old versions of the template. What is the best fix?",
+     "opts": [
+      "Ship upgrades as versioned libraries or automated pull requests",
+      "Tell teams to regenerate their repositories by hand each quarter",
+      "Freeze the template so that every repository stays identical",
+      "Require sign off for any team still on an older version"
+     ],
+     "ans": 0,
+     "why": "Copies drift once generated. Automated upgrades keep existing repositories current without forcing manual rework or a mandate."
+    },
+    "work": [
+     "Check how many repositories run each version of your template today.",
+     "Set up an automated pull request that bumps the shared library version.",
+     "Log the reason whenever a team leaves the path, and review the list monthly."
+    ]
+   },
+   {
+    "title": "Is a golden path worth a platform team's year?",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When is a golden path a waste of a platform team's year?",
+      "show": {
+       "t": "big",
+       "text": "When is it not worth it?",
+       "sub": "Cost is fixed, savings scale with teams"
+      }
+     },
+     {
+      "say": "With three teams and one pipeline shape, a shared example repository is enough. A path pays off when many teams repeat the same job, say ten or more, because the cost of building it is fixed and the saving is multiplied by every team.",
+      "show": {
+       "t": "bars",
+       "title": "Saving grows with teams",
+       "unit": "weeks saved",
+       "items": [
+        [
+         "3 teams",
+         3,
+         "example repo is enough"
+        ],
+        [
+         "10 teams",
+         10,
+         ""
+        ],
+        [
+         "30 teams",
+         30,
+         "path clearly pays"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "The hidden cost is upkeep. Every path is a product with users, a roadmap and support. Budget a standing team, and limit yourself to a few paths, such as batch and streaming, rather than one per team.",
+      "show": {
+       "t": "points",
+       "title": "Paths are products",
+       "items": [
+        "Users, roadmap, support",
+        "A standing team to run it",
+        "A few paths, not one per team"
+       ]
+      }
+     },
+     {
+      "say": "Measure it like a product. Track adoption, time to first production run, and the share of pipelines off the path. If adoption is low, find the friction and fix it, do not mandate. Mandate only the few controls that law or security demand.",
+      "show": {
+       "t": "points",
+       "title": "Measure and mandate sparingly",
+       "items": [
+        "Adoption rate",
+        "Time to first production run",
+        "Share of pipelines off path",
+        "Mandate only legal and security controls"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Adoption of your golden path is low after six months. What should you do first?",
+     "opts": [
+      "Interview teams, find the friction, and fix the path itself",
+      "Mandate the path for all teams so adoption numbers rise quickly",
+      "Add more paths so that every team has its own tailored one",
+      "Remove the support team since few teams are using the path"
+     ],
+     "ans": 0,
+     "why": "Paths win by being better. Low adoption means friction. Mandates hide that signal, and more paths add upkeep cost."
+    },
+    "work": [
+     "Count how many teams repeat each job and rank candidates for a path by that number.",
+     "Set up a dashboard for adoption, time to first production run and off path share.",
+     "Separate the few mandatory controls from the optional conveniences in your platform."
+    ]
+   }
+  ]
+ },
+ "O2.4 Keeping templates alive": {
+  "hash": "e030f06bcb3d",
+  "sec": "O2.4",
+  "reels": [
+   {
+    "title": "The recipe card that drifts",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "What happens to a recipe card after you photocopy it for eighty friends?",
+      "show": {
+       "t": "scene",
+       "title": "One card, *eighty* copies",
+       "nodes": [
+        {
+         "id": "o",
+         "label": "Original",
+         "sub": "recipe card",
+         "x": 50,
+         "y": 20,
+         "tone": "blue"
+        },
+        {
+         "id": "c",
+         "label": "80 copies",
+         "sub": "friends",
+         "x": 50,
+         "y": 60,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "o",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "o"
+        },
+        {
+         "at": 0.5,
+         "show": "c"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "o",
+          "c"
+         ],
+         "n": 3
+        }
+       ]
+      }
+     },
+     {
+      "say": "Each friend scribbles changes. A year later, you find a mistake: too much salt. You fix your own card, but the eighty copies stay wrong.",
+      "show": {
+       "t": "scene",
+       "title": "The fix *never* arrives",
+       "nodes": [
+        {
+         "id": "o",
+         "label": "Fixed card",
+         "sub": "less salt",
+         "x": 50,
+         "y": 20,
+         "tone": "teal"
+        },
+        {
+         "id": "c",
+         "label": "Old copies",
+         "sub": "still too salty",
+         "x": 50,
+         "y": 60,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "o",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "o",
+          "c"
+         ]
+        },
+        {
+         "at": 0.6,
+         "chip": {
+          "text": "Copies do not update",
+          "tone": "red",
+          "icon": "x"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A software template works the same way. Teams copy it once to start a project, then it drifts away from the original.",
+      "show": {
+       "t": "scene",
+       "title": "Templates *drift*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Template",
+         "sub": "the original",
+         "x": 50,
+         "y": 18,
+         "tone": "blue"
+        },
+        {
+         "id": "r",
+         "label": "Repositories",
+         "sub": "copies that changed",
+         "x": 50,
+         "y": 58,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "r"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "t"
+        },
+        {
+         "at": 0.4,
+         "show": "r"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "t",
+          "r"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "The fix is to treat the template like a product. Give it version numbers, write down which version each copy came from, and send updates to every owner.",
+      "show": {
+       "t": "points",
+       "title": "Treat it as a product",
+       "items": [
+        "Give it version numbers",
+        "Record each copy's version",
+        "Send updates to owners"
+       ]
+      }
+     },
+     {
+      "say": "Better still, keep as little as possible in the copy. Point to a shared recipe instead of copying it.",
+      "show": {
+       "t": "big",
+       "kicker": "Rule of thumb",
+       "text": "Copy as little as possible",
+       "sub": "Share instead of duplicating"
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does a fix to a template not reach projects already created from it?",
+     "opts": [
+      "Each project holds its own copy, so changes to the original are not passed on",
+      "Projects always lock the template and refuse any later changes at all",
+      "Template fixes only apply to projects created on the same calendar day"
+     ],
+     "ans": 0,
+     "why": "A template is copied once. After that the copy is independent, so the original's fixes never reach it unless you send them on purpose."
+    },
+    "work": [
+     "Pick one template and list how many repositories came from it.",
+     "Ask whether each copied file could be shared instead of copied."
+    ]
+   },
+   {
+    "title": "Upgrading eighty repositories",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How do you fix one security bug in eighty repositories?",
+      "show": {
+       "t": "big",
+       "kicker": "The problem",
+       "text": "1 fix, 80 repositories",
+       "sub": "Without a plan, that is 80 manual edits"
+      }
+     },
+     {
+      "say": "First, version the template. Patch for fixes, minor for new optional pieces, major for changes owners must act on. Say it is version two point three point one.",
+      "show": {
+       "t": "points",
+       "title": "Semantic versions",
+       "items": [
+        "Patch: a fix, 2.3.1",
+        "Minor: new optional piece, 2.4.0",
+        "Major: owners must act, 3.0.0"
+       ]
+      }
+     },
+     {
+      "say": "Second, each repository records its starting version in a file the platform can read. Now a bot can tell which ones are behind.",
+      "show": {
+       "t": "scene",
+       "title": "Record the *version*",
+       "nodes": [
+        {
+         "id": "r",
+         "label": "Repository",
+         "sub": "template 2.1.0",
+         "x": 30,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "p",
+         "label": "Platform",
+         "sub": "reads the file",
+         "x": 70,
+         "y": 25,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "r",
+         "p"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "r"
+        },
+        {
+         "at": 0.4,
+         "show": "p"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "r",
+          "p"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Behind: 2.1.0 vs 2.3.1",
+          "tone": "amber",
+          "icon": "clock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Third, the bot opens an upgrade pull request in each one, with the diff and release notes. Owners review and merge. Nobody edits eighty repositories by hand.",
+      "show": {
+       "t": "scene",
+       "title": "Bot opens *pull requests*",
+       "nodes": [
+        {
+         "id": "b",
+         "label": "Upgrade bot",
+         "sub": "new release",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "a",
+         "label": "Repo A",
+         "sub": "PR opened",
+         "x": 20,
+         "y": 60,
+         "tone": "teal"
+        },
+        {
+         "id": "c",
+         "label": "Repo B",
+         "sub": "PR opened",
+         "x": 50,
+         "y": 60,
+         "tone": "teal"
+        },
+        {
+         "id": "d",
+         "label": "Repo C",
+         "sub": "PR opened",
+         "x": 80,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "b",
+         "a"
+        ],
+        [
+         "b",
+         "c"
+        ],
+        [
+         "b",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "b"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "a",
+          "c",
+          "d"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "b",
+          "c"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Owners review and merge",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A drift report ranks repositories by versions behind, so you chase the major-behind ones first.",
+      "show": {
+       "t": "bars",
+       "title": "Drift report",
+       "unit": "versions behind",
+       "items": [
+        [
+         "Repo A",
+         3,
+         "major behind"
+        ],
+        [
+         "Repo B",
+         1,
+         ""
+        ],
+        [
+         "Repo C",
+         0,
+         ""
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What lets an upgrade bot know which repositories are behind the template?",
+     "opts": [
+      "Each repository records the template version it was created from",
+      "The bot guesses by comparing repository names to the template name",
+      "Owners send the platform a message after every template release"
+     ],
+     "ans": 0,
+     "why": "A recorded version in a readable file lets the platform compare each repository with the latest release and compute how far behind it is."
+    },
+    "work": [
+     "Add a template version file to the template and to existing repositories.",
+     "Set up a bot that opens upgrade pull requests with release notes."
+    ]
+   },
+   {
+    "title": "Why upgrades stall",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Why does an automated upgrade pull request still sit unmerged for months?",
+      "show": {
+       "t": "big",
+       "kicker": "The gotcha",
+       "text": "Open, but never merged",
+       "sub": "A bot can propose. It cannot make owners act."
+      }
+     },
+     {
+      "say": "Because the repository has drifted. The owner edited the copied files, so the bot's diff conflicts with their changes, and merging feels risky.",
+      "show": {
+       "t": "scene",
+       "title": "Edits cause *conflicts*",
+       "nodes": [
+        {
+         "id": "b",
+         "label": "Bot diff",
+         "sub": "template change",
+         "x": 30,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "o",
+         "label": "Owner edits",
+         "sub": "local changes",
+         "x": 70,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "m",
+         "label": "Conflict",
+         "sub": "merge feels risky",
+         "x": 50,
+         "y": 65,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "b",
+         "m"
+        ],
+        [
+         "o",
+         "m"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "b",
+          "o"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "b",
+          "m"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "o",
+          "m"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "m"
+        },
+        {
+         "at": 0.85,
+         "glow": "m"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Major versions make it worse. They need owner action, so a bot cannot just merge them. Without a deprecation date, old versions live forever.",
+      "show": {
+       "t": "points",
+       "title": "Major versions",
+       "items": [
+        "Need owner action",
+        "Cannot be auto-merged",
+        "Need a deprecation date"
+       ]
+      }
+     },
+     {
+      "say": "A drift report shows how many versions behind each repository is, and which files differ from the template. Without a recorded version, you cannot even compute that.",
+      "show": {
+       "t": "bars",
+       "title": "Drift report",
+       "unit": "files differ",
+       "items": [
+        [
+         "Repo A",
+         9,
+         "3 versions behind"
+        ],
+        [
+         "Repo B",
+         4,
+         "1 behind"
+        ],
+        [
+         "Repo C",
+         0,
+         "current"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Also watch the bot's noise. Eighty pull requests with no release notes get ignored. Keep each change small and explained.",
+      "show": {
+       "t": "big",
+       "kicker": "Keep it readable",
+       "text": "Small, explained changes",
+       "sub": "Release notes make a merge safe"
+      }
+     }
+    ],
+    "check": {
+     "q": "Why do upgrade pull requests often stall in repositories that edited the copied files?",
+     "opts": [
+      "The owner's local edits conflict with the diff, so merging looks risky",
+      "The bot refuses to open requests for repositories with any local edits",
+      "Pull requests expire after a week and must be recreated by the owner"
+     ],
+     "ans": 0,
+     "why": "Copied files that were edited no longer match the template, so the diff conflicts or may overwrite local work. Owners then delay the merge."
+    },
+    "work": [
+     "Check the oldest open upgrade pull request and find why it is stuck.",
+     "Put a deprecation date on every old major version."
+    ]
+   },
+   {
+    "title": "Share, don't copy",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Should every shared thing be a copied template file?",
+      "show": {
+       "t": "big",
+       "kicker": "The design question",
+       "text": "Copy or share?",
+       "sub": "Every copied file is a file to upgrade 80 times"
+      }
+     },
+     {
+      "say": "No. Every copied file is a file you must upgrade eighty times. For CI steps and deployment, use shared workflows or libraries. One change reaches everyone.",
+      "show": {
+       "t": "scene",
+       "title": "One *shared* workflow",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Shared workflow",
+         "sub": "updated once",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "a",
+         "label": "Repo A",
+         "sub": "calls it",
+         "x": 20,
+         "y": 60,
+         "tone": "teal"
+        },
+        {
+         "id": "b",
+         "label": "Repo B",
+         "sub": "calls it",
+         "x": 50,
+         "y": 60,
+         "tone": "teal"
+        },
+        {
+         "id": "c",
+         "label": "Repo C",
+         "sub": "calls it",
+         "x": 80,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "a"
+        ],
+        [
+         "s",
+         "b"
+        ],
+        [
+         "s",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "s"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "a",
+          "b",
+          "c"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "s",
+          "b"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "One change reaches all",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The trade-off is blast radius. A bad shared update breaks all eighty at once, so pin versions and roll out in waves.",
+      "show": {
+       "t": "points",
+       "title": "Control the blast radius",
+       "items": [
+        "Pin shared versions",
+        "Roll out in waves",
+        "Keep a fast rollback"
+       ]
+      }
+     },
+     {
+      "say": "Keep the template for what truly must be owned per repository: names, service code, config. Keep it thin.",
+      "show": {
+       "t": "big",
+       "kicker": "Keep it thin",
+       "text": "Template = what teams own",
+       "sub": "Names, service code, config"
+      }
+     },
+     {
+      "say": "Then run it like a product. Publish deprecation dates, track drift, and measure the share of repositories on the latest version.",
+      "show": {
+       "t": "bars",
+       "title": "Track adoption",
+       "unit": "% on latest",
+       "items": [
+        [
+         "Month 1",
+         35,
+         ""
+        ],
+        [
+         "Month 3",
+         62,
+         ""
+        ],
+        [
+         "Month 6",
+         88,
+         ""
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "For CI steps used by eighty repositories, what is the best default?",
+     "opts": [
+      "A shared workflow that every repository calls and you update in one place",
+      "A copied file in every repository, with a bot sending upgrade pull requests",
+      "A wiki page that tells each team how to update its own CI steps"
+     ],
+     "ans": 0,
+     "why": "Sharing means one change reaches everyone with no per-repository upgrade. Copies need eighty upgrades. Pin versions to limit the blast radius."
+    },
+    "work": [
+     "List the copied files in your template and move shared logic into libraries or shared workflows.",
+     "Add a staged rollout and rollback plan for shared updates.",
+     "Publish a drift dashboard and review it monthly."
+    ]
+   }
+  ]
+ },
+ "O2.5 The developer portal": {
+  "hash": "6a39ced377c3",
+  "sec": "O2.5",
+  "reels": [
+   {
+    "title": "The front desk for your platform",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Ever walked into a huge building with no reception desk, and no idea where anything is?",
+      "show": {
+       "t": "big",
+       "text": "No front desk",
+       "sub": "A huge building, and no map"
+      }
+     },
+     {
+      "say": "A developer portal is that front desk for a company's data and software. It holds a map of everything, a note of who owns each room, and the instructions pinned next to each door.",
+      "show": {
+       "t": "scene",
+       "title": "One *front desk* for everything",
+       "nodes": [
+        {
+         "id": "portal",
+         "label": "Portal",
+         "sub": "front desk",
+         "x": 50,
+         "y": 20,
+         "tone": "blue"
+        },
+        {
+         "id": "map",
+         "label": "Map",
+         "sub": "what exists",
+         "x": 20,
+         "y": 55,
+         "tone": "teal"
+        },
+        {
+         "id": "owner",
+         "label": "Owners",
+         "sub": "who to ask",
+         "x": 50,
+         "y": 55,
+         "tone": "amber"
+        },
+        {
+         "id": "docs",
+         "label": "Docs",
+         "sub": "next to each door",
+         "x": 80,
+         "y": 55,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "portal",
+         "map"
+        ],
+        [
+         "portal",
+         "owner"
+        ],
+        [
+         "portal",
+         "docs"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "portal"
+        },
+        {
+         "at": 0.3,
+         "show": "map",
+         "packet": [
+          "portal",
+          "map"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.55,
+         "show": "owner",
+         "packet": [
+          "portal",
+          "owner"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "show": "docs",
+         "packet": [
+          "portal",
+          "docs"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "It also has order forms. Want a new data pipeline? Fill in a short form, and the portal builds it the approved way. Like choosing a ready-made kitchen instead of designing one from scratch.",
+      "show": {
+       "t": "scene",
+       "title": "Fill a form, get a *pipeline*",
+       "nodes": [
+        {
+         "id": "form",
+         "label": "Short form",
+         "sub": "name and owner",
+         "x": 25,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "portal",
+         "label": "Portal",
+         "sub": "template",
+         "x": 75,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "new",
+         "label": "New pipeline",
+         "sub": "built the approved way",
+         "x": 50,
+         "y": 65,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "form",
+         "portal"
+        ],
+        [
+         "portal",
+         "new"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "form",
+          "portal"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "form",
+          "portal"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "new",
+         "packet": [
+          "portal",
+          "new"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Ready-made, not from scratch",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Finally, it has report cards. They show which rooms meet the safety rules, and which need fixing. One front door means nobody wanders around guessing.",
+      "show": {
+       "t": "points",
+       "title": "Why one front door wins",
+       "items": [
+        "A map of what exists",
+        "A named owner for each part",
+        "Report cards show what needs fixing"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What is the main job of a developer portal?",
+     "opts": [
+      "Give people one front door to find, create, and check things",
+      "Run every pipeline so that the scheduler is not needed",
+      "Store all the company's raw data in a single place",
+      "Replace the engineers who would otherwise build things"
+     ],
+     "ans": 0,
+     "why": "The portal is a front door: it lists what exists, creates new components from templates, and shows how each meets standards. It does not run pipelines or hold the data."
+    },
+    "work": [
+     "Write down where a new joiner would look today to find who owns a pipeline.",
+     "List the three questions people ask most often in chat that a front desk could answer."
+    ]
+   },
+   {
+    "title": "Catalog, templates, scorecards: the moving parts",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "A team has forty pipelines. How do you find the owner of one at three in the morning?",
+      "show": {
+       "t": "big",
+       "text": "40 pipelines",
+       "sub": "Who owns this one, right now?"
+      }
+     },
+     {
+      "say": "The portal's catalog answers it. Each component has a small metadata file in its own repository, naming the owner, the type, and what it depends on. The portal reads those files on a schedule, often every few minutes, and draws the graph.",
+      "show": {
+       "t": "scene",
+       "title": "The catalog reads *metadata files*",
+       "nodes": [
+        {
+         "id": "repo",
+         "label": "Repositories",
+         "sub": "metadata file each",
+         "x": 20,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "portal",
+         "label": "Portal",
+         "sub": "reads every few minutes",
+         "x": 50,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "graph",
+         "label": "Catalog graph",
+         "sub": "owner, type, links",
+         "x": 80,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "repo",
+         "portal"
+        ],
+        [
+         "portal",
+         "graph"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "repo"
+        },
+        {
+         "at": 0.35,
+         "show": "portal",
+         "packet": [
+          "repo",
+          "portal"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "graph",
+         "packet": [
+          "portal",
+          "graph"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Owner found in seconds",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Templates use the same trick in reverse. A short form asks for a name, an owner, and a source. The portal then creates a repository with pipeline code, tests, a contract, and a metadata file.",
+      "show": {
+       "t": "scene",
+       "title": "A template builds the *repository*",
+       "nodes": [
+        {
+         "id": "form",
+         "label": "Form",
+         "sub": "name, owner, source",
+         "x": 20,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "tmpl",
+         "label": "Template",
+         "sub": "code, tests, contract",
+         "x": 50,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "repo",
+         "label": "New repository",
+         "sub": "with metadata file",
+         "x": 80,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "form",
+         "tmpl"
+        ],
+        [
+         "tmpl",
+         "repo"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "form"
+        },
+        {
+         "at": 0.3,
+         "show": "tmpl",
+         "packet": [
+          "form",
+          "tmpl"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "repo",
+         "packet": [
+          "tmpl",
+          "repo"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Starts compliant",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Scorecards then check each component against rules, such as has an owner, tests pass, and on the latest template version. A score of eight out of ten tells a team exactly what to fix.",
+      "show": {
+       "t": "bars",
+       "title": "Scorecard checks passed",
+       "unit": "of 10",
+       "items": [
+        [
+         "orders-pipeline",
+         8,
+         "missing contract"
+        ],
+        [
+         "billing-feed",
+         10,
+         ""
+        ],
+        [
+         "legacy-export",
+         4,
+         "no owner"
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "How does the catalog usually learn that a pipeline exists and who owns it?",
+     "opts": [
+      "Engineers retype every entry into the portal by hand",
+      "It reads a metadata file kept in each component's repository",
+      "It scans the warehouse tables and guesses the owner from names",
+      "A central team interviews every team once per quarter"
+     ],
+     "ans": 1,
+     "why": "Each repository carries a small metadata file naming the owner, type, and dependencies. The portal reads these on a schedule, so the catalog follows the code."
+    },
+    "work": [
+     "Pick one pipeline and write the metadata it would need: owner, type, and dependencies.",
+     "Choose three scorecard checks you could measure automatically today."
+    ]
+   },
+   {
+    "title": "Where portals go wrong",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Why does the portal say a pipeline is healthy when it died last week?",
+      "show": {
+       "t": "big",
+       "text": "Healthy?",
+       "sub": "It died last week"
+      }
+     },
+     {
+      "say": "Because a catalog is only as fresh as its sources. Metadata files are written by hand, so they rot. Owners leave, teams rename, and the entry still points at a person who quit.",
+      "show": {
+       "t": "scene",
+       "title": "Hand-written metadata *rots*",
+       "nodes": [
+        {
+         "id": "file",
+         "label": "Metadata file",
+         "sub": "written once",
+         "x": 25,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "owner",
+         "label": "Owner",
+         "sub": "left the company",
+         "x": 75,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "portal",
+         "label": "Portal",
+         "sub": "still shows healthy",
+         "x": 50,
+         "y": 65,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "file",
+         "owner"
+        ],
+        [
+         "file",
+         "portal"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "file",
+          "owner"
+         ]
+        },
+        {
+         "at": 0.4,
+         "dim": "owner"
+        },
+        {
+         "at": 0.6,
+         "show": "portal",
+         "packet": [
+          "file",
+          "portal"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Stale entry, false comfort",
+          "tone": "red",
+          "icon": "warn"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The fix is to pull facts from live systems, like the scheduler and the warehouse, and check that every owner still exists in the directory. Hand-written fields should be the exception.",
+      "show": {
+       "t": "scene",
+       "title": "Pull facts from *live* systems",
+       "nodes": [
+        {
+         "id": "sched",
+         "label": "Scheduler",
+         "sub": "last run",
+         "x": 20,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "dir",
+         "label": "Directory",
+         "sub": "owner exists?",
+         "x": 80,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "portal",
+         "label": "Portal",
+         "sub": "fresh status",
+         "x": 50,
+         "y": 65,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "sched",
+         "portal"
+        ],
+        [
+         "dir",
+         "portal"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "sched",
+          "dir"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": "portal",
+         "packet": [
+          "sched",
+          "portal"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "dir",
+          "portal"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Facts, not opinions",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Scorecards have a trap too. Once a score is a target, teams game it. They add an empty contract just to turn the check green. Score what matters, like passing tests and met SLOs, not just presence.",
+      "show": {
+       "t": "points",
+       "title": "Scorecard traps",
+       "items": [
+        "Checking presence, not quality",
+        "Empty contract turns the check green",
+        "Score tests passing and SLOs met"
+       ]
+      }
+     },
+     {
+      "say": "Last, two catalogs split trust. Let the portal link to the data catalog, or show its data products, never copy them by hand.",
+      "show": {
+       "t": "scene",
+       "title": "One place to *start*",
+       "nodes": [
+        {
+         "id": "portal",
+         "label": "Portal",
+         "sub": "links across",
+         "x": 25,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "dc",
+         "label": "Data catalog",
+         "sub": "data products",
+         "x": 75,
+         "y": 35,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "portal",
+         "dc"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "portal",
+          "dc"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "dc",
+          "portal"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Link, never copy",
+          "tone": "amber",
+          "icon": "link"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A scorecard shows green for every contract check, yet consumers still get broken data. What is the likely cause?",
+     "opts": [
+      "The portal is reading the repositories too often",
+      "Backstage cannot display more than a few dozen checks",
+      "The check tests that a contract exists, not that it is enforced",
+      "Data products should not have owners listed in the catalog"
+     ],
+     "ans": 2,
+     "why": "Presence checks are easy to game. An empty or unenforced contract passes, so scorecards should measure outcomes such as tests passing and SLOs met."
+    },
+    "work": [
+     "Audit ten catalog entries and count how many owners no longer exist.",
+     "Replace one presence check with an outcome check, like freshness SLO met."
+    ]
+   },
+   {
+    "title": "Is a portal worth building?",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Is a developer portal worth a full-time team?",
+      "show": {
+       "t": "big",
+       "text": "Free to download",
+       "sub": "But not free to run"
+      }
+     },
+     {
+      "say": "Backstage is free to download but not free to run. Expect two to four engineers to maintain plugins, upgrades, and ingestion. Below about fifty engineers, a well-kept wiki page and a repository template list often does the job.",
+      "show": {
+       "t": "bars",
+       "title": "Rough cost to run Backstage",
+       "unit": "engineers",
+       "items": [
+        [
+         "Under 50 engineers",
+         0,
+         "wiki and templates suffice"
+        ],
+        [
+         "Around 200 engineers",
+         2,
+         "plugins and upgrades"
+        ],
+        [
+         "500 plus engineers",
+         4,
+         "ingestion and scorecards"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Past a few hundred engineers, discovery and ownership gaps cost more. Then weigh buying a hosted portal against building on Backstage. Buying trades flexibility for speed; building lets you model data products your way.",
+      "show": {
+       "t": "scene",
+       "title": "*Buy* or build",
+       "nodes": [
+        {
+         "id": "buy",
+         "label": "Hosted portal",
+         "sub": "fast, less flexible",
+         "x": 25,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "build",
+         "label": "Backstage",
+         "sub": "slower, your model",
+         "x": 75,
+         "y": 35,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "buy",
+         "build"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "buy",
+         "glow": "buy"
+        },
+        {
+         "at": 0.55,
+         "show": "build",
+         "glow": "build"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Speed versus flexibility",
+          "tone": "amber",
+          "icon": "scale"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Whatever you choose, keep one source of truth for data. The data catalog owns lineage and schemas. The portal owns templates and scorecards, and links across.",
+      "show": {
+       "t": "scene",
+       "title": "Split the *ownership*",
+       "nodes": [
+        {
+         "id": "portal",
+         "label": "Portal",
+         "sub": "templates, scorecards",
+         "x": 25,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "dc",
+         "label": "Data catalog",
+         "sub": "lineage, schemas",
+         "x": 75,
+         "y": 35,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "portal",
+         "dc"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "portal",
+          "dc"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "portal",
+          "dc"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "One truth per fact",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Adoption is the real metric. If teams only use the portal because they must, the golden path is a mandate, not a road they choose.",
+      "show": {
+       "t": "big",
+       "text": "Adoption",
+       "sub": "A road teams choose, not a mandate"
+      }
+     }
+    ],
+    "check": {
+     "q": "A company of thirty engineers is considering Backstage. What is the best advice?",
+     "opts": [
+      "Start with Backstage now, since portals only work if built early",
+      "Buy two portals so that data and software each get their own",
+      "Keep a simple wiki and templates, and revisit as headcount grows",
+      "Skip owners and scorecards, because small teams never need them"
+     ],
+     "ans": 2,
+     "why": "A self-hosted portal needs a few engineers to run. At thirty engineers, a wiki and repository templates give most of the value at far lower cost."
+    },
+    "work": [
+     "Estimate the yearly cost of running a portal against the hours lost searching for owners.",
+     "Decide which system is the source of truth for each fact, and write it down.",
+     "Track how many teams pick the template without being told to."
+    ]
+   }
+  ]
+ },
+ "O2.6 Guardrails, not gates": {
+  "hash": "1a0e8c6a1302",
+  "sec": "O2.6",
+  "reels": [
+   {
+    "title": "A guardrail beats a guard",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Why do mountain roads have guardrails instead of a guard who checks every car?",
+      "show": {
+       "t": "big",
+       "text": "Guard or guardrail?",
+       "sub": "Which one keeps a busy road moving?"
+      }
+     },
+     {
+      "say": "A gate is a person. Every driver stops, waits for approval, and soon finds a side road around it. A guardrail is just there. It catches you when you drift, and nobody has to be asked.",
+      "show": {
+       "t": "scene",
+       "title": "A *gate* waits, a rail just works",
+       "nodes": [
+        {
+         "id": "gate",
+         "label": "Gate",
+         "sub": "a person approves",
+         "x": 25,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "rail",
+         "label": "Guardrail",
+         "sub": "automatic",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "side",
+         "label": "Side road",
+         "sub": "people route around",
+         "x": 25,
+         "y": 65,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "gate",
+         "side"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "gate"
+        },
+        {
+         "at": 0.35,
+         "show": "side"
+        },
+        {
+         "at": 0.4,
+         "chip": {
+          "text": "Waiting teaches people to dodge you",
+          "tone": "red",
+          "icon": "clock"
+         }
+        },
+        {
+         "at": 0.65,
+         "show": "rail"
+        },
+        {
+         "at": 0.8,
+         "glow": "rail"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Data teams work the same way. If a computer checks that personal details are hidden, the team gets an answer in seconds, with the fix spelled out.",
+      "show": {
+       "t": "scene",
+       "title": "A check that *explains* the fix",
+       "nodes": [
+        {
+         "id": "team",
+         "label": "Team",
+         "sub": "ships data",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "check",
+         "label": "Automatic check",
+         "sub": "personal data hidden?",
+         "x": 80,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "fix",
+         "label": "Fix in seconds",
+         "sub": "says what to change",
+         "x": 50,
+         "y": 65,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "team",
+         "check"
+        ],
+        [
+         "check",
+         "fix"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "team",
+          "check"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "team",
+          "check"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": "fix"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "check",
+          "fix"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Answer in seconds, not days",
+          "tone": "teal",
+          "icon": "bolt"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "And when someone truly must cross, there is a pass. It has a name, a reason and an end date.",
+      "show": {
+       "t": "points",
+       "title": "A pass, not a hole",
+       "items": [
+        "A name: who owns it",
+        "A reason: why it is needed",
+        "An end date: when it is revisited"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why do guardrails usually work better than a person who approves every change?",
+     "opts": [
+      "They answer instantly and consistently, so teams have no reason to dodge them",
+      "They are cheaper because they never need any rules to be written down",
+      "They make sure that no team ever needs an exception to any rule",
+      "They let teams skip testing since the rail will catch every mistake"
+     ],
+     "ans": 0,
+     "why": "A guardrail gives an instant, same-every-time answer with a fix. Waiting on a person pushes teams to route around you. Rules still need writing, exceptions still happen, and tests still matter."
+    },
+    "work": [
+     "List the approvals teams wait on today and mark which could be an automatic check.",
+     "Pick one approval and write the rule it enforces in one plain sentence."
+    ]
+   },
+   {
+    "title": "Five checks, two minutes",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How can a check replace a review board and still catch mistakes?",
+      "show": {
+       "t": "big",
+       "text": "Replace the meeting with a pipeline",
+       "sub": "Same rules, run by code"
+      }
+     },
+     {
+      "say": "A team opens a pull request for a new data product. A pipeline runs five checks automatically. Contract exists and matches the data. Personal columns are tagged and masked. An owner and on-call channel are named. Tests pass. Cost fits the quota.",
+      "show": {
+       "t": "points",
+       "title": "The five checks",
+       "items": [
+        "Contract exists and data matches it",
+        "Personal columns tagged and masked",
+        "Owner and on-call channel named",
+        "Tests exist and pass",
+        "Cost within the team quota"
+       ]
+      }
+     },
+     {
+      "say": "Each failure prints the exact fix, such as: column email is untagged, add the pii tag. The whole run takes about two minutes. A review ticket often sat for three days.",
+      "show": {
+       "t": "bars",
+       "title": "Time to an answer",
+       "unit": "minutes",
+       "items": [
+        [
+         "Automatic check",
+         2,
+         "about two minutes"
+        ],
+        [
+         "Review ticket",
+         4320,
+         "about three days"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Same rules, every team, every time. People now only design the rules, not police each change.",
+      "show": {
+       "t": "scene",
+       "title": "People design, code *enforces*",
+       "nodes": [
+        {
+         "id": "people",
+         "label": "Platform team",
+         "sub": "writes the rules",
+         "x": 20,
+         "y": 30,
+         "tone": "plum"
+        },
+        {
+         "id": "pipe",
+         "label": "Pipeline",
+         "sub": "runs them",
+         "x": 80,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "teams",
+         "label": "Every team",
+         "sub": "gets same answer",
+         "x": 50,
+         "y": 65,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "people",
+         "pipe"
+        ],
+        [
+         "pipe",
+         "teams"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "people"
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "people",
+          "pipe"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.5,
+         "show": [
+          "pipe",
+          "teams"
+         ]
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "pipe",
+          "teams"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Consistent for everyone",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A check fails because a column called email has no personal data tag. What makes the guardrail useful here?",
+     "opts": [
+      "It tells the team the exact fix, so they can correct it within minutes",
+      "It quietly tags the column for them and lets the release continue",
+      "It sends the pull request to a board that meets weekly to decide",
+      "It records the failure for a later audit and lets the release go ahead"
+     ],
+     "ans": 0,
+     "why": "A guardrail stops the mistake and explains how to fix it, so the loop is minutes. Silent auto-fixing, a weekly board, or just logging for later all fail to give that fast, clear feedback."
+    },
+    "work": [
+     "Write each of your data rules as a check that prints a one-line fix message.",
+     "Measure how long a new data product takes to get a yes or no today, and set a target under ten minutes."
+    ]
+   },
+   {
+    "title": "When guardrails go wrong",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "What happens when a guardrail is wrong, or a team truly cannot comply?",
+      "show": {
+       "t": "big",
+       "text": "What if the rule is wrong?",
+       "sub": "Every check needs a way out"
+      }
+     },
+     {
+      "say": "That needs an escape hatch: a waiver with a reason, an owner and an expiry date, stored where the check itself can read it. No expiry means a permanent hole. With expiry, a shortcut becomes a dated decision someone must revisit.",
+      "show": {
+       "t": "scene",
+       "title": "A waiver the check can *read*",
+       "nodes": [
+        {
+         "id": "check",
+         "label": "Check",
+         "sub": "reads waivers",
+         "x": 25,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "waiver",
+         "label": "Waiver",
+         "sub": "reason, owner, expiry",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "revisit",
+         "label": "Expiry date",
+         "sub": "decision comes back",
+         "x": 50,
+         "y": 65,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "check",
+         "waiver"
+        ],
+        [
+         "waiver",
+         "revisit"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "check",
+          "waiver"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "check",
+          "waiver"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.55,
+         "chip": {
+          "text": "No expiry means a permanent hole",
+          "tone": "red",
+          "icon": "alert"
+         }
+        },
+        {
+         "at": 0.75,
+         "show": "revisit"
+        },
+        {
+         "at": 0.9,
+         "glow": "revisit"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Watch for flaky checks. If a guardrail blocks good work one time in ten, teams stop trusting it and ask for a bypass. Also, a check that runs only at deploy misses drift, like a new unmasked column arriving next month. So quality checks must run in production too.",
+      "show": {
+       "t": "points",
+       "title": "Failure modes",
+       "items": [
+        "Flaky check: trust drains, bypass requests rise",
+        "Deploy-only check: drift goes unseen",
+        "Fix: run quality checks in production too"
+       ]
+      }
+     },
+     {
+      "say": "Roll out new rules in warn mode first, then block.",
+      "show": {
+       "t": "flow",
+       "title": "Safe rollout",
+       "steps": [
+        {
+         "label": "Warn"
+        },
+        {
+         "label": "Fix false alarms"
+        },
+        {
+         "label": "Block"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A masking check passed at deploy. Next month a new unmasked column appears in production. What went wrong?",
+     "opts": [
+      "The check only ran at deploy, so later drift in production was never seen",
+      "The waiver for the check had no owner, so the pipeline skipped masking",
+      "The contract was too strict, which made teams add columns in secret",
+      "The check was set to block, which taught teams to bypass the pipeline"
+     ],
+     "ans": 0,
+     "why": "Deploy-time checks cannot see change that arrives later. Production checks catch drift. Missing waiver owners, strict contracts, or blocking mode do not explain a column appearing after a pass."
+    },
+    "work": [
+     "Add an expiry date and owner field to every waiver, and make the check fail on expired ones.",
+     "Start each new rule in warn mode and track its false alarm rate before blocking."
+    ]
+   },
+   {
+    "title": "When to keep a gate",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "If guardrails are so good, should you ever keep a human gate?",
+      "show": {
+       "t": "big",
+       "text": "Is a human gate ever right?",
+       "sub": "Yes, but rarely"
+      }
+     },
+     {
+      "say": "Yes, when a mistake is costly and cannot be undone, like sharing regulated data outside the company. A person should look at that. Reversible, common mistakes, like a missing owner, belong to automation.",
+      "show": {
+       "t": "scene",
+       "title": "Match the control to the *blast radius*",
+       "nodes": [
+        {
+         "id": "auto",
+         "label": "Guardrail",
+         "sub": "reversible, common",
+         "x": 25,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "human",
+         "label": "Human gate",
+         "sub": "costly, irreversible",
+         "x": 75,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "ex",
+         "label": "Missing owner",
+         "sub": "auto check",
+         "x": 25,
+         "y": 65,
+         "tone": "blue"
+        },
+        {
+         "id": "ex2",
+         "label": "External sharing",
+         "sub": "person reviews",
+         "x": 75,
+         "y": 65,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "auto",
+         "ex"
+        ],
+        [
+         "human",
+         "ex2"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "auto",
+          "human"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": "ex"
+        },
+        {
+         "at": 0.6,
+         "show": "ex2"
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Gate only what you cannot undo",
+          "tone": "amber",
+          "icon": "scale"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Guardrails are not free. Someone owns the rules, the fix messages and the false positives. Start by blocking only high-risk failures, and warn on the rest. Track three numbers: share of products passing first time, open waivers, and days to expiry.",
+      "show": {
+       "t": "points",
+       "title": "Run guardrails like a product",
+       "items": [
+        "Block high risk, warn on the rest",
+        "Track first-time pass rate",
+        "Track open waivers and days to expiry"
+       ]
+      }
+     },
+     {
+      "say": "A rising waiver count means the rule is wrong or the paved road is too narrow. Fix that, not the team.",
+      "show": {
+       "t": "big",
+       "text": "Many waivers = a design signal",
+       "sub": "Fix the rule or widen the road"
+      }
+     }
+    ],
+    "check": {
+     "q": "Waivers for one rule keep climbing across many teams. What is the best reading of this?",
+     "opts": [
+      "The rule or the paved road does not fit real needs, so redesign it",
+      "The teams are careless, so the rule should move to a human gate",
+      "The expiry dates are too short, so they should be removed entirely",
+      "The check is working well, since teams use the waiver process often"
+     ],
+     "ans": 0,
+     "why": "Widespread waivers signal a mismatch between the rule and real work, so fix the rule or the road. Blaming teams, removing expiry, or treating high waiver volume as success all hide the signal."
+    },
+    "work": [
+     "Report waiver count per rule monthly and review the top offender.",
+     "Classify each approval as reversible or irreversible, and keep a human gate only for the irreversible ones.",
+     "Assign an owner to each guardrail for rules, messages and false positives."
+    ]
+   }
+  ]
+ },
+ "O2.7 Measuring a golden path": {
+  "hash": "7d7a3bc2f289",
+  "sec": "O2.7",
+  "reels": [
+   {
+    "title": "Is anyone using the new road?",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "You built a shiny new highway. How do you know anyone actually drives on it?",
+      "show": {
+       "t": "scene",
+       "title": "A new *road* nobody counts",
+       "nodes": [
+        {
+         "id": "road",
+         "label": "New highway",
+         "sub": "paved",
+         "x": 30,
+         "y": 40,
+         "tone": "blue"
+        },
+        {
+         "id": "lane",
+         "label": "Old back lane",
+         "sub": "bumpy",
+         "x": 70,
+         "y": 40,
+         "tone": "grey"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "road",
+          "lane"
+         ]
+        },
+        {
+         "at": 0.6,
+         "chip": {
+          "text": "Built is not the same as used",
+          "tone": "amber",
+          "icon": "?"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A city does not just open a road and cheer. It counts the cars. That count is adoption: out of all new trips, how many take the road? It also times the trip. If the old back lane is faster, drivers keep using the lane.",
+      "show": {
+       "t": "scene",
+       "title": "Count the *cars*, time the trip",
+       "nodes": [
+        {
+         "id": "trips",
+         "label": "New trips",
+         "sub": "30 this month",
+         "x": 50,
+         "y": 20,
+         "tone": "grey"
+        },
+        {
+         "id": "road",
+         "label": "Highway",
+         "sub": "18 trips",
+         "x": 30,
+         "y": 60,
+         "tone": "blue"
+        },
+        {
+         "id": "lane",
+         "label": "Back lane",
+         "sub": "12 trips",
+         "x": 70,
+         "y": 60,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "trips",
+         "road"
+        ],
+        [
+         "trips",
+         "lane"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "trips"
+         ]
+        },
+        {
+         "at": 0.3,
+         "show": [
+          "road",
+          "lane"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "trips",
+          "road"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.6,
+         "count": {
+          "key": "adopt",
+          "label": "Adoption",
+          "to": 60,
+          "unit": "%",
+          "tone": "blue"
+         }
+        },
+        {
+         "at": 0.85,
+         "glow": "lane"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Then it counts crashes and help calls, and asks drivers a few questions. If few people use the road, the city asks why before banning the back lane. Maybe the road misses a town people need to reach.",
+      "show": {
+       "t": "points",
+       "title": "What a city checks",
+       "items": [
+        "Crashes and help calls",
+        "A short driver survey",
+        "Why people left the road",
+        "Ask before you ban the lane"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Few drivers use your new highway. What should the city do first?",
+     "opts": [
+      "Ask drivers why, since the road may miss a place they need",
+      "Close the back lane so drivers have no other choice",
+      "Build a second highway beside the first one right away",
+      "Wait a year, because low use always fixes itself over time"
+     ],
+     "ans": 0,
+     "why": "Low use is a signal. The road may not reach a real destination or may be slower. Forcing drivers hides that problem and builds resentment."
+    },
+    "work": [
+     "List which teams skipped your standard path and ask one of them why.",
+     "Write down the old way people use and time it against the path."
+    ]
+   },
+   {
+    "title": "The six numbers of a golden path",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Your team built a pipeline template. Is it working, or just sitting there?",
+      "show": {
+       "t": "big",
+       "text": "Exists is not working",
+       "sub": "Measure the path like a product"
+      }
+     },
+     {
+      "say": "Adoption is new pipelines on the path divided by all new pipelines. Say eighteen of thirty this quarter: sixty percent. Then time to first production run. Maybe three days on the path, against fifteen days off it.",
+      "show": {
+       "t": "bars",
+       "title": "Days to first production run",
+       "unit": "days",
+       "items": [
+        [
+         "On the path",
+         3,
+         "template"
+        ],
+        [
+         "Off the path",
+         15,
+         "hand built"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Next, delivery health for repositories on the path. Lead time for changes is how long a change takes to reach production. Change failure rate is the share of deploys that cause a problem. Compare both with off-path repositories.",
+      "show": {
+       "t": "scene",
+       "title": "Is delivery *healthier* on the path?",
+       "nodes": [
+        {
+         "id": "commit",
+         "label": "Change",
+         "sub": "merged",
+         "x": 20,
+         "y": 40,
+         "tone": "blue"
+        },
+        {
+         "id": "prod",
+         "label": "Production",
+         "sub": "lead time",
+         "x": 50,
+         "y": 40,
+         "tone": "teal"
+        },
+        {
+         "id": "fail",
+         "label": "Failed deploy",
+         "sub": "failure rate",
+         "x": 80,
+         "y": 40,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "commit",
+         "prod"
+        ],
+        [
+         "prod",
+         "fail"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "commit",
+          "prod"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "commit",
+          "prod"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": "fail"
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Compare on-path with off-path",
+          "tone": "teal",
+          "icon": "="
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Add support tickets per project, and a short quarterly survey. Ask people who left the path why they left. Also track drift: the share of repositories on a supported template version.",
+      "show": {
+       "t": "points",
+       "title": "The rest of the scorecard",
+       "items": [
+        "Tickets per project",
+        "Quarterly survey",
+        "Why people left",
+        "Drift: share on a supported version"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Eighteen of thirty new pipelines this quarter used the template. What does that number tell you?",
+     "opts": [
+      "Adoption is sixty percent, which says people choose the path",
+      "Drift is sixty percent, which says templates are up to date",
+      "Failure rate is sixty percent, which says the path is risky",
+      "Satisfaction is sixty percent, which says users are happy"
+     ],
+     "ans": 0,
+     "why": "Adoption is new pipelines on the path over all new pipelines. It says nothing about drift, failures or satisfaction, which need their own measures."
+    },
+    "work": [
+     "Pull the count of new pipelines per quarter and how many used the template.",
+     "Measure days to first production run for one on-path and one off-path team."
+    ]
+   },
+   {
+    "title": "When good numbers lie",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Adoption hit ninety percent. Is the path a success?",
+      "show": {
+       "t": "big",
+       "text": "90% adoption",
+       "sub": "Success, or just compliance?"
+      }
+     },
+     {
+      "say": "Not necessarily. If the path was mandated, people comply, they do not choose. Watch support tickets and survey answers. High adoption with rising tickets means people are suffering on the path.",
+      "show": {
+       "t": "scene",
+       "title": "Mandated *adoption* hides pain",
+       "nodes": [
+        {
+         "id": "mandate",
+         "label": "Mandate",
+         "sub": "must use",
+         "x": 25,
+         "y": 40,
+         "tone": "amber"
+        },
+        {
+         "id": "adopt",
+         "label": "90% adoption",
+         "sub": "looks great",
+         "x": 75,
+         "y": 40,
+         "tone": "blue"
+        },
+        {
+         "id": "tickets",
+         "label": "Tickets rising",
+         "sub": "the real signal",
+         "x": 50,
+         "y": 75,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "mandate",
+         "adopt"
+        ],
+        [
+         "adopt",
+         "tickets"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "mandate",
+          "adopt"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "mandate",
+          "adopt"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": "tickets"
+        },
+        {
+         "at": 0.8,
+         "glow": "tickets"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Beware selection bias. Strong teams may join the path first, so faster delivery may reflect the team, not the path. Compare the same team before and after, or teams of similar size and skill.",
+      "show": {
+       "t": "points",
+       "title": "A fair comparison",
+       "items": [
+        "Same team, before and after",
+        "Similar teams, on and off",
+        "Do not credit the path for strong teams"
+       ]
+      }
+     },
+     {
+      "say": "Then drift. A repository that copied the template two years ago is on the path in name only, and misses every fix since. Count the template version, not just whether the template was used.",
+      "show": {
+       "t": "bars",
+       "title": "Repos by template version",
+       "unit": "repos",
+       "items": [
+        [
+         "Current version",
+         22,
+         ""
+        ],
+        [
+         "One behind",
+         9,
+         ""
+        ],
+        [
+         "Unsupported",
+         14,
+         "drifted"
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A team claims the path speeds up delivery because on-path repos ship faster. What is the main risk in that claim?",
+     "opts": [
+      "Strong teams may have joined first, so the path gets undeserved credit",
+      "Faster shipping always means a higher change failure rate",
+      "Repos on the path cannot be compared with any other repos",
+      "Lead time only counts when drift is exactly zero percent"
+     ],
+     "ans": 0,
+     "why": "Selection bias confuses team strength with path benefit. A before and after view, or a comparison of similar teams, gives a fairer answer."
+    },
+    "work": [
+     "Check how many repos run a template version that is no longer supported.",
+     "Compare lead time for the same teams before and after they moved to the path."
+    ]
+   },
+   {
+    "title": "Low adoption: fix it, mandate it, or retire it",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Adoption is low. Do you mandate the path?",
+      "show": {
+       "t": "big",
+       "text": "Mandate first?",
+       "sub": "Usually the wrong first move"
+      }
+     },
+     {
+      "say": "Not first. Ask why. Usually the path misses a real need, or it is slower than the old way. A mandate hides that gap and buys resentment, and teams will build workarounds anyway.",
+      "show": {
+       "t": "scene",
+       "title": "Ask *why* before you force",
+       "nodes": [
+        {
+         "id": "low",
+         "label": "Low adoption",
+         "sub": "signal",
+         "x": 50,
+         "y": 18,
+         "tone": "amber"
+        },
+        {
+         "id": "gap",
+         "label": "Missing need",
+         "sub": "coverage",
+         "x": 30,
+         "y": 55,
+         "tone": "plum"
+        },
+        {
+         "id": "slow",
+         "label": "Slower path",
+         "sub": "friction",
+         "x": 70,
+         "y": 55,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "low",
+         "gap"
+        ],
+        [
+         "low",
+         "slow"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "low"
+        },
+        {
+         "at": 0.35,
+         "show": [
+          "gap",
+          "slow"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "low",
+          "gap"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "low",
+          "slow"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Fix the path, not the people",
+          "tone": "teal",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Pick a few metrics: adoption, time to first run, drift. Collect them automatically from repository and pipeline metadata. Keep surveys short and quarterly. Never rank teams with these numbers, because people will game them.",
+      "show": {
+       "t": "points",
+       "title": "Keep measurement cheap",
+       "items": [
+        "Three to four core metrics",
+        "Collected from repo and CI data",
+        "One short survey a quarter",
+        "Never a team league table"
+       ]
+      }
+     },
+     {
+      "say": "With only three teams, skip dashboards and just talk to them. And if a path stays unused after you fix it, retire it. Maintaining it costs real engineers.",
+      "show": {
+       "t": "big",
+       "text": "Unused path, retire it",
+       "sub": "Upkeep has a real cost"
+      }
+     }
+    ],
+    "check": {
+     "q": "Adoption of your path stays at twenty percent. What is the best first step as an architect?",
+     "opts": [
+      "Interview the teams who left to find the gap or slowness",
+      "Mandate the path now and track compliance in a dashboard",
+      "Add more metrics to the dashboard until the cause shows up",
+      "Rank teams by adoption so peer pressure raises the number"
+     ],
+     "ans": 0,
+     "why": "Low adoption usually means the path misses a need or is slower than the old way. Learning that first lets you fix the cause instead of forcing compliance."
+    },
+    "work": [
+     "Interview two teams that left the path and write down the top reason.",
+     "Choose three core metrics and automate their collection from repo data."
+    ]
+   }
+  ]
+ },
+ "O2.8 Failure modes": {
+  "hash": "5f590dd9bf15",
+  "sec": "O2.8",
+  "reels": [
+   {
+    "title": "The road people choose",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Why do some company roads sit empty while everyone walks through the grass?",
+      "show": {
+       "t": "big",
+       "text": "Empty road, trampled grass",
+       "sub": "Why do teams skip the paved path?"
+      }
+     },
+     {
+      "say": "A golden path is a paved road for building data pipelines. Teams choose it because it is faster, not because they are forced. Fence it in with no exits, and people climb the fence. That is a golden cage.",
+      "show": {
+       "t": "scene",
+       "title": "A road needs *exits*",
+       "nodes": [
+        {
+         "id": "team",
+         "label": "Team",
+         "sub": "wants to ship",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "road",
+         "label": "Paved road",
+         "sub": "fast and easy",
+         "x": 50,
+         "y": 45,
+         "tone": "teal"
+        },
+        {
+         "id": "fence",
+         "label": "Fenced in",
+         "sub": "no way out",
+         "x": 50,
+         "y": 75,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "team",
+         "road"
+        ],
+        [
+         "road",
+         "fence"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "team",
+          "road"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "team",
+          "road"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "fence"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Golden cage: teams fight it",
+          "tone": "red",
+          "icon": "x"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Build ten roads and fix none, and every road has potholes. Build a road without asking walkers where they go, and it stays empty.",
+      "show": {
+       "t": "points",
+       "title": "Two ways roads fail",
+       "items": [
+        "Ten roads, none maintained",
+        "Built without asking the walkers"
+       ]
+      }
+     },
+     {
+      "say": "Put a toll booth at the end, where you must file a ticket, and it is a gate wearing a road costume. Skip the signs, and nobody can fix a breakdown. Good roads are few, current, open, and understood.",
+      "show": {
+       "t": "points",
+       "title": "A good road is",
+       "items": [
+        "Few",
+        "Kept current",
+        "Open, with exits",
+        "Understood by its drivers"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A company makes its pipeline template mandatory with no way to change it. Teams start working around it. What failure is this?",
+     "opts": [
+      "A golden cage, because a path that cannot bend gets fought",
+      "Stale templates, because old versions are still in use",
+      "Too many paths, because teams have too many choices",
+      "A missing upgrade bot, because teams cannot get updates"
+     ],
+     "ans": 0,
+     "why": "A path nobody can leave pushes teams to fight it. Paved roads work when teams choose them because they are better, and can still step off when needed."
+    },
+    "work": [
+     "List the templates your platform offers and mark which ones teams actually use.",
+     "Ask one team where the current path forced a bad fit, and add an escape hatch for it.",
+     "Check whether any step of your path still ends in a ticket."
+    ]
+   },
+   {
+    "title": "Keeping templates fresh and free",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "A template fixed a security bug last week. Why are forty repositories still broken?",
+      "show": {
+       "t": "big",
+       "text": "1 fix, 40 broken repos",
+       "sub": "Copying is a one-time act"
+      }
+     },
+     {
+      "say": "Because copying a template happens once. Each repository drifts from the day it is created. The cure is versioning. Every release gets a number, and every repository records which one it came from.",
+      "show": {
+       "t": "scene",
+       "title": "Version every *release*",
+       "nodes": [
+        {
+         "id": "tpl",
+         "label": "Template",
+         "sub": "version 1.5",
+         "x": 50,
+         "y": 15,
+         "tone": "teal"
+        },
+        {
+         "id": "r1",
+         "label": "Repo A",
+         "sub": "on 1.2",
+         "x": 20,
+         "y": 55,
+         "tone": "amber"
+        },
+        {
+         "id": "r2",
+         "label": "Repo B",
+         "sub": "on 1.5",
+         "x": 50,
+         "y": 55,
+         "tone": "blue"
+        },
+        {
+         "id": "r3",
+         "label": "Repo C",
+         "sub": "on 1.1",
+         "x": 80,
+         "y": 55,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "tpl",
+         "r1"
+        ],
+        [
+         "tpl",
+         "r2"
+        ],
+        [
+         "tpl",
+         "r3"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "tpl"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "r1",
+          "r2",
+          "r3"
+         ]
+        },
+        {
+         "at": 0.7,
+         "glow": "r3"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Each repo records its version",
+          "tone": "teal",
+          "icon": "tag"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Then an upgrade bot opens a pull request in all forty repositories within minutes. A drift report lists who is behind, say twelve of forty, so owners can see it.",
+      "show": {
+       "t": "bars",
+       "title": "Drift report",
+       "unit": "repos",
+       "items": [
+        [
+         "Up to date",
+         28,
+         ""
+        ],
+        [
+         "Behind",
+         12,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "The same idea fixes approvals. A ticket to the platform team takes five days. An automatic check in the pipeline takes two minutes, and enforces the same rules.",
+      "show": {
+       "t": "scene",
+       "title": "Ticket versus *guardrail*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Ticket",
+         "sub": "5 days",
+         "x": 30,
+         "y": 40,
+         "tone": "red"
+        },
+        {
+         "id": "g",
+         "label": "Auto check",
+         "sub": "2 minutes",
+         "x": 70,
+         "y": 40,
+         "tone": "teal"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "t",
+          "g"
+         ]
+        },
+        {
+         "at": 0.5,
+         "race": {
+          "items": [
+           [
+            "Ticket",
+            7200,
+            "red"
+           ],
+           [
+            "Auto check",
+            2,
+            "teal"
+           ]
+          ],
+          "unit": "min"
+         }
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Same rules, no waiting",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does a versioned template with an upgrade bot beat a template that is simply copied once?",
+     "opts": [
+      "Fixes can reach every repository as pull requests, not manual copying",
+      "Repositories can no longer change any code the template made",
+      "Teams never need to review changes made to their repositories",
+      "The template is only copied once, so storage costs stay lower"
+     ],
+     "ans": 0,
+     "why": "Recorded versions let a bot find every repository behind and open an upgrade pull request. Owners still review, but the work no longer depends on people remembering."
+    },
+    "work": [
+     "Make every generated repository record the template version it came from.",
+     "Turn on an upgrade bot and publish a weekly drift report.",
+     "Replace one approval ticket with an automatic pipeline check."
+    ]
+   },
+   {
+    "title": "Where golden paths quietly break",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your template has a hundred repositories. Is that success?",
+      "show": {
+       "t": "big",
+       "text": "100 repos created",
+       "sub": "Success, or a pile of future stale code?"
+      }
+     },
+     {
+      "say": "Not necessarily. Creation counts are vanity. Ask how many still deploy weekly and how many are on the latest version. A repository made once and abandoned is a stale template waiting to bite.",
+      "show": {
+       "t": "bars",
+       "title": "Better questions",
+       "unit": "repos",
+       "items": [
+        [
+         "Created",
+         100,
+         ""
+        ],
+        [
+         "Deploy weekly",
+         55,
+         ""
+        ],
+        [
+         "On latest version",
+         30,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Upgrade bots also fail quietly. If tests are flaky, owners ignore the pull requests, and drift grows. Heavy edits to generated files cause merge conflicts, so logic should live in a shared library that updates by version number instead.",
+      "show": {
+       "t": "scene",
+       "title": "Keep logic in a *library*",
+       "nodes": [
+        {
+         "id": "bot",
+         "label": "Upgrade bot",
+         "sub": "opens pull request",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "gen",
+         "label": "Generated code",
+         "sub": "thin, rarely edited",
+         "x": 30,
+         "y": 50,
+         "tone": "teal"
+        },
+        {
+         "id": "lib",
+         "label": "Shared library",
+         "sub": "versioned logic",
+         "x": 70,
+         "y": 50,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "bot",
+         "gen"
+        ],
+        [
+         "bot",
+         "lib"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "bot"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "gen",
+          "lib"
+         ]
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "bot",
+          "lib"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Fewer merge conflicts",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Escape hatches need care. Let teams leave the path, but keep automatic guardrails like access and cost checks on. And when generated defaults are opaque, nobody can debug them at three in the morning. Document how it works, with examples.",
+      "show": {
+       "t": "points",
+       "title": "Open, but safe",
+       "items": [
+        "Escape hatch stays supported",
+        "Guardrails stay on for everyone",
+        "Docs explain what was generated",
+        "Examples show how to debug it"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Teams keep ignoring the upgrade pull requests, and repositories fall further behind. What is the most likely root cause to check first?",
+     "opts": [
+      "Flaky tests make upgrades risky, so owners stop trusting them",
+      "The template version number is too high for repositories to use",
+      "Too many teams are using the one template that was supplied",
+      "The upgrade bot sends too few pull requests to be noticed"
+     ],
+     "ans": 0,
+     "why": "If tests fail randomly, owners cannot tell a good upgrade from a bad one and learn to ignore the bot. Reliable tests make upgrades safe to merge."
+    },
+    "work": [
+     "Track weekly deploys and version currency, not just repositories created.",
+     "Move shared logic out of generated files into a versioned library.",
+     "Write a short how-it-works page covering every default the template generates."
+    ]
+   },
+   {
+    "title": "When to build a path, and when not to",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When should you not build a golden path?",
+      "show": {
+       "t": "big",
+       "text": "When is a path the wrong tool?",
+       "sub": "Every path has a running cost"
+      }
+     },
+     {
+      "say": "When only three teams exist, or each workload is truly unique. A path needs an owner, upgrades and support, often half an engineer or more per journey. That cost only pays back when many teams repeat the same work.",
+      "show": {
+       "t": "scene",
+       "title": "Cost needs *repetition*",
+       "nodes": [
+        {
+         "id": "cost",
+         "label": "Path upkeep",
+         "sub": "owner, upgrades, support",
+         "x": 30,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "gain",
+         "label": "Teams repeating work",
+         "sub": "many, not three",
+         "x": 70,
+         "y": 35,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "cost",
+         "gain"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "cost"
+        },
+        {
+         "at": 0.5,
+         "show": "gain"
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Pays back only at scale",
+          "tone": "amber",
+          "icon": "scale"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Before building, shadow two or three real teams for a week. Pick the one or two journeys they repeat most, like a batch pipeline or a streaming job. Ten thin paths lose to two good ones.",
+      "show": {
+       "t": "points",
+       "title": "Start narrow",
+       "items": [
+        "Shadow real teams first",
+        "Pick the one or two most repeated journeys",
+        "Do them well before adding more"
+       ]
+      }
+     },
+     {
+      "say": "Then measure adoption and time to first deploy as you would for a product. If teams avoid it, fix the path, not the mandate. Where variety is high, ship shared libraries and examples instead of a full template.",
+      "show": {
+       "t": "flow",
+       "title": "Treat the path as a product",
+       "steps": [
+        {
+         "label": "Shadow teams"
+        },
+        {
+         "label": "Build two journeys"
+        },
+        {
+         "label": "Measure adoption"
+        },
+        {
+         "label": "Fix the path"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Adoption of your pipeline template is low. As the platform architect, what is the best response?",
+     "opts": [
+      "Find why teams avoid it and fix the path to earn adoption",
+      "Make the template mandatory so every team uses it right away",
+      "Add six more templates so every team finds one that fits it",
+      "Stop measuring adoption, since teams know what works for them"
+     ],
+     "ans": 0,
+     "why": "Low adoption is product feedback. A mandate creates a cage, and more templates spread upkeep thin. Learn the friction, then improve the path."
+    },
+    "work": [
+     "Shadow two teams for a week and write down the steps they repeat.",
+     "Cap active paths at two and name an owner for each.",
+     "Track adoption and time to first deploy on a simple dashboard."
+    ]
+   }
+  ]
  }
 }
