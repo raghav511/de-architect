@@ -1,12 +1,15 @@
 {
-  "version": "1.36.22",
+  "version": "1.36.23",
   "date": "2026-11-08",
   "notes": [
-    "Module 10 adds five classic data system designs interviewers ask: trending top-K with a count-min sketch, a metrics platform, a web crawler, a Snowflake-style ID generator and a payments ledger. Two new simulator challenges let you fix trending counters and a metrics database restart.",
-    "Module A5 now covers RAG at scale: rewriting the question, combining keyword and vector search, reranking, and only finding documents the person may open.",
-    "A5.8 covers answers you can trust: conflicting sources, citations you can check, saying I don't know, long context versus RAG, and GraphRAG in one page.",
-    "New architect's lens on RAG and vector stores with six internals answers (including sizing 10 million documents at 1,000 questions a second), three interview and three quiz questions, and 16 reels.",
-    "No change in the app: a test now checks the real order, with the Org modules between DE 10 and Leadership 1 and AI 6 right after AI 5.",
-    "1288 of 1444 reels now play in the natural Heart voice."
+    "Reel icons show as symbols instead of words like lock or check (843 reels were affected).",
+    "On iPhone, saying no to speech input now explains why and where to turn it on, instead of saying nothing.",
+    "On phones the coach button no longer covers the simulator's Reset button or the live mock's Start.",
+    "Tapping a finished reel no longer reshuffles its quick check's answers under your finger.",
+    "Today now holds one item from every section of Learn, Practice and Interview that has work: a lesson, reels, coding, design, the simulator, a live question, recall, a loop drill and more. There is no time limit: every row, tab and the day show their minutes as a guide, and XP decides the day and when the module moves on.",
+    "Finish the whole set for +20 XP and a streak day (the weekly freeze is kept). Once a tab is done, One more adds the next item of a section.",
+    "The live mock is one question on weekdays, the full five-question mock on Saturday and the seven-question boss round on Sunday. Anything unfinished carries to the next day, at most one item per section.",
+    "On days without a design or project step, Practice has a 15-minute comparison of two or three components. Profile \u203a Plan has a Daily set choice (smallest or double); your old minute settings are kept.",
+    "1277 of 1465 reels now play in the natural Heart voice."
   ]
 }
