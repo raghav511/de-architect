@@ -877,6 +877,18 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(async () => { const r = (await reelsFor('s08')).filter(x => x.sec === '8.8'); return r.length === 8 && new Set(r.map(x => x.level)).size === 4; }), 'Snowflake and Databricks lens reels missing or not at four levels');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
+  await T('RAG at scale (A5.7, A5.8) and the RAG and vector store lens (A5.9): rewriting, rank fusion, reranking, permission filters, conflicts, citations, abstaining, long context and GraphRAG; seven questions and six internals answers; interview and quiz questions join A5; reels at four levels; no AI service is called', async (p, c) => {
+    let ai = 0; await c.route('https://api.anthropic.com/**', r => { ai++; r.abort(); });
+    await go(p, '#/learn/a05/chapter', 1500); await p.waitForSelector('.lens');
+    const t = await text(p, '#page');
+    ok(['Reciprocal rank fusion', 'cross-encoder reranker', 'pre-filtering', 'HyDE', 'groundedness check', 'Abstaining is a feature', 'Long context instead of RAG', 'GraphRAG'].every(w => t.includes(w)), 'A5.7 or A5.8 is missing a topic');
+    ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details:not(.fresh)').length === 6 && /HNSW/.test(l.textContent) && /ef_search/.test(l.textContent) && /205 GB/.test(l.textContent) && /pgvector/.test(l.textContent) && !!l.querySelector('a[href="#/sim/sc/rag"]'); }), 'RAG lens card incomplete');
+    ok(await p.evaluate(() => getComputedStyle(document.querySelector('.lens td')).display === 'block' && document.documentElement.scrollWidth <= innerWidth), 'RAG lens is not stacked on a phone or scrolls sideways');
+    ok(await p.evaluate(async () => { const s = await sprint('a05'); return s.interview.filter(q => /10 million documents at 1,000 queries|Two indexed sources give different answers|not allowed to open/.test(q.Q)).length === 3 && s.quiz.filter(q => /reciprocal rank fusion|apply the user's document permissions|far below the threshold/.test(q.Q)).length === 3; }), 'RAG lens questions not in the interview set or quiz');
+    ok(await p.evaluate(async () => { const r = await reelsFor('a05'), by = s => r.filter(x => x.sec === s); return by('A5.9').length === 8 && new Set(by('A5.9').map(x => x.level)).size === 4 && by('A5.7').length === 4 && by('A5.8').length === 4; }), 'RAG reels missing or not at four levels');
+    ok(ai === 0, 'the RAG pages called an AI service from the browser');
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
   await T('live mock: Today links it; five questions from this week (concept, under the hood, lens, staff slot, recall); AI follow-up and rubric scores; weak answers open the next mock; self-marking with AI off', async p => {
     await p.route('https://api.anthropic.com/**', r => r.abort()); /* the app never calls an AI service from the browser */
     p.setDefaultTimeout(8000); p.on('pageerror', e => console.log('PAGEERR', e.message));
