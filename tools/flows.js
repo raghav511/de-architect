@@ -1800,7 +1800,7 @@ async function T(name, fn, opt) {
   await T('F7 integrated week steps: every module with steps shows five tabs, opens each step, and starts with nothing done; Design without a challenge opens the design problem', async p => {
     await go(p, '#/today', 800);
     const mods = await p.evaluate(async () => { const out = []; for (const m of MODS) { const s = await sprint(m); if (s.raw.steps) out.push(m); } return out; });
-    for (const m of ['s01', 's02', 's03', 's04', 's05']) ok(mods.includes(m), m + ' has no week steps');
+    for (const m of ['s01', 's02', 's03', 's04', 's05', 's06', 's07', 's08']) ok(mods.includes(m), m + ' has no week steps');
     for (const m of mods) {
       const st = await p.evaluate(m => stepList(m).map(x => [x.STEP, x.mins, x.uid]), m);
       ok(st.map(x => x[0]).join() === 'design,fix,platform,lead,ai' && st.every(x => x[1] <= 10), m + ' steps are not the five, in order, of 10 minutes or less: ' + JSON.stringify(st));

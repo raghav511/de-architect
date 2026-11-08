@@ -293,6 +293,76 @@ You have done this for 120 workflows. What do you ask, and what do you propose? 
 
 A migration plan is a decomposition exercise with a calendar attached. Use your real one as the answer whenever a behavioral question allows it.
 
+@@steps
+STEP: design
+TITLE: Design it: right-size on a budget, and the S3 prefix limit
+MIN: 10
+SIM: budget, prefix
+BODY: A short simulator challenge on this week's cloud path. It fails as given: find the cause, change the design and run it again until it passes. The second one is there for more practice.
+
+- **Right-size on a budget.** The design meets its load but costs too much. Find the oversized or always-on part and replace it with something that scales to the work, without breaking the latency target.
+- **S3 request rate per prefix.** S3 serves a few thousand requests a second per prefix. A layout that sends every write to one prefix is throttled however big the bucket is; spreading keys across prefixes fixes it.
+---
+STEP: fix
+TITLE: Read and fix: the policy check that ignores a deny
+MIN: 10
+SPEC: Decide whether an IAM-style policy allows an action on a resource. Each statement has an `effect` ("Allow" or "Deny") and lists of `actions` and `resources` that may contain `*` wildcards. The rules: an explicit Deny in any matching statement wins; otherwise any matching Allow allows; with no match at all the answer is no (implicit deny).
+CODE:
+```
+from fnmatch import fnmatch
+
+def allowed(statements, action, resource):
+    """statements: dicts with effect ("Allow" or "Deny"), actions and resources (lists of patterns)."""
+    for s in statements:
+        if any(fnmatch(action, a) for a in s["actions"]) and any(fnmatch(resource, r) for r in s["resources"]):
+            return s["effect"] == "Allow"
+    return False
+```
+FIX:
+```
+from fnmatch import fnmatch
+
+def allowed(statements, action, resource):
+    """statements: dicts with effect ("Allow" or "Deny"), actions and resources (lists of patterns)."""
+    hit = [s["effect"] for s in statements if any(fnmatch(action, a) for a in s["actions"]) and any(fnmatch(resource, r) for r in s["resources"])]
+    return "Allow" in hit and "Deny" not in hit  # an explicit deny anywhere wins, whatever the order
+```
+BUG: 7
+TESTS: [["a plain allow", "allowed([{\"effect\": \"Allow\", \"actions\": [\"s3:GetObject\"], \"resources\": [\"arn:aws:s3:::lake/*\"]}], \"s3:GetObject\", \"arn:aws:s3:::lake/raw/a.json\")", true], ["deny after allow wins", "P = [{\"effect\": \"Allow\", \"actions\": [\"s3:*\"], \"resources\": [\"arn:aws:s3:::lake/*\"]}, {\"effect\": \"Deny\", \"actions\": [\"s3:DeleteObject\"], \"resources\": [\"arn:aws:s3:::lake/*\"]}]\nallowed(P, \"s3:DeleteObject\", \"arn:aws:s3:::lake/raw/a.json\")", false], ["no match is no", "allowed([{\"effect\": \"Allow\", \"actions\": [\"s3:GetObject\"], \"resources\": [\"arn:aws:s3:::lake/*\"]}], \"s3:PutObject\", \"arn:aws:s3:::lake/x\")", false], ["deny on another bucket does not block", "P = [{\"effect\": \"Deny\", \"actions\": [\"s3:*\"], \"resources\": [\"arn:aws:s3:::finance/*\"]}, {\"effect\": \"Allow\", \"actions\": [\"s3:GetObject\"], \"resources\": [\"arn:aws:s3:::lake/*\"]}]\nallowed(P, \"s3:GetObject\", \"arn:aws:s3:::lake/a\")", true]]
+BODY: IAM does not read statements top to bottom and stop. It collects every statement that matches; **an explicit Deny anywhere wins**, then an Allow allows, and anything else is an implicit deny. Code (or a reviewer) that stops at the first match lets a broad Allow hide the Deny below it, which is how a "read-only" role ends up able to delete. The line to look at is the early return.
+---
+STEP: platform
+TITLE: Run it on the platform: where the batch path runs and what the bill hides
+MIN: 8
+BODY: **Where it runs.** The same Spark job can run on AWS Glue (serverless, billed per DPU-hour with a minimum per run), EMR Serverless (pay per vCPU and memory used), EMR on EC2 (your own cluster, cheapest with spot workers when it is busy), or EMR on EKS and the Spark operator on Kubernetes (shared with other workloads). Orchestration is MWAA (managed Airflow), Step Functions for simple chains, or Airflow on EKS with the official Helm chart. On Azure and Google Cloud the map is the same: Synapse or Databricks and Dataproc Serverless, with Data Factory, Cloud Composer or Workflows.
+
+**What the bill hides.**
+- **NAT gateway data processing.** Jobs in private subnets that read S3 through a NAT gateway pay per gigabyte processed. An S3 gateway endpoint is free and removes it.
+- **Requests and listing.** Millions of small files mean millions of GET and LIST requests; compaction and partitioned prefixes cut both.
+- **Idle and oversized compute.** Clusters left running, and executors sized for the peak all day.
+- **Cross-zone and cross-region transfer,** and storage that never moves to a cheaper class: lifecycle rules do it for you.
+
+**Run it.** Tag every resource with team and pipeline, set a budget with alerts, and look at cost per pipeline run every week.
+CHECK: {"q": "A nightly job in a private subnet reads 2 TB from S3, and the bill shows a large NAT gateway charge. What is the cheapest fix?", "c": ["Move the job to a bigger instance type so it finishes sooner", "Copy the data to EBS volumes before the job reads it", "Add an S3 gateway VPC endpoint to the subnet's route table"], "a": 2, "why": "Traffic to S3 through a gateway endpoint does not pass through the NAT gateway, so its per-gigabyte processing charge disappears; the endpoint itself costs nothing."}
+---
+STEP: lead
+TITLE: Lead it: cut the cloud bill by 30% in a quarter
+MIN: 10
+Q: Finance asks you to cut the data platform's cloud bill by 30% this quarter without missing any SLA. Twelve teams run pipelines on it. How do you go about it?
+A: First make cost visible: enforce tags for team and pipeline, build a weekly cost-per-pipeline report, and find the top ten items, because a few always dominate. Then take the safe savings that need no team to change code: delete idle clusters and orphaned storage, add S3 gateway endpoints where NAT charges show, lifecycle rules for cold data, spot capacity for retryable batch work, and reserved or committed capacity for the steady base.
+
+Next, the structural savings with the owning teams: incremental processing instead of full reloads, compaction and partitioning that cut scanned bytes, right-sized executors and warehouses, and auto-suspend everywhere. Each change is checked against its pipeline's SLA and data quality before and after.
+
+Keep it from creeping back: show cost per team every month (showback first, chargeback later), budgets with alerts, cost checks in the golden-path templates, and a cost review in design reviews. Report progress weekly against the 30%, and say early if an SLA would have to give: some savings are a business decision, not an engineering one.
+BODY: Answer out loud in two minutes first, then write the short version and compare with the model answer. Staff interviewers listen for measuring before cutting, safe savings first, working through the owning teams, protecting SLAs and keeping the savings.
+---
+STEP: ai
+TITLE: With AI: reviewing a Terraform plan with Claude Code
+MIN: 10
+BODY: **Where LLM tooling helps in the cloud.** Reading a `terraform plan` and saying what will be destroyed or replaced; spotting wildcard permissions and public resources in IAM and bucket policies; drafting least-privilege policies from the actions a job really uses; explaining a cost report. **Where it does not:** it cannot see your account unless you give it read-only access (the MCP server from 7.9 is the safe way), and it will propose `*` permissions or a `terraform apply` with confidence. Never let it apply; you review and apply.
+TASK: In the in-app terminal or your own, give Claude Code the plan output and the IAM policy from this week's lab and ask it, in one prompt, to (1) list every resource that will be destroyed or replaced, (2) flag any permission broader than the job needs, with the narrower version, and (3) say what one change would cut the cost of the batch path. Paste your prompt and its answer below.
+RUBRIC: The prompt gives the plan and the policy and asks for destroys, over-broad permissions with a narrower version, and one cost change. The answer is checked against the chapter: it catches wildcard actions or resources and any public access, its narrower policy still lets the job run, and you note one thing you would verify before applying anything.
+
 @@quiz
 TYPE: mcq
 TAG: cloud
