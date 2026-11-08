@@ -101,6 +101,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.36.23: iPhone Safari pass: reel icons, mic refusal, coach button, end card; Daily set scored in XP, no daily time limit (F9).
 - 1.36.22: s10 10.6: five classic data designs (top-K, metrics, crawler, ID generator, ledger) and two simulator challenges; RAG at scale (A5.7, A5.8) and the RAG and vector store lens (A5.9); Tests: the platform and leadership journey follows the real module order.
 - 1.36.21: AI data engineer project and role (SOURCES G7); Reels data per module: the Reels tab opens in about half a second on a return visit.
 - 1.36.20: Module 7 lab runs in the app: the cloud batch path.
