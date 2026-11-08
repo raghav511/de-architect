@@ -235,6 +235,7 @@ function liveCard(page, k, m) {
   page.appendChild(el('section', { class: 'card pad stack live' }, [
     el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Scorecard · ' + shortDate(k) }), el('b', { text: all.toFixed(1) + ' of 4' })]),
     el('div', { class: 'lhire', text: liveHire(all, m) }),
+    typeof storyFinaleNote === 'function' ? storyFinaleNote(k, m, all) : null, /* the Sunday boss round is the week's finale; under 3.0 a rematch opens next Sunday */
     done.some(([, a]) => liveBy(a) === 'self') ? el('p', { class: 'muted lselfnote', style: { margin: 0, fontSize: '13px' }, text: (done.filter(([, a]) => liveBy(a) === 'self').length) + ' answer' + (done.filter(([, a]) => liveBy(a) === 'self').length === 1 ? ' was' : 's were') + ' marked by you. Self-marked rounds count for practice and XP, but promotions past Senior need a round scored by the AI interviewer.' }) : null,
     done.some(([, a]) => a.fb) ? el('p', { class: 'muted', style: { margin: 0, fontSize: '13px' }, text: 'Scored by an AI interviewer, which can be wrong. Check each answer against the model answer below before you trust a score.' }) : null, /* QA fix 13 */
     el('div', { class: 'lscore' }, dim.map(([t, v]) => el('div', { class: 'row' }, [el('span', { class: 'grow', text: t }), el('b', { text: v ? v.toFixed(1) : '–' })]))),
