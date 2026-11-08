@@ -8,8 +8,8 @@ quiz-same: mp6ipt 1ftrben
 
 @@tickets
 301 | learn | 2 | Chapter 3 and the readings | You can open a stage in the Spark UI and say where the time went and why. | chapter
-302 | build | 2.5 | The enrichment job, measured | The job runs over 30 days of trips, and your notes hold a table of stage times, shuffle sizes and spill. | lab
-303 | incident | 0.75 | One city has 80% of the rows | The job finishes, you can name the hot key, and the plan shows which fix is in effect. | lab
+302 | build | 1.25 | The enrichment job, measured: the plan and the event log | Both exercises pass in the editor: you read the shuffles, join strategies and pushed filters from the plan, and the stage summary from the event log names the slowest stage with its median and maximum task time and spill. | py:1-2
+303 | incident | 0.75 | One city has 80% of the rows | Both exercises pass: you name the hot key and the NULLs from the partition sizes, and with NULLs dropped and the hot key salted the failing join finishes with the same rows. | py:3-4
 304 | ai | 1 | Give the agent tools to read plans and event logs | It names the slowest stage and its diagnosis matches the one you made by hand. | lab
 305 | practice | 1.25 | Warm-ups and the customer drill | Three SQL and three DSA warm-ups attempted, and the drill answered out loud. | practice
 306 | test | 0.5 | Quiz 3 | 80% or better. | quiz
@@ -278,6 +278,19 @@ Catalyst is the optimizer. It resolves names against the catalog (analysis), rew
 
 
 @@lab
+## In the app: Spark under load without a cluster (2 hours)
+
+Four exercises on the in-browser cluster (`minilake.MiniCluster`) cover what the cluster lab below proves, and what interviews ask. It runs the enrichment job's join the way Spark does: one task per shuffle partition, each task's time and shuffle read growing with its rows, spill when a task outgrows its memory and an out-of-memory failure well past it, broadcast joins that skip the shuffle, and adaptive skew splits. Every run writes a real Spark event log.
+
+1. **Read the plan:** count the shuffles and broadcasts in `explain("formatted")`, name each join strategy, and list the filters pushed to the scan. Broadcasting `zones` removes two shuffles.
+2. **Read the event log:** write the `stage_summary` tool from section 3.9 and run it on a skewed and a healthy run. The skewed join stage shows a maximum task time many times the median, and spill.
+3. **One city has 80% of the rows:** find the hot key and the NULL keys from the partition sizes, the way you would from the stage page (the incident, steps 1 and 2).
+4. **Fix it:** drop the NULLs and salt only the hot key, so the job that failed with an out-of-memory error finishes with the same rows (the incident, steps 3 and 5). Then run it with `aqe=True` instead and compare: that is fix two.
+
+**Done when** all four pass (Path, module 3). Then say out loud which fix you would ship and why, with the numbers from the runs. The `stage_summary` you wrote is the tool the AI lab gives your agent.
+
+The lab below runs the same steps on a real Spark setup with the history server (optional; it needs Docker).
+
 ## Build: the enrichment job, measured (2.5 hours)
 
 Paste this lab into a chat with Claude and ask it to **generate the DE 3 starter kit**. The starter kit adds a `drivers` table of about 500,000 rows, a `zones` table of about 200 rows, a generator option for skewed data, and Spark event logging.

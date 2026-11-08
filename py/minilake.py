@@ -8,6 +8,9 @@ need no Docker. They keep the behaviour interviews ask about and leave out the o
   Table       an Iceberg-style table on the ObjectStore: every commit is a snapshot listing its data files, files
               are partitioned by day, columns are tracked by id (a rename never rewrites files), time travel,
               files and snapshots metadata, optimistic commits, compaction and snapshot expiry.
+  MiniCluster a Spark-style join stage under load: hash partitioning, one task per shuffle partition, executor
+              memory with spill and out-of-memory, broadcast joins, adaptive skew splits, and a real Spark event log
+              (SparkListenerTaskEnd lines) that the chapter's stage_summary reads unchanged.
 """
 import datetime as _dt, io, json, os, tempfile, zlib
 
@@ -225,6 +228,106 @@ class Table:
         for k in self.store.list(self.location + '/data/'):
             if k not in live:
                 self.store.delete(k)
+# ---------------- Spark-style cluster under load ----------------
+def hash_partition(key, n):
+    """The shuffle partition a key goes to (Spark's HashPartitioning; crc32 stands in for murmur3). NULL keys all
+    land in partition 0, which is why a column with many NULLs skews a join."""
+    return 0 if key is None else zlib.crc32(str(key).encode()) % n
+
+
+def enrich_plan(broadcast_zones=False, filter_first=True, aqe=False):
+    """explain("formatted")-style text for the module 3 enrichment job: trips joined to drivers and zones."""
+    zj = 'BroadcastHashJoin Inner BuildRight (zone_id)' if broadcast_zones else 'SortMergeJoin Inner (zone_id)'
+    lines = ['== Physical Plan ==', ('AdaptiveSparkPlan isFinalPlan=true' if aqe else 'AdaptiveSparkPlan isFinalPlan=false'),
+             '+- Project [trip_id, driver_id, rating, vehicle_type, zone_name, surge]',
+             '   +- ' + zj]
+    left = ['      :- SortMergeJoin Inner (driver_id)',
+            '      :  :- Sort [driver_id ASC]',
+            '      :  :  +- Exchange hashpartitioning(driver_id, 200)',
+            ('      :  :     +- Filter (status = completed) AND isnotnull(driver_id)' if filter_first else '      :  :     +- Project [trip_id, driver_id, zone_id, status]'),
+            '      :  :        +- Scan parquet silver.trips PushedFilters: [' + ('EqualTo(status,completed), IsNotNull(driver_id)' if filter_first else '') + ']',
+            '      :  +- Sort [driver_id ASC]',
+            '      :     +- Exchange hashpartitioning(driver_id, 200)',
+            '      :        +- Scan parquet silver.drivers PushedFilters: [IsNotNull(driver_id)]']
+    if not broadcast_zones:
+        left = ['      :- Sort [zone_id ASC]', '      :  +- Exchange hashpartitioning(zone_id, 200)'] + ['   ' + l for l in left]
+    right = (['      +- BroadcastExchange HashedRelationBroadcastMode(zone_id)', '         +- Scan parquet silver.zones PushedFilters: []'] if broadcast_zones else
+             ['      +- Sort [zone_id ASC]', '         +- Exchange hashpartitioning(zone_id, 200)', '            +- Scan parquet silver.zones PushedFilters: []'])
+    return '\n'.join(lines + left + right)
+
+
+class MiniCluster:
+    """One join stage of a Spark job, modelled closely enough to show skew, spill and OOM. Each shuffle partition is
+    one task; a task's time and shuffle read grow with its rows. Rows over the task's memory spill to disk (slower);
+    rows over four times the memory fail the task with an out-of-memory error, which fails the job."""
+    def __init__(self, executor_mem_mb=1024, row_bytes=200000, secs_per_row=0.004):
+        # one simulated row stands for about a thousand real ones, so a lab-sized run behaves like a day of trips
+        self.task_mem_rows = executor_mem_mb * 8          # rows one task can hold before it spills (1 GB: 8,192)
+        self.row_bytes, self.secs_per_row = row_bytes, secs_per_row
+
+    def run_join(self, big, small, key, shuffle_partitions=200, broadcast=False, aqe=False, log_path=None):
+        """Join big to small on key (inner). Returns {"rows", "failed", "max_task_s", "total_s", "log"}: the joined
+        row count and the path of a Spark event log with one SparkListenerTaskEnd line per task."""
+        n = shuffle_partitions
+        index = {}
+        for r in small:
+            index.setdefault(r.get(key), []).append(r)
+        out = sum(len(index.get(r.get(key), ())) for r in big if r.get(key) is not None)
+        events, clock = [], [0]
+
+        def task(stage, tid, rows, shuffle, held=None):
+            held = rows if held is None else held   # rows the task must hold in memory (a scan or broadcast join streams; it holds only the small side)
+            spill = max(0.0, held - self.task_mem_rows)
+            secs = 0.2 + rows * self.secs_per_row * (1 + 2 * spill / max(held, 1))
+            failed = held > 4 * self.task_mem_rows
+            launch = clock[0]; clock[0] += 1
+            events.append({'Event': 'SparkListenerTaskEnd', 'Stage ID': stage, 'Task Info': {'Task ID': tid, 'Launch Time': launch * 1000, 'Finish Time': int(launch * 1000 + secs * 1000), 'Failed': failed},
+                           'Task End Reason': {'Reason': 'ExceptionFailure', 'Description': 'java.lang.OutOfMemoryError: Java heap space'} if failed else {'Reason': 'Success'},
+                           'Task Metrics': {'Shuffle Read Metrics': {'Remote Bytes Read': int(rows * self.row_bytes * 0.75) if shuffle else 0, 'Local Bytes Read': int(rows * self.row_bytes * 0.25) if shuffle else 0},
+                                            'Disk Bytes Spilled': int(spill * self.row_bytes)}})
+            return secs, failed
+
+        per_scan = 5000
+        for stage, side in ((0, big), (1, small)):
+            for i in range(max(1, -(-len(side) // per_scan))):
+                task(stage, len(events), min(per_scan, len(side) - i * per_scan), False, held=0)
+        results = []
+        if broadcast:
+            for i in range(max(1, -(-len(big) // per_scan))):
+                results.append(task(2, len(events), min(per_scan, len(big) - i * per_scan), False, held=len(small)))
+        else:
+            sizes = [0] * n
+            for r in big:
+                sizes[hash_partition(r.get(key), n)] += 1
+            for r in small:
+                sizes[hash_partition(r.get(key), n)] += 1
+            if aqe:   # adaptive skew join: a partition over 5x the median (and big enough) is split into median-sized pieces
+                med = sorted(sizes)[n // 2] or 1
+                split = []
+                for s in sizes:
+                    split += [med] * (s // med) + ([s % med] if s % med else []) if s > 5 * med and s > 1000 else [s]
+                sizes = split
+            for s in sizes:
+                results.append(task(2, len(events), s, True))
+        path = log_path or tempfile.mkstemp(suffix='.json')[1]
+        with open(path, 'w') as f:
+            f.write('\n'.join(json.dumps(e) for e in events))
+        failed = any(f for _, f in results)
+        return {'rows': None if failed else out, 'failed': failed, 'max_task_s': round(max(s for s, _ in results), 1), 'total_s': round(sum(s for s, _ in results), 1), 'log': path}
+
+
+def trips_for_join(n=50000, hot_share=0.0, null_share=0.0, seed=11):
+    """Trips and zones for the module 3 labs. hot_share of trips go to zone 1 (one city with most of the rows),
+    null_share have no zone_id."""
+    import random
+    r = random.Random(seed)
+    zones = [{'zone_id': z, 'zone_name': 'zone-%d' % z} for z in range(1, 201)]
+    trips = []
+    for i in range(n):
+        x = r.random()
+        z = None if x < null_share else 1 if x < null_share + hot_share else r.randint(2, 200)
+        trips.append({'trip_id': i, 'zone_id': z})
+    return trips, zones
 
 
 # ---------------- Airflow-style DAG ----------------
