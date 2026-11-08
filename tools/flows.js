@@ -949,7 +949,7 @@ async function T(name, fn, opt) {
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
   await T('reels player (F3–F6): the same dark player frame from the first frame with a loading state, Instagram-style layout (round play button, title and caption bottom-left, icon rail), every speed from 0.25x to 2x', async (p, c) => {
-    await c.route('**/data/reels.json*', async r => { await new Promise(x => setTimeout(x, 1500)); r.continue(); }); /* slow download so the loading state shows */
+    for (const u of ['**/data/reels.json*', '**/data/reels/**']) await c.route(u, async r => { await new Promise(x => setTimeout(x, 1500)); r.continue(); }); /* slow download so the loading state shows */
     await go(p, '#/today', 900); await p.evaluate(() => { location.hash = '#/reels'; }); await p.waitForTimeout(300);
     ok(await p.evaluate(() => { const v = document.querySelector('.reelv'); return !!(v && v.querySelector('.rspin') && /Getting your reels ready/.test(v.textContent) && v.querySelector('.rtitle')); }), 'no loading state in the player frame (F5, F6)');
     ok(!(await p.evaluate(() => /Loading reels/.test(document.body.innerText))), 'the bare Loading reels line is still shown');

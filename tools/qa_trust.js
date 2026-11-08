@@ -177,7 +177,7 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
   }, { timezoneId: 'America/Los_Angeles' });
 
   await T('Q17', 'Reels open even when the reel scripts cannot load (offline on first visit)', async (p, c) => {
-    await c.route('**/data/reels.json*', r => r.abort());
+    await c.route('**/data/reels.json*', r => r.abort()); await c.route('**/data/reels/**', r => r.abort());
     await boot(p, '#/reels'); await p.waitForTimeout(1500);
     const n = await p.$$eval('.reelv .rslide', s => s.length), t = await p.$eval('#page', e => e.innerText);
     ok(n > 0 || /No reels/i.test(t), 'no reels and no message: ' + t.slice(0, 200));

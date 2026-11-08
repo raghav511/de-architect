@@ -1,10 +1,11 @@
 {
-  "version": "1.36.20",
+  "version": "1.36.21",
   "date": "2026-11-08",
   "notes": [
-    "Module 7's lab now runs in your browser, with no AWS account or bill: four exercises with real tests on small stand-ins for Terraform, Athena and IAM.",
-    "Read a Terraform plan (create, update, replace or delete), forecast the monthly bill for S3, EMR Serverless and Athena, cut a tripled Athena bill by rewriting raw JSON into day partitions and columns, and replace a role that could write anywhere with a least-privilege policy.",
-    "The AWS lab stays below as optional.",
+    "The capstone (12.4) gains a deployed variant: a pipeline builds the evidence, an agent proposes one action, you approve it on your phone, and the system carries it out and logs it, at a URL interviewers can open. It also explains why a plain document chatbot no longer stands out.",
+    "Chapter 11 lists what forward deployed teams expect in the first months and links to that capstone.",
+    "The Databricks map (8.3) adds Lakebase, Databricks Apps and Agent Bricks: what each is and what to use it for.",
+    "Reels open faster: the reel scripts now download one module at a time and stay saved on your device, so the Reels tab no longer waits for a large download each visit.",
     "1295 of 1315 reels now play in the natural Heart voice."
   ]
 }

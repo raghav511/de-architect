@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.36.20';
+const VERSION = '1.36.21';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -102,10 +102,9 @@ const MAPS = [
   ['Contracts', 'Tests', 'CI/CD', 'Metrics', 'On-call'], ['Ingest', 'Lake', 'Serving store', 'Cache', 'API'], ['Discovery', 'Metric tree', 'Experiment', 'Dashboard', 'Decision'], ['Design', 'Build', 'Test', 'Demo', 'Loop']
 ];
 const PALETTE = [['#E4ECFA', '#1E3F8F'], ['#FBE7C6', '#7A3E05'], ['#E4ECFA', '#1E3F8F'], ['#DDF1EA', '#0B3D33'], ['#EFE4F5', '#5A2A75']];
-let reelsGo; /* the reel scripts (megabytes) start downloading once the first screen is drawn, so they never share the line with what it needs (unless that screen is Reels) */
 async function loadData() {
-  DATA.reelsP = new Promise(r => { reelsGo = r; }).then(() => fetch('data/reels.json')).then(r => r.json()).catch(() => ({})).then(j => DATA.reels = j);
-  if (/^#\/reels/.test(location.hash)) reelsGo(); /* opening straight onto a reel: that screen needs them first */
+  DATA.reels = {}; DATA.reelsP = reelsPrefetch(); /* the reel scripts (megabytes, js/reels.js) wait for the first screen, so they never share the line with what it needs */
+  if (/^#\/reels/.test(location.hash)) reelsOpen(); /* opening straight onto a reel: that screen needs them first */
   const json = u => fetch(u).then(r => r.json()), soft = (u, d) => json(u).catch(() => d);
   /* every start-up file downloads at once: one wait instead of a round trip per file */
   const [[d, q, p], py, projects, staff, udemy] = await Promise.all([Promise.all(['dsa', 'sql', 'spark'].map(n => json('data/bank/' + n + '.json'))),
@@ -1220,7 +1219,7 @@ window.addEventListener('keydown', e => { if (e.key === '`' && (e.ctrlKey || e.m
   try { reconcileContent(); } catch (e) { console.error(e); } /* an update never blocks the app */
   booted = true;
   route();
-  reelsGo();
+  reelsOpen();
   checkVersion(true);
   setInterval(() => checkVersion(), 30 * 6e4);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });

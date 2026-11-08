@@ -1,11 +1,31 @@
 /* Data Architect · reels: 30 to 60 second narrated explainers for every chapter section (#/reels, #/reels/ID).
-   Hand-written scripts live in data/reels.json (built by tools/reels/build.py); a section without one gets a quick reel
+   Hand-written scripts live in data/reels/<mid>.json, one file per module (built by tools/reels/build.py, which also writes the whole data/reels.json); a section without one gets a quick reel
    made from its own bold key points. The device's voice reads each beat with captions; tap to step, swipe up for the
    next reel. Each reel ends with a quick check (missed checks come back after 3, 7 and 21 days) and a "use it at work"
    list you can save to My playbook (#/playbook). State: S.reels[id], S.playbook[id]. Loaded before app.js. */
 'use strict';
 const REEL_GAPS = [3, 7, 21];
 const reelCache = {};
+/* reel scripts arrive one module at a time, named by a hash of their text in data/reels/index.json (so the service worker
+   keeps each file until its module changes): a screen waits only for the modules it shows. Nothing downloads until app.js
+   opens the gate after the first screen (or at once when that screen is Reels); without the index the whole data/reels.json is used */
+let reelsOpen; const reelsGate = new Promise(r => { reelsOpen = r; });
+const reelMods = {}; let reelIdxP = null, reelWholeP = null;
+const reelIdx = () => reelIdxP = reelIdxP || fetch('data/reels/index.json').then(r => r.ok ? r.json() : null).catch(() => null);
+function reelsMod(m) {
+  return reelMods[m] = reelMods[m] || reelsGate.then(reelIdx).then(ix => !ix ? (reelWholeP = reelWholeP || fetch('data/reels.json').then(r => r.json()).catch(() => ({}))).then(j => j[m])
+    : ix[m] ? fetch('data/reels/' + m + '.json?h=' + ix[m]).then(r => r.ok ? r.json() : null).catch(() => null) : [])
+    .then(rs => { if (Array.isArray(rs)) DATA.reels[m] = rs; else delete reelMods[m]; return rs || []; }); /* a failed download is tried again next time */
+}
+/* every module's scripts, this week's first and the rest when the device is idle (DATA.reelsP, set in app.js) */
+async function reelsPrefetch() {
+  await reelsGate;
+  let first = []; try { first = typeof liveWeekMods === 'function' ? liveWeekMods(iso(new Date())) : [schedule().cur]; } catch (e) { }
+  await Promise.all(first.map(reelsMod));
+  await new Promise(r => window.requestIdleCallback ? requestIdleCallback(r, { timeout: 2000 }) : setTimeout(r, 300));
+  await Promise.all(MODS_ALL.map(reelsMod));
+  return DATA.reels;
+}
 const reelWords = r => r.beats.reduce((a, b) => a + (b.say.match(/\S+/g) || []).length, 0);
 const reelSecs = r => r.secs || Math.round(reelWords(r) / 2.5);
 const reelMid = id => (/^(?:auto-)?([a-z]\d\d)/.exec(id || '') || [])[1];
@@ -39,7 +59,7 @@ const REEL_META = /^(?:[A-Z]?\d+(?:\.\d+)?\s+)?(how this (program|track) works|w
 async function reelsFor(m) {
   if (m === 's00') return [];
   if (reelCache[m]) return reelCache[m];
-  await DATA.reelsP;
+  await reelsMod(m);
   const s = await sprint(m).catch(() => null); if (!s) return [];
   const hand = ((DATA.reels || {})[m] || []), parts = (s.raw.chapter || '').split(/\n(?=## )/), out = [];
   parts.forEach((p, i) => {
