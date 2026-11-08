@@ -165,6 +165,7 @@ async function vReels(id) {
   const wait = reelLoading();
   let q, at = 0;
   const mode = S.settings.reelMode || 'shuffle';
+  if (id === 'today') { q = (await reelQueue()).slice(0, REEL_TODAY); if (!document.body.contains(wait)) return; wait.remove(); if (q.length) return reelPlayer(q, 0, false, reelEndToday); } /* from Today: today's reels, then a stop (ENGAGE 7) */
   if (id && reelMid(id)) { q = await reelsFor(reelMid(id)); at = Math.max(0, q.findIndex(r => r.id === id)); }
   else q = mode === 'week' ? await reelQueue() : await reelShuffle(S.settings.reelFilter || 'all');
   if (!document.body.contains(wait)) return; /* left the page while loading */
@@ -174,12 +175,19 @@ async function vReels(id) {
   reelPlayer(q, at, !(id && reelMid(id)));
 }
 let reelUnlocked = false; /* browsers allow sound only after a first tap */
-function reelPlayer(q, at, feedMode) {
+/* the end of today's reels: a stop, never the next reel; watching more is a choice */
+const REEL_TODAY = 3;
+function reelEndToday() {
+  return el('div', { class: 'rload' }, [el('b', { text: 'That\'s today\'s reels' }), el('span', { class: 'rload-note', text: 'Nothing plays next. Back to today\'s set, or keep watching if you choose.' }),
+    el('div', { class: 'row wrap', style: { gap: '10px', justifyContent: 'center' } }, [el('a', { class: 'btn pri', href: '#/today', text: 'Back to Today' }), el('a', { class: 'btn', href: '#/reels', text: 'Keep watching' })])]);
+}
+function reelPlayer(q, at, feedMode, end) {
   const speed = () => +S.settings.reelSpeed || 1;
   const { ov, top } = reelFrame();
   const feed = el('div', { class: 'rfeed' });
   const slides = q.map((r, i) => el('section', { class: 'rslide', 'data-i': String(i), 'aria-label': r.title }));
   feed.append(...slides); ov.insertBefore(feed, top);
+  const endSlide = end ? el('section', { class: 'rslide rskel rend', 'aria-label': 'End of today\'s reels' }, end()) : null; if (endSlide) feed.appendChild(endSlide);
   let cur = -1, C = null; /* C: the playing slide's controller */
   ov.addEventListener('rclose', () => { if (C) C.stop(); }, true);
   const close = () => ov.dispatchEvent(new Event('rclose'));
@@ -249,9 +257,10 @@ function reelPlayer(q, at, feedMode) {
     if (reelUnlocked) C.play(); else { const h = slides[i].querySelector('.rtap'); h.textContent = ''; h.appendChild(C.playBig(true)); }
     const nb = q[i + 1] && (q[i + 1].beats[0] || {}).audio; if (nb) { const a = new Audio(); a.preload = 'auto'; a.src = nb; } /* fetch the next reel's first line ahead */
   }
-  function go(i) { if (i < 0 || i >= q.length) { if (i >= q.length) toast('That was the last reel in this feed.'); return; } feed.scrollTo({ top: slides[i].offsetTop, behavior: 'smooth' }); }
+  function go(i) { if (i >= q.length && endSlide) { feed.scrollTo({ top: endSlide.offsetTop, behavior: 'smooth' }); return; } if (i < 0 || i >= q.length) { if (i >= q.length) toast('That was the last reel in this feed.'); return; } feed.scrollTo({ top: slides[i].offsetTop, behavior: 'smooth' }); }
   const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting && e.intersectionRatio > 0.6) activate(+e.target.dataset.i); }), { root: feed, threshold: [0.6] });
   slides.forEach(s => io.observe(s));
+  if (endSlide) { const eo = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting && e.intersectionRatio > 0.6 && C) { C.stop(); cur = -1; top.querySelector('.rcount').textContent = 'done'; } }), { root: feed, threshold: [0.6] }); eo.observe(endSlide); cleanup.push(() => eo.disconnect()); }
   cleanup.push(() => io.disconnect());
   const key = e => { if (!document.body.contains(ov)) return document.removeEventListener('keydown', key); if (e.key === 'ArrowDown') { e.preventDefault(); go(cur + 1); } else if (e.key === 'ArrowUp') { e.preventDefault(); go(cur - 1); } else if (e.key === 'ArrowRight') C && C.step(1); else if (e.key === 'ArrowLeft') C && C.step(-1); else if (e.key === 'Escape') close(); else if (e.key === ' ') { e.preventDefault(); C && (C.playing ? C.pause() : C.play()); } };
   document.addEventListener('keydown', key);

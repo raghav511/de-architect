@@ -66,7 +66,7 @@ function dayItem(ref, k, sc) {
   const u = sc.units.find(x => x.uid === id);
   if (u) return Object.assign(o, { unit: u, mins: u.mins, xp: XP_KIND[u.kind] || 10, done: !!u.isDone });
   let x = null;
-  if (/^reels:/.test(id)) { const d = id.slice(6); x = { id, chip: 'core', t: 'Reels for today', sub: '3 reels on today\'s reading, each with a quick check', mins: 3, href: '#/reels', auto: Object.values(S.reels || {}).some(r => r && r.seen && r.seen >= d) }; o.xp = XP_X.reels; }
+  if (/^reels:/.test(id)) { const d = id.slice(6); x = { id, chip: 'core', t: 'Reels for today', sub: '3 reels on today\'s reading, each with a quick check, then a stop', mins: 3, href: '#/reels/today', auto: Object.values(S.reels || {}).some(r => r && r.seen && r.seen >= d) }; o.xp = XP_X.reels; }
   else if (/^cmp:/.test(id)) { const d = id.slice(4), c = (S.cmp || {})[d]; x = { id, chip: 'arch', t: 'Compare: ' + cmpTitle(d), sub: 'When would you pick each one, and what would you give up?', mins: 15, href: '#/compare/' + d, auto: !!(c && c.done) }; o.xp = XP_X.cmp; }
   else if (/^live:/.test(id)) { const d = id.slice(5), mode = liveMode(d), lk = (S.live || {})[d], mk = (S.mock || {})[d];
     x = { id, chip: 'test', t: mode === 'one' ? 'Live question · ' + ['', 'concept', 'under the hood', 'architect\'s lens', 'staff level', 'recall'][new Date(d + 'T00:00:00').getDay()] : mode === 'full' ? 'Live mock · 5 questions' : 'Weekend boss · 7 questions', sub: 'Spoken or typed; ' + (aiOn() ? 'an AI interviewer follows up and scores it.' : 'you mark yourself against the model answer.'), mins: mode === 'one' ? 5 : mode === 'full' ? 20 : 35, href: '#/live/' + d, auto: !!((lk && lk.done) || (mk && mk.sub)) };
