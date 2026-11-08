@@ -1,13 +1,13 @@
 {
-  "version": "1.36.13",
+  "version": "1.36.14",
   "date": "2026-11-08",
   "notes": [
-    "The app no longer stores or uses an AI API key: any page on the same web address could read it. The coach, the live mock interviewer and grading now run only through Claude Code on your Mac (or AI is off).",
-    "A key saved by an older version is deleted the first time this version opens, on every device.",
-    "Profile \u203a AI no longer has a key field, and the coach's photo button is gone (photos needed a key).",
-    "Reels now look like Instagram Reels everywhere: the picture fills the screen, the title and caption sit at the bottom left, Save, Speed and Voice are icons on the right, and a round play button shows when a reel is paused.",
-    "Speed now offers 0.25x, 0.5x, 0.75x, Normal, 1.25x, 1.5x, 1.75x and 2x.",
-    "Opening Reels shows the player straight away with a short 'Getting your reels ready' state instead of a bare 'Loading reels\u2026' line.",
-    "1045 of 1255 reels now play in the natural Heart voice."
+    "New in D1 (D1.9): the architect's lens for Postgres. When to pick it over MySQL, a distributed SQL database or a warehouse, who owns it, how it fails and scales, and six under-the-hood answers: MVCC, vacuum and bloat, the WAL and replication slots, how the planner uses statistics, GIN, BRIN and partial indexes, connection poolers, and partitioning. Each answer says which Postgres version it needs and links to the step-through figure above it.",
+    "Three new interview questions, three quiz questions and eight reels for the lens.",
+    "New module O1, Data mesh and data products, right after DE 10: when domain ownership is the right answer and when it is not, what a data product needs (owner, contract, service levels, interfaces, catalog), the self-serve platform, federated governance enforced in code, product thinking, migrating from a central team, and the failure modes companies hit.",
+    "An architect's lens with six under-the-hood answers, and four exercises that run in your browser: check a data contract, an SLO report with its error budget, breaking or not between contract versions, and whether a product can be retired.",
+    "A design problem (move a central data team to domain-owned products), a simulator challenge (a shared platform with a noisy neighbour), ten quiz and seven interview questions, and twelve reels. If you started before this update, What is new lists it and nothing is marked done.",
+    "No change you will see: the every-feature test now tells a slow or missing connection apart from a real Python problem.",
+    "1065 of 1255 reels now play in the natural Heart voice."
   ]
 }
