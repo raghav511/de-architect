@@ -4259,5 +4259,1346 @@
     ]
    }
   ]
+ },
+ "A5.7 Retrieval at scale: rewrite, fuse, rerank, filter by permission": {
+  "hash": "9e90dd4860a0",
+  "sec": "A5.7",
+  "reels": [
+   {
+    "title": "Search is a pipeline, not one lookup",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Why does the demo find the right page, but the real assistant over ten million documents does not?",
+      "show": {
+       "t": "big",
+       "text": "One lookup is not enough",
+       "sub": "Retrieval at scale"
+      }
+     },
+     {
+      "say": "In production, every question runs a short pipeline. First rewrite it into a clear search query. Then search by keywords and by meaning at the same time.",
+      "show": {
+       "t": "scene",
+       "title": "Every question, *four steps*",
+       "nodes": [
+        {
+         "id": "q",
+         "label": "Question",
+         "x": 12,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "w",
+         "label": "Rewrite",
+         "x": 36,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "s",
+         "label": "Search two ways",
+         "x": 62,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "r",
+         "label": "Rerank",
+         "x": 88,
+         "y": 35,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "q",
+         "w"
+        ],
+        [
+         "w",
+         "s"
+        ],
+        [
+         "s",
+         "r"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "q",
+          "w",
+          "s",
+          "r"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "q",
+          "w"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "s",
+          "r"
+         ],
+         "n": 3
+        }
+       ]
+      }
+     },
+     {
+      "say": "Then a slower, smarter model rereads the best fifty and keeps the top five. And every step only sees what this user is allowed to read.",
+      "show": {
+       "t": "points",
+       "title": "Then",
+       "items": [
+        "Rerank the best 50",
+        "Keep the top 5",
+        "Only what this user may read"
+       ]
+      }
+     },
+     {
+      "say": "Each step is cheap enough to fit inside a two-second answer.",
+      "show": {
+       "t": "big",
+       "text": "All inside 2 seconds",
+       "sub": ""
+      }
+     }
+    ],
+    "check": {
+     "q": "What does the reranking step do?",
+     "opts": [
+      "Rereads the best few dozen and keeps the top handful",
+      "Searches the whole index again with a larger model",
+      "Rewrites the question into several new questions"
+     ],
+     "ans": 0,
+     "why": "A reranker scores only the fused candidates, question and passage together, and keeps the best few for the prompt."
+    }
+   },
+   {
+    "title": "Rank fusion: positions, not scores",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Keyword search and vector search each return a ranked list. How do you merge them?",
+      "show": {
+       "t": "big",
+       "text": "Two lists, one answer",
+       "sub": ""
+      }
+     },
+     {
+      "say": "Their scores are on different scales, so averaging them lets one side win by accident. Reciprocal rank fusion uses only positions: each list adds one over sixty plus the rank.",
+      "show": {
+       "t": "points",
+       "title": "Reciprocal rank fusion",
+       "items": [
+        "Score = sum of 1 / (60 + rank)",
+        "No score scales to mix",
+        "Nothing to tune"
+       ]
+      }
+     },
+     {
+      "say": "A document ranked first by keywords and third by vectors beats one that only one search liked.",
+      "show": {
+       "t": "bars",
+       "title": "Fused score × 1,000",
+       "unit": "points",
+       "items": [
+        [
+         "1st and 3rd",
+         32.3,
+         "both liked it"
+        ],
+        [
+         "1st in one list",
+         16.4,
+         "one liked it"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Keywords catch error codes and ticket numbers. Vectors catch meaning. Fusion keeps both.",
+      "show": {
+       "t": "big",
+       "text": "Keywords plus meaning",
+       "sub": ""
+      }
+     }
+    ],
+    "check": {
+     "q": "Why not simply average BM25 and cosine scores?",
+     "opts": [
+      "They sit on different scales, so one side dominates",
+      "Averages take too long to compute for each query",
+      "Cosine scores are always larger than BM25 scores"
+     ],
+     "ans": 0,
+     "why": "BM25 is unbounded and cosine sits between -1 and 1; RRF sidesteps that by using ranks."
+    }
+   },
+   {
+    "title": "Permissions belong inside the search",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "An engineer asks the assistant about salaries, and it quotes a document only HR may open. Where did it go wrong?",
+      "show": {
+       "t": "big",
+       "text": "A leak",
+       "sub": "through retrieval"
+      }
+     },
+     {
+      "say": "Every chunk carries its document's groups as labels. The query passes the user's groups into the search as a filter, so a forbidden chunk is never ranked, reranked or sent to the model.",
+      "show": {
+       "t": "scene",
+       "title": "Filter *before* ranking",
+       "nodes": [
+        {
+         "id": "u",
+         "label": "User groups",
+         "x": 15,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "i",
+         "label": "Index + labels",
+         "x": 50,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "m",
+         "label": "Model",
+         "x": 85,
+         "y": 35,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "u",
+         "i"
+        ],
+        [
+         "i",
+         "m"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "u",
+          "i",
+          "m"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "u",
+          "i"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.75,
+         "chip": {
+          "text": "only allowed chunks",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Keep labels fresh with the same change capture as the content, and key every cache by permission set.",
+      "show": {
+       "t": "points",
+       "title": "Keep it safe",
+       "items": [
+        "Labels synced by CDC",
+        "Separate tenants physically",
+        "Caches keyed by permissions"
+       ]
+      }
+     },
+     {
+      "say": "A prompt that says do not reveal is not access control.",
+      "show": {
+       "t": "big",
+       "text": "The prompt is not a lock",
+       "sub": ""
+      }
+     }
+    ],
+    "check": {
+     "q": "Why is filtering after ranking risky?",
+     "opts": [
+      "Results can run short, and anything shown has leaked",
+      "It makes the vector index much larger on disk",
+      "It stops keyword search from finding any matches"
+     ],
+     "ans": 0,
+     "why": "Post-filtering can starve the top results, and anything a model or user already saw cannot be taken back."
+    }
+   },
+   {
+    "title": "A latency budget for every stage",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "An interviewer asks: your answer must start within two seconds. Where does the time go?",
+      "show": {
+       "t": "big",
+       "text": "2 seconds",
+       "sub": "Spend it on purpose"
+      }
+     },
+     {
+      "say": "Rewriting takes a hundred milliseconds or so, and you skip it for short keyword queries. Embedding the question and both searches, run in parallel, take well under a hundred.",
+      "show": {
+       "t": "bars",
+       "title": "Milliseconds per stage",
+       "unit": "ms",
+       "items": [
+        [
+         "Rewrite",
+         150,
+         "often skipped"
+        ],
+        [
+         "Embed and search",
+         70,
+         "in parallel"
+        ],
+        [
+         "Rerank 50",
+         100,
+         "cross-encoder"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Reranking fifty passages costs about a hundred. Everything left goes to the model, starting to stream the answer.",
+      "show": {
+       "t": "points",
+       "title": "The rest",
+       "items": [
+        "Model starts streaming",
+        "Cache rewrites and answers",
+        "Measure each stage"
+       ]
+      }
+     },
+     {
+      "say": "Name each stage, give it a number, and measure it separately. That is the answer they want.",
+      "show": {
+       "t": "big",
+       "text": "Name it, number it, measure it",
+       "sub": ""
+      }
+     }
+    ],
+    "check": {
+     "q": "Which part of a RAG answer usually takes most of a two-second budget?",
+     "opts": [
+      "Reranking the fifty fused candidates",
+      "The model generating the answer",
+      "Embedding the user's question"
+     ],
+     "ans": 1,
+     "why": "Retrieval and reranking fit in a few hundred milliseconds; the model producing tokens takes the rest."
+    }
+   }
+  ]
+ },
+ "A5.8 Answers you can trust: conflicts, citations, abstaining, long context, GraphRAG": {
+  "hash": "1147906a1126",
+  "sec": "A5.8",
+  "reels": [
+   {
+    "title": "When the sources disagree",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Two runbooks give different timeouts. Which one does the assistant believe?",
+      "show": {
+       "t": "big",
+       "text": "Two answers",
+       "sub": "Which is right?"
+      }
+     },
+     {
+      "say": "Retrieval cannot tell on its own. So store the date, the version and how authoritative the source is with every chunk: a policy beats a wiki page, and a wiki page beats a chat message.",
+      "show": {
+       "t": "points",
+       "title": "Store with every chunk",
+       "items": [
+        "Effective date and version",
+        "Source",
+        "Authority tier"
+       ]
+      }
+     },
+     {
+      "say": "Then prefer the newest authoritative chunk, and have the assistant say that another source disagrees, citing both.",
+      "show": {
+       "t": "scene",
+       "title": "Say there is a *conflict*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Policy, 2026",
+         "x": 20,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "b",
+         "label": "Wiki, 2024",
+         "x": 20,
+         "y": 65,
+         "tone": "amber"
+        },
+        {
+         "id": "x",
+         "label": "Answer",
+         "x": 75,
+         "y": 50,
+         "tone": "blue",
+         "sub": "cites both"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "x"
+        ],
+        [
+         "b",
+         "x"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "a",
+          "b",
+          "x"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "a",
+          "x"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "newer source wins",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "And tell the document owners: a stale page still in the index is a freshness bug.",
+      "show": {
+       "t": "big",
+       "text": "Fix the cause too",
+       "sub": ""
+      }
+     }
+    ],
+    "check": {
+     "q": "Two indexed sources disagree. What should the assistant do?",
+     "opts": [
+      "Pick one at random and answer confidently",
+      "Prefer the newest authoritative one and say they disagree",
+      "Refuse to answer any question on that topic"
+     ],
+     "ans": 1,
+     "why": "Dates and authority decide; showing the conflict with both citations keeps the reader in control."
+    }
+   },
+   {
+    "title": "Citations you can check, and saying I don't know",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How do you know an answer did not make something up?",
+      "show": {
+       "t": "big",
+       "text": "Is it grounded?",
+       "sub": ""
+      }
+     },
+     {
+      "say": "Ask for every claim with the ids of the chunks it came from. Then check in code that each id was in the prompt, and that any quote really appears in that chunk.",
+      "show": {
+       "t": "points",
+       "title": "Check in code",
+       "items": [
+        "Every cited id was retrieved",
+        "Quotes appear in the chunk",
+        "Failing claims are removed"
+       ]
+      }
+     },
+     {
+      "say": "And when the best match scores below a threshold you tuned on labelled questions, do not call the model at all. Say nothing reliable was found, and show the closest documents.",
+      "show": {
+       "t": "scene",
+       "title": "Below the bar, *abstain*",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Best score",
+         "x": 20,
+         "y": 35,
+         "tone": "amber",
+         "sub": "below threshold"
+        },
+        {
+         "id": "n",
+         "label": "Not found",
+         "x": 75,
+         "y": 35,
+         "tone": "teal",
+         "sub": "closest documents"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "n"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "s",
+          "n"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "s",
+          "n"
+         ],
+         "n": 1
+        }
+       ]
+      }
+     },
+     {
+      "say": "A system that never says I don't know is guessing.",
+      "show": {
+       "t": "big",
+       "text": "Refusing is a feature",
+       "sub": ""
+      }
+     }
+    ],
+    "check": {
+     "q": "What should happen when no retrieved passage scores above your tuned threshold?",
+     "opts": [
+      "Answer from the model's own memory instead",
+      "Say nothing reliable was found and show the closest",
+      "Lower the threshold until something passes it"
+     ],
+     "ans": 1,
+     "why": "Abstaining below a tuned score avoids confident made-up answers, and you measure correct refusals on unanswerable questions."
+    }
+   },
+   {
+    "title": "Long context or RAG?",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Models now read a million tokens. Why not put every document in the prompt and skip retrieval?",
+      "show": {
+       "t": "big",
+       "text": "Just send everything?",
+       "sub": ""
+      }
+     },
+     {
+      "say": "For a few contracts or one manual that rarely changes, do exactly that, with prompt caching. It is the simplest system there is.",
+      "show": {
+       "t": "points",
+       "title": "Long context wins",
+       "items": [
+        "Small, stable corpus",
+        "Whole-document reasoning",
+        "Prompt caching cuts the cost"
+       ]
+      }
+     },
+     {
+      "say": "But every query pays for every token, facts in the middle of a huge prompt get missed, and you cannot hide documents some users may not see.",
+      "show": {
+       "t": "points",
+       "title": "RAG wins",
+       "items": [
+        "Large or changing corpus",
+        "Permissions per user",
+        "Cost and latency at high query rates"
+       ]
+      }
+     },
+     {
+      "say": "The middle way: retrieve the best few documents, then give the model those documents whole.",
+      "show": {
+       "t": "big",
+       "text": "Retrieve, then read whole",
+       "sub": ""
+      }
+     }
+    ],
+    "check": {
+     "q": "When is long context a better choice than RAG?",
+     "opts": [
+      "A small corpus that rarely changes",
+      "Ten million documents changing daily",
+      "Users who may see different documents"
+     ],
+     "ans": 0,
+     "why": "Long context suits small, stable corpora; large, changing or permissioned corpora still need retrieval."
+    }
+   },
+   {
+    "title": "GraphRAG, and when it is worth it",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "What are the main complaint themes across fifty thousand tickets? Vector search cannot answer that: the answer is spread everywhere.",
+      "show": {
+       "t": "big",
+       "text": "Questions across everything",
+       "sub": ""
+      }
+     },
+     {
+      "say": "GraphRAG has a model pull people, products and relations out of every document into a graph, groups it into communities, and summarises each group. Global questions read the summaries; multi-hop ones walk the graph.",
+      "show": {
+       "t": "scene",
+       "title": "Documents into a *graph*",
+       "nodes": [
+        {
+         "id": "d",
+         "label": "Documents",
+         "x": 15,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "g",
+         "label": "Entity graph",
+         "x": 50,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "c",
+         "label": "Community summaries",
+         "x": 85,
+         "y": 35,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "d",
+         "g"
+        ],
+        [
+         "g",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "d",
+          "g",
+          "c"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "d",
+          "g"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "g",
+          "c"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "The price: a model call over the whole corpus to build it, its own extraction errors, and hard refreshes.",
+      "show": {
+       "t": "points",
+       "title": "The cost",
+       "items": [
+        "10 to 100 times the embedding bill",
+        "Extraction errors",
+        "Hard to keep fresh"
+       ]
+      }
+     },
+     {
+      "say": "If the relations already live in tables, a SQL join is cheaper and exact.",
+      "show": {
+       "t": "big",
+       "text": "Have the tables? Join them",
+       "sub": ""
+      }
+     }
+    ],
+    "check": {
+     "q": "When is GraphRAG worth its indexing cost?",
+     "opts": [
+      "Simple lookups of one passage",
+      "Global themes and multi-hop questions",
+      "Any corpus that changes every hour"
+     ],
+     "ans": 1,
+     "why": "GraphRAG helps with questions whose answer spans many documents; its build cost and refresh difficulty make it a poor default."
+    }
+   }
+  ]
+ },
+ "A5.9 Architect's lens: RAG and vector stores": {
+  "hash": "1fbc3c0e3cc8",
+  "sec": "A5.9",
+  "reels": [
+   {
+    "title": "RAG: answers from your own documents",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "How does an assistant answer from this morning's runbook, when the model was trained a year ago?",
+      "show": {
+       "t": "big",
+       "text": "Fresh answers",
+       "sub": "from your documents"
+      }
+     },
+     {
+      "say": "Retrieval-augmented generation finds the few passages that matter, puts them in the prompt, and asks the model to answer only from them, with citations.",
+      "show": {
+       "t": "scene",
+       "title": "Find, then *answer*",
+       "nodes": [
+        {
+         "id": "d",
+         "label": "Your documents",
+         "x": 15,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "r",
+         "label": "Retrieve",
+         "x": 50,
+         "y": 35,
+         "tone": "blue",
+         "sub": "top 5 passages"
+        },
+        {
+         "id": "m",
+         "label": "Model",
+         "x": 85,
+         "y": 35,
+         "tone": "teal",
+         "sub": "answers with citations"
+        }
+       ],
+       "edges": [
+        [
+         "d",
+         "r"
+        ],
+        [
+         "r",
+         "m"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "d",
+          "r",
+          "m"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "d",
+          "r"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "r",
+          "m"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Fine-tuning teaches style and format, not new facts, and it cannot forget a deleted document or respect who may see what.",
+      "show": {
+       "t": "points",
+       "title": "Why not fine-tune?",
+       "items": [
+        "Facts change daily",
+        "Deletes must disappear",
+        "Permissions differ by user"
+       ]
+      }
+     },
+     {
+      "say": "That is why most company assistants you meet at work are built on retrieval.",
+      "show": {
+       "t": "big",
+       "text": "Most assistants are RAG",
+       "sub": ""
+      }
+     }
+    ],
+    "check": {
+     "q": "Why do company assistants usually use RAG rather than fine-tuning for facts?",
+     "opts": [
+      "Fine-tuning cannot follow changes, deletes and permissions",
+      "Fine-tuned models cannot answer questions at all",
+      "RAG needs no data pipeline or index to run"
+     ],
+     "ans": 0,
+     "why": "Retrieval reads current documents per user; fine-tuning bakes facts in and cannot unlearn or filter them."
+    },
+    "part": "1 of 2"
+   },
+   {
+    "title": "Where the vectors live",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Do you need a vector database on day one?",
+      "show": {
+       "t": "big",
+       "text": "A new database?",
+       "sub": "Usually not"
+      }
+     },
+     {
+      "say": "For millions of chunks, Postgres with pgvector, or your warehouse's vector functions, keeps the vectors next to the data, its backups and its access rules.",
+      "show": {
+       "t": "points",
+       "title": "Start here",
+       "items": [
+        "Postgres with pgvector",
+        "Warehouse vector functions",
+        "Same access rules and backups"
+       ]
+      }
+     },
+     {
+      "say": "A dedicated vector database earns its place at hundreds of millions of vectors, very high query rates, or heavy filtering at that scale.",
+      "show": {
+       "t": "bars",
+       "title": "Rough scale",
+       "unit": "million vectors",
+       "items": [
+        [
+         "pgvector or warehouse",
+         50,
+         "most teams"
+        ],
+        [
+         "Dedicated store",
+         500,
+         "very large or very fast"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Move when your own measurements show the need for it, not before, because every new system is one more thing to run.",
+      "show": {
+       "t": "big",
+       "text": "Measure, then move",
+       "sub": ""
+      }
+     }
+    ],
+    "check": {
+     "q": "A team already runs Postgres and has five million chunks. Where should vectors live first?",
+     "opts": [
+      "A new dedicated vector database cluster",
+      "Postgres with pgvector, next to the data",
+      "Inside every prompt, as plain text"
+     ],
+     "ans": 1,
+     "why": "pgvector handles this scale with the access rules and backups the team already has."
+    },
+    "part": "2 of 2"
+   },
+   {
+    "title": "HNSW: how vector search is fast",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How do you find the nearest of fifty million vectors without comparing all of them?",
+      "show": {
+       "t": "big",
+       "text": "Fifty million vectors",
+       "sub": "a few thousand looks"
+      }
+     },
+     {
+      "say": "HNSW links each vector to its nearest neighbours in a graph with a few sparse layers on top. A search enters at the top and walks greedily towards the question, layer by layer.",
+      "show": {
+       "t": "scene",
+       "title": "Walk the *graph*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Top layer",
+         "x": 20,
+         "y": 25,
+         "tone": "amber",
+         "sub": "few links, long jumps"
+        },
+        {
+         "id": "m",
+         "label": "Middle",
+         "x": 50,
+         "y": 45,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Bottom",
+         "x": 80,
+         "y": 65,
+         "tone": "teal",
+         "sub": "every vector"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "m"
+        ],
+        [
+         "m",
+         "b"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "t",
+          "m",
+          "b"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "t",
+          "m"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "m",
+          "b"
+         ],
+         "n": 1
+        }
+       ]
+      }
+     },
+     {
+      "say": "More links per vector and more candidates per query mean better recall, more memory and slower queries.",
+      "show": {
+       "t": "points",
+       "title": "The settings",
+       "items": [
+        "M: links per vector",
+        "ef_construction: build effort",
+        "ef_search: candidates per query"
+       ]
+      }
+     },
+     {
+      "say": "Heavy filters can starve the walk, so measure recall at k with the filter on.",
+      "show": {
+       "t": "big",
+       "text": "Measure recall with filters on",
+       "sub": ""
+      }
+     }
+    ],
+    "check": {
+     "q": "What does raising ef_search in an HNSW index trade?",
+     "opts": [
+      "Better recall for slower queries",
+      "Less memory for worse recall",
+      "Faster builds for fewer vectors"
+     ],
+     "ans": 0,
+     "why": "ef_search is how many candidates a query keeps; more candidates find more true neighbours but take longer."
+    },
+    "part": "1 of 2"
+   },
+   {
+    "title": "Bi-encoders find, cross-encoders judge",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Why does a second model reorder the results after the vector search?",
+      "show": {
+       "t": "big",
+       "text": "Two models",
+       "sub": "two jobs"
+      }
+     },
+     {
+      "say": "The embedding model turns the question and each chunk into vectors separately, so chunks are embedded once, ahead of time. Fast, but it never reads them together.",
+      "show": {
+       "t": "points",
+       "title": "Bi-encoder",
+       "items": [
+        "Embeds separately",
+        "Precomputed once",
+        "Milliseconds for millions"
+       ]
+      }
+     },
+     {
+      "say": "A cross-encoder reads the question and one passage in a single pass and scores whether the passage answers it. Far more accurate, and one model pass per candidate.",
+      "show": {
+       "t": "points",
+       "title": "Cross-encoder",
+       "items": [
+        "Reads both together",
+        "Cannot be precomputed",
+        "Use on the top 50 only"
+       ]
+      }
+     },
+     {
+      "say": "So the first finds fifty in milliseconds, and the second picks the best five in about a hundred.",
+      "show": {
+       "t": "big",
+       "text": "Find fast, judge carefully",
+       "sub": ""
+      }
+     }
+    ],
+    "check": {
+     "q": "Why run the cross-encoder only on the top fifty candidates?",
+     "opts": [
+      "It costs one model pass per candidate per query",
+      "It cannot read passages longer than fifty words",
+      "It only works on results from keyword search"
+     ],
+     "ans": 0,
+     "why": "Cross-encoders cannot be precomputed, so you run them on a small candidate set from the fast first stage."
+    },
+    "part": "2 of 2"
+   },
+   {
+    "title": "Sizing RAG for 10 million documents",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Ten million documents, a thousand questions a second. How much memory does the index need?",
+      "show": {
+       "t": "big",
+       "text": "10 million documents",
+       "sub": "1,000 queries a second"
+      }
+     },
+     {
+      "say": "About five chunks each makes fifty million vectors. At 1,024 dimensions in 32-bit floats, that is around 205 gigabytes before the graph.",
+      "show": {
+       "t": "bars",
+       "title": "Index memory",
+       "unit": "GB",
+       "items": [
+        [
+         "Float32",
+         205,
+         "full precision"
+        ],
+        [
+         "8-bit",
+         51,
+         "quantized"
+        ],
+        [
+         "Binary",
+         6.4,
+         "rescore the top"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Quantize to shrink it, shard for memory, and add replicas for the query rate, with headroom for a lost zone.",
+      "show": {
+       "t": "points",
+       "title": "Scale it",
+       "items": [
+        "Quantize vectors",
+        "Shard for memory",
+        "Replicas for query rate"
+       ]
+      }
+     },
+     {
+      "say": "The biggest cost is model tokens, eighty-six million answers a day, so keep prompts small.",
+      "show": {
+       "t": "big",
+       "text": "Tokens are the bill",
+       "sub": ""
+      }
+     }
+    ],
+    "check": {
+     "q": "What usually dominates the cost of a RAG service at 1,000 queries a second?",
+     "opts": [
+      "Model tokens for every answer",
+      "Storing the vector index on disk",
+      "Embedding each user's question"
+     ],
+     "ans": 0,
+     "why": "Retrieval is cheap per query; generating an answer with several retrieved chunks costs the most, so prompt size is the main lever."
+    },
+    "part": "1 of 2"
+   },
+   {
+    "title": "The quiet ways RAG fails",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "RAG rarely crashes. It fails quietly, with confident answers. What goes wrong?",
+      "show": {
+       "t": "big",
+       "text": "It fails quietly",
+       "sub": ""
+      }
+     },
+     {
+      "say": "A deleted document is still answered from. A permission change has not reached the index. A new embedding model is mixed with old vectors.",
+      "show": {
+       "t": "points",
+       "title": "Data failures",
+       "items": [
+        "Deleted docs still indexed",
+        "Permissions lag the source",
+        "Two embedding models mixed"
+       ]
+      }
+     },
+     {
+      "say": "An index setting change drops recall, and nobody notices. Or nothing relevant was found, and the model answers anyway.",
+      "show": {
+       "t": "points",
+       "title": "Quality failures",
+       "items": [
+        "Recall drops after a change",
+        "Answers with nothing found",
+        "No eval set to catch it"
+       ]
+      }
+     },
+     {
+      "say": "Defences: index lag alerts, a re-embed into a new index, and an eval set rerun on every change.",
+      "show": {
+       "t": "big",
+       "text": "Alerts plus an eval set",
+       "sub": ""
+      }
+     }
+    ],
+    "check": {
+     "q": "Your team switches embedding models. What is the safe way to do it?",
+     "opts": [
+      "Re-embed into a new index and compare on the eval set",
+      "Embed new documents with it and keep the old vectors",
+      "Switch the query side first and re-embed later on"
+     ],
+     "ans": 0,
+     "why": "Vectors from two models are not comparable; build a new index, compare recall, then switch."
+    },
+    "part": "2 of 2"
+   },
+   {
+    "title": "Who owns the assistant?",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "The assistant gives a confidently wrong answer to an on-call engineer at night. Whose problem is it, and who gets paged?",
+      "show": {
+       "t": "big",
+       "text": "Whose bug?",
+       "sub": ""
+      }
+     },
+     {
+      "say": "The data platform team owns the ingest pipeline: chunking, embeddings, freshness, deletes and permission labels, like any derived table.",
+      "show": {
+       "t": "points",
+       "title": "Platform team",
+       "items": [
+        "Ingest and freshness",
+        "Deletes and labels",
+        "Index lag alerts"
+       ]
+      }
+     },
+     {
+      "say": "The product team owns prompts, the eval set and answer quality. Security owns the permission model.",
+      "show": {
+       "t": "points",
+       "title": "Product and security",
+       "items": [
+        "Prompts and eval set",
+        "Answer quality",
+        "Permission model"
+       ]
+      }
+     },
+     {
+      "say": "Split the debugging the same way. First check whether the right passage was retrieved at all; if it was, look at the prompt and the model. Retrieval first, then generation.",
+      "show": {
+       "t": "big",
+       "text": "Retrieval first, then generation",
+       "sub": ""
+      }
+     }
+    ],
+    "check": {
+     "q": "Who should own freshness, deletes and permission labels in the index?",
+     "opts": [
+      "The product team that writes the prompts",
+      "The data platform team, as a derived table",
+      "Each user, by reporting stale answers"
+     ],
+     "ans": 1,
+     "why": "The index is a derived table built by a pipeline, so the platform team owns its freshness and labels."
+    },
+    "part": "1 of 2"
+   },
+   {
+    "title": "When not to use RAG, and when to move off",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "An architect is asked: when is RAG the wrong choice?",
+      "show": {
+       "t": "big",
+       "text": "When not to RAG",
+       "sub": ""
+      }
+     },
+     {
+      "say": "When the corpus fits in the context window and rarely changes. When the answer is a number in a table: use SQL. When the question spans everything: themes, multi-hop.",
+      "show": {
+       "t": "points",
+       "title": "Not RAG",
+       "items": [
+        "Small stable corpus: long context",
+        "Numbers: SQL",
+        "Themes, multi-hop: GraphRAG"
+       ]
+      }
+     },
+     {
+      "say": "And when nobody will build an eval set, because then nobody will know whether it works.",
+      "show": {
+       "t": "big",
+       "text": "No eval set, no RAG",
+       "sub": ""
+      }
+     },
+     {
+      "say": "Move off when long context becomes cheap for your corpus, when most questions turn out structured, or when a managed search service does the job for less.",
+      "show": {
+       "t": "points",
+       "title": "Move off when",
+       "items": [
+        "Long context gets cheap",
+        "Questions are structured",
+        "Managed search costs less"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Most questions to your assistant are about totals and counts. What should you do?",
+     "opts": [
+      "Answer them with SQL or a semantic layer",
+      "Add more chunks to each prompt for them",
+      "Fine-tune the model on the tables"
+     ],
+     "ans": 0,
+     "why": "Numbers in tables are answered exactly by SQL; text retrieval is the wrong tool for them."
+    },
+    "part": "2 of 2"
+   }
+  ]
  }
 }

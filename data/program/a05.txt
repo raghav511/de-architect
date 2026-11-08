@@ -3,22 +3,23 @@ id: a05
 n: 5
 title: Vectors, documents and RAG pipelines: unstructured data as a data engineering problem
 goal: Build the pipeline behind retrieval-augmented generation the way you build any pipeline: chunk and embed documents, store and search vectors next to your tables, keep the index fresh with change detection, extract structured rows from text with validation and a dead-letter path, keep personal data out, and measure retrieval before tuning prompts. Every lab runs in this app.
-hours: 7
+hours: 8.25
 quiz-same: 1rcdgud cgcvzu
 
 @@tickets
 A501 | learn | 0.75 | Chapter part 1: RAG is a pipeline; chunking and embeddings | You can draw the ingest and query paths of RAG and choose a chunk size for runbooks. | chapter:0-1
 A502 | learn | 0.75 | Chapter part 2: where vectors live and keeping them fresh | You can say when pgvector or the warehouse is enough, and how CDC keeps an index fresh. | chapter:2-3
 A503 | learn | 0.75 | Chapter part 3: LLM extraction, privacy and measuring retrieval | You can design an extraction job with a dead-letter table and explain recall at k. | chapter:4-5
+A510 | learn | 1 | Chapter part 4: retrieval at scale, answers you can trust, the architect's lens | You can draw a query path with rewriting, fusion, reranking and permission filters, say when to abstain, and size RAG for 10 million documents. | chapter:6-8
 A504 | build | 1 | Lab A5.1: chunk and embed | Both exercises pass their tests in the editor. | py:1-2
 A505 | build | 1 | Lab A5.2: vector search in DuckDB and a fresh index | Both exercises pass their tests in the editor. | py:3-4
 A506 | build | 1 | Lab A5.3: measure retrieval, extract rows, redact personal data | All three exercises pass their tests in the editor. | py:5-7
 A507 | test | 0.5 | Quiz A5 | 80% or better. | quiz
-A508 | talk | 0.75 | Interview set A5 | 5 of 6 answered out loud and ticked. | interview
+A508 | talk | 1 | Interview set A5 | 7 of 9 answered out loud and ticked. | interview
 A509 | practice | 0.5 | RAG pipeline drills | Five drills answered, then checked against the model answers. | practice
 
 @@readings
-- **In this app: the chapter.** A5.1 to A5.6 cover everything the labs and interviews need.
+- **In this app: the chapter.** A5.1 to A5.6 cover everything the labs need; A5.7 to A5.9 cover RAG at scale for system design rounds.
 - **Reading note: vector storage in 2026.** For most workloads, vectors can live where the data already is: Postgres with pgvector, or the warehouse and lakehouse engines that now have vector types and similarity functions (DuckDB has `array_cosine_similarity`). Dedicated vector databases earn their place at very large scale or with strict latency needs.
 - **Reading note: retrieval quality.** Most poor answers come from retrieval, not generation. Hybrid search (keywords plus vectors), metadata filters (team, date, access), and a re-ranking step usually beat a bigger model.
 - **Reading note: documents into tables.** Models now extract fields from emails, PDFs and invoices into structured rows, inside warehouse AI functions or in pipeline code. Treat the model as an unreliable source: validate, retry once, and dead-letter what fails.
@@ -99,6 +100,99 @@ Run the eval on every change of chunking, embedding model, index settings or pro
 
 **Say it:** "Recall at k for retrieval, faithfulness for generation, both on a labelled set, rerun on every pipeline change."
 
+## A5.7 Retrieval at scale: rewrite, fuse, rerank, filter by permission
+
+A demo searches one index with the user's raw question. A production system at 10 million documents runs a short pipeline on every query, each step cheap enough to fit the latency budget:
+
+1. **Rewrite the query.** Users type "why is it slow again?" in the middle of a conversation. A small, fast model rewrites it into a standalone search query ("Kafka consumer lag on the payments topic"), expands acronyms, and for a question with two parts writes one query per part. Two other tricks: several phrasings of the same question (multi-query), and searching with a short hypothetical answer instead of the question (HyDE), because an answer looks more like the documents than a question does. Each costs one extra model call, so cache rewrites by conversation state and skip them for short keyword queries.
+2. **Search two ways and fuse.** Keyword search (BM25) finds exact names, error codes and ticket ids; vector search finds meaning. Their scores are on different scales, so do not average them. **Reciprocal rank fusion (RRF)** uses only positions: each document scores `sum over lists of 1 / (60 + rank)`, so a document near the top of both lists wins. It needs no tuning and no score normalisation.
+3. **Rerank the top 50 to 100.** First-stage search embeds the question and each chunk separately, so it cannot see how they relate. A **cross-encoder reranker** reads the question and one passage together and scores how well that passage answers it, which is much more accurate and much slower: run it only on the fused candidates, then keep the best 5 to 10 for the prompt. Typical cost: 50 to 150 ms for 50 passages on a GPU, or a per-call price from a hosted rerank API.
+4. **Filter by what this user may read, before ranking.** Every chunk carries the access labels of its source document (groups, tenant, classification). The query path looks up the user's groups and passes them as a filter into the search itself (pre-filtering). Filtering after ranking (post-filtering) can leave too few results, and anything filtered after the model sees it has already leaked. Never ask the prompt to enforce permissions.
+
+**Permissions stay in sync with the source.** A document shared or unshared in the wiki must change its chunks' labels within minutes: carry permission changes through the same CDC or change detection as content (A5.4), and include deletes. Tenants who must never mix (customers of a SaaS product) get separate indexes or partitions, not just a filter. Caches of answers are keyed by the permission set, or they serve one user's answer to another.
+
+**A latency budget** for a 2-second answer, roughly: rewrite 100 to 200 ms (often skipped), embed the query 10 to 30 ms, keyword and vector search in parallel 20 to 50 ms, rerank 50 to 150 ms, and the rest for the model to start and stream its answer. Measure each stage separately (A5.6).
+
+**Say it:** "Rewrite the question, search keywords and vectors in parallel, fuse with RRF, rerank the top 50 with a cross-encoder, and filter by the user's permissions inside the search, with labels kept in sync by CDC."
+
+## A5.8 Answers you can trust: conflicts, citations, abstaining, long context, GraphRAG
+
+**Conflicting and stale sources.** Two runbooks give different timeouts; last year's pricing page is still indexed. Retrieval cannot tell which is right unless you tell it. Store `effective_date`, `version`, `source` and an authority tier (policy over wiki over chat) with every chunk, prefer the newest authoritative chunk when two disagree, collapse near-duplicate chunks before the prompt, and tell the model what to do with a conflict: answer from the most authoritative source and say that another source disagrees, with both citations. Old versions that must stay searchable are filtered by date, not deleted.
+
+**Citations you can check.** Ask for an answer in which every claim names the chunk ids it comes from, in structured output. Then check in code: every cited id was in the prompt, and any quoted text appears in that chunk. A citation that fails the check is removed, and the claim with it. Show citations as links to the source document and version, so a reader can verify in one tap.
+
+**Hallucination** means a claim the sources do not support. Reduce it in three places:
+
+- **Before:** retrieve better (A5.7). Most made-up answers start as a retrieval miss the model fills from memory.
+- **During:** tell the model to answer only from the sources and to reply "I could not find this in the documents" otherwise, and give it a way to do that in the output schema.
+- **After:** a **groundedness check** splits the answer into claims and asks a small judge model (or a natural-language-inference model) whether each claim is supported by the cited chunk. Unsupported claims are removed or the whole answer is replaced by an abstention.
+
+**Abstaining is a feature.** If the best reranker score is below a threshold you tuned on labelled data, do not call the model at all: say what you searched and offer the closest documents. Put unanswerable questions in the eval set and track two numbers: the share of answerable questions answered, and the share of unanswerable ones correctly refused. A system that never says "I don't know" is guessing.
+
+**Long context instead of RAG.** Models now read hundreds of thousands to a million tokens, so for a small, stable corpus (a few contracts, one codebase, a policy manual) the simplest system puts the whole thing in the prompt, with prompt caching to cut the repeated cost. RAG still wins when the corpus is large or changes, when users may see different subsets (permissions), when you need citations to exact passages, and on cost and latency at high query rates: every long-context query pays for every token, and quality drops for facts buried in the middle of a very long prompt. A common middle way: retrieve the best few documents, then give the model those documents whole.
+
+**GraphRAG in one page.** Vector search answers "what does this passage say" well and "what are the main themes across 50,000 tickets" or "which suppliers of our top customers had incidents" badly, because the answer is spread over many documents. GraphRAG (published by Microsoft Research in 2024) uses a model to extract entities and relations from every document into a knowledge graph, groups the graph into communities, and writes a summary of each; a global question is answered from the community summaries, a multi-hop question by walking the graph. The costs: indexing calls a model over the whole corpus (often 10 to 100 times the cost of embedding it), the extracted graph has its own errors, and keeping it fresh is hard. Use it for exploratory and multi-hop questions over a stable corpus; if you already have the relations in tables (customers, suppliers, incidents), a SQL join or a graph you already own is cheaper and exact.
+
+**Say it:** "Store dates and authority with each chunk and say when sources conflict; check citations in code; abstain below a tuned score and measure refusals; use long context for small stable corpora and RAG for large, changing or permissioned ones; GraphRAG only for global or multi-hop questions worth its indexing cost."
+
+## A5.9 Architect's lens: RAG and vector stores
+
+The questions an architect is asked about retrieval-augmented generation: when it is the right tool, where the vectors live, and what breaks at 10 million documents and 1,000 queries a second.
+
+| Question | Short answer for RAG and vector stores |
+|---|---|
+| **What problem does it solve?** | Answering questions from your own documents, which change daily and differ by user, with citations, without retraining a model. Retrieval picks the few passages that matter; the model writes the answer from them. |
+| **Why it over the alternatives?** | Fine-tuning teaches style and format, not fresh facts, and cannot forget a deleted document or respect permissions. Long context works for a small, stable corpus but pays for every token on every query. Plain keyword search finds documents but does not answer. For vectors, pgvector or the warehouse keeps them next to the data and its access rules; a dedicated vector database (Pinecone, Weaviate, Qdrant, Milvus, or OpenSearch and Elasticsearch vectors) earns its place at hundreds of millions of vectors, high query rates or heavy filtering. |
+| **When not to use it?** | The corpus fits in the context window and rarely changes (use long context with prompt caching); the answer is a number in a table (use SQL or a semantic layer, not text search); the question needs reasoning across the whole corpus (themes, multi-hop: GraphRAG or analytics); nobody will build an eval set, so nobody will know whether it works. |
+| **Who owns and pays for it?** | The data platform team owns the ingest pipeline (chunking, embeddings, freshness, deletes, permission labels) like any derived table; the product team owns prompts, the eval set and answer quality; security owns the permission model. Cost: embedding the corpus (and again on every model change), the index's memory, rerank calls, and model tokens per answer, usually the largest line. |
+| **Where does it sit?** | Between the document sources (wiki, tickets, drives, databases) and the assistant: an ingest pipeline that writes chunks, vectors and labels to an index, and a query service that rewrites, searches, fuses, reranks, filters and calls the model, behind an API with logs and per-stage latency. |
+| **How does it fail and scale?** | It fails quietly: stale or deleted documents still answered from, a permission change not yet in the index, a new embedding model mixed with old vectors, recall dropping after an index setting change, and confident answers when nothing relevant was found. It scales by sharding the index (memory), adding replicas (query rate), quantizing vectors, caching rewrites and answers by permission set, and keeping the reranker on a small candidate set. |
+| **When do you move off it?** | When long context becomes cheap enough for your corpus and query rate; when most questions turn out to be structured (move them to SQL); when you outgrow pgvector (shard, or move to a dedicated store); or when a managed search service with built-in permissions and connectors does the same job for less. |
+
+### Under the hood
+
+**1. How does an HNSW index find neighbours quickly, and what do its settings trade?**
+<details><summary>Model answer</summary>
+
+HNSW (hierarchical navigable small world) links every vector to its nearest neighbours in a graph with a few sparse layers on top. A search enters at the top layer, walks greedily towards the query, drops a layer, and repeats, so it visits a few thousand vectors instead of millions. `M` is the number of links per vector (more links: better recall, more memory), `ef_construction` is how hard the build searches for good links (slower builds, better graph), and `ef_search` is how many candidates a query keeps (higher: better recall, slower queries). Filters are the trap: if a filter removes most vectors, the graph walk runs out of matches and returns too few results. pgvector 0.8 added iterative index scans that keep searching until enough rows pass the filter; dedicated stores build filters into the walk. Always measure recall at k with the filter on, against exact search, before trusting the index (A5.3, A5.6).
+
+</details>
+
+**2. Why does a cross-encoder rerank better than the embedding search, and what does it cost?**
+<details><summary>Model answer</summary>
+
+An embedding model (a bi-encoder) turns the question and each chunk into vectors separately, so the chunks can be embedded once, ahead of time, and compared with a cheap dot product. It never sees the question and passage together, so it misses how they relate ("does this passage answer this question?" versus "is it about the same topic?"). A cross-encoder reads the question and one passage in a single pass and outputs a relevance score, which is much more accurate but cannot be precomputed: it costs one model pass per candidate per query. So you use both: the bi-encoder (with keyword search) narrows millions of chunks to 50 to 100 in milliseconds, and the cross-encoder reorders those in 50 to 150 ms. Using a large language model as the reranker is more accurate again and far more expensive; keep it for small, high-value queries.
+
+</details>
+
+**3. How does reciprocal rank fusion combine keyword and vector results, and why not average the scores?**
+<details><summary>Model answer</summary>
+
+BM25 scores are unbounded and depend on the query's words; cosine similarities sit between -1 and 1 and bunch together. Averaging them lets one scale dominate, and normalising them per query is fragile. RRF ignores scores and uses ranks: a document's fused score is the sum, over each result list, of 1 / (k + rank), with k = 60 by convention. A document ranked 1st by keywords and 3rd by vectors scores 1/61 + 1/63; one ranked 1st by vectors only scores 1/61. Documents both methods like rise to the top, and nothing needs tuning. Weighted fusion (more weight to one list) is a later step, chosen on the eval set. Many engines (OpenSearch, Elasticsearch, Weaviate, and Postgres with a few lines of SQL) do it for you.
+
+</details>
+
+**4. How do you make sure retrieval never shows a user a document they cannot open?**
+<details><summary>Model answer</summary>
+
+Copy the source's permissions onto every chunk as labels (user and group ids, tenant, classification) at ingest, and look up the user's groups from the identity provider at query time. Pass them as a filter into the search itself, so a forbidden chunk is never ranked, never sent to a reranker or model, and never counted. Keep labels fresh: permission changes and deletes flow through CDC or change detection like content, with an alert on how far the index lags the source. Separate tenants physically (an index or partition each) when a leak would be a breach. Key every cache (rewrites, retrieved chunks, answers) by the permission set. Test it: an eval with users from different groups, asserting that answers cite only documents each one may read. The prompt is never the control: a model told "do not reveal X" can still reveal it.
+
+</details>
+
+**5. Size a RAG service for 10 million documents and 1,000 queries a second with a 2-second answer budget.**
+<details><summary>Model answer</summary>
+
+Chunks: 10 million documents at about 5 chunks each is 50 million vectors. At 1,024 dimensions in 32-bit floats, that is 50M × 1,024 × 4 bytes, about 205 GB, plus the HNSW graph (roughly 100 to 200 bytes per vector, about 5 to 10 GB). Shrink it: 8-bit quantization is about 51 GB; binary quantization about 6.4 GB, re-scoring the top few hundred with full vectors. Spread the index over shards for memory and add replicas for the query rate; at roughly 100 to 300 queries a second per replica, 1,000 QPS needs about 4 to 10 replicas of each shard, plus headroom for a zone failure. Budget per query: embed 20 ms, keyword and vector search in parallel 50 ms, rerank 50 candidates 100 ms, and about 1.5 seconds for the model to stream the answer. Cache rewrites and frequent answers by permission set, which also keeps the service up when the model provider cuts your rate limit: the simulator's [RAG challenge](#/sim/sc/rag) breaks a service without a cache in front of the model. Cost is mostly model tokens: 1,000 QPS is 86 million answers a day, so the prompt size (5 chunks of 300 words, not 20) is the biggest lever. Re-embedding all 50 million chunks on a model change is a planned backfill into a new index, compared on the eval set before switching.
+
+</details>
+
+**6. How do you make an assistant say "I don't know" instead of making something up, and prove it works?**
+<details><summary>Model answer</summary>
+
+Three layers. Before the model: if the best reranker score is below a threshold tuned on labelled data, return "not found" with the closest documents and skip the model call. In the model: the instructions say to answer only from the numbered sources and give an explicit "not found" field in the output schema. After the model: check citations in code (every id was in the prompt, quoted text is in the chunk), then run a groundedness check that asks a small judge model whether each claim is supported by its cited chunk, removing unsupported claims or abstaining. Prove it with an eval set that includes unanswerable questions and questions whose answer changed: track the answer rate on answerable questions, the correct-refusal rate on unanswerable ones, and the share of claims that pass the groundedness check, and calibrate the judge against human labels before trusting it. Watch the same numbers on a sample of live traffic.
+
+</details>
+
 @@lab
 ## Lab A5.1: chunk and embed (1 hour)
 
@@ -132,6 +226,36 @@ Open the A5 exercises in the code editor (Path, module A5, the Lab steps). Every
 **Model answers:** 1, deletes are not applied to the index: handle deletes through hashing or CDC and alert on chunks whose source is gone. 2, hybrid search: keyword ranking finds exact codes that vectors blur; also keep the code in the chunk text. 3, embed everything into a new index, run the retrieval eval on both, switch when recall at k is equal or better, keep the old index until rollback is no longer needed. 4, it re-embeds every document every night; hash content and embed only new or changed documents. 5, access labels were not stored on chunks or not applied as a filter at query time; filter before ranking, by the user's permissions.
 
 @@quiz
+TYPE: mcq
+TAG: ai
+Q: Keyword search and vector search each return a ranked list. Why is reciprocal rank fusion a common way to combine them?
+A) It replaces both lists with one cross-encoder score per document
+B) It adds 1/(60 + rank) per list, so their score scales never mix
+C) It keeps only documents that appear in both lists, in any order
+D) It averages the raw BM25 and cosine scores after rounding them up
+ANS: B
+WHY: BM25 and cosine scores sit on different scales; RRF uses only positions, so documents ranked high by both rise to the top with nothing to tune.
+---
+TYPE: mcq
+TAG: ai
+Q: Where should a RAG service apply the user's document permissions?
+A) In the prompt, telling the model which documents it must not reveal
+B) Inside the search, as a filter, before anything is ranked or sent
+C) After the answer, by deleting sentences that mention secret words
+D) Only in the user interface, by hiding links to restricted documents
+ANS: B
+WHY: Pre-filtering keeps forbidden chunks away from ranking, rerankers and the model; a prompt or a later filter cannot undo a leak.
+---
+TYPE: mcq
+TAG: ai
+Q: Your assistant's best reranker score for a question is far below the threshold you tuned on labelled data. What should it do?
+A) Call a larger model and let it answer from what it already knows
+B) Say it found nothing reliable and show the closest documents
+C) Answer anyway from the top five chunks, with lower confidence
+D) Retry the same search with the temperature raised to get more
+ANS: B
+WHY: Below a tuned threshold nothing relevant was found; abstaining (and measuring correct refusals) beats a confident made-up answer.
+---
 TYPE: mcq
 TAG: ai
 Q: A RAG assistant gives wrong answers. Retrieval recall at 5 on your labelled set is 40%. What do you fix first?
@@ -220,6 +344,18 @@ WHY: Vectors from different models live in different spaces. Build the new index
 ---
 
 @@interview
+Q: Design a RAG assistant over 10 million documents at 1,000 queries a second, with a 2-second answer budget.
+TAG: arch
+A: Ingest: documents chunked on structure (about 50 million chunks), redacted, embedded, written with access labels, dates and source to a sharded index; changes, deletes and permission changes by CDC or hashing, with index lag alerts. Memory: 50M vectors at 1,024 floats is about 205 GB, so quantize (8-bit about 51 GB) and shard, with replicas for the query rate (roughly 4 to 10 per shard) and a zone of headroom. Query path: rewrite with a small model (cached), keyword and vector search in parallel with the user's permission filter inside the search, fuse with RRF, rerank the top 50 with a cross-encoder, answer from the top 5 with checked citations, abstain below a tuned score. Budget: about 200 ms to retrieve and rerank, the rest to stream the answer. Cost is mostly tokens, so keep prompts small and cache by permission set. Eval: labelled and unanswerable questions, recall at k, groundedness, refusal rate, per-stage latency.
+---
+Q: Two indexed sources give different answers to the same question. What should the assistant do?
+TAG: arch
+A: Never pick silently. Store effective date, version, source and an authority tier with every chunk; collapse near-duplicates; prefer the newest authoritative source; and have the model say that another source disagrees, citing both. Old versions stay searchable only when asked for by date. Fix the cause too: a stale document still indexed is a freshness bug (deletes and versions should flow through change detection), so report conflicts to the document owners.
+---
+Q: How do you stop a RAG assistant from showing someone a document they are not allowed to open?
+TAG: arch
+A: Permissions are data in the index: every chunk carries its source document's groups, tenant and classification, kept in sync by CDC or change detection, deletes included. At query time look up the user's groups and filter inside the search (pre-filter), so a forbidden chunk never reaches ranking, the reranker or the model; separate tenants physically when a leak would be a breach; key every cache by the permission set. Test it with users from different groups and assert answers cite only what each may read. Never rely on the prompt to enforce access.
+---
 Q: Design a runbook assistant for on-call engineers.
 TAG: ai
 A: Ingest: runbooks and past incident notes from the wiki and the ticket system, cleaned, split on headings into 300-word chunks with overlap, personal data redacted, embedded, stored in Postgres with pgvector with doc id, heading path, hash, model and team labels. Changes flow in by hash comparison or CDC, including deletes. Query: hybrid search filtered by team, re-rank the top 20, answer from the top 5 with citations, and say "not found" when nothing scores well. Eval: 50 real on-call questions labelled with the right chunks, recall at 5 and faithfulness, rerun on every change. Ops: latency per stage, cost per answer, index lag.
