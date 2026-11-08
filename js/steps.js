@@ -7,6 +7,8 @@
    tests, a right check, a grade of 4+). Work in S.steps[uid], merged per entry (newer at). Loaded before app.js. */
 'use strict';
 const STEP_KEYS = ['STEP', 'TITLE', 'MIN', 'SIM', 'BODY', 'SPEC', 'CODE', 'FIX', 'BUG', 'TESTS', 'CHECK', 'Q', 'A', 'TASK', 'RUBRIC'];
+/* DESIGN: yes points a Design step at the module's design problem when it has no simulator challenge (F7 roll-out); it is parsed but kept out of the fingerprint unless set, so the pilot's finished steps stay finished */
+const STEP_PARSE = STEP_KEYS.concat(['DESIGN']);
 const STEP_KIND = { design: 'design', fix: 'build', platform: 'learn', lead: 'talk', ai: 'ai' }; /* plan kinds: chip and XP */
 const STEP_NAME = { design: 'Design it', fix: 'Read and fix', platform: 'Run it on the platform', lead: 'Lead it', ai: 'With AI' };
 const STEP_CACHE = {};
@@ -16,10 +18,10 @@ function stepCode(t) { return String(t || '').replace(/^```\w*\n?/, '').replace(
 function stepList(m) {
   const s = DATA.sprints[m], raw = s && s.raw.steps; if (!raw) return [];
   if (STEP_CACHE[m] && STEP_CACHE[m].raw === raw) return STEP_CACHE[m].list;
-  const list = blocks(raw, STEP_KEYS, false).filter(x => STEP_NAME[x.STEP]).map(x => Object.assign(x, {
+  const list = blocks(raw, STEP_PARSE, false).filter(x => STEP_NAME[x.STEP]).map(x => Object.assign(x, {
     uid: m + ':st.' + x.STEP, mins: Math.min(10, +x.MIN || 10), sims: (x.SIM || '').split(',').map(v => v.trim()).filter(Boolean),
     tests: stepJSON(x.TESTS, []), check: stepJSON(x.CHECK, null), code: stepCode(x.CODE), fixed: stepCode(x.FIX),
-    src: STEP_KEYS.map(k => x[k] || '').join('|') }));
+    src: STEP_KEYS.map(k => x[k] || '').join('|') + (x.DESIGN ? '|DESIGN:' + x.DESIGN : '') }));
   STEP_CACHE[m] = { raw, list }; return list;
 }
 function stepState(uid) { S.steps = S.steps || {}; return S.steps[uid] = S.steps[uid] || {}; }
@@ -27,7 +29,7 @@ function stepPut(uid, o) { Object.assign(stepState(uid), o, { at: Date.now() });
 /* done by the work itself: a passed challenge, passing tests, the right check, a grade of 4 or 5 */
 function stepAuto(m, x) {
   const r = (S.steps || {})[x.uid] || {}, g = (S.grades || {})['step:' + x.uid];
-  if (x.STEP === 'design') return x.sims.length > 0 && !!((S.sim || {}).done || {})[x.sims[0]];
+  if (x.STEP === 'design') return x.sims.length > 0 && !!((S.sim || {}).done || {})[x.sims[0]]; /* a design problem (DESIGN: yes) is ticked by the learner */
   if (x.STEP === 'fix') return !!r.fixed;
   if (x.STEP === 'platform') return !!x.check && r.pick === x.check.a;
   return !!(g && g.s === 'done' && g.r && g.r.score >= 4);
@@ -35,7 +37,7 @@ function stepAuto(m, x) {
 /* the plan steps for modUnits(), inserted before the module's quiz */
 function stepUnits(m) {
   return stepList(m).map(x => ({ mid: m, uid: x.uid, kind: STEP_KIND[x.STEP], mins: x.mins, title: x.TITLE, src: x.src, step: x.STEP, ccSwap: x.STEP === 'ai',
-    goal: (x.BODY || x.Q || '').split('\n')[0].replace(/\*\*/g, '').slice(0, 220), done: { design: 'The first challenge passes in the simulator.', fix: 'Your fix passes every test.', platform: 'You answered the check.', lead: 'You answered out loud, wrote the short version and compared it with the model answer.', ai: 'You ran the Claude Code task and checked its answer against the chapter.' }[x.STEP],
+    goal: (x.BODY || x.Q || '').split('\n')[0].replace(/\*\*/g, '').slice(0, 220), done: { design: x.sims.length ? 'The first challenge passes in the simulator.' : 'You sketched the design and compared it with the model answer.', fix: 'Your fix passes every test.', platform: 'You answered the check.', lead: 'You answered out loud, wrote the short version and compared it with the model answer.', ai: 'You ran the Claude Code task and checked its answer against the chapter.' }[x.STEP],
     href: '#/step/' + m + '/' + x.STEP, cta: 'Open', links: [], auto: () => stepAuto(m, x) }));
 }
 /* With AI takes the Claude Code slot of its week: when packing reaches it, scheduleNow() puts it at the head of the
@@ -55,6 +57,8 @@ async function vStep(m, kind) {
   const ta = (key, label, ph) => { const t = el('textarea', { class: 'code', 'aria-label': label, placeholder: ph, style: { minHeight: '120px', border: '1px solid var(--line2)', borderRadius: '10px', fontFamily: 'var(--body)', fontSize: '16px' } }); t.value = r[key] || ''; t.addEventListener('input', () => stepPut(x.uid, { [key]: t.value })); return t; };
   if (x.STEP === 'design') {
     if (x.BODY) card.appendChild(mdEl(x.BODY));
+    if (!x.sims.length && typeof DATA !== 'undefined' && DATA.design && DATA.design[m]) { const D = DATA.design[m];
+      card.appendChild(el('div', { class: 'list' }, [el('a', { class: 'item', href: '#/design/' + m }, [el('span', { class: 'grow' }, [el('span', { class: 't', text: 'Design problem: ' + D.title }), el('br'), el('span', { class: 's', text: 'Sketch it, then compare with the model answer, and tick the step' })]), el('span', { class: 's', text: 'Open ›' })])])); }
     card.appendChild(el('div', { class: 'list' }, x.sims.map((id, k) => { const sc = typeof SIM_SC !== 'undefined' && SIM_SC.find(c => c.id === id), ok = !!((S.sim || {}).done || {})[id];
       return el('a', { class: 'item', href: '#/sim/sc/' + id }, [el('span', { class: 'grow' }, [el('span', { class: 't', text: (sc ? sc.t : id) }), el('br'), el('span', { class: 's', text: k === 0 ? 'Passing this one finishes the step' : 'More practice' })]), ok ? el('span', { class: 'ok', text: '✓' }) : el('span', { class: 's', text: 'Open ›' })]); })));
   } else if (x.STEP === 'fix') {

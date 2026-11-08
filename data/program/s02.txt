@@ -381,6 +381,78 @@ Before proposing anything, list what you would measure. Then compare.
 
 Notice that every question has a number for an answer. A forward deployed engineer turns "slow" into a measurement before touching the system.
 
+@@steps
+STEP: design
+TITLE: Design it: a lake that survives growth
+MIN: 10
+DESIGN: yes
+BODY: Open this module's design problem and sketch the answer in five boxes: where files land, the table format and catalog, how tables are partitioned, what keeps files large, and who reads them. Then compare with the model answer and tick the step. Say out loud what changes when the data is a hundred times larger.
+---
+STEP: fix
+TITLE: Read and fix: the rerun that deletes tomorrow
+MIN: 10
+BODY: The job meant to replace the batch's days but deleted every day from the first one onward, so backfilling last Tuesday silently erased everything since. It passes any test that only reruns the newest day, which is why it ships. Catch it with a backfill test of an older day that checks the newer partitions are untouched, and prefer the table format's own overwrite or `MERGE`, which can only touch the rows it matches.
+SPEC: A daily job rewrites only the days present in its batch (dynamic partition overwrite). Days not in the batch must be left exactly as they were, and rerunning a day must give the same table.
+CODE:
+```
+def overwrite_partitions(table, batch):
+    """table: dict day -> list of rows. Replace only the days that appear in batch."""
+    days = sorted({r["day"] for r in batch})
+    for d in list(table):
+        if days and d >= days[0]:
+            del table[d]
+    for r in batch:
+        table.setdefault(r["day"], []).append(r)
+    return table
+```
+FIX:
+```
+def overwrite_partitions(table, batch):
+    """table: dict day -> list of rows. Replace only the days that appear in batch."""
+    days = sorted({r["day"] for r in batch})
+    for d in list(table):
+        if d in days:  # only the days this batch brings
+            del table[d]
+    for r in batch:
+        table.setdefault(r["day"], []).append(r)
+    return table
+```
+BUG: 5
+TESTS: [["rerunning an earlier day keeps the later ones", "t = {\"10-10\": [{\"day\": \"10-10\", \"n\": 1}], \"10-11\": [{\"day\": \"10-11\", \"n\": 2}]}\nsorted(overwrite_partitions(t, [{\"day\": \"10-10\", \"n\": 9}]).keys())", ["10-10", "10-11"]], ["the rerun replaces, not appends", "t = {\"10-10\": [{\"day\": \"10-10\", \"n\": 1}]}\nb = [{\"day\": \"10-10\", \"n\": 9}]\noverwrite_partitions(t, b); overwrite_partitions(t, b)\nt[\"10-10\"]", [{"day": "10-10", "n": 9}]], ["a new day is added", "sorted(overwrite_partitions({\"10-10\": []}, [{\"day\": \"10-12\", \"n\": 1}]).keys())", ["10-10", "10-12"]]]
+---
+STEP: platform
+TITLE: Run it on the platform: object storage and the catalog bill
+MIN: 8
+BODY: **Where it runs.** The files live in object storage (S3, Google Cloud Storage, Azure Data Lake Storage); the table metadata lives in a catalog: AWS Glue, S3 Tables, Unity Catalog, a REST catalog such as Polaris, or Hive metastore if you inherited one. Managed catalogs cost little; a self-run metastore is one more database to keep alive.
+
+**What drives the bill.**
+- **Requests, not bytes.** Storage per GB is cheap; every PUT, GET and LIST is charged. Many small files multiply requests for every query and every compaction.
+- **Bytes scanned.** Engines such as Athena and BigQuery charge per byte read, so partitioning and column pruning are cost controls, not just speed.
+- **Maintenance compute.** Compaction and snapshot expiry need a job and a cluster; skipping them is cheaper this week and expensive by the next quarter.
+
+**Run it.** Alert on files per partition, the size of table metadata and snapshot count, and freshness of each important table.
+CHECK: {"q": "The Athena bill doubled this month while the data grew by only 5%. What is the likeliest cause?", "c": ["Millions of small files from frequent writes", "A switch of the table format from Parquet to ORC", "The catalog moving to a different AWS region"], "a": 0, "why": "Each small file adds requests and a footer read to every query. Frequent small writes without compaction raise cost and latency while the data barely grows."}
+---
+STEP: lead
+TITLE: Lead it: Iceberg or Delta for the new lake
+MIN: 10
+BODY: Answer out loud in two minutes, then compare. Listen for turning taste into requirements, a written decision record, a default with an exception, and a role for the person whose option was not chosen.
+Q: Two senior engineers disagree about the new lake: one wants Iceberg, the other Delta, and both have good reasons. The debate has gone on for three weeks. How do you settle it?
+A: Name the cost of not deciding: three weeks of blocked work and two camps. Then make it a decision about requirements, not taste.
+
+List what must be true: which engines must read and write the tables (Spark, Trino, Snowflake, Databricks, Flink), which catalog the company will run, how deletes and updates happen, and who operates maintenance. Score both formats against that list in a one-page decision record, with each engineer writing the strongest case for the other's choice.
+
+Decide the default and the exception. For example: Iceberg with a REST catalog as the default because three engines must read it, with Delta allowed inside Databricks-only pipelines that expose Iceberg metadata to everyone else. Say what would make you revisit it.
+
+Bring both along: the engineer who lost the argument owns the interoperability tests, so their concern becomes a guard rather than a grievance. Publish the record and stop the debate there.
+---
+STEP: ai
+TITLE: With AI: compaction settings from the metadata
+MIN: 10
+BODY: **Where LLM tooling helps with tables.** Writing table definitions from a sample of data, explaining what a query plan read and why, and drafting maintenance jobs. Section 2.8 showed structured output for classifying failures. **Where it misleads:** it invents table properties that do not exist in your format or version, and it may suggest a partition column with millions of values. Check every property name against the format's documentation before you apply it.
+TASK: Give Claude Code the files metadata from this week's lab (files per day and their sizes) and ask in one prompt for: (1) a compaction target file size and how often to run compaction; (2) a snapshot expiry setting that keeps one week of time travel; (3) the expected number of files per day after the change. Paste your prompt and its answer below.
+RUBRIC: The target file size is in the usual range (128 MB to 512 MB) and justified by how the table is read. Expiry keeps one week as asked and says what is lost after it. The expected file count follows from the data size per day, with the arithmetic shown. Every property it names exists in your table format; you checked at least one.
+
 @@quiz
 TYPE: mcq
 TAG: spark

@@ -1797,6 +1797,23 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => { schedFlush(); const u = schedule().units.find(x => x.uid === 'a06:A612'); return !!(u && u.isDone); }), 'the exercises step did not tick');
   });
 
+  await T('F7 integrated week steps: every module with steps shows five tabs, opens each step, and starts with nothing done; Design without a challenge opens the design problem', async p => {
+    await go(p, '#/today', 800);
+    const mods = await p.evaluate(async () => { const out = []; for (const m of MODS) { const s = await sprint(m); if (s.raw.steps) out.push(m); } return out; });
+    for (const m of ['s01', 's02', 's03', 's04', 's05']) ok(mods.includes(m), m + ' has no week steps');
+    for (const m of mods) {
+      const st = await p.evaluate(m => stepList(m).map(x => [x.STEP, x.mins, x.uid]), m);
+      ok(st.map(x => x[0]).join() === 'design,fix,platform,lead,ai' && st.every(x => x[1] <= 10), m + ' steps are not the five, in order, of 10 minutes or less: ' + JSON.stringify(st));
+      ok(await p.evaluate(m => { schedFlush(); return schedule().units.filter(u => u.mid === m && /:st\./.test(u.uid)).every(u => !u.isDone); }, m), m + ' has a step that starts done');
+      for (const [k] of st) {
+        await hash(p, '#/step/' + m + '/' + k, 700);
+        ok((await p.$$('[role=tab]')).length === 5 && /\w/.test(await text(p, '#page')), m + ' ' + k + ' did not open with five tabs');
+      }
+    }
+    await hash(p, '#/step/s02/design', 700);
+    ok(await p.$('#page a[href="#/design/s02"]'), 'a Design step without a challenge does not open the design problem');
+  });
+
   await browser.close();
   results.forEach(r => console.log(r.join('  ')));
   const f = results.filter(r => r[0] === 'FAIL').length;
