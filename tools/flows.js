@@ -887,7 +887,8 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => [...document.querySelectorAll('#grp-interview a')].some(a => /#\/live\//.test(a.getAttribute('href')))), 'Today has no live mock row');
     await go(p, '#/live', 1500); await p.waitForSelector('.lslots li');
     const labels = await p.$$eval('.lslots li b', b => b.map(x => x.textContent)); const we = await p.evaluate(() => liveWeekend(iso(new Date())));
-    ok(we ? labels.length === 7 && labels[0] === 'Concept' && labels[labels.length - 1] === 'Recall' : labels.length === 5 && labels[0] === 'Concept' && labels[1] === 'Under the hood' && labels[2] === "Architect's lens" && labels[4] === 'Recall', 'wrong question mix: ' + labels.join(', '));
+    const mode = await p.evaluate(() => liveMode(iso(new Date()))); /* F9: one question Monday to Friday, five on Saturday, seven on Sunday */
+    ok(mode === 'one' ? labels.length === 1 : we ? labels.length === 7 && labels[0] === 'Concept' && labels[labels.length - 1] === 'Recall' : labels.length === 5 && labels[0] === 'Concept' && labels[1] === 'Under the hood' && labels[2] === "Architect's lens" && labels[4] === 'Recall', 'wrong question mix: ' + labels.join(', '));
     await p.click("#page button.pri:has-text(\"Start\")"); await p.waitForSelector('#page textarea');
     for (let n = 0; n < labels.length; n++) { if (process.env.LDBG) console.log('Q', n, (await text(p, '#page')).slice(0, 160).replace(/\n/g, ' | '));
       await p.fill('#page textarea', 'An answer about trade-offs ' + n); await p.click('#page button:has-text("Done")');
@@ -898,7 +899,7 @@ async function T(name, fn, opt) {
     const card = await text(p, '#page'); ok(/Scorecard/.test(card) && /Lean no hire|No hire/.test(card) && new RegExp('Named what you rejected\\s*' + labels.length + ' of').test(card), 'scorecard wrong: ' + card.slice(0, 300));
     ok(/open\s+your next live mock/.test(card), 'weak answers do not carry over');
     const carried = await p.evaluate(async () => { const k = iso(new Date()), d = new Date(); d.setDate(d.getDate() + 1); const r = await liveQuestions(iso(d)); return r.qs.filter(q => q.carried === k).length; });
-    ok(carried === 2, 'tomorrow does not open with two weak answers: ' + carried);
+    ok(carried === Math.min(2, labels.length), 'tomorrow does not open with the weak answers: ' + carried);
     await p.evaluate(() => { S.settings.ai = false; S.live = {}; save(); }); await go(p, '#/today', 600); await go(p, '#/live', 1500); await p.click("#page button.pri:has-text(\"Start\")");
     await p.fill('#page textarea', 'x'); await p.click('#page button:has-text("Done")'); await p.waitForSelector('[role=radiogroup]');
     ok(/Compare with the model answer/.test(await text(p, '#page')), 'AI off does not offer self-marking');
