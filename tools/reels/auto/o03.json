@@ -1146,5 +1146,4784 @@
     "part": "2 of 2"
    }
   ]
+ },
+ "O3.1 What governance is for": {
+  "hash": "7f6cba298d8a",
+  "sec": "O3.1",
+  "reels": [
+   {
+    "title": "Governance is a library, not a locked door",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Why does data governance have such a bad name? Because people picture a committee that only ever says no.",
+      "show": {
+       "t": "big",
+       "text": "Governance = a committee that says no?",
+       "sub": "Done well, it is the opposite"
+      }
+     },
+     {
+      "say": "Think of a good library. A catalogue tells you which books exist, what they mean, and who looks after each one. Rare books sit in a reading room, and you get a pass in hours, not weeks. Private letters have names blacked out before you read them.",
+      "show": {
+       "t": "scene",
+       "title": "A well run *library*",
+       "nodes": [
+        {
+         "id": "cat",
+         "label": "Catalogue",
+         "sub": "what exists, who owns it",
+         "x": 25,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "room",
+         "label": "Reading room",
+         "sub": "pass in hours",
+         "x": 75,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "mask",
+         "label": "Blacked out names",
+         "sub": "private stays private",
+         "x": 50,
+         "y": 65,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "cat",
+         "room"
+        ],
+        [
+         "room",
+         "mask"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "cat"
+        },
+        {
+         "at": 0.4,
+         "show": "room"
+        },
+        {
+         "at": 0.7,
+         "show": "mask"
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Fast access, safely",
+          "tone": "teal",
+          "icon": "key"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A sign-in sheet records who read what. Old books are retired on a schedule. So governance is not a locked door. It is what lets people borrow freely without fear.",
+      "show": {
+       "t": "scene",
+       "title": "Trust comes from *records*",
+       "nodes": [
+        {
+         "id": "sheet",
+         "label": "Sign-in sheet",
+         "sub": "who read what",
+         "x": 30,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "retire",
+         "label": "Retire old books",
+         "sub": "on a schedule",
+         "x": 70,
+         "y": 30,
+         "tone": "grey"
+        }
+       ],
+       "edges": [
+        [
+         "sheet",
+         "retire"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "sheet"
+        },
+        {
+         "at": 0.5,
+         "show": "retire"
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Freedom without fear",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "In the library picture, what is the main purpose of the catalogue, reading passes and sign-in sheet?",
+     "opts": [
+      "They let people use books quickly while keeping them safe",
+      "They slow readers down so fewer books are borrowed",
+      "They exist so that a committee can reject most requests",
+      "They matter only when an outside inspector visits"
+     ],
+     "ans": 0,
+     "why": "Good governance makes use fast and safe at once. The catalogue, passes and records give people confidence to use data, not barriers to stop them."
+    },
+    "work": [
+     "List three places where people wait days for data access and note why.",
+     "Ask your team whether they can say who owns each of your top ten tables.",
+     "Describe governance to a colleague as an enabler, using one concrete example."
+    ]
+   },
+   {
+    "title": "Six jobs that get an analyst access by lunch",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "A new analyst starts Monday. How do they get safe access by lunchtime, without anyone emailing a committee?",
+      "show": {
+       "t": "big",
+       "text": "Access by lunchtime",
+       "sub": "safe, fast, no committee"
+      }
+     },
+     {
+      "say": "First, a catalogue lists every table with an owner, a meaning, and a label such as public, internal, or personal. Labels drive everything else. Second, access follows roles. The analyst joins the marketing analyst group and gets read rights on those tables, nothing more.",
+      "show": {
+       "t": "scene",
+       "title": "Labels and *roles*",
+       "nodes": [
+        {
+         "id": "cat",
+         "label": "Catalogue",
+         "sub": "owner, meaning, label",
+         "x": 25,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "role",
+         "label": "Analyst group",
+         "sub": "read only",
+         "x": 75,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "tbl",
+         "label": "Marketing tables",
+         "sub": "label: internal",
+         "x": 50,
+         "y": 65,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "cat",
+         "tbl"
+        ],
+        [
+         "role",
+         "tbl"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "cat"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "role",
+          "tbl"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "role",
+          "tbl"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Least access needed",
+          "tone": "teal",
+          "icon": "key"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Third, personal columns are masked by default. A card number shows as stars, then the last four digits. Fourth, lineage records which tables feed which, so a change can be checked before it breaks a dashboard.",
+      "show": {
+       "t": "scene",
+       "title": "Mask and *trace*",
+       "nodes": [
+        {
+         "id": "raw",
+         "label": "Raw orders",
+         "sub": "card number",
+         "x": 20,
+         "y": 25,
+         "tone": "red"
+        },
+        {
+         "id": "view",
+         "label": "Masked view",
+         "sub": "stars 4242",
+         "x": 50,
+         "y": 25,
+         "tone": "plum"
+        },
+        {
+         "id": "dash",
+         "label": "Dashboard",
+         "sub": "downstream",
+         "x": 80,
+         "y": 25,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "raw",
+         "view"
+        ],
+        [
+         "view",
+         "dash"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "raw"
+        },
+        {
+         "at": 0.4,
+         "show": "view",
+         "packet": [
+          "raw",
+          "view"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.65,
+         "show": "dash",
+         "packet": [
+          "view",
+          "dash"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Lineage shows who is affected",
+          "tone": "amber",
+          "icon": "link"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Finally, every read is logged, and rows carry a retention date, say seven years, after which they are deleted. Logs are what let you answer who read this customer's data last month.",
+      "show": {
+       "t": "scene",
+       "title": "Log it, then *expire* it",
+       "nodes": [
+        {
+         "id": "read",
+         "label": "Every read",
+         "sub": "who, what, when",
+         "x": 30,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "log",
+         "label": "Audit log",
+         "sub": "searchable",
+         "x": 70,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "del",
+         "label": "Delete at 7 years",
+         "sub": "retention date",
+         "x": 50,
+         "y": 70,
+         "tone": "grey"
+        }
+       ],
+       "edges": [
+        [
+         "read",
+         "log"
+        ],
+        [
+         "log",
+         "del"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "read"
+        },
+        {
+         "at": 0.4,
+         "show": "log",
+         "packet": [
+          "read",
+          "log"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "del"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Answer in minutes",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why do data labels such as personal or internal matter so much in governance?",
+     "opts": [
+      "They are the signal that drives access, masking and retention rules",
+      "They only make the catalogue look tidy for visitors",
+      "They decide how fast queries run on the warehouse",
+      "They replace the need for audit logs on reads"
+     ],
+     "ans": 0,
+     "why": "Labels are the shared signal. Access, masking and retention policies key off them, so one tag can protect data everywhere without manual work."
+    },
+    "work": [
+     "Check that your top tables carry a label, an owner and a description.",
+     "Replace one named-user grant with a role based group.",
+     "Test whether you could list all readers of one customer table last month."
+    ]
+   },
+   {
+    "title": "Where governance quietly leaks",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your masking is switched on, yet an analyst still learned a customer's card number. How?",
+      "show": {
+       "t": "big",
+       "text": "Masked, yet leaked",
+       "sub": "how does that happen?"
+      }
+     },
+     {
+      "say": "Masking only hides a column where it is applied. Copy the table into a sandbox, or join on an unmasked ID, and the protection can vanish. Classification has to travel with the data, through lineage, to every copy.",
+      "show": {
+       "t": "scene",
+       "title": "Protection must *follow* copies",
+       "nodes": [
+        {
+         "id": "src",
+         "label": "Masked table",
+         "sub": "rule applied",
+         "x": 25,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "copy",
+         "label": "Sandbox copy",
+         "sub": "no rule",
+         "x": 75,
+         "y": 25,
+         "tone": "red"
+        },
+        {
+         "id": "ana",
+         "label": "Analyst",
+         "sub": "sees raw value",
+         "x": 50,
+         "y": 65,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "src",
+         "copy"
+        ],
+        [
+         "copy",
+         "ana"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "src"
+        },
+        {
+         "at": 0.4,
+         "show": "copy",
+         "packet": [
+          "src",
+          "copy"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.65,
+         "show": "ana",
+         "packet": [
+          "copy",
+          "ana"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Tags must travel with copies",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Deletion is the same. A request to erase a customer must reach backups, caches, and derived tables, or the data lives on. Retention jobs need proof that they ran.",
+      "show": {
+       "t": "points",
+       "title": "Erasure must reach everywhere",
+       "items": [
+        "Backups and snapshots",
+        "Caches and search indexes",
+        "Derived and aggregated tables",
+        "Proof the delete job ran"
+       ]
+      }
+     },
+     {
+      "say": "And audit logs are only useful if they are complete and kept longer than the data they describe. Otherwise the question of who read it last month has no answer.",
+      "show": {
+       "t": "scene",
+       "title": "Logs must *outlive* data",
+       "nodes": [
+        {
+         "id": "log",
+         "label": "Audit log",
+         "sub": "complete, tamper evident",
+         "x": 30,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "data",
+         "label": "Customer data",
+         "sub": "deleted at 7 years",
+         "x": 70,
+         "y": 30,
+         "tone": "grey"
+        }
+       ],
+       "edges": [
+        [
+         "log",
+         "data"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "log"
+        },
+        {
+         "at": 0.5,
+         "show": "data"
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Keep proof past the data",
+          "tone": "amber",
+          "icon": "clock"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A customer asks to be erased and the main table row is deleted. What is the biggest remaining risk?",
+     "opts": [
+      "Copies in backups, caches and derived tables still hold the data",
+      "The catalogue entry for the table will show an old label",
+      "Analysts will lose read rights to every other customer",
+      "The audit log will refuse to record the deletion"
+     ],
+     "ans": 0,
+     "why": "Erasure must reach every copy. Backups, caches and derived tables are where data survives, which is why lineage is needed to find them."
+    },
+    "work": [
+     "Trace one sensitive column through lineage and list every copy that holds it.",
+     "Check that masking rules apply to sandbox and exported copies.",
+     "Confirm audit logs are kept longer than the data they cover."
+    ]
+   },
+   {
+    "title": "Governance by risk, not by default",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Should every table get full governance on day one? Almost never.",
+      "show": {
+       "t": "big",
+       "text": "Govern everything on day one?",
+       "sub": "Almost never"
+      }
+     },
+     {
+      "say": "Tag and protect by risk. Cover the few percent of tables holding personal or financial data first, and keep the rest light. Otherwise cost and delay grow, and teams route around you with unofficial copies.",
+      "show": {
+       "t": "bars",
+       "title": "Effort by risk tier",
+       "unit": "% of effort",
+       "items": [
+        [
+         "Personal and financial",
+         70,
+         "full controls"
+        ],
+        [
+         "Internal",
+         25,
+         "light controls"
+        ],
+        [
+         "Public",
+         5,
+         "catalogue only"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Prefer central policy enforced automatically, such as tags that drive masking, over manual tickets. Tickets do not scale past a few hundred requests a month. But central enforcement needs a platform team, and tool lock in is real.",
+      "show": {
+       "t": "scene",
+       "title": "Policy as *code*, not tickets",
+       "nodes": [
+        {
+         "id": "tag",
+         "label": "Tag: personal",
+         "sub": "set once",
+         "x": 25,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "pol",
+         "label": "Central policy",
+         "sub": "masks automatically",
+         "x": 75,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "tix",
+         "label": "Manual tickets",
+         "sub": "do not scale",
+         "x": 50,
+         "y": 65,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "tag",
+         "pol"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "tag"
+        },
+        {
+         "at": 0.4,
+         "show": "pol",
+         "packet": [
+          "tag",
+          "pol"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "tix",
+         "dim": "tix"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Needs a platform team",
+          "tone": "amber",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Judge it by outcomes: hours to grant access, zero raw card numbers exposed, and minutes to answer an audit question.",
+      "show": {
+       "t": "points",
+       "title": "Measure outcomes",
+       "items": [
+        "Hours to grant access",
+        "Zero raw card numbers exposed",
+        "Minutes to answer an audit question"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "You have a small team and hundreds of tables. What is the best way to start governance?",
+     "opts": [
+      "Protect the few high risk tables first and automate with tags",
+      "Apply full controls to every table before anyone gets access",
+      "Wait for a regulator request, then build everything at once",
+      "Handle each access request by manual ticket and review"
+     ],
+     "ans": 0,
+     "why": "Risk based rollout gives the most protection for the least effort, and tag driven automation scales where tickets and blanket controls do not."
+    },
+    "work": [
+     "Rank your tables by risk and cover the top tier first.",
+     "Pick two outcome metrics, such as hours to access, and track them monthly.",
+     "List which governance rules could move from tickets to tag driven policy."
+    ]
+   }
+  ]
+ },
+ "O3.2 Classifying personal data": {
+  "hash": "cac0aae43481",
+  "sec": "O3.2",
+  "reels": [
+   {
+    "title": "Labels on the moving boxes",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Imagine moving house with a hundred unlabeled boxes. Which one holds your passport?",
+      "show": {
+       "t": "scene",
+       "title": "Which box holds the *passport*?",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Box 1",
+         "sub": "unknown",
+         "x": 20,
+         "y": 40,
+         "tone": "grey"
+        },
+        {
+         "id": "b",
+         "label": "Box 2",
+         "sub": "unknown",
+         "x": 50,
+         "y": 40,
+         "tone": "grey"
+        },
+        {
+         "id": "c",
+         "label": "Box 3",
+         "sub": "unknown",
+         "x": 80,
+         "y": 40,
+         "tone": "grey"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "a",
+          "b",
+          "c"
+         ]
+        },
+        {
+         "at": 0.7,
+         "chip": {
+          "text": "You cannot protect what you cannot find",
+          "tone": "amber",
+          "icon": "?"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Classification is a label on every item. In data, an item is a column in a table. The label says what is inside: email, phone, card number, or harmless.",
+      "show": {
+       "t": "scene",
+       "title": "A *label* on every column",
+       "nodes": [
+        {
+         "id": "e",
+         "label": "contact",
+         "sub": "pii.email",
+         "x": 20,
+         "y": 40,
+         "tone": "red"
+        },
+        {
+         "id": "p",
+         "label": "phone",
+         "sub": "pii.phone",
+         "x": 50,
+         "y": 40,
+         "tone": "amber"
+        },
+        {
+         "id": "c",
+         "label": "country",
+         "sub": "public",
+         "x": 80,
+         "y": 40,
+         "tone": "teal"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "e"
+        },
+        {
+         "at": 0.5,
+         "show": "p"
+        },
+        {
+         "at": 0.8,
+         "show": "c"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Labels matter because they trigger rules. Passport boxes go in the locked car. Kitchen boxes go anywhere. In data, labels decide who can see a column, what gets hidden, and how long it is kept.",
+      "show": {
+       "t": "scene",
+       "title": "Labels trigger *rules*",
+       "nodes": [
+        {
+         "id": "l",
+         "label": "Label",
+         "sub": "pii.email",
+         "x": 50,
+         "y": 15,
+         "tone": "red"
+        },
+        {
+         "id": "a",
+         "label": "Access",
+         "sub": "who sees it",
+         "x": 20,
+         "y": 55,
+         "tone": "blue"
+        },
+        {
+         "id": "m",
+         "label": "Masking",
+         "sub": "hide it",
+         "x": 50,
+         "y": 55,
+         "tone": "plum"
+        },
+        {
+         "id": "r",
+         "label": "Retention",
+         "sub": "how long",
+         "x": 80,
+         "y": 55,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "l",
+         "a"
+        ],
+        [
+         "l",
+         "m"
+        ],
+        [
+         "l",
+         "r"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.3,
+         "show": "l"
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "l",
+          "a"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "l",
+          "m"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "packet": [
+          "l",
+          "r"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Who writes the labels? First the people who packed the box. Then a scanner double checks. Then the owner confirms.",
+      "show": {
+       "t": "points",
+       "title": "Who writes the labels",
+       "items": [
+        "The team that made the data",
+        "A scanner that double checks",
+        "The owner who confirms"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why do we label each column as personal or not?",
+     "opts": [
+      "Labels decide which protection rules apply to the column",
+      "Labels make the table smaller and faster to query",
+      "Labels prove the data is accurate and fully clean"
+     ],
+     "ans": 0,
+     "why": "Tags drive masking, access, retention and audit. Without a label, none of those rules know the column needs protection."
+    },
+    "work": [
+     "List three tables you own and write down which columns would get a personal data label.",
+     "Ask which team would be the first to know what a column really holds."
+    ]
+   },
+   {
+    "title": "Declared, detected, reviewed",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "A column called contact holds ten thousand values. Is it personal data, and who decides?",
+      "show": {
+       "t": "big",
+       "text": "contact: personal data?",
+       "sub": "10,000 values, no label yet"
+      }
+     },
+     {
+      "say": "Layer one is declared. The team producing the data tags columns in the data contract. This is the most reliable source, because they know what each column means.",
+      "show": {
+       "t": "scene",
+       "title": "Layer one: *declared*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Producer",
+         "sub": "owns the data",
+         "x": 25,
+         "y": 40,
+         "tone": "blue"
+        },
+        {
+         "id": "c",
+         "label": "Contract",
+         "sub": "tags columns",
+         "x": 75,
+         "y": 40,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.3,
+         "show": [
+          "t",
+          "c"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "t",
+          "c"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Most reliable source",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Layer two is detected. A scanner samples a thousand values and tests patterns: emails, phones, national ids, and card numbers, which must also pass a Luhn check. That is a checksum that rejects random digits.",
+      "show": {
+       "t": "scene",
+       "title": "Layer two: *detected*",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Scanner",
+         "sub": "samples 1,000",
+         "x": 25,
+         "y": 40,
+         "tone": "amber"
+        },
+        {
+         "id": "p",
+         "label": "Patterns",
+         "sub": "email, phone, card",
+         "x": 75,
+         "y": 40,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "p"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.3,
+         "show": [
+          "s",
+          "p"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "s",
+          "p"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.9,
+         "count": {
+          "key": "m",
+          "label": "values look like email",
+          "to": 90,
+          "unit": "%",
+          "tone": "red"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "If ninety percent match email and the threshold is eighty, it proposes pii dot email. Layer three: the owner confirms, and the tag joins the contract.",
+      "show": {
+       "t": "flow",
+       "title": "Propose, then confirm",
+       "steps": [
+        {
+         "label": "Scan"
+        },
+        {
+         "label": "90% over 80% threshold"
+        },
+        {
+         "label": "Propose pii.email"
+        },
+        {
+         "label": "Owner confirms"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A scanner finds 90 percent of sampled values in a column look like emails. What happens next?",
+     "opts": [
+      "The tag is applied at once and never looked at again",
+      "A tag is proposed and the owner confirms it into the contract",
+      "The column is deleted until a person rewrites its name"
+     ],
+     "ans": 1,
+     "why": "Detection only proposes. The owner reviews, and confirmed tags become part of the contract, so people stay accountable."
+    },
+    "work": [
+     "Check whether your data contracts have a field for column tags, and add one if not.",
+     "Pick a landing zone table and run a pattern scan on a sample of 1,000 rows."
+    ]
+   },
+   {
+    "title": "Where detection slips",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Why does one email in a free text column not make it an email column?",
+      "show": {
+       "t": "big",
+       "text": "1 email in 1,000 notes",
+       "sub": "is that an email column?"
+      }
+     },
+     {
+      "say": "Detection is statistical. One percent matching fails an eighty percent threshold. So a notes column slips through clean, even though real addresses and phone numbers sit inside it.",
+      "show": {
+       "t": "bars",
+       "title": "Match rate vs threshold",
+       "unit": "%",
+       "items": [
+        [
+         "contact column",
+         90,
+         "tagged"
+        ],
+        [
+         "notes column",
+         1,
+         "missed"
+        ],
+        [
+         "threshold",
+         80,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Other traps: sampling only the first rows misses later data. A Luhn check passes some order numbers by chance. A name like phone model fools name matching.",
+      "show": {
+       "t": "points",
+       "title": "Classic traps",
+       "items": [
+        "Sampling only the first rows",
+        "Luhn passes some order numbers",
+        "Column names that mislead"
+       ]
+      }
+     },
+     {
+      "say": "False positives cost review time. False negatives leak data. So set the proposal threshold low, and mark free text as unknown, never as clean.",
+      "show": {
+       "t": "scene",
+       "title": "Leaks cost more than *reviews*",
+       "nodes": [
+        {
+         "id": "fp",
+         "label": "False positive",
+         "sub": "wasted review",
+         "x": 25,
+         "y": 40,
+         "tone": "amber"
+        },
+        {
+         "id": "fn",
+         "label": "False negative",
+         "sub": "data leak",
+         "x": 75,
+         "y": 40,
+         "tone": "red"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.3,
+         "show": "fp"
+        },
+        {
+         "at": 0.6,
+         "show": "fn"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Err towards proposing",
+          "tone": "teal",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why can a free text notes column escape a scanner that has an eighty percent threshold?",
+     "opts": [
+      "Free text columns are exempt from privacy rules by design",
+      "Scanners only read column names and never the values",
+      "Few values match a pattern, so the rate stays far below the line"
+     ],
+     "ans": 2,
+     "why": "Personal data scattered through free text gives a very low match rate, so a high threshold misses it. Treat such columns as unknown and review them."
+    },
+    "work": [
+     "Find free text columns such as notes or comments and mark them unknown until reviewed.",
+     "Sample random rows, not the first rows, when you scan.",
+     "Track how many proposals owners reject, to tune the threshold."
+    ]
+   },
+   {
+    "title": "Scanner as safety net",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Should you scan every table every night and trust the result?",
+      "show": {
+       "t": "big",
+       "text": "Scan everything, nightly?",
+       "sub": "Probably not"
+      }
+     },
+     {
+      "say": "Scanning costs compute, and sampling reads real personal data. So run scanners inside the secure zone, and scan only new or changed columns, not the whole lake daily.",
+      "show": {
+       "t": "points",
+       "title": "Scan smart",
+       "items": [
+        "Run inside the secure zone",
+        "Scan new or changed columns",
+        "Not the whole lake each night"
+       ]
+      }
+     },
+     {
+      "say": "Declared tags should win. The scanner is a safety net. In landing zones where nobody declared anything, block publishing until each column has a tag or an unknown status.",
+      "show": {
+       "t": "scene",
+       "title": "Declared *wins*, scanner backs up",
+       "nodes": [
+        {
+         "id": "d",
+         "label": "Declared",
+         "sub": "source of truth",
+         "x": 25,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "s",
+         "label": "Scanner",
+         "sub": "safety net",
+         "x": 75,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "g",
+         "label": "Publish gate",
+         "sub": "needs a tag",
+         "x": 50,
+         "y": 70,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "d",
+         "g"
+        ],
+        [
+         "s",
+         "g"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.3,
+         "show": [
+          "d",
+          "s"
+         ]
+        },
+        {
+         "at": 0.6,
+         "show": "g"
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "d",
+          "g"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "packet": [
+          "s",
+          "g"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "A tiny estate can tag by hand. A huge one needs a catalog tool. Watch owner rejection rates: if they reject most proposals, they stop reading them, and the process fails.",
+      "show": {
+       "t": "points",
+       "title": "Choose by scale",
+       "items": [
+        "Small estate: tag by hand",
+        "Large estate: catalog tooling",
+        "Rejection rate shows if reviews still work"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Which design best fits a large data estate?",
+     "opts": [
+      "Declared tags first, with scans on changes as a safety net",
+      "Scanner tags only, run over the whole lake every night",
+      "Manual tagging only, done once when the table is created"
+     ],
+     "ans": 0,
+     "why": "Producers know the meaning best, so declared tags lead. Targeted scans catch what was missed without wasting compute or over-reading personal data."
+    },
+    "work": [
+     "Add a publishing check that rejects tables with untagged columns.",
+     "Move scanning jobs into the secure zone and limit them to changed schemas.",
+     "Report the proposal acceptance rate monthly to tune thresholds."
+    ]
+   }
+  ]
+ },
+ "O3.5 Lineage: impact and tag propagation": {
+  "hash": "bb5b22fa37f7",
+  "sec": "O3.5",
+  "reels": [
+   {
+    "title": "The recall trail",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "A bakery finds one bad batch of flour. How do they know which cakes to pull?",
+      "show": {
+       "t": "big",
+       "text": "Which cakes used the bad flour?",
+       "sub": "A recall question"
+      }
+     },
+     {
+      "say": "They keep a trail. Every cake records its ingredients, and every ingredient records its batch. Follow the trail forward and you get a list of every affected cake.",
+      "show": {
+       "t": "scene",
+       "title": "Follow the *trail* forward",
+       "nodes": [
+        {
+         "id": "f",
+         "label": "Flour batch",
+         "sub": "bad",
+         "x": 50,
+         "y": 15,
+         "tone": "red"
+        },
+        {
+         "id": "d",
+         "label": "Dough",
+         "sub": "mixed",
+         "x": 30,
+         "y": 45,
+         "tone": "amber"
+        },
+        {
+         "id": "c1",
+         "label": "Cake A",
+         "x": 20,
+         "y": 78,
+         "tone": "blue"
+        },
+        {
+         "id": "c2",
+         "label": "Cake B",
+         "x": 50,
+         "y": 78,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Bread",
+         "x": 80,
+         "y": 45,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "f",
+         "d"
+        ],
+        [
+         "f",
+         "b"
+        ],
+        [
+         "d",
+         "c1"
+        ],
+        [
+         "d",
+         "c2"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "f",
+          "d",
+          "b"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "f",
+          "d"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.6,
+         "show": [
+          "c1",
+          "c2"
+         ]
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "A list, not a guess",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Data works the same way. Lineage is a map of which jobs read which tables and write which others. It turns who uses this into a real list instead of a guess.",
+      "show": {
+       "t": "points",
+       "title": "Lineage",
+       "items": [
+        "Jobs read tables",
+        "Jobs write tables",
+        "Together they form a map"
+       ]
+      }
+     },
+     {
+      "say": "Labels travel too. If a flour batch is marked allergen, every cake made from it gets the warning automatically. Data tags like personal email do the same.",
+      "show": {
+       "t": "big",
+       "text": "Labels follow the ingredients",
+       "sub": "Tags flow downstream"
+      }
+     }
+    ],
+    "check": {
+     "q": "What does lineage give a data team that a guess cannot?",
+     "opts": [
+      "A reliable list of what depends on a given table",
+      "A faster query engine for large tables",
+      "A copy of every table kept for backup",
+      "A password for each downstream consumer"
+     ],
+     "ans": 0,
+     "why": "Lineage is a map of which jobs read and write which tables, so who uses this becomes a concrete list. It does not speed queries, back up data or manage passwords."
+    },
+    "work": [
+     "Pick one important table and try to list its consumers from memory, then compare with a lineage view.",
+     "Name one label, such as personal email, that should follow data wherever it is copied."
+    ]
+   },
+   {
+    "title": "How lineage and tags travel",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "A column is tagged personal email. It flows into five tables. How does the tag follow it?",
+      "show": {
+       "t": "big",
+       "text": "1 tagged column, 5 tables",
+       "sub": "How does the tag follow?"
+      }
+     },
+     {
+      "say": "Each job, in Spark, Airflow or dbt, sends an event when it runs. The event lists the tables it read and the tables it wrote. The catalog stitches these events into one graph.",
+      "show": {
+       "t": "scene",
+       "title": "Jobs emit *events*",
+       "nodes": [
+        {
+         "id": "j",
+         "label": "Job run",
+         "sub": "Spark, dbt, Airflow",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "e",
+         "label": "Lineage event",
+         "sub": "inputs and outputs",
+         "x": 75,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "c",
+         "label": "Catalog graph",
+         "x": 50,
+         "y": 70,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "j",
+         "e"
+        ],
+        [
+         "e",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "j"
+         ]
+        },
+        {
+         "at": 0.35,
+         "packet": [
+          "j",
+          "e"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "e",
+          "c"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Graph built from real runs",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Now ask a question. Rename the email column, and the graph walks downstream: two tables and three dashboards break. That list is the impact.",
+      "show": {
+       "t": "scene",
+       "title": "Walk downstream for *impact*",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "orders.email",
+         "sub": "renamed",
+         "x": 50,
+         "y": 15,
+         "tone": "red"
+        },
+        {
+         "id": "t",
+         "label": "2 tables",
+         "x": 30,
+         "y": 55,
+         "tone": "amber"
+        },
+        {
+         "id": "d",
+         "label": "3 dashboards",
+         "x": 70,
+         "y": 55,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "t"
+        ],
+        [
+         "s",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "s"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "s",
+          "t"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "s",
+          "d"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "count": {
+          "key": "hit",
+          "label": "Assets affected",
+          "to": 5,
+          "unit": "",
+          "tone": "red"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Tags walk the same edges. The email tag is copied onto every column built from it, so masking and retention rules apply on their own. It stops where a step hashes, aggregates or drops the column.",
+      "show": {
+       "t": "flow",
+       "title": "Tag propagation",
+       "steps": [
+        {
+         "label": "Tag email"
+        },
+        {
+         "label": "Copy downstream"
+        },
+        {
+         "label": "Masking applies"
+        },
+        {
+         "label": "Stop at hash or drop"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A tagged email column feeds a table that only stores a hash of it. What should propagation do?",
+     "opts": [
+      "Stop there, because the hash step removes the raw value",
+      "Copy the tag anyway, since the data came from email",
+      "Delete the upstream tag to avoid a mismatch",
+      "Block the job until someone approves the run"
+     ],
+     "ans": 0,
+     "why": "Propagation follows edges until a step masks, aggregates or drops the data. A hash step is a deliberate end point, so the tag stops there."
+    },
+    "work": [
+     "Check whether your Spark, Airflow and dbt jobs already emit OpenLineage events.",
+     "Run an impact query for one column rename and see whether the list matches what you expected."
+    ]
+   },
+   {
+    "title": "Where lineage lies to you",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your lineage graph says nothing uses this column. Can you trust it?",
+      "show": {
+       "t": "big",
+       "text": "No edges found. Safe?",
+       "sub": "Absence is not proof"
+      }
+     },
+     {
+      "say": "Only if it was captured from the running jobs. Parsing SQL afterwards misses dynamic queries, notebooks and custom functions, so edges silently go missing. A missing edge means a surprise outage.",
+      "show": {
+       "t": "scene",
+       "title": "Missing *edges*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Table",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "n",
+         "label": "Notebook or UDF",
+         "sub": "invisible to parser",
+         "x": 75,
+         "y": 25,
+         "tone": "grey"
+        },
+        {
+         "id": "d",
+         "label": "Dashboard",
+         "sub": "breaks",
+         "x": 50,
+         "y": 72,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "n"
+        ],
+        [
+         "n",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "a",
+          "n"
+         ]
+        },
+        {
+         "at": 0.4,
+         "dim": "n"
+        },
+        {
+         "at": 0.7,
+         "show": [
+          "d"
+         ]
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Unseen dependency",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Tags carry a different risk. Join email with a name and the result is still personal data, but a naive rule might drop the tag. Over tagging is noisy. Under tagging leaks.",
+      "show": {
+       "t": "points",
+       "title": "Tag propagation traps",
+       "items": [
+        "Concatenated columns stay sensitive",
+        "Aggregates may be safe, but check",
+        "Over tagging creates noise",
+        "Under tagging leaks data"
+       ]
+      }
+     },
+     {
+      "say": "Also watch stale edges from jobs that were deleted, and tools that emit no events at all. Show when each edge was last seen, so old paths can expire.",
+      "show": {
+       "t": "points",
+       "title": "Keep the graph honest",
+       "items": [
+        "Record last seen time per edge",
+        "Expire edges from deleted jobs",
+        "List tools that emit no events"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Lineage shows no consumers for a column, yet a team uses it in a notebook. What is the likely cause?",
+     "opts": [
+      "The notebook never emitted lineage, so the edge is missing",
+      "The column is too old to appear in any graph",
+      "Column-level lineage only works for numeric types",
+      "The catalog hides edges for tagged columns"
+     ],
+     "ans": 0,
+     "why": "Lineage is only as complete as its sources. Notebooks, custom functions and tools without events leave gaps, so no edges does not mean no users."
+    },
+    "work": [
+     "List the tools in your stack that do not emit lineage events and decide how to cover them.",
+     "Add a last seen timestamp to lineage edges and review the oldest ones monthly."
+    ]
+   },
+   {
+    "title": "How much lineage to buy",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Should you track column-level lineage for every table? Probably not.",
+      "show": {
+       "t": "big",
+       "text": "Column lineage everywhere?",
+       "sub": "Probably not"
+      }
+     },
+     {
+      "say": "Column detail costs storage, compute and review time, and most tables are never queried by anyone who cares. Keep it for tables with personal data, finance numbers or many consumers. Table level is enough elsewhere.",
+      "show": {
+       "t": "bars",
+       "title": "Where column detail pays off",
+       "unit": "relative value",
+       "items": [
+        [
+         "Personal data tables",
+         90,
+         ""
+        ],
+        [
+         "Finance tables",
+         80,
+         ""
+        ],
+        [
+         "Shared core tables",
+         65,
+         ""
+        ],
+        [
+         "Scratch tables",
+         10,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Prefer emitted OpenLineage events over vendor parsers, so you can switch catalogs. Put the impact check in the pull request, where a warning is cheap, not in an incident review.",
+      "show": {
+       "t": "flow",
+       "title": "Shift impact checks left",
+       "steps": [
+        {
+         "label": "Pull request"
+        },
+        {
+         "label": "Impact lookup"
+        },
+        {
+         "label": "Show affected products"
+        },
+        {
+         "label": "Owner approves"
+        }
+       ]
+      }
+     },
+     {
+      "say": "And never make propagated tags your only control. Enforce masking at the source with policy, and treat lineage as the way to find gaps. For a small dbt only stack, built in docs may be enough.",
+      "show": {
+       "t": "points",
+       "title": "Limits",
+       "items": [
+        "Tags help, policy enforces",
+        "Lineage finds gaps",
+        "Small stacks may not need a catalog"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What is the best use of column-level lineage in a large estate?",
+     "opts": [
+      "Apply it to sensitive and widely shared tables only",
+      "Apply it to every table so nothing is skipped",
+      "Replace masking policies with propagated tags",
+      "Use it only after an incident to find the cause"
+     ],
+     "ans": 0,
+     "why": "Column detail has real cost, so spend it where risk and consumer count are high. Tags support policy but do not replace it, and the value is highest before incidents, such as in CI."
+    },
+    "work": [
+     "Rank your tables by sensitivity and consumer count, and choose where column lineage is worth it.",
+     "Add a pull request check that lists downstream products for any changed column.",
+     "Confirm masking is enforced by policy at the source, not only by propagated tags."
+    ]
+   }
+  ]
+ },
+ "O3.6 Retention, deletion and legal hold": {
+  "hash": "8e18577e8edb",
+  "sec": "O3.6",
+  "reels": [
+   {
+    "title": "Shelf life for data",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Would you keep every receipt you have ever received, forever?",
+      "show": {
+       "t": "big",
+       "text": "Keep everything forever?",
+       "sub": "Think of a pile of old receipts"
+      }
+     },
+     {
+      "say": "Probably not. Piles of paper cost space, and someone could read them. Data is the same. A retention policy gives each kind of data a shelf life, like milk lasting days and rice lasting months. When the time is up, the data is thrown out automatically.",
+      "show": {
+       "t": "scene",
+       "title": "Each food has a *shelf life*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Milk",
+         "sub": "days",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Rice",
+         "sub": "months",
+         "x": 50,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "c",
+         "label": "Bin",
+         "sub": "auto toss",
+         "x": 80,
+         "y": 30,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "c"
+        ],
+        [
+         "b",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "at": 0.5,
+         "show": "c"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "a",
+          "c"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Old data leaves on schedule",
+          "tone": "teal",
+          "icon": "clock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Two twists. If a person asks you to forget them, you must search every drawer for their papers. And if a court says keep these papers, you keep them, even past the date. That is called a legal hold.",
+      "show": {
+       "t": "scene",
+       "title": "Two *twists*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Person",
+         "sub": "forget me",
+         "x": 20,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "d",
+         "label": "Every drawer",
+         "sub": "search all",
+         "x": 50,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "h",
+         "label": "Court",
+         "sub": "legal hold",
+         "x": 80,
+         "y": 30,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "d"
+        ],
+        [
+         "h",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "p"
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "p",
+          "d"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": "h"
+        },
+        {
+         "at": 0.8,
+         "glow": "h"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Hold beats the expiry date",
+          "tone": "plum",
+          "icon": "lock"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A court orders you to keep some papers, but their shelf life has ended. What should happen?",
+     "opts": [
+      "Keep them until the hold is lifted",
+      "Delete them because the policy says so",
+      "Delete them but keep a short summary",
+      "Keep them one more week then delete"
+     ],
+     "ans": 0,
+     "why": "A legal hold overrides retention. The data stays until the hold is formally lifted, whatever the normal expiry date says."
+    },
+    "work": [
+     "List your main data types and write down a shelf life for each one.",
+     "Ask legal who can place a hold and how you would be told.",
+     "Find one dataset that has no expiry and ask why."
+    ]
+   },
+   {
+    "title": "Dropping old data, erasing one person",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How do you delete a year of data without touching a single row?",
+      "show": {
+       "t": "big",
+       "text": "Delete without scanning rows",
+       "sub": "Retention vs erasure"
+      }
+     },
+     {
+      "say": "Retention works on whole partitions. Raw events are kept thirteen months. The table is split by day, so the job just drops each day older than that. No row scanning, so it is cheap. Financial records get seven years, support chat two years, set by tag.",
+      "show": {
+       "t": "bars",
+       "title": "Retention by class",
+       "unit": "months",
+       "items": [
+        [
+         "Raw events",
+         13,
+         ""
+        ],
+        [
+         "Support chat",
+         24,
+         ""
+        ],
+        [
+         "Financial",
+         84,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Erasure is harder. One person asks to be forgotten. Lineage and tags tell you every table holding their id. You delete their rows in batches, then compact files and expire old snapshots, because until then the old files still contain them. Backups must follow the same rules.",
+      "show": {
+       "t": "flow",
+       "title": "Erasure steps",
+       "steps": [
+        {
+         "label": "Find tables by id"
+        },
+        {
+         "label": "Delete rows in batches"
+        },
+        {
+         "label": "Compact files"
+        },
+        {
+         "label": "Expire snapshots"
+        },
+        {
+         "label": "Purge backups"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why is dropping day partitions cheaper than erasing one person's data?",
+     "opts": [
+      "Whole files go at once, with no row search",
+      "Partitions are encrypted so they delete faster",
+      "Erasure needs a manual review for each row",
+      "Retention jobs run on bigger machines"
+     ],
+     "ans": 0,
+     "why": "Retention removes whole partitions that aged out. Erasure must find and rewrite rows for one person across many tables."
+    },
+    "work": [
+     "Check that big tables are partitioned by date so retention is a cheap drop.",
+     "Map which tables hold a person id using tags and lineage.",
+     "Write down the full erasure steps, including backups."
+    ]
+   },
+   {
+    "title": "Why deleted data comes back",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "You deleted the row. So why can the data still be read?",
+      "show": {
+       "t": "big",
+       "text": "Deleted, yet still readable?",
+       "sub": "Snapshots, backups, copies"
+      }
+     },
+     {
+      "say": "Table formats like Iceberg keep old snapshots for time travel. A merge-on-read delete only writes a marker saying skip this row. The original file still holds the person's data. Until you compact and expire snapshots, it is recoverable.",
+      "show": {
+       "t": "scene",
+       "title": "A delete is only a *marker*",
+       "nodes": [
+        {
+         "id": "f",
+         "label": "Data file",
+         "sub": "still has row",
+         "x": 25,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "m",
+         "label": "Delete marker",
+         "sub": "skip row",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "s",
+         "label": "Old snapshot",
+         "sub": "time travel",
+         "x": 50,
+         "y": 60,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "m",
+         "f"
+        ],
+        [
+         "s",
+         "f"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "f"
+        },
+        {
+         "at": 0.3,
+         "show": "m"
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "m",
+          "f"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.6,
+         "show": "s"
+        },
+        {
+         "at": 0.8,
+         "glow": "f"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Compact and expire to truly erase",
+          "tone": "red",
+          "icon": "trash"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Backups are the next trap. A restore from last month's backup brings the person back. Extracts, caches and training sets hold copies too, so lineage must reach them.",
+      "show": {
+       "t": "points",
+       "title": "Hidden copies",
+       "items": [
+        "Backups and restores",
+        "Downstream extracts",
+        "Caches and search indexes",
+        "ML training sets"
+       ]
+      }
+     },
+     {
+      "say": "And the legal hold. The deletion job must check holds first. Wrongly deleting held data is worse than keeping extra, because destroying evidence can bring fines.",
+      "show": {
+       "t": "big",
+       "text": "Check holds first",
+       "sub": "Wrong deletion costs more than extra storage"
+      }
+     }
+    ],
+    "check": {
+     "q": "After a merge-on-read delete of a person's rows, what is still true until compaction and snapshot expiry?",
+     "opts": [
+      "Old files may still hold the person's data",
+      "The data is gone but the marker remains",
+      "Only backups still hold the person's data",
+      "Queries can still see it but only as admin"
+     ],
+     "ans": 0,
+     "why": "Merge-on-read writes a skip marker. The original files and old snapshots still contain the rows until they are compacted and expired."
+    },
+    "work": [
+     "Test an erasure end to end and try to time travel back to the deleted row.",
+     "Schedule compaction and snapshot expiry after erasure batches.",
+     "Add backups and downstream copies to your erasure checklist."
+    ]
+   },
+   {
+    "title": "Designing deletion that scales",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "What does it cost to say yes to every deletion request?",
+      "show": {
+       "t": "big",
+       "text": "What does erasure cost?",
+       "sub": "Design it in, not on top"
+      }
+     },
+     {
+      "say": "Design so erasure is cheap. Partition by time for retention. Keep personal details in one small table keyed by person, and let other tables hold only a token. Delete that one row and the rest points at nothing.",
+      "show": {
+       "t": "scene",
+       "title": "Keep personal data in *one place*",
+       "nodes": [
+        {
+         "id": "e",
+         "label": "Events",
+         "sub": "token only",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "o",
+         "label": "Orders",
+         "sub": "token only",
+         "x": 50,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "v",
+         "label": "Identity table",
+         "sub": "delete here",
+         "x": 80,
+         "y": 30,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "e",
+         "v"
+        ],
+        [
+         "o",
+         "v"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "e",
+          "o"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": "v"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "e",
+          "v"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "One delete, many tables",
+          "tone": "teal",
+          "icon": "key"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Avoid row erasure on huge tables where you can. It rewrites files and burns compute. Batch requests and run them weekly, inside the legal deadline of thirty days.",
+      "show": {
+       "t": "points",
+       "title": "Cost control",
+       "items": [
+        "Avoid rewriting huge tables",
+        "Batch requests weekly",
+        "Stay inside the legal deadline"
+       ]
+      }
+     },
+     {
+      "say": "Keep one hold registry that every deletion job reads, and log every deletion for audit. Fail closed: if the registry is down, delete nothing.",
+      "show": {
+       "t": "flow",
+       "title": "Safe deletion job",
+       "steps": [
+        {
+         "label": "Read hold registry"
+        },
+        {
+         "label": "Skip held data"
+        },
+        {
+         "label": "Delete the rest"
+        },
+        {
+         "label": "Write audit log"
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "The hold registry is unreachable when the nightly deletion job starts. What is the safest design?",
+     "opts": [
+      "Skip deletion and alert until it is back",
+      "Delete using yesterday's cached hold list",
+      "Delete only data older than seven years",
+      "Delete everything and restore held data later"
+     ],
+     "ans": 0,
+     "why": "Failing closed is safest. Wrongly deleting held data is irreversible and costly, while a delayed deletion is a small, recoverable cost."
+    },
+    "work": [
+     "Move personal details into one keyed table and use tokens elsewhere.",
+     "Build a single hold registry and make every deletion job check it.",
+     "Log each deletion with who, what and when for audit."
+    ]
+   }
+  ]
+ },
+ "O3.4 Masking, tokenisation and pseudonymisation": {
+  "hash": "5167cef651fb",
+  "sec": "O3.4",
+  "reels": [
+   {
+    "title": "Four ways to hide a person",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "How can a team use customer data without ever seeing who the customers are? There are four different tricks, and people mix them up all the time.",
+      "show": {
+       "t": "big",
+       "kicker": "Same data, four tricks",
+       "text": "Hide the person",
+       "sub": "Without losing the data"
+      }
+     },
+     {
+      "say": "Masking is a black marker over a letter. The words are still on the paper, but the reader only sees stars. Tokenisation is a coat check. You hand over your coat, get a ticket, and only the cloakroom can match ticket to coat.",
+      "show": {
+       "t": "scene",
+       "title": "Marker versus *coat check*",
+       "nodes": [
+        {
+         "id": "mask",
+         "label": "Masking",
+         "sub": "black marker",
+         "x": 25,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "tok",
+         "label": "Tokenisation",
+         "sub": "coat check ticket",
+         "x": 75,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "vault",
+         "label": "Cloakroom",
+         "sub": "holds the real coat",
+         "x": 75,
+         "y": 70,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "tok",
+         "vault"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "mask"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "tok",
+          "vault"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "tok",
+          "vault"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Only the cloakroom can reverse it",
+          "tone": "blue",
+          "icon": "key"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Pseudonymisation is a nickname. Everyone uses the same nickname, so stories still line up, but a secret list says who you really are. Anonymisation mixes you into a crowd count. Nobody can ever find you again.",
+      "show": {
+       "t": "scene",
+       "title": "Nickname versus *crowd*",
+       "nodes": [
+        {
+         "id": "nick",
+         "label": "Pseudonym",
+         "sub": "same nickname every time",
+         "x": 25,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "key",
+         "label": "Secret list",
+         "sub": "nickname to person",
+         "x": 25,
+         "y": 70,
+         "tone": "plum"
+        },
+        {
+         "id": "crowd",
+         "label": "Anonymised",
+         "sub": "only crowd totals",
+         "x": 75,
+         "y": 30,
+         "tone": "grey"
+        }
+       ],
+       "edges": [
+        [
+         "nick",
+         "key"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "nick",
+          "key"
+         ]
+        },
+        {
+         "at": 0.5,
+         "show": "crowd"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Only the crowd cannot be traced back",
+          "tone": "teal",
+          "icon": "shield"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Which tool lets the same person be recognised across tables but only reveals who they are with a secret?",
+     "opts": [
+      "Pseudonymisation, a consistent stand-in that only a protected key can link back",
+      "Masking, because the stars are produced from a secret stored with each row",
+      "Anonymisation, because the link to the person is kept in a locked archive",
+      "Tokenisation, because each token is a hash that anyone can recompute freely"
+     ],
+     "ans": 0,
+     "why": "Pseudonymisation gives a consistent stand-in so joins work, and only the key links it to a person. Masking only hides display, anonymisation removes the link for good, and tokens are random, not recomputable."
+    },
+    "work": [
+     "Write one sentence for each of the four terms and check your team uses them the same way.",
+     "List the columns in your warehouse that hold identifiers and note which tool each one needs."
+    ]
+   },
+   {
+    "title": "How each technique works",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "A sixteen digit card number. How can four teams each see it a different way?",
+      "show": {
+       "t": "big",
+       "kicker": "One card number",
+       "text": "Four views",
+       "sub": "Same source, different tools"
+      }
+     },
+     {
+      "say": "Masking happens at read time. A policy checks your role, and an analyst sees stars then the last four digits. The stored number never changes. Tokenisation swaps the card for a random token, and only a vault can map it back. A payment service may ask. Analysts cannot.",
+      "show": {
+       "t": "scene",
+       "title": "Mask at read, *tokenise* at write",
+       "nodes": [
+        {
+         "id": "store",
+         "label": "Stored card",
+         "sub": "unchanged",
+         "x": 25,
+         "y": 25,
+         "tone": "grey",
+         "kind": "disk"
+        },
+        {
+         "id": "analyst",
+         "label": "Analyst sees",
+         "sub": "stars 1234",
+         "x": 75,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "vault",
+         "label": "Vault",
+         "sub": "token to card",
+         "x": 25,
+         "y": 70,
+         "tone": "plum",
+         "kind": "disk"
+        },
+        {
+         "id": "pay",
+         "label": "Payment service",
+         "sub": "authorised",
+         "x": 75,
+         "y": 70,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "store",
+         "analyst"
+        ],
+        [
+         "vault",
+         "pay"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "store",
+          "analyst"
+         ]
+        },
+        {
+         "at": 0.25,
+         "packet": [
+          "store",
+          "analyst"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.5,
+         "show": [
+          "vault",
+          "pay"
+         ]
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "vault",
+          "pay"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Masking hides the view. Tokens need the vault",
+          "tone": "amber",
+          "icon": "lock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Pseudonymisation runs the email through a keyed hash. The same email always gives the same output, so orders and support tickets still join. Without the key, nobody can reverse it.",
+      "show": {
+       "t": "scene",
+       "title": "Keyed hash keeps *joins* alive",
+       "nodes": [
+        {
+         "id": "orders",
+         "label": "Orders",
+         "sub": "user id a91f",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "tickets",
+         "label": "Tickets",
+         "sub": "user id a91f",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "join",
+         "label": "Join works",
+         "sub": "no name needed",
+         "x": 50,
+         "y": 70,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "orders",
+         "join"
+        ],
+        [
+         "tickets",
+         "join"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "orders",
+          "tickets"
+         ]
+        },
+        {
+         "at": 0.5,
+         "show": "join"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "orders",
+          "join"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "tickets",
+          "join"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Same input, same stand-in",
+          "tone": "teal",
+          "icon": "link"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Anonymisation goes further. Report counts by city, and hide any group smaller than ten people. No link back remains.",
+      "show": {
+       "t": "bars",
+       "title": "Hide small groups",
+       "unit": "people",
+       "items": [
+        [
+         "London",
+         4200,
+         ""
+        ],
+        [
+         "Leeds",
+         310,
+         ""
+        ],
+        [
+         "Tiny village",
+         6,
+         "hidden, under ten"
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does a keyed hash of an email still let you join orders to support tickets?",
+     "opts": [
+      "The same email and key always give the same output, so both tables carry a matching value",
+      "The hash is reversed during the join, then hidden again before the results are returned",
+      "A vault is called on every row of the join to look up the real email for each side",
+      "The hash is random per row, and a lookup table lines the two tables up afterwards"
+     ],
+     "ans": 0,
+     "why": "A keyed hash is deterministic: same input and key give the same output, so equal values match across tables. It is not reversed or random, and no vault call is needed."
+    },
+    "work": [
+     "Pick one table with emails and sketch the keyed hash column you would expose instead.",
+     "Check which roles see raw card or email values and which see masked ones."
+    ]
+   },
+   {
+    "title": "The plain hash trap",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Is a hashed email anonymous? No, and believing it is has caused real privacy breaches.",
+      "show": {
+       "t": "big",
+       "kicker": "Common mistake",
+       "text": "Hash is not anonymous",
+       "sub": "Guessable inputs break it"
+      }
+     },
+     {
+      "say": "Emails are guessable. An attacker takes a list of a hundred million known addresses, hashes each one in minutes, and matches them against your column. Every match reveals a person.",
+      "show": {
+       "t": "scene",
+       "title": "Guess, hash, *match*",
+       "nodes": [
+        {
+         "id": "list",
+         "label": "Known emails",
+         "sub": "100 million",
+         "x": 25,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "hash",
+         "label": "Plain hash",
+         "sub": "no secret",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "col",
+         "label": "Your column",
+         "sub": "hashed emails",
+         "x": 50,
+         "y": 70,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "list",
+         "hash"
+        ],
+        [
+         "hash",
+         "col"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "list",
+          "hash"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "list",
+          "hash"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.5,
+         "show": "col"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "hash",
+          "col"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Matches reveal real people",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The fix is a keyed hash. The secret key lives in a key manager, so guessing alone gets nowhere. But rotating that key changes every output and breaks joins, so plan for it.",
+      "show": {
+       "t": "scene",
+       "title": "Protect the *key*",
+       "nodes": [
+        {
+         "id": "kms",
+         "label": "Key manager",
+         "sub": "holds the secret",
+         "x": 50,
+         "y": 25,
+         "tone": "plum"
+        },
+        {
+         "id": "job",
+         "label": "Pipeline",
+         "sub": "keyed hash",
+         "x": 25,
+         "y": 70,
+         "tone": "teal"
+        },
+        {
+         "id": "out",
+         "label": "Pseudonyms",
+         "sub": "change if key rotates",
+         "x": 75,
+         "y": 70,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "kms",
+         "job"
+        ],
+        [
+         "job",
+         "out"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "kms"
+        },
+        {
+         "at": 0.3,
+         "show": "job"
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "kms",
+          "job"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": "out"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "job",
+          "out"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Rotation breaks old joins",
+          "tone": "amber",
+          "icon": "key"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "And remember the law. Under GDPR, pseudonymised data is still personal data. Only truly anonymised data falls outside it.",
+      "show": {
+       "t": "points",
+       "title": "What GDPR says",
+       "items": [
+        "Pseudonymised data is still personal data",
+        "Rules on access, retention and deletion still apply",
+        "Only truly anonymised data is outside scope"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A teammate says a plain SHA-256 of each email makes the column anonymous. What is wrong?",
+     "opts": [
+      "Attackers can hash lists of known emails and match them, so a keyed hash is needed",
+      "SHA-256 is too weak to hash text, so a longer hash such as SHA-512 is required",
+      "Hashes can be undone with the original algorithm, so encryption must replace them",
+      "Hashed emails break joins across tables, so they cannot serve analytics at all"
+     ],
+     "ans": 0,
+     "why": "Emails are easy to guess, so an unkeyed hash can be matched by hashing a known list. A secret key stops that. The hash length is not the issue, and hashes still join."
+    },
+    "work": [
+     "Find any column built from a plain hash of an email or phone and replace it with a keyed hash.",
+     "Document where the hashing key lives, who can read it and how rotation affects joins."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "When masking and tokens leak",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "If a column is masked, is the value really safe?",
+      "show": {
+       "t": "big",
+       "kicker": "Look closer",
+       "text": "Masked is not gone",
+       "sub": "The raw value still exists"
+      }
+     },
+     {
+      "say": "Not always. Masking only hides the display. The raw value still sits in storage, so a leaked file or a broad admin role exposes everything. A clever analyst can also filter where email equals a guess, and see whether any rows come back.",
+      "show": {
+       "t": "scene",
+       "title": "Hidden view, *raw* storage",
+       "nodes": [
+        {
+         "id": "disk",
+         "label": "Storage",
+         "sub": "raw email",
+         "x": 25,
+         "y": 30,
+         "tone": "red",
+         "kind": "disk"
+        },
+        {
+         "id": "view",
+         "label": "Masked view",
+         "sub": "j***@x.com",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "guess",
+         "label": "Filter guess",
+         "sub": "where email equals",
+         "x": 50,
+         "y": 70,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "disk",
+         "view"
+        ],
+        [
+         "guess",
+         "disk"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "disk",
+          "view"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "disk",
+          "view"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.55,
+         "show": "guess"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "guess",
+          "disk"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Filters can leak masked values",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Tokenisation has its own gotcha. The vault becomes the crown jewel. If it goes down, every service needing real values stops. If it leaks, the whole mapping is exposed.",
+      "show": {
+       "t": "scene",
+       "title": "The vault is *critical*",
+       "nodes": [
+        {
+         "id": "svc1",
+         "label": "Billing",
+         "sub": "needs card",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "svc2",
+         "label": "Refunds",
+         "sub": "needs card",
+         "x": 75,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "vault",
+         "label": "Token vault",
+         "sub": "single point of failure",
+         "x": 50,
+         "y": 70,
+         "tone": "red",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "svc1",
+         "vault"
+        ],
+        [
+         "svc2",
+         "vault"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "svc1",
+          "svc2"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": "vault"
+        },
+        {
+         "at": 0.55,
+         "packet": [
+          "svc1",
+          "vault"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "svc2",
+          "vault"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Vault down means payments stop",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So block filters on masked columns, make the vault highly available, and log every detokenise call.",
+      "show": {
+       "t": "points",
+       "title": "Close the gaps",
+       "items": [
+        "Block filters and joins on masked columns",
+        "Run the vault highly available and backed up",
+        "Log every detokenise call for audit"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why is a masked column not enough to protect an email address by itself?",
+     "opts": [
+      "The raw value stays in storage, and filters or file access can still expose it",
+      "Masking encrypts the value with a weak cipher that determined analysts can break",
+      "Masking deletes the raw value, so any report that needs it later fails to run",
+      "Masking changes the stored value, so downstream joins on that column stop matching"
+     ],
+     "ans": 0,
+     "why": "Masking only changes what a reader sees. The stored value is unchanged, so leaked files, broad roles or filter guessing can still expose it."
+    },
+    "work": [
+     "Test whether an analyst on a masked column can filter or group by the hidden value.",
+     "Review vault availability, backups and the audit log of detokenise calls."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Choosing the right tool",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Four tools, one budget. Which do you reach for first?",
+      "show": {
+       "t": "big",
+       "kicker": "Trade-offs",
+       "text": "Match tool to need",
+       "sub": "Cost, risk and reversibility"
+      }
+     },
+     {
+      "say": "Default to masking at read time. It is cheap, needs no copies, and follows roles. But the raw data still exists, so it protects views, not storage.",
+      "show": {
+       "t": "scene",
+       "title": "Masking: cheap, *shallow*",
+       "nodes": [
+        {
+         "id": "policy",
+         "label": "Role policy",
+         "sub": "one rule",
+         "x": 25,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "table",
+         "label": "One table",
+         "sub": "no copies",
+         "x": 75,
+         "y": 30,
+         "tone": "blue",
+         "kind": "disk"
+        },
+        {
+         "id": "risk",
+         "label": "Raw data remains",
+         "sub": "storage risk",
+         "x": 50,
+         "y": 70,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "policy",
+         "table"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "policy",
+          "table"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "policy",
+          "table"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": "risk"
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Protects views, not storage",
+          "tone": "amber",
+          "icon": "eye"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Use tokenisation only where real values must come back, like card numbers. It cuts audit scope, but adds a network call and an outage risk to every payment path. Never detokenise inside analytics queries.",
+      "show": {
+       "t": "scene",
+       "title": "Tokens: *narrow* use",
+       "nodes": [
+        {
+         "id": "warehouse",
+         "label": "Warehouse",
+         "sub": "tokens only",
+         "x": 25,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "vault",
+         "label": "Vault",
+         "sub": "extra latency and cost",
+         "x": 75,
+         "y": 30,
+         "tone": "plum",
+         "kind": "disk"
+        },
+        {
+         "id": "pay",
+         "label": "Payment path",
+         "sub": "detokenise here",
+         "x": 50,
+         "y": 70,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "pay",
+         "vault"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "warehouse",
+          "vault"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": "pay"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "pay",
+          "vault"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Smaller audit scope, new dependency",
+          "tone": "plum",
+          "icon": "lock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "For analysis, pseudonymise in the warehouse. For sharing outside, anonymise, and test it, because small groups can still reveal people.",
+      "show": {
+       "t": "points",
+       "title": "Default choices",
+       "items": [
+        "Mask at read for most analysts",
+        "Pseudonymise for cross-table analysis",
+        "Tokenise only when values must be recovered",
+        "Anonymise and test before external sharing"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Your analytics team runs heavy queries and needs to join users across ten tables without knowing who they are. What fits best?",
+     "opts": [
+      "Keyed-hash pseudonyms in the warehouse, with the key held by a small trusted group",
+      "Tokenise every identifier and call the vault to detokenise inside each analytics query",
+      "Mask the id column at read time so every analyst sees stars in place of the value",
+      "Anonymise the raw tables by aggregation first, then join the aggregated results"
+     ],
+     "ans": 0,
+     "why": "Keyed pseudonyms are consistent, so joins work at warehouse speed with no vault call. Masked stars cannot join, per-query detokenising is slow and risky, and aggregation removes the row level detail joins need."
+    },
+    "work": [
+     "Write a one page decision guide: which technique for which data and audience.",
+     "Measure vault latency and cost before putting tokenisation on a hot path.",
+     "Run a re-identification test on any dataset you plan to share outside the company."
+    ]
+   }
+  ]
+ },
+ "O3.7 Audit and evidence": {
+  "hash": "e5bd4cc2fc64",
+  "sec": "O3.7",
+  "reels": [
+   {
+    "title": "The sign-in book for data",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Someone asks who looked at a customer's records last month. Can you answer in a minute, or does it take two weeks?",
+      "show": {
+       "t": "big",
+       "text": "Who saw it?",
+       "sub": "One minute or two weeks"
+      }
+     },
+     {
+      "say": "Think of a building with a sign-in book at the front desk. Each visitor writes a name, a time, a floor, and a reason. Pages are numbered, so nobody can quietly tear one out.",
+      "show": {
+       "t": "scene",
+       "title": "The *sign-in* book",
+       "nodes": [
+        {
+         "id": "v",
+         "label": "Visitor",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Sign-in book",
+         "sub": "name, time, reason",
+         "x": 50,
+         "y": 55,
+         "tone": "amber"
+        },
+        {
+         "id": "f",
+         "label": "Vault floor",
+         "x": 80,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "v",
+         "b"
+        ],
+        [
+         "b",
+         "f"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "v"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "b"
+         ],
+         "packet": [
+          "v",
+          "b"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": [
+          "f"
+         ],
+         "chip": {
+          "text": "Numbered pages",
+          "tone": "amber",
+          "icon": "lock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Data needs the same book. An access log records who read which table, when, and why. A grant history records who approved the key. A deletion record shows what you erased.",
+      "show": {
+       "t": "points",
+       "title": "Three books",
+       "items": [
+        "Access log: who read what, when, why",
+        "Grant history: who approved access",
+        "Deletion record: what was erased"
+       ]
+      }
+     },
+     {
+      "say": "Auditors do not accept promises. They want the book. Proof beats good intentions, and a good book makes the answer one lookup.",
+      "show": {
+       "t": "big",
+       "text": "Proof, not promises",
+       "sub": "The book answers in one lookup"
+      }
+     }
+    ],
+    "check": {
+     "q": "What does an auditor mainly want to see?",
+     "opts": [
+      "Written proof of who accessed what and when",
+      "A policy document saying staff are careful",
+      "A verbal promise from the data team lead",
+      "A list of tools the company has bought"
+     ],
+     "ans": 0,
+     "why": "Auditors test evidence of what actually happened. Policies and promises state intent, but only records like access logs and grant history prove it."
+    },
+    "work": [
+     "Find out where your warehouse records who read which table today.",
+     "Ask who could answer 'who saw this customer?' and how long it would take.",
+     "List the three records an auditor would ask you for first."
+    ]
+   },
+   {
+    "title": "One query: who saw this customer",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How do you answer, who saw this customer's data last month, with one query?",
+      "show": {
+       "t": "big",
+       "text": "One query",
+       "sub": "Not a two-week project"
+      }
+     },
+     {
+      "say": "Step one. Every query engine writes an access log row: user, table, columns, time, tool, and stated purpose. A busy warehouse writes millions of rows a day, so partition the log table by date.",
+      "show": {
+       "t": "scene",
+       "title": "Step one: the *log*",
+       "nodes": [
+        {
+         "id": "u",
+         "label": "Analyst",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "w",
+         "label": "Warehouse",
+         "x": 50,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "l",
+         "label": "Access log",
+         "sub": "partitioned by day",
+         "x": 80,
+         "y": 25,
+         "tone": "amber",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "u",
+         "w"
+        ],
+        [
+         "w",
+         "l"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "u",
+          "w"
+         ],
+         "packet": [
+          "u",
+          "w"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.5,
+         "show": [
+          "l"
+         ],
+         "packet": [
+          "w",
+          "l"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.8,
+         "count": {
+          "key": "rows",
+          "label": "log rows per day",
+          "to": 5000000,
+          "unit": "rows",
+          "tone": "amber"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Step two, lineage. The customer lives in a raw table, but also in copies, like a daily mart and a feature table. Lineage lists every downstream table holding that column.",
+      "show": {
+       "t": "scene",
+       "title": "Step two: *lineage*",
+       "nodes": [
+        {
+         "id": "r",
+         "label": "raw_customers",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "m",
+         "label": "daily_mart",
+         "x": 25,
+         "y": 50,
+         "tone": "teal"
+        },
+        {
+         "id": "f",
+         "label": "feature_table",
+         "x": 75,
+         "y": 50,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "r",
+         "m"
+        ],
+        [
+         "r",
+         "f"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "r"
+         ]
+        },
+        {
+         "at": 0.5,
+         "show": [
+          "m",
+          "f"
+         ],
+         "packet": [
+          "r",
+          "m"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "3 tables hold the data",
+          "tone": "teal",
+          "icon": "link"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Step three, join. Take the log, filter to the last thirty days, keep tables from lineage, and group by user. Out comes a list of names in seconds.",
+      "show": {
+       "t": "code",
+       "title": "The join",
+       "text": "select user, count(*) from access_log a join lineage l on a.table = l.table where l.source = 'raw_customers' and a.day >= today - 30 group by user"
+      }
+     }
+    ],
+    "check": {
+     "q": "Why is lineage needed to answer who saw this customer's data?",
+     "opts": [
+      "It lists every copy of the data, not just the original",
+      "It stores the passwords of each user who read it",
+      "It speeds up queries on the raw access log table",
+      "It deletes the customer rows from every table"
+     ],
+     "ans": 0,
+     "why": "People read copies such as marts and feature tables. Without lineage you would only find readers of the raw table and miss the rest."
+    },
+    "work": [
+     "Check your access log keeps user, table, columns, time, tool and purpose.",
+     "Write the who-saw-this query once and time it on real data.",
+     "Confirm lineage covers marts and feature tables, not just raw ones."
+    ]
+   },
+   {
+    "title": "When the log lies",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your access log says nobody touched the table. Why might that still be wrong?",
+      "show": {
+       "t": "big",
+       "text": "Clean log, still wrong?",
+       "sub": "Gaps hide readers"
+      }
+     },
+     {
+      "say": "Logs have gaps. A service account shared by ten people hides who really ran the query. Direct reads of files in object storage skip the warehouse log entirely. Cached results never reach the table at all.",
+      "show": {
+       "t": "points",
+       "title": "Where gaps hide",
+       "items": [
+        "Shared service accounts hide the real person",
+        "Direct file reads bypass the warehouse log",
+        "Cached results never touch the table"
+       ]
+      }
+     },
+     {
+      "say": "Logs can be altered. Write them to storage that cannot be overwritten, and chain hashes so a missing row shows up. Keep them as long as policy says, often one to seven years.",
+      "show": {
+       "t": "scene",
+       "title": "*Tamper-evident* logs",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Row 1",
+         "sub": "hash A",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Row 2",
+         "sub": "hash of A plus row",
+         "x": 50,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "c",
+         "label": "Row 3",
+         "sub": "hash of B plus row",
+         "x": 80,
+         "y": 30,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "b"
+        ],
+        [
+         "b",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "a",
+          "b",
+          "c"
+         ]
+        },
+        {
+         "at": 0.6,
+         "glow": "b"
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Edit one row, chain breaks",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Deletion is the same trap. Deleting rows is not enough while old snapshots and backups still hold them. Evidence must show tables touched, rows deleted, and snapshots expired.",
+      "show": {
+       "t": "points",
+       "title": "Deletion evidence",
+       "items": [
+        "Request received and date",
+        "Tables touched and rows deleted",
+        "Snapshots and backups expired"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A customer erasure request is done. What is the weakest evidence?",
+     "opts": [
+      "Rows deleted in the main table, snapshots untouched",
+      "Row counts per table plus snapshot expiry dates",
+      "A request ID linked to each table that was cleaned",
+      "A dated log of backup expiry for old copies"
+     ],
+     "ans": 0,
+     "why": "Time travel snapshots and backups still hold the erased rows, so the data is recoverable. Real evidence covers every copy, not just the live table."
+    },
+    "work": [
+     "Replace shared service accounts with per-person or per-job identities.",
+     "Send logs to write-once storage and set retention to match policy.",
+     "Add snapshot expiry to your erasure runbook and record it."
+    ]
+   },
+   {
+    "title": "What audit evidence costs",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Should you log every single read, forever? That bill grows fast.",
+      "show": {
+       "t": "big",
+       "text": "Log everything?",
+       "sub": "Cost grows with every read"
+      }
+     },
+     {
+      "say": "Full column-level logging on a big warehouse can reach terabytes a year. Tier it. Keep ninety days hot for fast queries, then move to a cheap cold archive that is slower to search.",
+      "show": {
+       "t": "bars",
+       "title": "Storage tiers",
+       "unit": "relative cost per TB",
+       "items": [
+        [
+         "Hot, 90 days",
+         10,
+         "fast queries"
+        ],
+        [
+         "Cold archive",
+         1,
+         "slow to search"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Log more detail for sensitive columns and only summaries for public data. Then measure classification coverage: the share of production columns with a reviewed tag. Without it, you cannot tell which reads matter.",
+      "show": {
+       "t": "scene",
+       "title": "Detail where it *matters*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Public data",
+         "sub": "summary only",
+         "x": 25,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "s",
+         "label": "Sensitive data",
+         "sub": "full detail",
+         "x": 75,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "c",
+         "label": "Coverage",
+         "sub": "tagged columns",
+         "x": 50,
+         "y": 65,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "c",
+         "p"
+        ],
+        [
+         "c",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "p",
+          "s"
+         ]
+        },
+        {
+         "at": 0.6,
+         "show": [
+          "c"
+         ],
+         "count": {
+          "key": "cov",
+          "label": "columns with reviewed tag",
+          "to": 92,
+          "unit": "%",
+          "tone": "amber"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Prefer evidence generated by the platform, like policy in version control and grant records, over spreadsheets and screenshots. Manual evidence goes stale before the audit arrives. Give each report one owner.",
+      "show": {
+       "t": "points",
+       "title": "Evidence you trust",
+       "items": [
+        "Policy as code history from version control",
+        "Grant and review records from the platform",
+        "One named owner per report"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What is the best way to control audit log cost?",
+     "opts": [
+      "Tier storage and log more detail for sensitive data",
+      "Log only failed queries and drop all successful reads",
+      "Keep every log hot so any query stays fast forever",
+      "Sample one read in ten to cut volume across tables"
+     ],
+     "ans": 0,
+     "why": "Tiering keeps recent logs fast and old logs cheap, while detail is focused where risk is. Dropping or sampling reads breaks the proof auditors need."
+    },
+    "work": [
+     "Set hot and cold retention tiers for the access log and price them.",
+     "Track classification coverage as a number reviewed each month.",
+     "Replace one manual evidence spreadsheet with a generated report."
+    ]
+   }
+  ]
+ },
+ "O3.8 Governance as code, and how it fails": {
+  "hash": "198bbfceb147",
+  "sec": "O3.8",
+  "reels": [
+   {
+    "title": "Rules that enforce themselves",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Why does a rule written in a binder never protect anything?",
+      "show": {
+       "t": "big",
+       "text": "A binder protects nothing",
+       "sub": "rules nobody checks"
+      }
+     },
+     {
+      "say": "Picture an office building. One way is a binder of rules and a guard who reads it. The other way is doors that check your badge on their own. The binder gets ignored. The doors cannot be.",
+      "show": {
+       "t": "scene",
+       "title": "Binder or *doors*",
+       "nodes": [
+        {
+         "id": "b",
+         "label": "Binder",
+         "sub": "ignored",
+         "x": 25,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "d",
+         "label": "Badge door",
+         "sub": "always checks",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "b"
+        },
+        {
+         "at": 0.5,
+         "show": "d"
+        },
+        {
+         "at": 0.8,
+         "glow": "d"
+        },
+        {
+         "at": 0.9,
+         "dim": "b"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Data governance as code is the doors. Rules are written as files, checked automatically, and enforced by the platform itself. Marking a column as private, for example, locks it the moment it exists.",
+      "show": {
+       "t": "scene",
+       "title": "Rules as *files*",
+       "nodes": [
+        {
+         "id": "f",
+         "label": "Rule file",
+         "sub": "column is private",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "p",
+         "label": "Platform",
+         "sub": "enforces",
+         "x": 80,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "c",
+         "label": "New column",
+         "sub": "locked at birth",
+         "x": 50,
+         "y": 60,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "f",
+         "p"
+        ],
+        [
+         "p",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "f"
+        },
+        {
+         "at": 0.4,
+         "show": "p",
+         "packet": [
+          "f",
+          "p"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "c",
+         "packet": [
+          "p",
+          "c"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Locked the moment it exists",
+          "tone": "teal",
+          "icon": "lock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "And badges expire. Access is granted to a person for a set time, then it switches off, like a visitor pass.",
+      "show": {
+       "t": "points",
+       "title": "Visitor pass",
+       "items": [
+        "Granted to one person",
+        "Approved by the owner",
+        "Switches off on its own"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What makes governance as code different from a rulebook?",
+     "opts": [
+      "The platform enforces the rule automatically, with no one needing to remember it",
+      "A larger committee reviews each request more carefully before approval",
+      "Staff sign a policy document once a year to confirm they read it",
+      "Every dataset is locked until a manager unlocks it by hand"
+     ],
+     "ans": 0,
+     "why": "Code turns a rule into a check or a policy the platform applies every time, so protection does not depend on people remembering a document."
+    },
+    "work": [
+     "Pick one written data rule and find out whether anything actually enforces it.",
+     "List who still has access to your most sensitive table and ask why."
+    ]
+   },
+   {
+    "title": "From a tag to a protected column",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How does a brand new column get protected before anyone remembers to ask?",
+      "show": {
+       "t": "big",
+       "text": "Protected on day one",
+       "sub": "no ticket needed"
+      }
+     },
+     {
+      "say": "A team adds an email column to a data product and tags it personal in the contract. The build runs a check in CI, the automated test step. An untagged column fails the build, so nothing is published.",
+      "show": {
+       "t": "scene",
+       "title": "Contract and *CI check*",
+       "nodes": [
+        {
+         "id": "c",
+         "label": "Contract",
+         "sub": "email: personal",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "ci",
+         "label": "CI check",
+         "sub": "untagged fails",
+         "x": 80,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "pub",
+         "label": "Publish",
+         "sub": "only if tagged",
+         "x": 50,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "c",
+         "ci"
+        ],
+        [
+         "ci",
+         "pub"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "c"
+        },
+        {
+         "at": 0.4,
+         "show": "ci",
+         "packet": [
+          "c",
+          "ci"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.75,
+         "show": "pub",
+         "packet": [
+          "ci",
+          "pub"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Untagged column blocks publish",
+          "tone": "amber",
+          "icon": "stop"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "In the warehouse, a masking policy is attached to the personal tag, not to column names. So the moment that column appears, analysts see hashed values. Only approved roles see the real email.",
+      "show": {
+       "t": "scene",
+       "title": "Policy follows the *tag*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Tag: personal",
+         "sub": "on email",
+         "x": 20,
+         "y": 25,
+         "tone": "plum"
+        },
+        {
+         "id": "m",
+         "label": "Masking policy",
+         "sub": "hash values",
+         "x": 80,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "a",
+         "label": "Analyst",
+         "sub": "sees hashes",
+         "x": 50,
+         "y": 60,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "m"
+        ],
+        [
+         "m",
+         "a"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "t"
+        },
+        {
+         "at": 0.4,
+         "show": "m",
+         "packet": [
+          "t",
+          "m"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "a",
+         "packet": [
+          "m",
+          "a"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Access comes through a request. The data owner approves, and the grant expires, say after ninety days. A nightly job deletes rows by tag and class, after checking for legal holds. A dashboard shows coverage.",
+      "show": {
+       "t": "flow",
+       "nodes": [
+        {
+         "id": "1",
+         "label": "Request"
+        },
+        {
+         "id": "2",
+         "label": "Owner approves"
+        },
+        {
+         "id": "3",
+         "label": "Expires in 90 days"
+        },
+        {
+         "id": "4",
+         "label": "Retention job"
+        },
+        {
+         "id": "5",
+         "label": "Coverage dashboard"
+        }
+       ],
+       "edges": [
+        [
+         "1",
+         "2"
+        ],
+        [
+         "2",
+         "3"
+        ],
+        [
+         "3",
+         "4"
+        ],
+        [
+         "4",
+         "5"
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why attach masking policies to tags instead of to named columns?",
+     "opts": [
+      "A new column with the tag is protected immediately, with no extra policy work",
+      "Tags make queries run faster because the warehouse can skip masked data",
+      "Column names cannot be used inside a warehouse policy at all",
+      "Tags let analysts choose which columns they want to see masked"
+     ],
+     "ans": 0,
+     "why": "The policy follows the tag, so any column that carries it is covered the instant it appears, even if nobody updates the policy."
+    },
+    "work": [
+     "Check whether your masking rules are tied to tags or to hard-coded column names.",
+     "Add a CI test that fails when a contract column has no classification tag."
+    ]
+   },
+   {
+    "title": "Deleted, but still there",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "You deleted a customer's rows last night. So why are they still readable?",
+      "show": {
+       "t": "big",
+       "text": "Hidden is not gone",
+       "sub": "erased rows still readable"
+      }
+     },
+     {
+      "say": "Table formats keep old snapshots for time travel, so past versions still hold the erased rows. Backups hold copies too. Until those expire, the data is hidden, not gone.",
+      "show": {
+       "t": "scene",
+       "title": "Old *snapshots* remember",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Live table",
+         "sub": "row removed",
+         "x": 20,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "s",
+         "label": "Old snapshot",
+         "sub": "row still here",
+         "x": 80,
+         "y": 25,
+         "tone": "red",
+         "kind": "disk"
+        },
+        {
+         "id": "bk",
+         "label": "Backup",
+         "sub": "row still here",
+         "x": 50,
+         "y": 60,
+         "tone": "red",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "s"
+        ],
+        [
+         "t",
+         "bk"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "t"
+        },
+        {
+         "at": 0.4,
+         "show": "s",
+         "glow": "s"
+        },
+        {
+         "at": 0.7,
+         "show": "bk",
+         "glow": "bk"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Copies keep the erased row",
+          "tone": "red",
+          "icon": "warn"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So the erasure job must do more than run a delete. It expires snapshots, compacts files to rewrite them, and follows the backup policy, then records proof. And it checks legal holds first, because a hold beats erasure.",
+      "show": {
+       "t": "flow",
+       "nodes": [
+        {
+         "id": "1",
+         "label": "Check legal hold"
+        },
+        {
+         "id": "2",
+         "label": "Delete rows"
+        },
+        {
+         "id": "3",
+         "label": "Expire snapshots"
+        },
+        {
+         "id": "4",
+         "label": "Compact files"
+        },
+        {
+         "id": "5",
+         "label": "Backups age out, log proof"
+        }
+       ],
+       "edges": [
+        [
+         "1",
+         "2"
+        ],
+        [
+         "2",
+         "3"
+        ],
+        [
+         "3",
+         "4"
+        ],
+        [
+         "4",
+         "5"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Tags rot in a similar way. Schemas change, and the old tags go stale. Keep tags in contracts, check them in CI, and scan new data to catch a column that looks personal but is untagged.",
+      "show": {
+       "t": "points",
+       "title": "Stop tags rotting",
+       "items": [
+        "Tags live in the contract",
+        "CI checks every change",
+        "Scans flag untagged lookalikes"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "An erasure job deletes rows from the live table. What is still missing?",
+     "opts": [
+      "Snapshots, compacted files and backups may still hold the rows until they are handled",
+      "Nothing, because a delete statement removes every copy at once",
+      "The rows must also be removed from the data contract file",
+      "Analysts must be told to clear their query caches by hand"
+     ],
+     "ans": 0,
+     "why": "Time travel snapshots, uncompacted files and backups keep old versions, so true erasure needs snapshot expiry, compaction and a backup policy, plus a hold check first."
+    },
+    "work": [
+     "Find your snapshot retention setting and compare it to your erasure deadline.",
+     "Add legal-hold checking and proof logging to your erasure job."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Stale grants, role sprawl and shadow copies",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Why does someone still have access to a project they left three years ago?",
+      "show": {
+       "t": "big",
+       "text": "3 years old",
+       "sub": "and still active"
+      }
+     },
+     {
+      "say": "Because the grant was made once and never given an end date. Fix it with expiring grants and a quarterly review, where owners confirm or drop each one.",
+      "show": {
+       "t": "scene",
+       "title": "Grants need an *end date*",
+       "nodes": [
+        {
+         "id": "g",
+         "label": "Grant",
+         "sub": "no expiry",
+         "x": 25,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "e",
+         "label": "Expiring grant",
+         "sub": "90 days",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "r",
+         "label": "Quarterly review",
+         "sub": "owner confirms",
+         "x": 50,
+         "y": 65,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "e",
+         "r"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "g",
+         "glow": "g"
+        },
+        {
+         "at": 0.5,
+         "show": "e"
+        },
+        {
+         "at": 0.8,
+         "show": "r",
+         "packet": [
+          "e",
+          "r"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Role explosion is the cousin. Teams make a new role for every odd case until thousands exist and nobody understands them. Keep roles coarse, like analyst or finance. Use tags and attributes for the fine rules.",
+      "show": {
+       "t": "scene",
+       "title": "Coarse roles, fine *tags*",
+       "nodes": [
+        {
+         "id": "ro",
+         "label": "Coarse role",
+         "sub": "analyst",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "tg",
+         "label": "Tags and attributes",
+         "sub": "fine rules",
+         "x": 75,
+         "y": 30,
+         "tone": "plum"
+        },
+        {
+         "id": "ac",
+         "label": "Access decision",
+         "sub": "explainable",
+         "x": 50,
+         "y": 65,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "ro",
+         "ac"
+        ],
+        [
+         "tg",
+         "ac"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "ro"
+        },
+        {
+         "at": 0.4,
+         "show": "tg"
+        },
+        {
+         "at": 0.7,
+         "show": "ac",
+         "packet": [
+          "ro",
+          "ac"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.85,
+         "packet": [
+          "tg",
+          "ac"
+         ],
+         "n": 1
+        }
+       ]
+      }
+     },
+     {
+      "say": "Shadow copies appear when access is slow. People export to spreadsheets and personal buckets. Make approved access fast, scan storage for strays, and require an owner on every dataset.",
+      "show": {
+       "t": "points",
+       "title": "Starve the shadow copies",
+       "items": [
+        "Approved access is quick",
+        "Scan storage for strays",
+        "Every dataset has an owner"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why do shadow copies in spreadsheets and personal buckets appear?",
+     "opts": [
+      "Approved access is slow or painful, so people work around it",
+      "Warehouses cannot export data without a special permission",
+      "Masking policies make all data unreadable to analysts",
+      "Auditors ask teams to keep local backups of each table"
+     ],
+     "ans": 0,
+     "why": "When the legitimate route is slow, people take the shortcut. Fast, approved access removes the reason, and scanning catches what remains."
+    },
+    "work": [
+     "Report how many grants have no expiry date and set a default end date.",
+     "Time how long a typical access request takes, from ask to grant."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "When governance as code goes wrong",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "When does governance as code make things worse?",
+      "show": {
+       "t": "big",
+       "text": "Code can also block",
+       "sub": "strict gates, slow teams"
+      }
+     },
+     {
+      "say": "When it replaces judgement with rigid gates. Blocking every untagged column stalls delivery if tagging is painful. Give teams templates and suggested tags, so doing the right thing is the easy thing.",
+      "show": {
+       "t": "scene",
+       "title": "Make the safe path *easy*",
+       "nodes": [
+        {
+         "id": "g",
+         "label": "Strict gate",
+         "sub": "tagging is painful",
+         "x": 25,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "tp",
+         "label": "Templates",
+         "sub": "suggested tags",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "d",
+         "label": "Delivery",
+         "sub": "stays fast",
+         "x": 50,
+         "y": 65,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "tp",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "g",
+         "glow": "g"
+        },
+        {
+         "at": 0.5,
+         "show": "tp"
+        },
+        {
+         "at": 0.8,
+         "show": "d",
+         "packet": [
+          "tp",
+          "d"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Committees fail by taking weeks per request. Move to owners approving, with policy as code setting the limits. Boards only handle new rules and exceptions.",
+      "show": {
+       "t": "bars",
+       "title": "Time to get access",
+       "unit": "days",
+       "items": [
+        [
+         "Committee",
+         21,
+         ""
+        ],
+        [
+         "Owner approval",
+         1,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Watch the cost too. Tag-based policies need a good classification tool and a warehouse that supports them. Small teams with a few tables may do better with simple roles and a quarterly review. Measure coverage and time to grant, not document count.",
+      "show": {
+       "t": "points",
+       "title": "Choose by scale",
+       "items": [
+        "Few tables: simple roles and reviews",
+        "Many products: tags, policy as code",
+        "Measure coverage and time to grant"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A small team has ten tables and one analyst group. What fits best?",
+     "opts": [
+      "Simple roles with expiring grants and a periodic review",
+      "A full tag-driven policy platform with automated classification",
+      "A governance board that reviews every single query",
+      "Locking all tables until a formal framework is complete"
+     ],
+     "ans": 0,
+     "why": "Heavy tag-based tooling costs more than it returns at small scale. Simple roles, expiry and review give most of the safety for little effort."
+    },
+    "work": [
+     "Track time to grant and tag coverage as your two headline governance numbers.",
+     "Decide which rules need hard gates and which only need a warning and an owner."
+    ]
+   }
+  ]
  }
 }
