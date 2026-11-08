@@ -104,6 +104,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.36.29: A hard stop for today's reels and a forgiving streak (ENGAGE 7 and 8); The Meridian series: Previously on, Tomorrow on, and the story (ENGAGE 1 and 3).
 - 1.36.28: F7 guided steps in s09, s10, s11 and s12.
 - 1.36.27: F7 guided steps for DE 6, 7 and 8.
 - 1.36.26: F7 roll-out: integrated week steps in s01–s04.
