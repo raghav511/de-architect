@@ -39,7 +39,7 @@ async function T(name, fn, opt) {
   await T('updates: damaged tracker data from a sync is repaired; Today opens and progress stays', async p => {
     await go(p, '#/today', 1200);
     await seed(p, () => { S.cv = 'garbage'; S.archive = 7; S.updates = 'x'; S.done['s00:S001'] = '2026-10-26'; });
-    ok(/Reading and labs/.test(await text(p, '#page')) && await p.evaluate(() => S.done['s00:S001'] === '2026-10-26' && Array.isArray(S.updates) && typeof S.cv === 'object'), 'Today did not open or progress was touched');
+    ok(/Learn/.test(await text(p, '.plan')) && await p.evaluate(() => S.done['s00:S001'] === '2026-10-26' && Array.isArray(S.updates) && typeof S.cv === 'object'), 'Today did not open or progress was touched');
   });
   await T('updates: a new user sees no what-is-new note', async p => {
     await go(p, '#/today', 1200);
@@ -81,20 +81,14 @@ async function T(name, fn, opt) {
     await p.click('.whatsnew button:has-text("See")'); const t = await text(p, '.whatsnew'); ok(/Count trips per city/.test(t) && /Quiz/.test(t), 'note does not list both: ' + t.slice(0, 200));
   });
 
-  await T('today: two missed days carry forward, say so, and keep the first step on top', async p => {
+  await T('today: missed days leave no backlog: no catching-up note, the set stays one per section, Up next is the program\'s first step', async p => {
     await go(p, '#/today');
     await p.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 2); S.start = iso(d); S.since = null; S.done = {}; save(); }); await p.waitForTimeout(400);
     await p.reload(); await p.waitForSelector('.unit .t', { timeout: 30000 }); await p.waitForTimeout(400);
-    const sc = await p.evaluate(() => { const s = schedule(); return { missed: s.missed.length, first: s.units.find(u => !isCC(u.mid)).title, today: (s.byDay[s.today] || []).map(u => isCC(u.mid)) }; });
-    ok(sc.missed === 2, 'expected 2 missed days, got ' + sc.missed);
-    const note = await text(p, '.behind'); ok(/Catching up/.test(note) && /moved to today/.test(note) && note.length < 80, 'catching-up note missing or too long: ' + note);
-    ok((await text(p, '.unit.cur .t')) === sc.first, 'Up next is not the program\'s first step');
-    ok(sc.today.indexOf(true) === -1 || sc.today.indexOf(true) > sc.today.lastIndexOf(false), 'a Claude Code step sits above a main step');
-    ok(/from (Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test(await text(p, '#grp-coding')) || /more problems? wait/.test(await text(p, '#grp-coding')), 'coding track neither shows nor counts the unsolved problems from earlier days');
-    const strip = await p.$$eval('.wkday.past', a => a.map(x => x.innerText));
-    ok(strip.every(t => !/—/.test(t) || !/0\//.test(t)) || strip.some(t => /Missed · moved to today/.test(t)) || new Date().getDay() <= 2, 'missed days in the week strip do not say where the work went');
-    await p.evaluate(() => { S.done[schedule().units.find(u => !isCC(u.mid)).uid] = iso(new Date()); save(); }); await p.reload(); await p.waitForTimeout(800);
-    ok(await p.$('.behind'), 'note should stay while earlier days are still empty');
+    ok(!(await p.$('.behind')), 'a catching-up note is still shown');
+    const r = await p.evaluate(() => { const t = iso(new Date()), per = {}; daySet(t).filter(x => !x.carried && !x.more).forEach(x => { per[x.s] = (per[x.s] || 0) + 1; }); return { per, first: schedule().units.find(u => !isCC(u.mid)).title }; });
+    ok(Object.values(r.per).every(n => n === 1), 'a section holds more than one new item: ' + JSON.stringify(r.per));
+    ok((await text(p, '.unit.cur .t')) === r.first, 'Up next is not the program\'s first step');
   });
 
   await T('today: a new user who starts mid-week is not told they missed days', async p => {
@@ -134,12 +128,14 @@ async function T(name, fn, opt) {
     await p.click('.unit.done .check'); await p.waitForTimeout(400); ok(!(await p.$('.unit.done')), 'untick failed');
   });
 
-  await T('today: finishing every step shows done-for-today and next up', async p => {
-    await go(p, '#/today');
-    await p.evaluate(() => { S.rq = S.rq || {}; (DATA.recent.items || []).forEach(q => { S.rq[q.id] = 1; }); save(); route(); }); await p.waitForTimeout(400); /* company questions are ticked on their own page */
-    for (let i = 0; i < 20; i++) { const b = await p.$('.unit:not(.done) .check, .xit .check[aria-pressed=false]'); if (!b) break; await b.click(); await p.waitForTimeout(350); } /* the hour, the coding track and the mock */
-    const t = await text(p, '#page'); ok(/Done for today/.test(t), 'no done-for-today message');
-    ok(/Ahead of plan/i.test(await text(p, '.hero')), 'hero should offer the next step ahead of plan');
+  await T('today: finishing the whole set says Daily set done (+20 XP) and offers One more', async p => {
+    await go(p, '#/today', 1200); await p.waitForSelector('.plan .dsum');
+    const x0 = await p.evaluate(() => gameXP());
+    await p.evaluate(() => { const t = iso(new Date()); S.xdone = S.xdone || {}; S.xdone[t] = S.xdone[t] || {}; daySet(t).forEach(x => { if (x.unit) S.done[x.unit.uid] = t; else S.xdone[t][x.id] = Date.now(); }); save(); route(); }); await p.waitForTimeout(600);
+    ok(/Daily set done/.test(await all(p, '.plan')), 'no Daily set done message');
+    ok(await p.$('.plan button:has-text("One more")'), 'no One more button once the set is done');
+    ok(await p.evaluate(() => !!S.dayset[iso(new Date())].full), 'the full set was not recorded');
+    ok((await p.evaluate(() => gameXP())) > x0 + 19, 'the full set gave no bonus XP');
   });
 
   await T('today: day navigation, preview and back to today', async p => {
@@ -161,26 +157,24 @@ async function T(name, fn, opt) {
     ok((await text(p, '.unit .t')) === first, 'undone first step should roll to the new today');
   });
 
-  await T('schedule: weekday budget is 60, weekend 120, settings change it', async p => {
-    const mon = new Date(); mon.setDate(mon.getDate() + ((8 - mon.getDay()) % 7 || 7)); mon.setHours(8, 0, 0, 0);
-    await p.clock.setFixedTime(mon); await go(p, '#/today', 900);
-    /* the reading lane (lessons, labs, quiz, Git, drills, interview sets; not design and build) fills the reading minutes */
-    const lane = () => p.evaluate(() => { const sc = schedule(); return (sc.byDay[sc.today] || []).filter(u => !isBuild(u)).reduce((a, u) => a + u.mins, 0); });
-    let m = await lane(); ok(m <= 65, 'Monday plan over 60: ' + m);
-    await p.evaluate(() => { S.settings.capWd = 90; save(); route(); }); await p.waitForTimeout(500);
-    m = await lane(); ok(m > 60 && m <= 95, 'budget 90 not applied: ' + m);
-    ok(/90-minute reading day/.test(await text(p, '#page')), 'day chip not updated');
+  await T('schedule: no daily time limit; old minute settings are kept and change nothing on Today', async p => {
+    await go(p, '#/today', 1200); await p.waitForSelector('.plan .dsum');
+    const a = await p.evaluate(() => daySet(iso(new Date())).map(x => x.id).join());
+    await p.evaluate(() => { S.settings.capWd = 15; S.settings.capWe = 15; delete S.dayset[iso(new Date())]; save(); route(); }); await p.waitForTimeout(500);
+    const b = await p.evaluate(() => daySet(iso(new Date())).map(x => x.id).join());
+    ok(a === b, 'minute settings changed the day');
+    ok(!/minute day|min over|of your \d+/.test(await all(p, '.plan')), 'budget text on Today');
+    ok(await p.evaluate(() => S.settings.capWd === 15), 'old setting lost');
   });
 
   await T('settings: profile saves as you go, reopen shows values, bad minutes fall back, theme applies', async p => {
     await go(p, '#/today');
     await profile(p, 'plan');
-    await setField(p, '#st_wd', '5'); await setField(p, '#st_we', '150'); await setField(p, '#st_time', '06:30');
+    await p.selectOption('#st_set', 'double'); await setField(p, '#st_time', '06:30');
     await p.click('#pt_sync'); await setField(p, '#st_sync', 'https://script.google.com/macros/s/abc/exec');
     await p.click('#pt_ai'); await p.selectOption('#st_coach', 'hints'); await p.waitForTimeout(300); /* no key field since #94: the AI tab's own choice is saved instead */
     await p.click('[data-mode=dark]'); await p.waitForTimeout(400);
-    const s = await state(p); ok(s.settings.capWd === 60, 'invalid weekday minutes should fall back to 60, got ' + s.settings.capWd);
-    ok(s.settings.capWe === 150 && s.settings.studyTime === '06:30', 'weekend/time not saved');
+    const s = await state(p); ok(s.settings.setSize === 'double' && s.settings.studyTime === '06:30', 'daily set or time not saved');
     ok(s.settings.coachVia === 'hints' && !('aiKey' in s.settings), 'AI tab choice not saved, or a key was stored: ' + JSON.stringify([s.settings.coachVia, 'aiKey' in s.settings]));
     ok(await p.evaluate(() => document.documentElement.dataset.theme === 'dark'), 'dark theme not applied');
     await p.reload(); await p.waitForTimeout(700);
@@ -431,7 +425,7 @@ async function T(name, fn, opt) {
   await T('storage blocked: app still renders', async p => {
     await p.addInitScript(() => { Object.defineProperty(window, 'localStorage', { get() { throw new Error('blocked'); } }); });
     await go(p, '#/today', 1000);
-    ok(/Reading and labs/.test(await text(p, '#page')), 'app did not render without storage');
+    ok(/Learn/.test(await text(p, '.plan')), 'app did not render without storage');
   });
 
   await T('keyboard: dialogs trap focus start and Escape closes; focus visible', async p => {
@@ -523,24 +517,23 @@ async function T(name, fn, opt) {
     ok((await opened.locator('.unfold').getAttribute('aria-expanded')) === 'true', 'aria-expanded not updated');
     await opened.locator('.unfold').click(); await p.waitForTimeout(150);
     ok(!(await opened.locator('.goal').isVisible()), 'details did not fold again');
-    const r = await p.$eval('.planhead .ring', e => e.getAttribute('aria-label')); ok(/% of the plan done/.test(r), 'progress ring missing a label');
+    const r = await p.$eval('.planhead .ring', e => e.getAttribute('aria-label')); ok(/% of the day's XP earned/.test(r), 'progress ring missing a label');
     ok(await p.$('.plan .daynav [aria-label="Next day"]'), 'day arrows should sit inside the plan card');
   });
 
-  await T('today on iPhone at 200% text: catching-up note leaves the Up next button on screen', async p => {
+  await T('today on iPhone at 200% text: after missed days the Up next button stays on screen', async p => {
     await go(p, '#/today', 900);
     await p.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 3); S.start = iso(d); S.since = null; S.done = {}; save(); }); await p.waitForTimeout(400);
-    await p.reload(); await p.waitForSelector('.behind', { timeout: 30000 });
-    ok(!(await p.isVisible('.hsub')), 'the hour-budget line still shows on a phone');
-    ok((await text(p, '.plan .order')).length < 80, 'the plan instructions are longer than one line');
+    await p.reload(); await p.waitForSelector('.unit.cur', { timeout: 30000 });
     const b = await p.$eval('.unit.cur .acts .btn.pri', e => { const r = e.getBoundingClientRect(); return { bottom: r.bottom, tab: document.querySelector('.tabbar').getBoundingClientRect().top }; });
-    ok(b.bottom <= b.tab, 'Up next button pushed behind the tab bar by the note: ' + JSON.stringify(b));
+    ok(b.bottom <= b.tab, 'Up next button pushed behind the tab bar: ' + JSON.stringify(b));
   }, { viewport: { width: 390, height: 664 }, isMobile: true, hasTouch: true });
 
-  await T('today: the day chip says when the plan runs over the budget', async p => {
-    await go(p, '#/today', 900);
-    const r = await p.evaluate(() => { const sc = schedule(), d = new Date(); d.setHours(0, 0, 0, 0); const us = (sc.byDay[sc.today] || []).filter(u => !isBuild(u)); return { plan: us.reduce((a, u) => a + u.mins, 0), cap: capOf(d), chip: [...document.querySelectorAll('.daynav .chip')].map(x => x.innerText).join() }; });
-    ok(r.plan <= r.cap ? !/over/.test(r.chip) : new RegExp((r.plan - r.cap) + ' min over').test(r.chip), 'chip does not match the plan: ' + JSON.stringify(r));
+  await T('today: the day shows its XP and total minutes as a guide, with no budget chip', async p => {
+    await go(p, '#/today', 900); await p.waitForSelector('.plan .planhead');
+    const r = await p.evaluate(() => { const its = daySet(iso(new Date())); return { m: its.reduce((a, x) => a + x.mins, 0), xp: its.reduce((a, x) => a + x.xp, 0), head: document.querySelector('.plan .planhead').innerText, chips: document.querySelectorAll('.daynav .chip').length }; });
+    ok(new RegExp('of ' + r.xp + ' XP').test(r.head) && /about \d/.test(r.head), 'the day does not show its XP and minutes: ' + r.head);
+    ok(!r.chips, 'a budget chip is still in the day bar');
   });
 
   await T('today on iPhone: the Up next step and its button show without scrolling', async p => {
@@ -643,21 +636,18 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => /\nXAbcdef\r?\n/.test(VM.log.replace(/\r/g, '\n'))), 'tap did not move the cursor or Enter did not run: ' + await p.evaluate(() => JSON.stringify(VM.log.slice(-200))));
   });
 
-  await T('today: the coding track and interview practice are rows in the plan, and the day is done only when they are', async p => {
+  await T('today: coding, the live mock and the rest are rows of the set, and the day is done only when every row is', async p => {
     await go(p, '#/today', 1200); await p.waitForSelector('.plan .unit');
     const t = await all(p, '.plan');
-    ok(/Reading and labs/.test(t) && /Coding track/.test(t) && /Interview practice/.test(t) && /Live mock|Weekend boss/.test(t), 'plan is missing a group: ' + t.slice(0, 300));
+    ok(/Lesson/.test(t) && /Coding/.test(t) && /Live mock/.test(t) && /Loop drill/.test(t), 'plan is missing a section: ' + t.slice(0, 300));
     ok(await p.evaluate(() => document.querySelectorAll('.plan .xit').length >= 2), 'no coding or mock rows in the plan');
-    ok(await p.evaluate(() => ![...document.querySelectorAll('.grid2 > .stack h2')].some(h => /Coding track/.test(h.textContent))), 'coding track is still a separate card');
-    /* tick every hour step: not done for today while coding and the mock are open */
-    await p.evaluate(() => { const sc = schedule(); (sc.byDay[sc.today] || []).forEach(u => { S.done[u.uid] = sc.today; }); save(); route(); }); await p.waitForTimeout(500);
-    ok(!/Done for today/.test(await all(p, '.plan')), 'says done for today with coding and the mock open');
-    await p.evaluate(() => { S.rq = S.rq || {}; (DATA.recent.items || []).forEach(q => { S.rq[q.id] = 1; }); save(); route(); }); await p.waitForTimeout(400);
-    const n = await p.$$eval('.plan .xit .check[aria-pressed=false]', b => b.length);
-    for (let i = 0; i < n; i++) { await p.click('.plan .xit .check[aria-pressed=false]'); await p.waitForTimeout(250); }
-    ok(/Done for today/.test(await all(p, '.plan')), 'not done for today after ticking every row');
-    ok(await p.evaluate(() => Object.keys((S.xdone || {})[iso(new Date())] || {}).length >= 2), 'manual ticks not saved');
-    await go(p, '#/today/1', 900); ok(/Coding track/.test(await all(p, '.plan')), 'tomorrow has no coding track');
+    ok(await p.evaluate(() => ![...document.querySelectorAll('.grid2 > .stack h2')].some(h => /Coding track/.test(h.textContent))), 'coding is still a separate card');
+    await p.evaluate(() => { const t = iso(new Date()); daySet(t).forEach(x => { if (x.unit) S.done[x.unit.uid] = t; }); save(); route(); }); await p.waitForTimeout(500);
+    ok(!/Daily set done/.test(await all(p, '.plan')), 'says done with coding and the mock open');
+    await p.evaluate(() => { document.getElementById('tab-grp-coding') && document.getElementById('tab-grp-coding').click(); }); await p.waitForTimeout(200);
+    const c = await p.$('#grp-coding .xit .check[aria-pressed=false]'); if (c) { await c.click(); await p.waitForTimeout(300); }
+    ok(await p.evaluate(() => Object.keys((S.xdone || {})[iso(new Date())] || {}).length >= 1), 'manual tick not saved');
+    await go(p, '#/today/1', 900); ok(/Coding/.test(await all(p, '.plan')) && /preview/i.test(await all(p, '.plan')), 'tomorrow has no preview with coding');
   });
 
   await T('learn: a finished tab turns green, Done next ticks today\'s part, and the module opens on the first unfinished tab', async p => {
@@ -683,7 +673,7 @@ async function T(name, fn, opt) {
     await go(p, '#/today', 1500); await p.waitForSelector('.plan .xit', { state: 'attached' });
     await p.evaluate(() => { S.rqSeen = ''; save(); route(); }); await p.waitForTimeout(400);
     await p.click('#tab-grp-interview'); await p.waitForTimeout(200); /* company questions are in the Interview tab */ /* an existing learner; a new one starts without the notice */
-    ok(/Uber: Design trip events/.test(await all(p, '.plan')) && /Google: Find the second/.test(await all(p, '.plan')), 'no recent question rows on Today');
+    ok(/Uber: Design trip events/.test(await all(p, '.plan')), 'no company question row on Today (one a day; the next waits)');
     ok(/2 new interview questions from this week/.test(await text(p, '.whatsnew')), 'What is new does not mention them');
     await p.click('.whatsnew button:has-text("Got it")'); await p.waitForTimeout(500);
     ok(!(await p.$('.whatsnew')), 'Got it did not hide the note');
@@ -694,7 +684,7 @@ async function T(name, fn, opt) {
     ok(await p.$$eval('.rq', x => x.length) === 2, 'questions not listed');
     for (let i = 0; i < 2; i++) { await p.click('.rq .check[aria-pressed=false]'); await p.waitForTimeout(300); }
     await go(p, '#/today', 1000);
-    ok(!/Uber: Design trip events|Google: Find the second/.test(await all(p, '.plan')), 'rows still shown after ticking every question');
+    ok(await p.evaluate(() => [...document.querySelectorAll('.plan .xit')].filter(x => /Uber: Design trip events|Google: Find the second/.test(x.textContent)).every(x => x.classList.contains('done'))), 'a ticked question is not shown as done in the day');
     await go(p, '#/interview/s01', 1200); ok(/Asked recently at companies/.test(await text(p, '#page')) && /exactly-once counts/.test(await text(p, '#page')), 'module interview page does not show its recent question');
   });
 
@@ -897,7 +887,8 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => [...document.querySelectorAll('#grp-interview a')].some(a => /#\/live\//.test(a.getAttribute('href')))), 'Today has no live mock row');
     await go(p, '#/live', 1500); await p.waitForSelector('.lslots li');
     const labels = await p.$$eval('.lslots li b', b => b.map(x => x.textContent)); const we = await p.evaluate(() => liveWeekend(iso(new Date())));
-    ok(we ? labels.length === 7 && labels[0] === 'Concept' && labels[labels.length - 1] === 'Recall' : labels.length === 5 && labels[0] === 'Concept' && labels[1] === 'Under the hood' && labels[2] === "Architect's lens" && labels[4] === 'Recall', 'wrong question mix: ' + labels.join(', '));
+    const mode = await p.evaluate(() => liveMode(iso(new Date()))); /* F9: one question Monday to Friday, five on Saturday, seven on Sunday */
+    ok(mode === 'one' ? labels.length === 1 : we ? labels.length === 7 && labels[0] === 'Concept' && labels[labels.length - 1] === 'Recall' : labels.length === 5 && labels[0] === 'Concept' && labels[1] === 'Under the hood' && labels[2] === "Architect's lens" && labels[4] === 'Recall', 'wrong question mix: ' + labels.join(', '));
     await p.click("#page button.pri:has-text(\"Start\")"); await p.waitForSelector('#page textarea');
     for (let n = 0; n < labels.length; n++) { if (process.env.LDBG) console.log('Q', n, (await text(p, '#page')).slice(0, 160).replace(/\n/g, ' | '));
       await p.fill('#page textarea', 'An answer about trade-offs ' + n); await p.click('#page button:has-text("Done")');
@@ -908,7 +899,7 @@ async function T(name, fn, opt) {
     const card = await text(p, '#page'); ok(/Scorecard/.test(card) && /Lean no hire|No hire/.test(card) && new RegExp('Named what you rejected\\s*' + labels.length + ' of').test(card), 'scorecard wrong: ' + card.slice(0, 300));
     ok(/open\s+your next live mock/.test(card), 'weak answers do not carry over');
     const carried = await p.evaluate(async () => { const k = iso(new Date()), d = new Date(); d.setDate(d.getDate() + 1); const r = await liveQuestions(iso(d)); return r.qs.filter(q => q.carried === k).length; });
-    ok(carried === 2, 'tomorrow does not open with two weak answers: ' + carried);
+    ok(carried === Math.min(2, labels.length), 'tomorrow does not open with the weak answers: ' + carried);
     await p.evaluate(() => { S.settings.ai = false; S.live = {}; save(); }); await go(p, '#/today', 600); await go(p, '#/live', 1500); await p.click("#page button.pri:has-text(\"Start\")");
     await p.fill('#page textarea', 'x'); await p.click('#page button:has-text("Done")'); await p.waitForSelector('[role=radiogroup]');
     ok(/Compare with the model answer/.test(await text(p, '#page')), 'AI off does not offer self-marking');
@@ -1009,42 +1000,38 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => Object.keys((S.metrics || {})[iso(new Date())] || {}).length > 0 && ((S.metrics[iso(new Date())].ev || {}).reel_open || 0) > 0), 'usage totals are not recorded');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
-  await T('today: the plan tabs are Learn, Practice and Interview with minutes; Practice holds design, Git and the simulator challenge, Learn the reels, Interview the loop drill and written mock', async p => {
+  await T('today: the plan tabs are Learn, Practice and Interview with XP and minutes; each section is in its tab (reels in Learn; coding, design and the simulator in Practice; the loop drill and written mock in Interview)', async p => {
     await go(p, '#/today', 800); await p.waitForSelector('.plan .dsum', { timeout: 30000 });
     const tabs = await p.$$eval('.plan .dsum', b => b.map(x => x.getAttribute('aria-label')));
-    ok(tabs.length === 3 && /^Learn: \d+ of \d+ minutes/.test(tabs[0]) && /^Practice: \d+ of \d+ minutes/.test(tabs[1]) && /^Interview: \d+ of \d+ minutes/.test(tabs[2]), 'tabs should be Learn, Practice, Interview with minutes: ' + tabs.join(' | '));
-    ok(/Reels for today/.test(await all(p, '#grp-reels')), 'no Reels row in Learn');
+    ok(tabs.length === 3 && /^Learn: \d+ of \d+ XP, \d+ minutes/.test(tabs[0]) && /^Practice: \d+ of \d+ XP, \d+ minutes/.test(tabs[1]) && /^Interview: \d+ of \d+ XP, \d+ minutes/.test(tabs[2]), 'tabs should be Learn, Practice, Interview with XP and minutes: ' + tabs.join(' | '));
+    ok(/Reels for today/.test(await all(p, '#grp-hour #sec-reels')), 'no Reels row in Learn');
     await p.click('#tab-grp-coding'); await p.waitForTimeout(200);
-    const pr = await text(p, '#grp-build');
-    ok(/Design problem:/.test(pr) && /Git \d+:/.test(pr) && await p.$eval('#grp-hour', e => e.hidden) && !(await p.$eval('#grp-coding', e => e.hidden)), 'Practice does not hold the design problem, Git and the coding track: ' + pr.slice(0, 200));
+    const pr = await text(p, '#grp-coding');
+    ok(/Coding/.test(pr) && /Design problem:|Compare:/.test(pr) && await p.$eval('#grp-hour', e => e.hidden), 'Practice does not hold coding and design: ' + pr.slice(0, 200));
     ok(/written mock/.test(await all(p, '#grp-interview')), 'no written mock link in Interview');
     ok(await p.evaluate(() => !document.querySelector('.simtoday, .looptoday')), 'separate simulator or loop cards are still below the plan');
     const iv = await p.$$eval('#grp-interview a.xlink', a => a.map(x => x.getAttribute('href')));
     ok(iv.some(h => /^#\/loop\/r\d\//.test(h)), 'no interview loop drill row in the Interview tab: ' + iv.join(' '));
-    /* a learner whose module has a simulator challenge, with room in the day: the challenge is a row with its minutes */
-    const r = await p.evaluate(() => { const sid = SIM_SC[0], i = MODS.indexOf(sid.mid); MODS.slice(0, i).forEach(m => modUnits(m).forEach(u => { S.done[u.uid] = '2026-01-01'; })); S.settings.buildWd = 120; S.settings.buildWe = 120; save(); schedFlush(); route(); return sid; });
+    /* a learner whose module has a simulator challenge: tomorrow's set holds it as a Practice row with minutes and XP */
+    await p.evaluate(() => { const sid = SIM_SC[0], i = MODS.indexOf(sid.mid); MODS.slice(0, i).forEach(m => modUnits(m).forEach(u => { S.done[u.uid] = '2026-01-01'; })); delete S.dayset[iso(new Date())]; save(); schedFlush(); route(); });
     await p.waitForTimeout(800); await p.evaluate(() => document.getElementById('tab-grp-coding').click()); await p.waitForTimeout(200); /* a module-shipped celebration may cover the page */
-    const b = await text(p, '#grp-build');
-    ok(/Simulator challenge: /.test(b) && /20 min/.test(b), 'no simulator challenge row: ' + b.slice(0, 300));
-    ok(/your 120 design and build minutes/.test(b), 'Design and build minutes from Profile not used: ' + b.slice(0, 300));
-    /* the reading budget check counts reading only; the scheduler keeps design steps out of reading days */
-    const lanes = await p.evaluate(() => { const sc = schedule(), out = []; Object.entries(sc.byDay).forEach(([k, us]) => { if (k < sc.today) return; const d = new Date(k + 'T00:00:00'), rd = us.filter(u => !isBuild(u) && !u.isDone), m = rd.reduce((a, u) => a + u.mins, 0); if (rd.length > 1 && m > capOf(d) + 5) out.push(k); }); return out; });
-    ok(!lanes.length, 'reading over budget on ' + lanes.slice(0, 3).join(', '));
+    const b = await text(p, '#grp-coding');
+    ok(/Simulator challenge: /.test(b) && /20 min/.test(b) && /\+25 XP/.test(b), 'no simulator challenge row: ' + b.slice(0, 300));
   });
 
-  await T('profile: Design and build minutes save and sync with the other plan settings', async p => {
-    await go(p, '#/today', 1200); await profile(p, 'plan'); await setField(p, '#st_bwd', '45'); await p.waitForTimeout(400);
-    const r = await p.evaluate(() => ({ v: S.settings.buildWd, pref: PREF_KEYS.includes('buildWd') && PREF_KEYS.includes('buildWe') }));
-    ok(r.v === 45 && r.pref, 'not saved or not synced: ' + JSON.stringify(r));
+  await T('profile: the Daily set choice saves and syncs; the old minute settings stay as they were', async p => {
+    await go(p, '#/today', 1200); await p.evaluate(() => { S.settings.capWd = 77; save(); });
+    await profile(p, 'plan'); await p.selectOption('#st_set', 'double'); await p.dispatchEvent('#st_set', 'change'); await p.waitForTimeout(500);
+    const r = await p.evaluate(() => ({ v: S.settings.setSize, pref: PREF_KEYS.includes('setSize'), cap: S.settings.capWd, size: daySize() }));
+    ok(r.v === 'double' && r.pref && r.size === 2 && r.cap === 77, 'not saved, not synced, or the old minutes changed: ' + JSON.stringify(r));
   });
 
-  await T('today: one Today box holds reading, quiz, coding, interview practice and coaching, with a summary on top and interview capped at its minutes', async p => {
+  await T('today: one Today box holds Learn, Practice and Interview with coaching inside, a summary on top, and no separate cards beside it', async p => {
     await go(p, '#/today', 1200); await p.waitForSelector('.plan .daysum');
     const t = await text(p, '.plan .daysum'); ok(/Learn/.test(t) && /Practice/.test(t) && /Interview/.test(t), 'summary row incomplete: ' + t);
     ok(/^Today/.test(await text(p, '.plan h2')), 'the box is not called Today');
     ok(await p.evaluate(() => !!document.querySelector('.plan #grp-coach .coachnote')), 'coaching is not inside Today');
-    const ivm = await p.evaluate(() => [...document.querySelectorAll('#grp-interview .xit .s, #grp-coach .xit .s')].reduce((a, x) => a + (+(x.textContent.match(/^(\d+) min/) || [0, 0])[1]), 0)); const ivcap = await p.evaluate(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return budgets(d).iv; }); ok(ivm <= ivcap + 5, 'interview and coaching take ' + ivm + ' of ' + ivcap + ' min');
-    ok(await p.evaluate(() => ![...document.querySelectorAll('.grid2 > .stack > section h2')].some(h => /^Coach$|Coding track/.test(h.textContent))), 'a separate Coach or Coding card is still beside the plan');
+        ok(await p.evaluate(() => ![...document.querySelectorAll('.grid2 > .stack > section h2')].some(h => /^Coach$|Coding track/.test(h.textContent))), 'a separate Coach or Coding card is still beside the plan');
     await p.click('.dsum:has-text("Interview")'); await p.waitForTimeout(800);
     ok(await p.evaluate(() => { const r = document.getElementById('grp-interview').getBoundingClientRect(); return r.top >= 0 && r.top < innerHeight; }), 'tapping Interview did not bring it into view');
   });
@@ -1157,7 +1144,7 @@ async function T(name, fn, opt) {
     await hash(p, '#/py/y011', 600);
     for (let i = 0; i < 6; i++) { const b = await p.$('button.btn.dark:not([disabled])'); if (!b) break; await b.click(); await p.waitForTimeout(150); }
     let s = await state(p); ok(s.rev && s.rev.y011 && s.rev.y011.box === 0, 'not queued after opening the solution: ' + JSON.stringify(s.rev));
-    await p.evaluate(() => { S.rev.y011.due = iso(new Date()); save(); });
+    await p.evaluate(() => { S.rev.y011.due = iso(new Date()); delete (S.dayset || {})[iso(new Date())]; save(); }); /* a review due when the day's set is chosen comes first in Coding */
     await hash(p, '#/today', 600);
     ok(/Review ·/.test(await all(p, '.plan')), 'due review not in the coding track on Today');
     ok(/Review \(1 due\)/.test(await (async () => { await hash(p, '#/practice/review', 500); return text(p, '.tabs'); })()), 'practice tab has no due count');

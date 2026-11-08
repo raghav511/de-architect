@@ -51,7 +51,7 @@ async function run(engine) {
     const id = await p.$eval('.upnext .unit', e => e.innerText.split('\n').find(l => l.length > 12));
     await p.click('.upnext .unit .check'); await p.waitForTimeout(500); await p.reload(); await p.waitForSelector('h1'); await p.waitForTimeout(600);
     ok(await p.evaluate(t => [...document.querySelectorAll('.unit.done')].some(u => u.innerText.includes(t)), id), 'the tick was lost: ' + id);
-    if (await p.$('#tab-grp-coding')) { await p.click('#tab-grp-coding'); await p.waitForTimeout(200); ok(/Coding track/.test(await txt(p, '.plan')), 'Coding tab did not show the coding track'); }
+    if (await p.$('#tab-grp-coding')) { await p.click('#tab-grp-coding'); await p.waitForTimeout(200); ok(/Coding/.test(await txt(p, '.plan')), 'Coding tab did not show the coding track'); }
   });
 
   await S('Reels: a recorded reel plays its Heart recording and moves to the next line', async p => {
