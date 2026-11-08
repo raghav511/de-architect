@@ -163,9 +163,11 @@ async function T(name, fn, opt) {
   await T('schedule: weekday budget is 60, weekend 120, settings change it', async p => {
     const mon = new Date(); mon.setDate(mon.getDate() + ((8 - mon.getDay()) % 7 || 7)); mon.setHours(8, 0, 0, 0);
     await p.clock.setFixedTime(mon); await go(p, '#/today', 900);
-    let m = (await text(p, '#page')).match(/Reading and labs\s*\d+ \/ (\d+) min/); ok(m && +m[1] <= 65, 'Monday plan over 60: ' + (m && m[1]));
+    /* the reading lane (lessons, labs, quiz, Git, drills, interview sets; not design and build) fills the reading minutes */
+    const lane = () => p.evaluate(() => { const sc = schedule(); return (sc.byDay[sc.today] || []).filter(u => !isBuild(u)).reduce((a, u) => a + u.mins, 0); });
+    let m = await lane(); ok(m <= 65, 'Monday plan over 60: ' + m);
     await p.evaluate(() => { S.settings.capWd = 90; save(); route(); }); await p.waitForTimeout(500);
-    m = (await text(p, '#page')).match(/Reading and labs\s*\d+ \/ (\d+) min/); ok(m && +m[1] > 60 && +m[1] <= 95, 'budget 90 not applied: ' + (m && m[1]));
+    m = await lane(); ok(m > 60 && m <= 95, 'budget 90 not applied: ' + m);
     ok(/90-minute reading day/.test(await text(p, '#page')), 'day chip not updated');
   });
 
