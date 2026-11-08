@@ -1582,7 +1582,7 @@ async function T(name, fn, opt) {
 
   await T('sim at staff scale: 10.3 has the unit costs and worked examples that open challenges failing at that scale until fixed', async p => {
     await go(p, '#/learn/s10/chapter', 1800); const ch = await all(p, '#page');
-    ok(/Unit costs to reason with/.test(ch) && /per TB scanned/.test(ch) && /3,500 writes/.test(ch) && /RPO/.test(ch) && /Twelve designs/.test(ch), 'chapter content missing');
+    ok(/Unit costs to reason with/.test(ch) && /per TB scanned/.test(ch) && /3,500 writes/.test(ch) && /RPO/.test(ch) && /Seventeen designs/.test(ch), 'chapter content missing');
     for (const id of ['million', 'petabyte', 'prefix', 'region']) ok(await p.$('#page a[href="#/sim/sc/' + id + '"]'), 'no link to ' + id);
     await p.click('#page a[href="#/sim/sc/million"]'); await p.waitForSelector('#sim_check'); ok(/One million events a second/.test(await text(p, '.simside')), 'challenge did not open');
     const r = await p.evaluate(() => ['million', 'prefix', 'petabyte', 'region'].map(id => { const sc = SIM_SC.find(x => x.id === id), d = simFromSc(sc), g0 = SIM.grade(d, sc); SIM_HINTS[id].fix.forEach(f => simApplyFix(d, f)); return id + ':' + g0.pass + '>' + SIM.grade(d, sc).pass; }));

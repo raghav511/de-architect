@@ -24,6 +24,7 @@ const SIM_K = {
   dbt: { t: 'dbt models', cat: 'ops', ab: 'DBT', cap: 5000, lat: 900, cost: 40, route: 'all', d: 'SQL transforms that build tables in the warehouse or lake' },
   dq: { t: 'Data quality checks', cat: 'ops', ab: 'DQ', cap: 10000, lat: 30, cost: 30, route: 'all', d: 'Contracts and tests (Great Expectations, dbt tests, Soda) run on the data as it lands' },
   registry: { t: 'Schema registry', cat: 'ops', ab: 'SR', cap: 20000, lat: 2, cost: 40, route: 'all', d: 'Checks every producer\'s schema; blocks breaking changes before they reach readers' },
+  agg: { t: 'Pre-aggregator', cat: 'compute', ab: 'AGG', cap: 50000, lat: 5, cost: 60, route: 'miss', hit: 0.95, hitT: 'Folded in place (%)', d: 'Combines repeated keys in memory (a count-min sketch or a local top-K per task) and sends on only partial counts every second' },
   embed: { t: 'Embedding model', cat: 'compute', ab: 'EMB', cap: 300, lat: 60, cost: 250, route: 'all', d: 'Turns text into vectors (GPU or hosted model)' },
   trino: { t: 'Query engine (Trino)', cat: 'compute', ab: 'TRN', cap: 60, lat: 1200, cost: 260, route: 'all', d: 'Federated SQL over the lake; replicas = workers' },
   spark: { t: 'Spark job', cat: 'compute', ab: 'SPK', cap: 8000, lat: 1500, cost: 200, route: 'all', d: 'Executors in a batch or micro-batch job' },
@@ -320,6 +321,18 @@ const SIM_SC = [
     hint: 'Storage and the catalog can be shared; compute should be isolated per domain. Give the noisy domain its own warehouse.',
     goals: { err: 1 },
     nodes: [['files', 40, 60, { rps: 200, name: 'Orders domain' }], ['producer', 40, 180, { rps: 200, name: 'Trips domain' }], ['client', 40, 300, { rps: 100, name: 'Marketing domain' }], ['wh', 320, 180, { n: 2, name: 'Shared warehouse' }]], edges: [[0, 3], [1, 3], [2, 3]] },
+  /* classic data-intensive designs (s10 10.6, designs 13 and 14) */
+  { id: 'topk', mid: 's10', lvl: 'Advanced', t: 'Trending now: top-K at 150,000 a second', secs: 60,
+    q: 'Posts carry hashtags at 150,000 tags a second. As each post is saved, the counting service adds 1 to every tag\'s exact counter in the serving store, which takes about 60,000 writes a second. Keep errors under 1% and p99 under 300 ms.',
+    hint: 'Do not write every event: let each stream task count in memory (a count-min sketch plus a small top-K heap) and send only partial counts each second, then merge the per-task top-Ks.',
+    goals: { err: 1, p99: 300 },
+    nodes: [['producer', 40, 140, { rps: 150000, name: 'Posts (150,000 tags/s)' }], ['stream', 300, 140, { n: 48, name: 'Counting tasks' }], ['kv', 560, 140, { n: 6, name: 'Exact counters' }]], edges: [[0, 1], [1, 2]] },
+  { id: 'metrics', mid: 's10', lvl: 'Advanced', t: 'Metrics platform: the TSDB restarts', secs: 60,
+    chaos: [{ type: 'crash', on: 'olap', from: 15, to: 25 }],
+    q: 'Agents on 5,000 hosts send 50,000 samples a second; ingesters write them straight into the time-series database. At second 15 the database restarts for 10 seconds. Lose no samples (errors under 1%) and have dashboards no more than 10 seconds behind at the end.',
+    hint: 'Put a durable buffer between the ingesters and the database: samples wait in Kafka while it restarts, and the headroom drains the backlog afterwards.',
+    goals: { err: 1, fresh: 10 },
+    nodes: [['producer', 40, 140, { rps: 50000, name: 'Agents (50,000 samples/s)' }], ['stream', 260, 140, { n: 15, name: 'Ingesters' }], ['olap', 480, 140, { n: 40, name: 'Time-series DB' }], ['bi', 700, 40, { rps: 40, name: 'Dashboards and alerts' }]], edges: [[0, 1], [1, 2], [3, 2]] },
   /* AI system design round (s10 10.7): each fails as given and passes once fixed by caching, routing or a queue */
   { id: 'ragqps', mid: 's10', lvl: 'Staff', t: 'RAG at 1,000 questions a second', secs: 60,
     q: 'RAG over 10 million documents at 1,000 questions a second. Each question is embedded, searched in the vector store, then answered by the model, which serves 600 a second at the throughput you bought. Keep errors under 1% and p99 under 5 seconds.',
@@ -395,6 +408,10 @@ const SIM_HINTS = {
     fix: [{ set: 'spark', f: 'n', v: 12, why: '80,000 ÷ 8,000 is 10 executors; 12 leaves headroom.' }, { set: 'spark', f: 'cost', v: 70, why: 'Spot capacity costs about a third of on-demand; a backfill that redoes one partition on interruption can use it.' }] },
   region: { look: 'From second 10 the second region falls behind; at second 30 the primary dies and errors jump.', idea: 'RPO is how much data you can lose (how far the replica lags); RTO is how long you are down (how fast you fail over). Design for both numbers (module 10.5).', change: 'A hot standby for the primary, and three parallel replication tasks.',
     fix: [{ set: 'pg', f: 'standby', v: true, why: 'The standby takes over in 3 seconds: an RTO of seconds.' }, { set: 'cdc', f: 'n', v: 3, why: 'Three apply tasks keep the second region seconds behind even when the link slows: an RPO of seconds.' }] },
+  topk: { look: 'The serving store is red from the start: 150,000 writes a second against about 60,000, so more than half the increments fail.', idea: 'Heavy hitters repeat. Count in memory first: a count-min sketch gives approximate counts in fixed memory, a small heap keeps each task\'s top K, and only partial counts leave the task (10.6, design 13).', change: 'Insert a pre-aggregator (four replicas, one beside each group of counting tasks) between the counting tasks and the store.',
+    fix: [{ insert: 'agg', a: 'stream', b: 'kv', o: { n: 4, hit: 0.97, name: 'Sketch and local top-K' }, why: 'Repeated tags are folded in memory, so the store sees about 4,500 writes a second of partial counts.' }] },
+  metrics: { look: 'At second 15 the time-series box goes down and every sample written in those 10 seconds fails.', idea: 'Writes must not depend on the database being up: a durable log in front of it turns an outage into lag, and the ingest path keeps accepting samples (10.6, design 14).', change: 'Insert a Kafka topic between the ingesters and the database, with enough partitions for its 40 writers.',
+    fix: [{ insert: 'kafka', a: 'stream', b: 'olap', o: { n: 4, parts: 48, name: 'Samples topic' }, why: 'Samples wait in Kafka during the restart; the database\'s headroom drains the backlog in about 20 seconds.' }] },
   ragqps: { look: 'The LLM box is red from the start: 1,000 questions a second against 600, so 40% fail and p99 climbs.', idea: 'Every call you do not make is free and instant. Questions repeat, so a semantic cache (match by embedding similarity, not exact text) answers many without the model (10.7, design A).', change: 'Insert a cache between the RAG service and the LLM.',
     fix: [{ insert: 'cache', a: 'svc', b: 'llm', o: { hit: 0.5, name: 'Semantic cache' }, why: 'Half the questions are answered from the cache, so the model sees 500 a second, under its 600.' }] },
   agenttools: { look: 'From second 15 the order system box slows and p99 jumps: the reply waits for every tool call.', idea: 'Separate the conversation from the side effects. Reply now ("your refund is on its way"), and let a queue run refunds, cancellations and handoffs with idempotency keys and retries (10.7, design B).', change: 'Insert a queue between the agent service and the order system.',
@@ -670,7 +687,7 @@ function vSim(a, b, c) {
       else {
         f.push(stepper('Replicas', n.n || 1, v => { n.n = v; delete rt.reps[n.id]; }, 1, 200));
         f.push(el('div', { class: 'simgrid2' }, [num('Capacity per replica (/s)', n.cap != null ? n.cap : K.cap, v => { n.cap = v; }, { step: 100 }), num('Latency at low load (ms)', n.lat != null ? n.lat : K.lat, v => { n.lat = v; }), num('Cost per replica ($/mo)', n.cost != null ? n.cost : K.cost, v => { n.cost = v; }, { step: 10 }),
-          K.route === 'miss' ? num('Hit ratio (%)', Math.round(100 * (n.hit != null ? n.hit : K.hit)), v => { n.hit = Math.min(100, v) / 100; }, { max: 100 }) : null,
+          K.route === 'miss' ? num(K.hitT || 'Hit ratio (%)', Math.round(100 * (n.hit != null ? n.hit : K.hit)), v => { n.hit = Math.min(100, v) / 100; }, { max: 100 }) : null,
           n.k === 'kafka' ? num('Partitions', n.parts || K.parts, v => { n.parts = Math.max(1, v); }, { min: 1, max: 1000 }) : null,
           n.k === 'gw' ? num('Rate limit (/s, 0 = off)', n.limit || 0, v => { n.limit = v || undefined; }, { step: 100 }) : null]));
         if (K.cat === 'compute' && !K.auto) f.push(check('Auto-scale when busy', !!n.auto, v => { n.auto = v || undefined; }));
