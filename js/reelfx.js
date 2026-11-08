@@ -8,6 +8,16 @@ const FX = (() => {
   const TONE = { blue: '#6E9BFF', teal: '#2FD1A8', amber: '#F5A524', red: '#FF6B5E', plum: '#B794FF', grey: '#93A7B8' };
   const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const emph = s => esc(s).replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  /* chip and node icons: written reels often name an icon as a word ("check", "lock"); show a symbol instead of the
+     word (iPhone pass 2026-11-08: 1,141 icons in 843 reels printed as text). Unknown words become a dot. */
+  const ICON = { check: '✓', ok: '✓', alert: '!', warn: '!', warning: '!', x: '✕', stop: '■', ban: '⊘', lock: '⚿', unlock: '⚿', key: '⚷', shield: '⛨',
+    clock: '◷', history: '◷', calendar: '▦', bolt: '⚡', zap: '⚡', spark: '✦', fire: '♨', coin: '¢', coins: '¢', cost: '¢', receipt: '¢', card: '¢', bag: '¢',
+    scale: '⚖', gauge: '◔', ruler: '↔', link: '⛓', pipe: '⇉', merge: '⤞', split: '⑂', search: '⌕', eye: '◉', 'eye-off': '◌', filter: '⏷', target: '◎', pin: '⌖', map: '⌖',
+    book: '▤', bookmark: '▤', note: '✎', doc: '▤', file: '▤', folder: '▤', clipboard: '▤', list: '≡', table: '▦', chart: '▥', graph: '▥', layers: '≣', box: '▢', package: '▢', tray: '▢', disk: '◫', db: '◫', server: '◫', cpu: '▣', cloud: '☁',
+    info: 'i', help: '?', ask: '?', tag: '#', star: '★', flag: '⚑', bell: '♪', refresh: '↻', repeat: '↻', loop: '↻', redo: '↻', undo: '↺', rewind: '↺', play: '▶', pause: '❚❚', skip: '⇥',
+    arrow: '→', send: '→', download: '↓', drop: '↓', plus: '+', sum: 'Σ', sigma: 'Σ', calc: '÷', order: '↕', wrench: '⚒', repair: '⚒', gear: '⚙', broom: '⌫', trash: '⌫', scissors: '✂', copy: '⧉', pen: '✎', pencil: '✎',
+    users: '⚇', people: '⚇', user: '⚇', chef: '⚇', phone: '✆', plug: '⏚', ring: '◯', truck: '⇉', car: '⇉', home: '⌂', door: '⌂', leaf: '❧', bug: '✱', snail: '…', dice: '⚄', decode: '⇄' };
+  const icon = s => { s = String(s == null ? '' : s).trim(); return /^[a-z][a-z-]+$/i.test(s) || s === 'x' ? (ICON[s.toLowerCase()] || '•') : s; };
   const div = (cls, html, style) => { const d = document.createElement('div'); d.className = cls; if (html != null) d.innerHTML = html; if (style) Object.assign(d.style, style); return d; };
   const reduce = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -21,7 +31,7 @@ const FX = (() => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 100 100'); svg.setAttribute('preserveAspectRatio', 'none'); svg.classList.add('fxwires'); stage.appendChild(svg);
     (s.nodes || []).forEach(n => {
       const tone = TONE[n.tone || 'blue'];
-      const el = div('fxnode fxin' + (n.kind ? ' fx-' + n.kind : ''), (n.icon ? '<i>' + esc(n.icon) + '</i>' : '') + '<b>' + esc(n.label) + '</b>' + (n.sub ? '<small>' + esc(n.sub) + '</small>' : ''), { left: n.x + '%', top: n.y + '%', '--tone': tone, width: n.w ? n.w + '%' : null });
+      const el = div('fxnode fxin' + (n.kind ? ' fx-' + n.kind : ''), (n.icon ? '<i>' + esc(icon(n.icon)) + '</i>' : '') + '<b>' + esc(n.label) + '</b>' + (n.sub ? '<small>' + esc(n.sub) + '</small>' : ''), { left: n.x + '%', top: n.y + '%', '--tone': tone, width: n.w ? n.w + '%' : null });
       if (n.kind === 'disk') el.innerHTML = '<svg viewBox="0 0 40 40" class="fxdisk"><circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="20" cy="20" r="2.5" fill="currentColor"/><line class="fxarm" x1="34" y1="6" x2="22" y2="18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg><b>' + esc(n.label) + '</b>' + (n.sub ? '<small>' + esc(n.sub) + '</small>' : '');
       stage.appendChild(el); N[n.id] = Object.assign({ el, tone }, n);
     });
@@ -40,7 +50,7 @@ const FX = (() => {
     const counter = (c) => { let el = root.querySelector('.fxcount[data-k="' + c.key + '"]'); if (!el) { el = div('fxcount fxin on', '<span>' + esc(c.label) + '</span><b>0</b>', { '--tone': TONE[c.tone || 'amber'] }); root.insertBefore(el, chips); el.dataset.k = c.key; }
       const b = el.querySelector('b'), from = +b.textContent.replace(/\D/g, '') || 0, to = c.to, t0 = performance.now(), d = reduce() ? 1 : (c.ms || 900);
       const tick = now => { const k = Math.min(1, (now - t0) / d); b.textContent = Math.round(from + (to - from) * k).toLocaleString() + (c.unit || ''); if (k < 1) requestAnimationFrame(tick); }; requestAnimationFrame(tick); };
-    const chip = c => { const el = div('fxchip fxin', (c.icon ? '<i>' + esc(c.icon) + '</i>' : '') + emph(c.text), { '--tone': TONE[c.tone || 'teal'] }); chips.appendChild(el); requestAnimationFrame(() => el.classList.add('on')); };
+    const chip = c => { const el = div('fxchip fxin', (c.icon ? '<i>' + esc(icon(c.icon)) + '</i>' : '') + emph(c.text), { '--tone': TONE[c.tone || 'teal'] }); chips.appendChild(el); requestAnimationFrame(() => el.classList.add('on')); };
     const cells = c => { let row = root.querySelector('.fxcells'); if (!row) { row = div('fxcells fxin on'); if (c.label) row.appendChild(div('fxcap', esc(c.label))); root.insertBefore(row, chips); }
       (c.items || []).forEach((x, i) => setTimeout(() => { const el = div('fxcell fxin', '<small>' + esc(x[0]) + '</small><b>' + esc(x[1]) + '</b>', { '--tone': TONE[x[2] || 'teal'] }); row.appendChild(el); requestAnimationFrame(() => el.classList.add('on')); }, i * (c.gap || 260))); };
     const race = r => { const box = div('fxrace fxin on'); root.insertBefore(box, chips); const mx = Math.max(...r.items.map(x => x[1])), lg = r.log;

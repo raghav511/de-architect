@@ -1157,7 +1157,7 @@ function coachFab() {
     if (!R) { toast('Voice input is not available in this browser.'); return; }
     const r = new R(); r.lang = 'en-IN'; r.interimResults = true; mic.style.background = 'var(--amber-l)'; mic.setAttribute('aria-pressed', 'true'); /* screen readers hear that it is listening */
     r.onresult = e => { inp.value = Array.from(e.results).map(x => x[0].transcript).join(' '); };
-    r.onend = () => { mic.style.background = ''; mic.setAttribute('aria-pressed', 'false'); }; r.onerror = () => { mic.style.background = ''; mic.setAttribute('aria-pressed', 'false'); toast('Could not hear you. Check microphone permission.'); };
+    r.onend = () => { mic.style.background = ''; mic.setAttribute('aria-pressed', 'false'); }; r.onerror = e => { mic.style.background = ''; mic.setAttribute('aria-pressed', 'false'); toast((typeof micErrorText === 'function' && micErrorText(e.error)) || 'Could not hear you. Try again, or type.'); };
     r.start();
   } }, svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>', 18));
   const panel = el('div', { class: 'coach', role: 'dialog', 'aria-label': 'Ask the coach', style: { display: coachOpen ? 'flex' : 'none' } }, [el('div', { class: 'row' }, [el('h2', { class: 'grow', style: { fontSize: '18px' }, text: 'Ask the coach' }), el('button', { class: 'btn icon sm', 'aria-label': 'Close', onclick: () => toggle(false) }, '×')]),
