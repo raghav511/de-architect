@@ -319,7 +319,30 @@ const SIM_SC = [
     q: 'Three domains publish data products through one shared warehouse. When the orders domain runs a backfill, every product slows and fails. Keep errors under 1% while the backfill runs.',
     hint: 'Storage and the catalog can be shared; compute should be isolated per domain. Give the noisy domain its own warehouse.',
     goals: { err: 1 },
-    nodes: [['files', 40, 60, { rps: 200, name: 'Orders domain' }], ['producer', 40, 180, { rps: 200, name: 'Trips domain' }], ['client', 40, 300, { rps: 100, name: 'Marketing domain' }], ['wh', 320, 180, { n: 2, name: 'Shared warehouse' }]], edges: [[0, 3], [1, 3], [2, 3]] }
+    nodes: [['files', 40, 60, { rps: 200, name: 'Orders domain' }], ['producer', 40, 180, { rps: 200, name: 'Trips domain' }], ['client', 40, 300, { rps: 100, name: 'Marketing domain' }], ['wh', 320, 180, { n: 2, name: 'Shared warehouse' }]], edges: [[0, 3], [1, 3], [2, 3]] },
+  /* AI system design round (s10 10.7): each fails as given and passes once fixed by caching, routing or a queue */
+  { id: 'ragqps', mid: 's10', lvl: 'Staff', t: 'RAG at 1,000 questions a second', secs: 60,
+    q: 'RAG over 10 million documents at 1,000 questions a second. Each question is embedded, searched in the vector store, then answered by the model, which serves 600 a second at the throughput you bought. Keep errors under 1% and p99 under 5 seconds.',
+    hint: 'Most traffic repeats itself: a semantic cache between the service and the model answers similar questions without a call, which cuts load, latency and the bill together.',
+    goals: { err: 1, p99: 5000 },
+    nodes: [['client', 40, 140, { rps: 1000, name: 'Users (1,000 questions/s)' }], ['gw', 220, 140], ['svc', 400, 140, { n: 2, name: 'RAG service' }], ['embed', 600, 60, { n: 4 }], ['vector', 800, 60, { n: 1, name: 'Vector index (40M chunks)' }], ['llm', 600, 220, { n: 12, lat: 500, name: 'LLM (600 answers/s)' }]], edges: [[0, 1], [1, 2], [2, 3], [3, 4], [2, 5]] },
+  { id: 'agenttools', mid: 's10', lvl: 'Advanced', t: 'Support agent: slow tools and handoff', secs: 60,
+    chaos: [{ type: 'extslow', on: 'ext', from: 15, to: 60 }],
+    q: '60 customer messages a second reach a support agent that answers with the model and calls the order system for refunds, cancellations and handoffs to a person. From second 15 the order system answers 10 times slower. Keep the reply p99 under 2.5 seconds.',
+    hint: 'Answer the customer now and do the slow, side-effecting work after: put a queue between the agent and the order system (refunds, cancellations and handoffs become jobs with idempotency keys).',
+    goals: { err: 1, p99: 2500 },
+    nodes: [['client', 40, 140, { rps: 60, name: 'Customer messages' }], ['svc', 240, 140, { n: 2, name: 'Agent service' }], ['llm', 460, 60, { n: 4, lat: 500 }], ['ext', 460, 220, { n: 1, name: 'Order system tools' }]], edges: [[0, 1], [1, 2], [1, 3]] },
+  { id: 'llmgw', mid: 's10', lvl: 'Advanced', t: 'Company LLM gateway: route by task', secs: 60,
+    q: 'Three teams call one large model through the company gateway: 300 requests a second against a model that serves 200. Most requests are short classification and extraction prompts. Keep errors under 1%.',
+    hint: 'Route by task: send easy prompts to a small, cheaper model and keep the large model for hard ones. The gateway already sees every request, so routing (and per-team quotas) belong there.',
+    goals: { err: 1 },
+    nodes: [['client', 40, 60, { rps: 120, name: 'Support bot team' }], ['producer', 40, 180, { rps: 120, name: 'Search assistant team' }], ['files', 40, 300, { rps: 60, name: 'Nightly summaries team' }], ['gw', 260, 180, { name: 'LLM gateway' }], ['llm', 480, 180, { n: 4, lat: 500, name: 'Large model (200/s)' }]], edges: [[0, 3], [1, 3], [2, 3], [3, 4]] },
+  { id: 'extract', mid: 's10', lvl: 'Advanced', t: 'Document extraction: survive month-end', secs: 60,
+    chaos: [{ type: 'backfill', on: 'files', from: 15, to: 30 }],
+    q: 'Invoices arrive at 150 a second and each is extracted by the model, which handles 300 a second at your rate limit. At month-end the volume triples for 15 seconds. Keep errors under 1% and the extracted table no more than 10 seconds behind at the end.',
+    hint: 'Extraction does not need an answer in the same second: put a queue in front of the model. It absorbs the burst, the model works at its rate limit, and the backlog drains after the peak.',
+    goals: { err: 1, fresh: 10 },
+    nodes: [['files', 40, 140, { rps: 150, name: 'Invoices (PDF)' }], ['svc', 240, 140, { n: 1, name: 'Extraction workers' }], ['llm', 460, 140, { n: 6, lat: 500, name: 'LLM (300 docs/s limit)' }], ['lake', 680, 140, { name: 'Extracted fields table' }]], edges: [[0, 1], [1, 2], [2, 3]] }
 ];
 function simFromSc(sc) {
   const ids = sc.nodes.map((x, i) => 'n' + (i + 1));
@@ -372,6 +395,14 @@ const SIM_HINTS = {
     fix: [{ set: 'spark', f: 'n', v: 12, why: '80,000 ÷ 8,000 is 10 executors; 12 leaves headroom.' }, { set: 'spark', f: 'cost', v: 70, why: 'Spot capacity costs about a third of on-demand; a backfill that redoes one partition on interruption can use it.' }] },
   region: { look: 'From second 10 the second region falls behind; at second 30 the primary dies and errors jump.', idea: 'RPO is how much data you can lose (how far the replica lags); RTO is how long you are down (how fast you fail over). Design for both numbers (module 10.5).', change: 'A hot standby for the primary, and three parallel replication tasks.',
     fix: [{ set: 'pg', f: 'standby', v: true, why: 'The standby takes over in 3 seconds: an RTO of seconds.' }, { set: 'cdc', f: 'n', v: 3, why: 'Three apply tasks keep the second region seconds behind even when the link slows: an RPO of seconds.' }] },
+  ragqps: { look: 'The LLM box is red from the start: 1,000 questions a second against 600, so 40% fail and p99 climbs.', idea: 'Every call you do not make is free and instant. Questions repeat, so a semantic cache (match by embedding similarity, not exact text) answers many without the model (10.7, design A).', change: 'Insert a cache between the RAG service and the LLM.',
+    fix: [{ insert: 'cache', a: 'svc', b: 'llm', o: { hit: 0.5, name: 'Semantic cache' }, why: 'Half the questions are answered from the cache, so the model sees 500 a second, under its 600.' }] },
+  agenttools: { look: 'From second 15 the order system box slows and p99 jumps: the reply waits for every tool call.', idea: 'Separate the conversation from the side effects. Reply now ("your refund is on its way"), and let a queue run refunds, cancellations and handoffs with idempotency keys and retries (10.7, design B).', change: 'Insert a queue between the agent service and the order system.',
+    fix: [{ insert: 'queue', a: 'svc', b: 'ext', o: { name: 'Action and handoff queue' }, why: 'The agent hands slow actions to a queue and answers at once; a slow order system now delays the action, not the reply.' }] },
+  llmgw: { look: 'The large model is red: 300 requests a second against 200, from all three teams at once.', idea: 'Most prompts are easy. A gateway that routes by task sends them to a small model and keeps the large one for hard prompts: cheaper and faster (10.7, design C).', change: 'Add a small model behind the gateway; the gateway splits traffic between the two.',
+    fix: [{ add: 'custom', from: 'gw', o: { cap: 300, lat: 250, name: 'Small model (routed)' }, why: 'Half the traffic goes to the small model, so the large one sees 150 a second, under its 200.' }] },
+  extract: { look: 'At second 15 the invoices triple; the LLM box turns red and a third of documents fail.', idea: 'Work that can wait belongs on a queue: it smooths bursts to the provider\'s rate limit, retries failures and lets you use cheaper batch capacity (10.7, design D).', change: 'Insert a queue between the extraction workers and the LLM.',
+    fix: [{ insert: 'queue', a: 'svc', b: 'llm', o: { name: 'Document queue' }, why: 'The burst waits in the queue; the model works at 300 a second and the backlog is gone 15 seconds after the peak.' }] },
   mesh: { look: 'At second 15 the orders backfill triples its load; the shared warehouse turns red and every domain sees errors.', idea: 'A self-serve platform shares storage and the catalog but isolates compute per domain, with quotas and cost shown back (module O1.4 and its lens).', change: 'Route the orders domain to its own warehouse with three clusters.',
     fix: [{ reroute: 'wh', a: 'files', b: 'wh', o: { n: 3, name: 'Orders warehouse' }, why: 'The noisy domain gets its own compute; the shared warehouse keeps serving the others.' }] }
 };
@@ -866,6 +897,15 @@ const SIM_TPL = [
     nodes: [['producer', 40, 60, { rps: 8000 }], ['kafka', 260, 60, { parts: 12 }], ['olap', 480, 140, { n: 5 }], ['bi', 260, 240, { rps: 200 }], ['lake', 480, 300]], edges: [[0, 1], [1, 2], [3, 2], [1, 4]] },
   { id: 'rag', t: 'RAG assistant', s: 'Service, embedding model, vector store, cache, LLM', re: /rag|llm|vector|embed|retriev|agent|ai\b|genai/i,
     nodes: [['client', 40, 140, { rps: 20 }], ['svc', 240, 140, { n: 2 }], ['embed', 460, 60], ['vector', 680, 60], ['cache', 460, 220, { hit: 0.2 }], ['llm', 680, 220]], edges: [[0, 1], [1, 2], [2, 3], [1, 4], [4, 5]] },
+  /* AI system designs (s10 10.7), kept out of the quick-start row */
+  { id: 'airag', t: 'RAG at scale', ai: true, s: 'Gateway, RAG service, embeddings, vector index, semantic cache, LLM', re: /rag at scale|10 ?m(illion)? doc|1,?000 q(uestions|ps)|retrieval at scale/i,
+    nodes: [['client', 40, 140, { rps: 1000 }], ['gw', 220, 140], ['svc', 400, 140, { n: 2 }], ['embed', 600, 60, { n: 4 }], ['vector', 800, 60, { n: 1 }], ['cache', 600, 220, { hit: 0.5 }], ['llm', 800, 220, { n: 12, lat: 500 }]], edges: [[0, 1], [1, 2], [2, 3], [3, 4], [2, 5], [5, 6]] },
+  { id: 'aiagent', t: 'Support agent with tools', ai: true, s: 'Agent service, LLM, action and handoff queue, order system tools', re: /support agent|customer (support|service) agent|handoff|human in the loop/i,
+    nodes: [['client', 40, 140, { rps: 60 }], ['svc', 240, 140, { n: 2 }], ['llm', 460, 60, { n: 4, lat: 500 }], ['queue', 460, 220], ['ext', 680, 220]], edges: [[0, 1], [1, 2], [1, 3], [3, 4]] },
+  { id: 'aigateway', t: 'LLM gateway', ai: true, s: 'Teams, gateway with quotas and routing, large model, small model', re: /gateway|llm platform|model rout|quota/i,
+    nodes: [['client', 40, 60, { rps: 120 }], ['producer', 40, 180, { rps: 120 }], ['files', 40, 300, { rps: 60 }], ['gw', 260, 180], ['llm', 480, 100, { n: 4, lat: 500 }], ['custom', 480, 260, { cap: 300, lat: 250, name: 'Small model' }]], edges: [[0, 3], [1, 3], [2, 3], [3, 4], [3, 5]] },
+  { id: 'aiextract', t: 'Document extraction', ai: true, s: 'Documents, workers, queue, LLM, validation, lake', re: /extract|invoice|document (ai|processing)|idp\b|ocr/i,
+    nodes: [['files', 40, 140, { rps: 150 }], ['svc', 240, 140, { n: 1 }], ['queue', 440, 140], ['llm', 640, 140, { n: 6, lat: 500 }], ['dq', 840, 140], ['lake', 1040, 140]], edges: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]] },
   /* the classic web-app interview topics (Interview loop, design round); kept out of the quick-start row */
   { id: 'url', swe: true, t: 'URL shortener', s: 'Users, load balancer, service, cache, key-value store', re: /url|short|tinyurl|bit\.?ly|link/i,
     nodes: [['client', 40, 140, { rps: 12000 }], ['lb', 240, 140], ['svc', 440, 140, { n: 20, auto: true, max: 60 }], ['cache', 640, 140, { hit: 0.9 }], ['kv', 840, 140, { n: 1 }]], edges: [[0, 1], [1, 2], [2, 3], [3, 4]] },
@@ -941,6 +981,46 @@ const SIM_TEACH = {
       { why: 'The LLM writes the answer from the passages.', alt: 'A smaller self-hosted model.', cost: 'Per call: the biggest line.' }],
     brk: { type: 'extlimit', on: 'llm', t: 'The provider cuts your rate limit' }, fix: [{ set: 'cache', f: 'hit', v: 0.6, why: 'Matching similar questions, not only exact ones, answers 60% from the cache.' }],
     goals: { err: 2 }, say: 'Embed the question, retrieve passages from the vector store, and call the LLM through a semantic cache. The cache is the main lever on both rate limits and cost.' },
+  airag: { est: '1,000 questions a second, 86 million a day, over 10 million documents (about 40 million chunks). Budget: first words of the answer within about 1.5 seconds.',
+    steps: [
+      { why: 'Users ask questions. Size from the peak (1,000 a second) and the answer budget (first token in about 1.5 s, full answer streamed).', alt: '-', cost: '-' },
+      { why: 'The gateway checks who is asking (their permissions travel with the question, so retrieval only sees documents they may read) and applies quotas.', alt: 'Calling the model from every app directly: no quotas, no single place for logs.', cost: 'Small.' },
+      { why: 'The RAG service runs the steps: embed, retrieve (vector plus keyword search), rerank the top 50, build the prompt with citations, call the model.', alt: 'One long context with every document: impossible at 10 million documents.', cost: '2 replicas; it mostly waits.' },
+      { why: 'The embedding model turns each question into a vector, in about 10 to 20 ms on a GPU with batching.', alt: 'A hosted embedding API: simpler, but another rate limit on the hot path.', cost: '4 GPU replicas.' },
+      { why: 'The vector index holds about 40 million chunk vectors (about 160 GB as float32, a quarter of that quantised), sharded and replicated for 1,000 searches a second.', alt: 'pgvector: fine for a few million chunks, not for this.', cost: 'Memory-heavy nodes.' },
+      { why: 'A semantic cache answers questions that are close to ones already answered. It is the biggest lever on rate limits, latency and cost.', alt: 'Exact-match cache only: far fewer hits.', cost: 'One node; it saves model calls.' },
+      { why: 'The model writes the answer from the retrieved passages and streams it. 12 replicas here stand for the throughput you bought (600 answers a second).', alt: 'A small model for easy questions, routed by the gateway.', cost: 'Per token: the largest line by far.' }],
+    brk: { type: 'stampede', on: 'cache', t: 'After a deploy the cache is empty: every question goes to the model' }, fix: [{ set: 'llm', f: 'n', v: 24, why: 'Buy throughput for a cold cache (or warm the cache before switching traffic): 24 replicas take all 1,000 a second.' }],
+    goals: { err: 1 }, say: 'Embed the question, retrieve with vector and keyword search filtered by the user\'s permissions, rerank, and answer with citations through a semantic cache. Size the model for a cold cache, stream the answer, and trace every request with its tokens and latency.' },
+  aiagent: { est: '60 customer messages a second at peak, each 2 to 4 model calls and maybe a tool call. Budget: a reply within about 2.5 seconds.',
+    steps: [
+      { why: 'Customers write in chat. Each message is one turn of a conversation that needs its history.', alt: '-', cost: '-' },
+      { why: 'The agent service keeps the conversation, decides the next step with the model, and calls tools. Read-only tools (order status) run inline.', alt: 'Several agents: only if the work splits into independent parts.', cost: '2 replicas.' },
+      { why: 'The model reads the conversation and the tool results and writes the reply, with a system prompt that lists what it may and may not do.', alt: 'A smaller model for classification of intent, the large one for replies.', cost: 'Per token.' },
+      { why: 'Actions that change things (refunds, cancellations) and handoffs to a person go on a queue as jobs with idempotency keys. Refunds over a limit wait for a person\'s approval.', alt: 'Calling the order system inline: a slow tool makes every reply slow, and a retry can refund twice.', cost: 'Almost nothing.' },
+      { why: 'The order system is outside your control: rate-limited, sometimes slow. Workers call it from the queue with retries and back-off.', alt: '-', cost: 'Theirs.' }],
+    brk: { type: 'spike', t: 'A delivery outage sends 4 times the usual messages' }, fix: [{ set: 'llm', f: 'n', v: 8, why: 'Twice the model throughput (or a second provider behind the gateway) takes the spike.' }],
+    goals: { err: 1 }, say: 'One agent with a small set of tools: read tools inline, actions and handoffs through a queue with idempotency keys and approval limits. A person gets the whole transcript on handoff. Measure resolution rate and wrong-action rate on a golden set of conversations, and trace every turn.' },
+  aigateway: { est: '300 requests a second from three teams, most of them short classification and extraction prompts.',
+    steps: [
+      { why: 'Team one: a support bot, interactive, latency-sensitive.', alt: '-', cost: '-' },
+      { why: 'Team two: a search assistant, interactive.', alt: '-', cost: '-' },
+      { why: 'Team three: nightly summaries, batch, can wait.', alt: 'The provider\'s batch API at a lower price, through the same gateway.', cost: '-' },
+      { why: 'The gateway is the one door to every model: team keys (provider keys stay here), quotas and budgets per team, routing, caching, retries, fallbacks, and a trace with tokens and cost for every call.', alt: 'Each team holds its own provider key: no budgets, no failover, no audit.', cost: 'Small; it pays for itself in routing and caching.' },
+      { why: 'The large model handles hard prompts.', alt: '-', cost: 'Per token, the expensive one.' },
+      { why: 'A small model handles easy prompts at a fraction of the price and latency. The gateway routes by task, or tries the small model first and escalates when it is unsure.', alt: 'One model for everything: simple, slow and costly.', cost: 'Per token, cheap.' }],
+    brk: { type: 'crash', on: 'llm', t: 'The large model\'s provider has an outage' }, fix: [{ set: 'llm', f: 'standby', v: true, why: 'The gateway fails over to a second provider or region within seconds.' }],
+    goals: { err: 5 }, say: 'One gateway in front of every model: team keys, quotas and budgets, routing by task (small model first), exact and semantic caching, retries and failover across providers, and a trace with tokens and cost per call, so spend is attributed per team and model changes are gated by evals.' },
+  aiextract: { est: '150 documents a second on average (about 13 million a day), three times that at month-end. Fields must land within minutes, not seconds.',
+    steps: [
+      { why: 'Invoices and forms arrive as PDFs and scans. Store each raw file first, keyed by its content hash, so a re-sent file is not processed twice.', alt: '-', cost: 'Storage.' },
+      { why: 'Workers split pages, run OCR or layout parsing where needed, and build one request per document.', alt: 'A model that reads the PDF directly: simpler, more tokens.', cost: '1 replica.' },
+      { why: 'A queue sits in front of the model. It absorbs month-end bursts, keeps calls under the rate limit, and retries failures.', alt: 'Calling the model inline: bursts become errors.', cost: 'Almost nothing.' },
+      { why: 'The model extracts fields into a fixed JSON schema (structured output), with a confidence per field.', alt: 'A smaller fine-tuned model once you have labelled data.', cost: 'Per token: about 10,000 tokens for a ten-page document.' },
+      { why: 'Validation checks every result: schema, totals that add up, dates that parse. Low-confidence or failing documents go to a person for review, and their corrections become eval data.', alt: 'Trusting the model: wrong totals reach finance.', cost: 'Small, plus review time.' },
+      { why: 'The lake keeps raw files, extracted fields, model and prompt version, and review outcomes, so any document can be re-run.', alt: '-', cost: 'Cheap storage.' }],
+    brk: { type: 'backfill', on: 'files', t: 'A customer uploads a year of invoices at once' }, fix: [{ set: 'llm', f: 'n', v: 10, why: 'Raise throughput (a higher rate limit or the batch API) so the queue drains even at three times the volume.' }],
+    goals: { err: 1, fresh: 10 }, say: 'Store raw documents by content hash, queue them, extract into a fixed schema with confidence per field, validate, and send doubtful documents to people whose corrections feed the eval set. The queue turns bursts into backlog instead of errors; batch capacity halves the cost of work that can wait.' },
   url: { est: '100 million new links a month is about 40 writes a second; at 100 reads per write, about 4,000 redirects a second on average and 12,000 at peak. Seven characters of base62 give 3.5 trillion codes.',
     steps: [
       { why: 'People click short links (reads) and a few create them (writes). Reads dominate, so design for reads.', alt: '-', cost: '-' },
@@ -991,7 +1071,7 @@ function simNewFrom(tplId, name, from) {
 }
 /* Quick start: a row of starter buttons (Build tab of an empty design, and the sketch sheet) */
 function simQuickRow(onPick) {
-  return el('div', { class: 'simquick' }, SIM_TPL.filter(t => !t.swe).map(t => el('button', { class: 'simqbtn', 'data-tpl': t.id, onclick: () => onPick(t.id) }, [el('b', { text: t.t }), el('small', { text: t.s })])));
+  return el('div', { class: 'simquick' }, SIM_TPL.filter(t => !t.swe && !t.ai).map(t => el('button', { class: 'simqbtn', 'data-tpl': t.id, onclick: () => onPick(t.id) }, [el('b', { text: t.t }), el('small', { text: t.s })])));
 }
 /* "Sketch it in the simulator" for a question or design problem: opens a starter that fits the words, named after it */
 function simSketch(text, label, live) {

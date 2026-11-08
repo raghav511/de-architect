@@ -34,10 +34,13 @@ for x in d['cx']:
 import re
 sim = open(os.path.join(os.path.dirname(__file__), '../../js/sim.js')).read()
 sc_ids = set(re.findall(r"\{ id: '(\w+)', mid: '", sim)); tpl_ids = set(re.findall(r"\{ id: '(\w+)',(?: swe: true,)? t: '", sim))
-for t in d['topics'] + d['webTopics']:
+ai_tpls = set(re.findall(r"\{ id: '(\w+)', t: '[^']*', ai: true", sim))
+for t in d['topics'] + d['webTopics'] + d.get('aiTopics', []):
     miss = [x for x in t.get('sc', []) if x not in sc_ids] + ([t['tpl']] if t['tpl'] not in tpl_ids else [])
     if miss: bad += 1; print('BAD  topic ' + t['id'] + ': unknown ' + ', '.join(miss))
+    elif t in d.get('aiTopics', []) and t['tpl'] not in ai_tpls: bad += 1; print('BAD  topic ' + t['id'] + ': its walkthrough is not an AI template (ai: true)')
     else: print('ok   topic ' + t['id'])
+if len(d.get('aiTopics', [])) < 4: bad += 1; print('BAD  fewer than four AI designs')
 parts = {'model': ['ask', 'grain', 'facts', 'dims', 'keys', 'query'], 'metrics': ['goal', 'metrics', 'events', 'pipeline', 'sql', 'diag']}
 for k, ps in parts.items():
     for c in d[k]:

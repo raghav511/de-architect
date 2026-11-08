@@ -357,8 +357,28 @@ TOPICS = [
    "est": {"who": "analysts and jobs", "users": 20000, "act": "queries", "per": 100, "ws": 0.05, "wb": 50000000, "rb": 2000000000, "peak": 3, "note": "1 in 20 queries writes about 50 MB; a query scans about 2 GB.", "bwl": "Data scanned a second on average"}}
 ]
 
+# AI system designs (the AI-engineer design round); each ties to s10 10.7, a Teach me walkthrough and simulator challenges
+AI_TOPICS = [
+  {"id": "airag", "t": "RAG over 10 million documents at 1,000 questions a second", "tpl": "airag", "mid": "s10", "sc": ["ragqps", "rag"],
+   "fr": ["Answer questions from 10 million internal documents, with citations", "Only retrieve what the asking user may read", "Reflect document changes within minutes"], "nfr": ["1,000 questions a second at peak", "First token within about 1.5 seconds (p95), answer streamed", "Grounded: say so when the documents do not answer it"],
+   "api": ["POST /ask (question, user) through the gateway; streamed answer with numbered citations", "Document change events re-embed only the changed chunks"], "data": ["About 40 million chunks of 500 tokens, vectors of 1,024 dimensions (160 GB as float32), sharded and replicated, with the permission list stored on each chunk", "A semantic cache keyed by question embedding; traces with tokens, latency and retrieved chunk ids"],
+   "decide": ["Hybrid retrieval (vector plus keyword, rank fusion), then a cross-encoder rerank of the top 50", "The model is the latency and cost budget: semantic cache, prompt caching and routing easy questions to a small model", "Groundedness on a golden set before every prompt, model or index change"]},
+  {"id": "aiagent", "t": "A support agent with tools and handoff to a person", "tpl": "aiagent", "mid": "s10", "sc": ["agenttools"],
+   "fr": ["Answer customers in chat and look up their orders", "Refund and cancel within policy", "Hand the conversation to a person with its full history"], "nfr": ["A reply within about 2.5 seconds", "Never act twice; never refund over the limit without approval", "Every turn traced: model calls, tool calls, tokens"],
+   "api": ["Read tools inline (order status); write tools and handoff as queued jobs with idempotency keys", "An approval step for refunds over the limit"], "data": ["Conversation history and the agent's notes per conversation", "A golden set of conversations with the expected outcome and tool calls"],
+   "decide": ["One agent with a short tool list; several agents only if the work splits into independent parts", "Guardrails in the tools (limits, ownership checks), not only in the prompt; tool results and customer text are data, never instructions", "Evals on resolution and wrong-action rate as a gate for every change"]},
+  {"id": "aigateway", "t": "A company LLM gateway", "tpl": "aigateway", "mid": "s10", "sc": ["llmgw"],
+   "fr": ["One door to every model for every team", "Quotas and monthly budgets per team, spend reported per team", "Survive a provider outage"], "nfr": ["Adds only milliseconds to each call", "No provider key outside the gateway", "Failover within seconds"],
+   "api": ["Team key in, OpenAI- or Anthropic-style request out; the gateway picks the provider and model", "Batch requests go to the providers' batch APIs"], "data": ["Per-team token buckets and budgets", "A trace per call: team, model, tokens in and out, cost, latency, cache hit"],
+   "decide": ["Route by task (small model first, escalate when unsure) and cache exact and similar prompts: the main cost levers", "At the limit: queue batch work, reject interactive work with a clear error", "Model upgrades: shadow traffic and evals first, then a percentage of traffic"]},
+  {"id": "aiextract", "t": "Document extraction at scale", "tpl": "aiextract", "mid": "s10", "sc": ["extract"],
+   "fr": ["Extract supplier, dates, line items and totals from invoices", "Send doubtful documents to a person", "Re-run any document after a prompt or model change"], "nfr": ["13 million documents a day, three times that at month-end", "Fields within minutes", "Totals that finance can trust"],
+   "api": ["Upload stores the raw file by content hash and enqueues it", "Workers call the model with a fixed JSON schema (structured output)"], "data": ["Raw files, extracted fields with a confidence each, model and prompt version, review outcome", "Labelled documents: the eval set and later the fine-tuning set"],
+   "decide": ["A queue in front of the model: bursts become backlog, calls stay under the rate limit, failures retry", "Validation (schema, totals, dates) and a review queue for low confidence", "Batch capacity for work that can wait; a smaller fine-tuned model once labels exist"]}
+]
+
 out = {"rounds": ROUNDS, "recruiter": RECRUITER, "dsaSteps": DSA_STEPS, "cx": CX, "cxChoices": CX_CHOICES, "cc": CC, "aiq": AIQ,
-       "behC": BEH_C, "beh": BEH, "star": STAR, "lead": LEAD, "proj": PROJ, "follow": FOLLOW, "topics": TOPICS, "webTopics": WEB_TOPICS, "sqlPat": SQL_PAT, "model": MODEL, "metrics": METRICS, "companies": COMPANIES}
+       "behC": BEH_C, "beh": BEH, "star": STAR, "lead": LEAD, "proj": PROJ, "follow": FOLLOW, "topics": TOPICS, "webTopics": WEB_TOPICS, "aiTopics": AI_TOPICS, "sqlPat": SQL_PAT, "model": MODEL, "metrics": METRICS, "companies": COMPANIES}
 p = os.path.join(os.path.dirname(__file__), '../../data/loop.json')
 json.dump(out, open(p, 'w'), ensure_ascii=False, indent=1)
-print('wrote data/loop.json:', len(ROUNDS), 'rounds,', len(CC), 'code items,', len(CX), 'complexity,', len(BEH) + len(LEAD), 'behavioural and leadership,', len(TOPICS), 'data platform designs,', len(MODEL), 'modelling and', len(METRICS), 'metrics cases')
+print('wrote data/loop.json:', len(ROUNDS), 'rounds,', len(CC), 'code items,', len(CX), 'complexity,', len(BEH) + len(LEAD), 'behavioural and leadership,', len(TOPICS), 'data platform designs,', len(AI_TOPICS), 'AI designs,', len(MODEL), 'modelling and', len(METRICS), 'metrics cases')
