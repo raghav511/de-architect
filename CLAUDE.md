@@ -94,6 +94,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.36.13: No API key in the browser: AI only through Claude Code on the Mac; Reels player: Instagram-style layout, speeds 0.25x to 2x, a real loading state.
 - 1.36.12: Duplicate guard for company questions; live mock scorecard in the coach digest; Debezium and CDC lens (6.9); Trust test Q23 works now that every reel is recorded; Daily recall and an honest ladder (review 4, 5); Reels: a bad picture no longer stops the player.
 - 1.36.11: weekly refresh 2026-11-08: What is new on AI agents (Claude message threads and IP allowlisting, Snowflake async agents, self-healing pipelines, Cortex routing, Datastream); A3.6 matches; no extension module yet (starts 14 weeks after 2026-10-19).
 - 1.36.10: Coding review: Hard DSA and Python problems, stronger tests; F1: greet with the Google first name after sign-in; Flink and streaming engines lens (5.10).
