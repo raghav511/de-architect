@@ -1,8 +1,12 @@
 {
-  "version": "1.36.32",
+  "version": "1.36.33",
   "date": "2026-11-08",
   "notes": [
-    "No change to the app: three journeys failed after the week-steps roll-out and module O5. The lab journeys now leave the week steps out (they finish from their own work), and the module-order check expects the O5 capstone right after Leadership 1, as designed.",
+    "Today's module card, the Path page and week steps say which Meridian episode they are",
+    "A weak Sunday boss round opens a rematch next Sunday, never a loss",
+    "The series page has a season map of episodes with your earned XP",
+    "The cold open asks the scene's recall question and opens its practice; Look ahead after the set",
+    "No calendar file? Copy the calendar text instead",
     "1489 of 1489 reels now play in the natural Heart voice."
   ]
 }
