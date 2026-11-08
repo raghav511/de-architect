@@ -1,4 +1,0 @@
-# Module O1: data mesh and data products
-- New module O1, Data mesh and data products, right after DE 10: when domain ownership is the right answer and when it is not, what a data product needs (owner, contract, service levels, interfaces, catalog), the self-serve platform, federated governance enforced in code, product thinking, migrating from a central team, and the failure modes companies hit.
-- An architect's lens with six under-the-hood answers, and four exercises that run in your browser: check a data contract, an SLO report with its error budget, breaking or not between contract versions, and whether a product can be retired.
-- A design problem (move a central data team to domain-owned products), a simulator challenge (a shared platform with a noisy neighbour), ten quiz and seven interview questions, and twelve reels. If you started before this update, What is new lists it and nothing is marked done.
