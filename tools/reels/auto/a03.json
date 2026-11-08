@@ -3403,1006 +3403,797 @@
   ]
  },
  "A3.6 What is new in agents (November 2026)": {
-  "hash": "156f06a1cf0b",
+  "hash": "9ce25f58303c",
   "sec": "A3.6",
   "reels": [
    {
-    "title": "One card per agent",
+    "title": "Trying a new agent tool like a new hire",
     "level": "New to it",
     "beats": [
      {
-      "say": "Imagine a whole office sharing one company credit card. At month end the bill is huge, and nobody knows who spent what.",
-      "show": {
-       "t": "scene",
-       "title": "One shared *card*",
-       "nodes": [
-        {
-         "id": "a",
-         "label": "Team A",
-         "x": 20,
-         "y": 22,
-         "tone": "blue"
-        },
-        {
-         "id": "b",
-         "label": "Team B",
-         "x": 50,
-         "y": 22,
-         "tone": "teal"
-        },
-        {
-         "id": "c",
-         "label": "Team C",
-         "x": 80,
-         "y": 22,
-         "tone": "plum"
-        },
-        {
-         "id": "card",
-         "label": "Shared card",
-         "sub": "one big bill",
-         "x": 50,
-         "y": 60,
-         "tone": "amber"
-        }
-       ],
-       "edges": [
-        [
-         "a",
-         "card"
-        ],
-        [
-         "b",
-         "card"
-        ],
-        [
-         "c",
-         "card"
-        ]
-       ],
-       "steps": [
-        {
-         "at": 0.2,
-         "show": [
-          "a",
-          "b",
-          "c"
-         ]
-        },
-        {
-         "at": 0.5,
-         "show": "card"
-        },
-        {
-         "at": 0.7,
-         "packet": [
-          "a",
-          "card"
-         ],
-         "n": 3
-        },
-        {
-         "at": 0.9,
-         "chip": {
-          "text": "Nobody knows who spent what",
-          "tone": "red",
-          "icon": "?"
-         }
-        }
-       ]
-      }
-     },
-     {
-      "say": "Now give every person their own card. The bill arrives sorted by person. You can see the travel desk spent a little, and one person spent a lot.",
-      "show": {
-       "t": "scene",
-       "title": "Each person gets a *card*",
-       "nodes": [
-        {
-         "id": "a",
-         "label": "Card A",
-         "sub": "small",
-         "x": 20,
-         "y": 30,
-         "tone": "blue"
-        },
-        {
-         "id": "b",
-         "label": "Card B",
-         "sub": "small",
-         "x": 50,
-         "y": 30,
-         "tone": "teal"
-        },
-        {
-         "id": "c",
-         "label": "Card C",
-         "sub": "large",
-         "x": 80,
-         "y": 30,
-         "tone": "red"
-        }
-       ],
-       "edges": [],
-       "steps": [
-        {
-         "at": 0.2,
-         "show": [
-          "a",
-          "b"
-         ]
-        },
-        {
-         "at": 0.5,
-         "show": "c"
-        },
-        {
-         "at": 0.7,
-         "glow": "c"
-        },
-        {
-         "at": 0.9,
-         "chip": {
-          "text": "Bill sorted by person",
-          "tone": "teal",
-          "icon": "✓"
-         }
-        }
-       ]
-      }
-     },
-     {
-      "say": "AI agents are the employees. Each one spends tokens, which are small chunks of text the model reads and writes, and you pay per token. Give each agent its own key, like its own card, and Anthropic's new usage and cost report can sort the bill by agent.",
-      "show": {
-       "t": "scene",
-       "title": "Every agent, its own *key*",
-       "nodes": [
-        {
-         "id": "ag",
-         "label": "Agent",
-         "sub": "own key",
-         "x": 20,
-         "y": 30,
-         "tone": "blue"
-        },
-        {
-         "id": "api",
-         "label": "Usage report",
-         "sub": "cost by key",
-         "x": 80,
-         "y": 30,
-         "tone": "amber"
-        }
-       ],
-       "edges": [
-        [
-         "ag",
-         "api"
-        ]
-       ],
-       "steps": [
-        {
-         "at": 0.2,
-         "show": "ag"
-        },
-        {
-         "at": 0.5,
-         "packet": [
-          "ag",
-          "api"
-         ],
-         "n": 3
-        },
-        {
-         "at": 0.6,
-         "show": "api"
-        },
-        {
-         "at": 0.9,
-         "chip": {
-          "text": "Cost sorted by agent",
-          "tone": "teal",
-          "icon": "$"
-         }
-        }
-       ]
-      }
-     },
-     {
-      "say": "Then you can ask a fair question: is this agent worth what it costs?",
+      "say": "Every week there is a new agent tool. How do you decide which one deserves your trust?",
       "show": {
        "t": "big",
-       "text": "Is it worth the cost?",
-       "sub": "Only possible once the bill is split"
+       "text": "Which new tool?",
+       "sub": "A new one every week"
+      }
+     },
+     {
+      "say": "Think of hiring a temp worker. Before handing over the keys, you ask four things. What problem do they take off my plate? What do they cost for each job done well? Can I test them on my own tasks by Friday? And what new risk walks in with them?",
+      "show": {
+       "t": "points",
+       "title": "Four hiring questions",
+       "items": [
+        "What problem does it remove?",
+        "What does it cost per job done well?",
+        "Can I test it in a day?",
+        "What new risk comes with it?"
+       ]
+      }
+     },
+     {
+      "say": "A shiny tool that fails your test is just a noisy coworker. A boring one that passes is a good hire.",
+      "show": {
+       "t": "big",
+       "text": "Test first, trust later",
+       "sub": "Your own tasks decide"
       }
      }
     ],
     "check": {
-     "q": "Why give each agent its own API key?",
+     "q": "A new agent product has an impressive demo. What is the best next step?",
      "opts": [
-      "So the model answers faster",
-      "So the bill can be split by agent",
-      "So tokens become free"
+      "Run it on your own tasks and measure the result",
+      "Adopt it because the vendor is well known",
+      "Wait a year until every team uses it",
+      "Trust the demo if it handled one hard case"
      ],
-     "ans": 1,
-     "why": "A separate key is like a separate card: the usage report can group cost by key, so you see which agent spent what."
+     "ans": 0,
+     "why": "A demo shows the best case. Only your own tasks show whether the tool removes your problem at a cost and risk you accept."
     },
     "work": [
-     "List your agents and pipelines and note which ones share a key today.",
-     "Create one key per agent and name it after the job it does."
+     "Write down the four judging questions and use them in your next tool review.",
+     "Collect ten real tasks from your team to serve as a quick trial set.",
+     "Note the cost and the new risk for any tool before approving a pilot."
     ]
    },
    {
-    "title": "From usage report to cost per task",
+    "title": "Server-side threads: send only what is new",
     "level": "How it works",
     "beats": [
      {
-      "say": "How do you find out which of your twenty agents cost four hundred dollars last week?",
+      "say": "Your agent is on turn forty. Why is it still resending turns one to thirty-nine?",
       "show": {
        "t": "big",
-       "text": "Which agent cost $400?",
-       "sub": "Twenty agents, one invoice"
+       "text": "Turn 40",
+       "sub": "Resending 39 old turns?"
       }
      },
      {
-      "say": "Step one: one API key per agent or pipeline. Anthropic's Usage and Cost Analytics API, currently in beta, groups tokens and cost by model, workspace, API key and service account.",
+      "say": "Normally the API remembers nothing. Each call carries the full history, so the payload grows every turn and you pay to process it again. With server-side threads, now in beta, the conversation lives on the server. Your agent sends only the new message.",
       "show": {
        "t": "scene",
-       "title": "Group by *key*",
+       "title": "The *thread* lives on the server",
        "nodes": [
         {
-         "id": "k",
-         "label": "API keys",
-         "sub": "one per agent",
-         "x": 20,
-         "y": 30,
+         "id": "agent",
+         "label": "Agent",
+         "sub": "sends new message",
+         "x": 50,
+         "y": 20,
          "tone": "blue"
         },
         {
          "id": "api",
-         "label": "Usage and Cost API",
-         "sub": "beta",
-         "x": 80,
-         "y": 30,
-         "tone": "amber"
-        }
-       ],
-       "edges": [
-        [
-         "k",
-         "api"
-        ]
-       ],
-       "steps": [
-        {
-         "at": 0.2,
-         "show": "k"
-        },
-        {
-         "at": 0.5,
-         "show": "api"
-        },
-        {
-         "at": 0.7,
-         "packet": [
-          "k",
-          "api"
-         ],
-         "n": 3
-        },
-        {
-         "at": 0.9,
-         "chip": {
-          "text": "By model, workspace, key, account",
-          "tone": "amber",
-          "icon": "▤"
-         }
-        }
-       ]
-      }
-     },
-     {
-      "say": "Step two: a daily job pulls that report and loads it into the warehouse as a fact table, one row per key, model and day.",
-      "show": {
-       "t": "flow",
-       "steps": [
-        {
-         "label": "Daily job"
-        },
-        {
-         "label": "Pull usage report"
-        },
-        {
-         "label": "Load fact table"
-        }
-       ]
-      }
-     },
-     {
-      "say": "Step three: join it to your task table. Four hundred dollars across eighty successful tasks is five dollars each. That number, cost per successful task, is the one to watch.",
-      "show": {
-       "t": "bars",
-       "title": "Cost per successful task",
-       "unit": "$",
-       "items": [
-        [
-         "Agent A",
-         5,
-         "$400 / 80 tasks"
-        ],
-        [
-         "Agent B",
-         1.2,
-         ""
-        ],
-        [
-         "Agent C",
-         0.4,
-         ""
-        ]
-       ]
-      }
-     }
-    ],
-    "check": {
-     "q": "Agent X cost $300 and completed 60 tasks successfully. What is its cost per successful task?",
-     "opts": [
-      "$3",
-      "$5",
-      "$18"
-     ],
-     "ans": 1,
-     "why": "300 divided by 60 is 5 dollars. Failed attempts still cost money, so they raise this number."
-    },
-    "work": [
-     "Schedule a daily load of usage and cost data into a warehouse table.",
-     "Join cost to your task outcomes and chart cost per successful task."
-    ],
-    "part": "1 of 2"
-   },
-   {
-    "title": "Flink agents that survive a crash",
-    "level": "How it works",
-    "beats": [
-     {
-      "say": "A streaming job calls a language model, then crashes. After restart, does it call the model again and maybe get a different answer?",
-      "show": {
-       "t": "big",
-       "text": "Crash, then replay",
-       "sub": "Same question, a new answer?"
-      }
-     },
-     {
-      "say": "Flink is a stream processor, meaning it handles events continuously. Version 0.4.0 of Flink Agents adds sub-agents, typed decisions, which means answers in a fixed shape like approve or reject, and a choice of model per request.",
-      "show": {
-       "t": "scene",
-       "title": "Agents inside *Flink*",
-       "nodes": [
-        {
-         "id": "ev",
-         "label": "Events",
-         "x": 20,
-         "y": 22,
-         "tone": "blue"
-        },
-        {
-         "id": "job",
-         "label": "Flink job",
-         "sub": "sub-agents",
+         "label": "Claude API",
+         "sub": "holds the thread",
          "x": 50,
          "y": 50,
          "tone": "teal"
         },
         {
-         "id": "m",
-         "label": "Model",
-         "sub": "routed per request",
-         "x": 80,
-         "y": 78,
-         "tone": "plum"
+         "id": "thread",
+         "label": "Thread",
+         "sub": "turns 1 to 39",
+         "x": 50,
+         "y": 80,
+         "tone": "amber",
+         "kind": "disk"
         }
        ],
        "edges": [
         [
-         "ev",
-         "job"
+         "agent",
+         "api"
         ],
         [
-         "job",
-         "m"
+         "api",
+         "thread"
         ]
        ],
        "steps": [
         {
-         "at": 0.2,
-         "show": "ev"
+         "at": 0.1,
+         "show": [
+          "agent",
+          "api"
+         ]
         },
         {
          "at": 0.4,
-         "show": "job"
-        },
-        {
-         "at": 0.5,
          "packet": [
-          "ev",
-          "job"
+          "agent",
+          "api"
          ],
-         "n": 3
+         "n": 1
         },
         {
-         "at": 0.7,
-         "show": "m"
+         "at": 0.6,
+         "show": "thread"
         },
         {
-         "at": 0.9,
+         "at": 0.8,
          "chip": {
-          "text": "Typed decision: approve or reject",
+          "text": "Only new messages travel",
           "tone": "teal",
-          "icon": "✓"
+          "icon": "check"
          }
         }
        ]
       }
      },
      {
-      "say": "Flink takes checkpoints, which are saved snapshots of progress. Now a checkpoint can record the model's decision. After a crash, replay reads the saved decision instead of calling the model again.",
+      "say": "So turn forty sends one small message, not forty. That means less data on the wire and less code to manage history.",
+      "show": {
+       "t": "bars",
+       "title": "Messages sent on turn 40",
+       "unit": "messages",
+       "items": [
+        [
+         "Resend history",
+         40,
+         ""
+        ],
+        [
+         "Server thread",
+         1,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "One catch: the thread expires after five idle minutes.",
+      "show": {
+       "t": "big",
+       "text": "5 idle minutes",
+       "sub": "Then the thread is gone"
+      }
+     }
+    ],
+    "check": {
+     "q": "What changes when an agent uses a server-side thread?",
+     "opts": [
+      "Each turn sends only the new messages",
+      "The model gets a larger memory inside its weights",
+      "History never expires as long as the key is valid",
+      "The agent no longer needs tool results in context"
+     ],
+     "ans": 0,
+     "why": "The server stores the conversation, so each turn adds only new messages. It is storage of the history, not a change to the model, and it expires when idle."
+    },
+    "work": [
+     "Measure the payload size per turn in one of your agents before and after threads.",
+     "Check which of your agents pause for more than five minutes.",
+     "Keep threads in beta use behind a flag so you can fall back to full history."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Locking a leaked key to your own runners",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "If an agent key leaks, can a stranger use it from anywhere?",
+      "show": {
+       "t": "big",
+       "text": "Leaked key",
+       "sub": "Usable from anywhere?"
+      }
+     },
+     {
+      "say": "Not with IP allowlisting, now in beta in the Claude Console. You list up to one thousand addresses or ranges. Any API request from outside that list is refused.",
       "show": {
        "t": "scene",
-       "title": "Checkpoint holds the *decision*",
+       "title": "The *allowlist* decides",
        "nodes": [
         {
-         "id": "job",
-         "label": "Flink job",
+         "id": "runner",
+         "label": "Your runner",
+         "sub": "on the list",
          "x": 25,
          "y": 25,
          "tone": "teal"
         },
         {
-         "id": "cp",
-         "label": "Checkpoint",
-         "sub": "decision saved",
-         "kind": "disk",
+         "id": "thief",
+         "label": "Stranger",
+         "sub": "not listed",
          "x": 75,
          "y": 25,
-         "tone": "amber"
+         "tone": "red"
         },
         {
-         "id": "m",
-         "label": "Model",
-         "sub": "not called",
+         "id": "api",
+         "label": "Claude API",
+         "sub": "up to 1,000 entries",
          "x": 50,
          "y": 65,
-         "tone": "grey"
+         "tone": "blue"
         }
        ],
        "edges": [
         [
-         "job",
-         "cp"
+         "runner",
+         "api"
         ],
         [
-         "job",
-         "m"
+         "thief",
+         "api"
         ]
        ],
        "steps": [
         {
-         "at": 0.2,
+         "at": 0.1,
          "show": [
-          "job",
-          "cp"
+          "runner",
+          "thief",
+          "api"
          ]
         },
         {
-         "at": 0.4,
+         "at": 0.35,
          "packet": [
-          "job",
-          "cp"
+          "runner",
+          "api"
          ],
          "n": 2
         },
         {
          "at": 0.6,
-         "show": "m"
+         "packet": [
+          "thief",
+          "api"
+         ],
+         "n": 1
         },
         {
-         "at": 0.7,
-         "dim": "m"
-        },
-        {
-         "at": 0.9,
+         "at": 0.8,
          "chip": {
-          "text": "Replay skips the model",
-          "tone": "teal",
-          "icon": "↻"
+          "text": "Outside requests refused",
+          "tone": "red",
+          "icon": "x"
          }
         }
        ]
       }
      },
      {
-      "say": "That saves money, and it keeps the replayed result identical to the first run.",
+      "say": "So you list your own runners, the servers where agents run. A thief who copies the key from a log still gets refused, because their address is not on the list.",
       "show": {
        "t": "points",
-       "title": "Why it matters",
+       "title": "What you list",
        "items": [
-        "No repeat model bill",
-        "Same answer after recovery"
+        "Build and job runners",
+        "Your cloud egress addresses",
+        "Ranges instead of single IPs"
        ]
+      }
+     },
+     {
+      "say": "It limits the damage but does not replace rotating keys. And if your runner addresses change, update the list, or your own agents get locked out.",
+      "show": {
+       "t": "big",
+       "text": "Limit, not replace",
+       "sub": "Still rotate keys"
       }
      }
     ],
     "check": {
-     "q": "What does recording the model's decision in a checkpoint allow?",
+     "q": "What does IP allowlisting on an agent key protect against?",
      "opts": [
-      "Replay after a crash without calling the model again",
-      "Faster model responses",
-      "Skipping checkpoints entirely"
+      "A copied key being used from outside your addresses",
+      "Prompt injection inside documents the agent reads",
+      "The agent writing wrong data to a table",
+      "Model errors caused by long conversations"
      ],
      "ans": 0,
-     "why": "Replay reads the saved decision, so it costs nothing extra and returns the same result as before."
+     "why": "The allowlist refuses requests from unlisted addresses, so a stolen key is useless elsewhere. It does not address what the agent does with its legitimate access."
     },
     "work": [
-     "Find streaming jobs that call a model and ask what happens to them on restart.",
-     "Define decisions as typed outputs with a fixed set of allowed values."
+     "List the egress addresses of every runner that calls the API.",
+     "Add address changes to your deployment checklist so the list stays current.",
+     "Keep rotating keys even after the allowlist is on."
     ],
     "part": "2 of 2"
    },
    {
-    "title": "When replay changes the answer",
+    "title": "When the thread expires, the log saves you",
     "level": "Inside and caveats",
     "beats": [
      {
-      "say": "Why is replaying an AI decision risky without a saved record?",
+      "say": "Your agent waits twenty minutes for a warehouse job to finish. What happens to its memory?",
       "show": {
        "t": "big",
-       "text": "Replay without a record",
-       "sub": "What could go wrong?"
+       "text": "20 minute wait",
+       "sub": "What does the agent remember?"
       }
      },
      {
-      "say": "Models are not deterministic. Ask twice, get two answers. Replay a stream after a crash and a customer might be approved the first time and rejected the second, with duplicate emails sent on top.",
+      "say": "The server thread expired after five idle minutes. The next call finds nothing, and the agent wakes up with amnesia.",
       "show": {
        "t": "scene",
-       "title": "Two runs, two *answers*",
+       "title": "An *expired* thread",
        "nodes": [
         {
-         "id": "r1",
-         "label": "First run",
-         "sub": "approve",
-         "x": 25,
-         "y": 30,
-         "tone": "teal"
+         "id": "agent",
+         "label": "Agent",
+         "sub": "wakes after 20 min",
+         "x": 30,
+         "y": 25,
+         "tone": "blue"
         },
         {
-         "id": "r2",
-         "label": "Replay",
-         "sub": "reject",
-         "x": 75,
-         "y": 30,
-         "tone": "red"
-        }
-       ],
-       "edges": [],
-       "steps": [
-        {
-         "at": 0.2,
-         "show": "r1"
-        },
-        {
-         "at": 0.5,
-         "show": "r2"
-        },
-        {
-         "at": 0.7,
-         "glow": "r2"
-        },
-        {
-         "at": 0.9,
-         "chip": {
-          "text": "Same input, different outcome",
-          "tone": "red",
-          "icon": "!"
-         }
-        }
-       ]
-      }
-     },
-     {
-      "say": "Recording the decision in the checkpoint fixes the model call. It does not cover the outside world. Calls to external tools still need idempotency keys, so a retry does not charge a card twice.",
-      "show": {
-       "t": "scene",
-       "title": "Outside the *checkpoint*",
-       "nodes": [
-        {
-         "id": "job",
-         "label": "Flink job",
-         "x": 20,
-         "y": 30,
-         "tone": "teal"
-        },
-        {
-         "id": "tool",
-         "label": "External tool",
-         "sub": "email, payment",
-         "x": 80,
-         "y": 30,
-         "tone": "amber"
+         "id": "thread",
+         "label": "Thread",
+         "sub": "expired at 5 min",
+         "x": 70,
+         "y": 25,
+         "tone": "red",
+         "kind": "disk"
         }
        ],
        "edges": [
         [
-         "job",
-         "tool"
+         "agent",
+         "thread"
         ]
        ],
        "steps": [
         {
-         "at": 0.2,
+         "at": 0.1,
          "show": [
-          "job",
-          "tool"
+          "agent",
+          "thread"
          ]
         },
         {
-         "at": 0.5,
+         "at": 0.4,
          "packet": [
-          "job",
-          "tool"
+          "agent",
+          "thread"
          ],
-         "n": 2
+         "n": 1
         },
         {
-         "at": 0.9,
+         "at": 0.6,
+         "dim": "thread"
+        },
+        {
+         "at": 0.8,
          "chip": {
-          "text": "Retry needs an idempotency key",
-          "tone": "amber",
-          "icon": "🔑"
+          "text": "Memory gone",
+          "tone": "red",
+          "icon": "x"
          }
         }
        ]
       }
      },
      {
-      "say": "A recorded decision is only as good as its schema. Typed decisions make bad output fail early instead of downstream. And this is version 0.4.0, so test every upgrade.",
+      "say": "So a long running agent keeps its own log: every message and tool result, written to storage you control. On resume, rebuild from the log, start a fresh thread, and carry on.",
       "show": {
-       "t": "points",
-       "title": "Guard rails",
-       "items": [
-        "Validate typed decisions",
-        "Idempotency keys on side effects",
-        "Pin and test versions"
+       "t": "flow",
+       "title": "Resume from the log",
+       "steps": [
+        {
+         "label": "Write each turn to your log"
+        },
+        {
+         "label": "Thread expires"
+        },
+        {
+         "label": "Rebuild from log"
+        },
+        {
+         "label": "Start new thread"
+        }
        ]
+      }
+     },
+     {
+      "say": "Treat the server thread as a cache, not as the record. A cache can vanish. A log is the truth.",
+      "show": {
+       "t": "big",
+       "text": "Thread = cache",
+       "sub": "Log = truth"
       }
      }
     ],
     "check": {
-     "q": "After a crash, the model decision is replayed from the checkpoint. What can still run twice?",
+     "q": "An agent sleeps for an hour between steps. What is the safest design?",
      "opts": [
-      "The model call",
-      "A side effect such as sending an email, if not idempotent",
-      "The checkpoint itself"
+      "Keep its own log and rebuild the thread on resume",
+      "Send a ping each minute so the thread never expires",
+      "Store everything only in the server thread",
+      "Restart the whole task from step one every time"
      ],
-     "ans": 1,
-     "why": "The checkpoint protects the model call, but external actions need their own idempotency to be safe on retry."
+     "ans": 0,
+     "why": "Threads are a cache that can expire. A log you own lets the agent rebuild context and continue exactly where it stopped."
     },
     "work": [
-     "Add idempotency keys to every tool call that sends, charges or writes.",
-     "Test a forced crash and confirm the replay matches the first run."
+     "Add a durable log of messages and tool results to every long-running agent.",
+     "Test your agent by forcing a thread expiry mid-task.",
+     "Make resume idempotent so a replayed step does not repeat a write."
     ],
     "part": "1 of 2"
    },
    {
-    "title": "Trusting a new fast model",
+    "title": "Self-healing pipelines: score them on your failures",
     "level": "Inside and caveats",
     "beats": [
      {
-      "say": "A new fast model is announced. Do you move your cheap traffic to it tomorrow?",
+      "say": "A vendor says its agent fixes broken pipelines by itself. How do you know it is not just guessing?",
       "show": {
        "t": "big",
-       "text": "Switch tomorrow?",
-       "sub": "Not yet"
+       "text": "Self-healing?",
+       "sub": "Or confident guessing?"
       }
      },
      {
-      "say": "No. GPT-6.1 Terra is described as fast and efficient for computer use and visual reasoning. That is the vendor's claim, not a result on your data.",
+      "say": "Snowflake's coding agent reads a failure, traces the likely cause, and proposes a fix for a person to review. It is the on-call agent idea, sold as a product.",
       "show": {
-       "t": "scene",
-       "title": "A claim is not a *result*",
-       "nodes": [
-        {
-         "id": "v",
-         "label": "Vendor claim",
-         "sub": "fast, efficient",
-         "x": 25,
-         "y": 30,
-         "tone": "amber"
-        },
-        {
-         "id": "you",
-         "label": "Your data",
-         "sub": "unknown",
-         "x": 75,
-         "y": 30,
-         "tone": "grey"
-        }
-       ],
-       "edges": [
-        [
-         "v",
-         "you"
-        ]
-       ],
+       "t": "flow",
+       "title": "Failure to proposed fix",
        "steps": [
         {
-         "at": 0.3,
-         "show": [
-          "v",
-          "you"
-         ]
+         "label": "Pipeline fails"
         },
         {
-         "at": 0.7,
-         "glow": "you"
+         "label": "Agent traces cause"
         },
         {
-         "at": 0.9,
-         "chip": {
-          "text": "Test it yourself",
-          "tone": "amber",
-          "icon": "?"
-         }
+         "label": "Fix proposed"
+        },
+        {
+         "label": "Human reviews"
         }
        ]
       }
      },
      {
-      "say": "Build an eval set: a few hundred real cases with known good answers. Run the old and new model on it. If accuracy holds, route only the easy cases to the new model and keep hard ones on the strong model.",
+      "say": "Do not trust the demo. Inject your own failures: a renamed column, a late file, a permissions change, a bad type. Run each one and score three things. Did it find the real cause? Was the fix correct? Did the change stay under review?",
+      "show": {
+       "t": "points",
+       "title": "Score on injected failures",
+       "items": [
+        "Renamed column",
+        "Late file",
+        "Permission change",
+        "Bad data type"
+       ]
+      }
+     },
+     {
+      "say": "A confident wrong diagnosis is worse than none, because it wastes the on-call engineer's first hour.",
+      "show": {
+       "t": "big",
+       "text": "Wrong but sure",
+       "sub": "Costs the first hour"
+      }
+     }
+    ],
+    "check": {
+     "q": "How should you evaluate a self-healing pipeline agent?",
+     "opts": [
+      "Inject known failures and score cause, fix and review",
+      "Count how many alerts it closes each week",
+      "Read the vendor's list of supported errors",
+      "Run it unattended and watch for complaints"
+     ],
+     "ans": 0,
+     "why": "Known injected failures give a ground truth, so you can score whether the cause and fix are right. Closed alerts or silence do not show correctness."
+    },
+    "work": [
+     "Build a set of ten injected failures from your own past incidents.",
+     "Score cause found, fix correct, and time saved for each run.",
+     "Keep a human review step before any fix reaches production."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Routing models: cheap only if it holds up",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "A router sends easy requests to a cheap model. Where does the saving turn into a loss?",
+      "show": {
+       "t": "big",
+       "text": "Cheap model",
+       "sub": "When is it not cheap?"
+      }
+     },
+     {
+      "say": "Cortex AI Gateway's automatic model tiers, in private preview, pick a model for each request. If the cheap tier handles most traffic, the bill drops fast.",
       "show": {
        "t": "scene",
-       "title": "Route by *eval*",
+       "title": "The *router* picks a tier",
        "nodes": [
         {
-         "id": "in",
-         "label": "Requests",
-         "x": 20,
-         "y": 22,
+         "id": "req",
+         "label": "Request",
+         "sub": "each call",
+         "x": 50,
+         "y": 15,
          "tone": "blue"
         },
         {
-         "id": "fast",
-         "label": "Fast model",
-         "sub": "easy cases",
-         "x": 30,
-         "y": 62,
+         "id": "router",
+         "label": "Router",
+         "sub": "picks a tier",
+         "x": 50,
+         "y": 45,
+         "tone": "plum"
+        },
+        {
+         "id": "cheap",
+         "label": "Cheap tier",
+         "sub": "most traffic",
+         "x": 25,
+         "y": 78,
          "tone": "teal"
         },
         {
          "id": "strong",
-         "label": "Strong model",
+         "label": "Strong tier",
          "sub": "hard cases",
          "x": 75,
-         "y": 62,
-         "tone": "plum"
+         "y": 78,
+         "tone": "amber"
         }
        ],
        "edges": [
         [
-         "in",
-         "fast"
+         "req",
+         "router"
         ],
         [
-         "in",
+         "router",
+         "cheap"
+        ],
+        [
+         "router",
          "strong"
         ]
        ],
        "steps": [
         {
-         "at": 0.2,
-         "show": "in"
+         "at": 0.1,
+         "show": [
+          "req",
+          "router"
+         ]
         },
         {
          "at": 0.4,
          "show": [
-          "fast",
+          "cheap",
           "strong"
          ]
         },
         {
          "at": 0.6,
          "packet": [
-          "in",
-          "fast"
+          "router",
+          "cheap"
          ],
          "n": 3
         },
         {
          "at": 0.8,
          "packet": [
-          "in",
+          "router",
           "strong"
          ],
          "n": 1
-        },
-        {
-         "at": 0.95,
-         "chip": {
-          "text": "Cheap only where eval holds",
-          "tone": "teal",
-          "icon": "✓"
-         }
         }
        ]
       }
      },
      {
-      "say": "Keep a fallback and keep monitoring, because models change and your inputs drift.",
+      "say": "But a cheap model that fails costs twice: the failed try, then the retry on the strong model, plus the human who cleans up. So measure cost per successful task, not cost per call.",
+      "show": {
+       "t": "bars",
+       "title": "Cost per successful task",
+       "unit": "relative",
+       "items": [
+        [
+         "Strong only",
+         10,
+         ""
+        ],
+        [
+         "Cheap that holds",
+         4,
+         ""
+        ],
+        [
+         "Cheap that fails",
+         14,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Build an eval set from real requests. Run it through each tier. Turn the router on only where the cheap tier matches the quality. Re-run it whenever the tiers change.",
       "show": {
        "t": "points",
-       "title": "After rollout",
+       "title": "Adopt a router safely",
        "items": [
-        "Fallback to the strong model",
-        "Re-run the eval on a schedule"
+        "Eval set from real requests",
+        "Run every tier",
+        "Route only where quality holds",
+        "Re-run after tier changes"
        ]
       }
      }
     ],
     "check": {
-     "q": "What should justify routing cheap cases to a new fast model?",
+     "q": "Why measure cost per successful task when judging a router?",
      "opts": [
-      "The vendor's launch announcement",
-      "Passing your own eval set",
-      "A lower price per token alone"
+      "Failures add retries and cleanup that erase savings",
+      "Cheaper tiers always raise the price per token",
+      "Successful tasks use fewer tokens than failed ones",
+      "The router charges extra for every routed request"
      ],
-     "ans": 1,
-     "why": "Only your own eval shows whether quality holds on your data. Price and claims do not."
+     "ans": 0,
+     "why": "A cheap tier that fails triggers retries and human fixes, so the true price is spent per success, not per call."
     },
     "work": [
-     "Build an eval set of real cases with known correct answers.",
-     "Add a router with a fallback so you can roll back in minutes."
+     "Build an eval set of real requests before turning on any router.",
+     "Track cost per successful task by tier on a dashboard.",
+     "Re-run the eval whenever the provider changes the tiers."
     ],
-    "part": "2 of 2"
+    "part": "1 of 2"
    },
    {
-    "title": "Which new feature earns a place",
+    "title": "Always-on agents with your rights",
     "level": "Architect",
     "beats": [
      {
-      "say": "Six new agent features landed this month. Which ones deserve your roadmap?",
+      "say": "An agent that runs at three in the morning, with your permissions, and asks only for sign off. Is that a feature or a risk?",
       "show": {
        "t": "big",
-       "text": "Six new features",
-       "sub": "Which deserve your roadmap?"
+       "text": "3 a.m. agent",
+       "sub": "Feature or risk?"
       }
      },
      {
-      "say": "Ask four questions. What problem does it remove? What does it cost per successful task? Can you evaluate it on your own data within a day? What new risk does it add?",
-      "show": {
-       "t": "points",
-       "title": "Four questions",
-       "items": [
-        "What problem does it remove?",
-        "Cost per successful task?",
-        "Testable on your eval in a day?",
-        "What new risk does it add?"
-       ]
-      }
-     },
-     {
-      "say": "Apply them. Snowflake's agentic document parsing is in preview, so pilot it on one document type, not on documents that close your books. Spark Real-Time Mode is generally available, so it is a fair candidate for low-latency features.",
+      "say": "Snowflake's async agent API and scheduled automations are generally available. Always-on bots are coming in preview. They act with the user's rights, so they can touch everything that user can.",
       "show": {
        "t": "scene",
-       "title": "Maturity sets the *scope*",
+       "title": "Agent with *your* rights",
        "nodes": [
         {
-         "id": "p",
-         "label": "Preview",
-         "sub": "pilot one doc type",
-         "x": 25,
-         "y": 30,
+         "id": "user",
+         "label": "User rights",
+         "sub": "everything they can touch",
+         "x": 50,
+         "y": 18,
          "tone": "amber"
         },
         {
-         "id": "g",
-         "label": "General availability",
-         "sub": "consider for production",
-         "x": 75,
-         "y": 30,
-         "tone": "teal"
-        }
-       ],
-       "edges": [],
-       "steps": [
-        {
-         "at": 0.3,
-         "show": "p"
-        },
-        {
-         "at": 0.6,
-         "show": "g"
-        },
-        {
-         "at": 0.9,
-         "chip": {
-          "text": "Match scope to maturity",
-          "tone": "amber",
-          "icon": "⚖"
-         }
-        }
-       ]
-      }
-     },
-     {
-      "say": "Databricks serverless access controls turn budgets into permissions: who may use which compute. That is cheap and enforceable, but it limits access rather than measuring cost per task, so pair it with attribution.",
-      "show": {
-       "t": "scene",
-       "title": "Limit *and* measure",
-       "nodes": [
-        {
-         "id": "perm",
-         "label": "Access controls",
-         "sub": "who may spend",
-         "x": 25,
-         "y": 30,
+         "id": "bot",
+         "label": "Always-on bot",
+         "sub": "runs while you sleep",
+         "x": 50,
+         "y": 48,
          "tone": "blue"
         },
         {
-         "id": "attr",
-         "label": "Cost attribution",
-         "sub": "what it bought",
-         "x": 75,
-         "y": 30,
-         "tone": "teal"
+         "id": "data",
+         "label": "Warehouse",
+         "sub": "tables and jobs",
+         "x": 50,
+         "y": 80,
+         "tone": "teal",
+         "kind": "disk"
         }
        ],
        "edges": [
         [
-         "perm",
-         "attr"
+         "user",
+         "bot"
+        ],
+        [
+         "bot",
+         "data"
         ]
        ],
        "steps": [
         {
-         "at": 0.3,
+         "at": 0.1,
          "show": [
-          "perm",
-          "attr"
+          "user",
+          "bot"
          ]
         },
         {
-         "at": 0.6,
+         "at": 0.4,
          "packet": [
-          "perm",
-          "attr"
+          "user",
+          "bot"
          ],
-         "n": 2
+         "n": 1
         },
         {
-         "at": 0.9,
+         "at": 0.6,
+         "show": "data"
+        },
+        {
+         "at": 0.8,
          "chip": {
-          "text": "Permissions cap, attribution explains",
-          "tone": "teal",
-          "icon": "✓"
+          "text": "Same reach as the user",
+          "tone": "amber",
+          "icon": "warn"
          }
         }
+       ]
+      }
+     },
+     {
+      "say": "That is the trade. You gain work done while people sleep. You risk a mistake with full rights and one approval click that nobody reads.",
+      "show": {
+       "t": "points",
+       "title": "The trade",
+       "items": [
+        "Gain: work done overnight",
+        "Risk: mistakes with full rights",
+        "Risk: rubber-stamp approvals"
+       ]
+      }
+     },
+     {
+      "say": "Prefer a dedicated service role with narrow rights, limits on where its key works, and approvals that show the exact change. Adopt when the problem removed is bigger than the new risk.",
+      "show": {
+       "t": "points",
+       "title": "Safer design",
+       "items": [
+        "Dedicated narrow role",
+        "Network limits on the key",
+        "Approval shows the exact change"
        ]
       }
      }
     ],
     "check": {
-     "q": "A feature is in preview and would touch financial reporting documents. What is the sensible move?",
+     "q": "What is the safest way to run an always-on agent?",
      "opts": [
-      "Roll it out everywhere to gain speed",
-      "Pilot on low-risk documents with an eval and human review",
-      "Ignore it forever"
+      "Give it a narrow service role and show exact changes",
+      "Let it use the owner's full rights to avoid blockers",
+      "Approve everything in bulk once each week",
+      "Skip approvals once it has run well for a month"
      ],
-     "ans": 1,
-     "why": "Preview means the behavior may change, so limit the blast radius, measure on your own eval, and expand only when it holds."
+     "ans": 0,
+     "why": "Narrow rights cap the damage of any mistake, and approvals that show the exact change keep the human check meaningful."
     },
     "work": [
-     "Write the four questions into a one-page template for reviewing new tools.",
-     "Pair every spend limit with per-agent cost attribution so you see value, not just caps."
-    ]
+     "Create a dedicated low-privilege role for each scheduled agent.",
+     "Make approval requests show the exact SQL or change, not a summary.",
+     "Review what each agent could touch before moving from preview to production."
+    ],
+    "part": "2 of 2"
    }
   ]
  },

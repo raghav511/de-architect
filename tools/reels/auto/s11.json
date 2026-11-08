@@ -1,706 +1,919 @@
 {
  "11.1 Why this sprint exists": {
-  "hash": "5d59391a0b1f",
+  "hash": "d5338047bbb9",
   "sec": "11.1",
   "reels": [
    {
-    "title": "The chef who cooks in your kitchen",
+    "title": "The engineer who moves in with the customer",
     "level": "New to it",
     "beats": [
      {
-      "say": "Why do strong engineers lose job offers they should have won?",
-      "show": {
-       "t": "big",
-       "kicker": "The hidden half",
-       "text": "Strong, yet no offer?"
-      }
-     },
-     {
-      "say": "Because half of a typical interview loop is not technical. There is a hiring manager chat, a behavioral round, and often a product case. Think of a driving test. Knowing the engine does not help if you cannot read the road.",
+      "say": "What if the engineer who builds a product moved into the customer's office? That is a forward deployed engineer.",
       "show": {
        "t": "scene",
-       "title": "Half the loop is *people*",
+       "title": "An engineer *inside* the customer",
        "nodes": [
         {
-         "id": "t",
-         "label": "Technical rounds",
-         "sub": "code, SQL, design",
-         "x": 25,
-         "y": 30,
+         "id": "team",
+         "label": "Product team",
+         "sub": "builds the product",
+         "x": 20,
+         "y": 25,
          "tone": "blue"
         },
         {
-         "id": "h",
-         "label": "Hiring manager",
-         "sub": "fit and story",
-         "x": 75,
-         "y": 30,
-         "tone": "amber"
-        },
-        {
-         "id": "b",
-         "label": "Behavioral",
-         "sub": "how you work",
-         "x": 25,
-         "y": 60,
+         "id": "eng",
+         "label": "Engineer",
+         "sub": "forward deployed",
+         "x": 50,
+         "y": 50,
          "tone": "teal"
         },
         {
-         "id": "p",
-         "label": "Product case",
-         "sub": "think with the business",
-         "x": 75,
-         "y": 60,
-         "tone": "plum"
+         "id": "cust",
+         "label": "Customer",
+         "sub": "their office",
+         "x": 80,
+         "y": 25,
+         "tone": "amber"
         }
        ],
        "edges": [
         [
-         "t",
-         "h"
+         "team",
+         "eng"
         ],
         [
-         "b",
-         "p"
+         "eng",
+         "cust"
         ]
        ],
        "steps": [
         {
          "at": 0.1,
-         "show": "t"
+         "show": "team"
         },
         {
-         "at": 0.35,
-         "show": [
-          "h",
-          "b",
-          "p"
-         ]
+         "at": 0.4,
+         "show": "eng"
         },
         {
          "at": 0.7,
+         "show": "cust"
+        },
+        {
+         "at": 0.85,
+         "packet": [
+          "eng",
+          "cust"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Picture a kitchen fitter. You ask for a bigger sink. They look around and see the real trouble is no counter space. So they fix that, in your home, within days.",
+      "show": {
+       "t": "scene",
+       "title": "Fix the *real* problem",
+       "nodes": [
+        {
+         "id": "ask",
+         "label": "Bigger sink",
+         "sub": "what was asked",
+         "x": 25,
+         "y": 25,
+         "tone": "grey"
+        },
+        {
+         "id": "real",
+         "label": "No counter space",
+         "sub": "what was wrong",
+         "x": 75,
+         "y": 25,
+         "tone": "red"
+        },
+        {
+         "id": "fix",
+         "label": "Fixed in days",
+         "sub": "done in your home",
+         "x": 50,
+         "y": 70,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "ask",
+         "real"
+        ],
+        [
+         "real",
+         "fix"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "ask"
+        },
+        {
+         "at": 0.4,
+         "show": "real",
+         "glow": "real"
+        },
+        {
+         "at": 0.7,
+         "show": "fix",
+         "packet": [
+          "real",
+          "fix"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
          "chip": {
-          "text": "Half the loop is not technical",
-          "tone": "amber",
-          "icon": "alert"
+          "text": "Solve the need, not the request",
+          "tone": "teal",
+          "icon": "🔧"
          }
         }
        ]
       }
      },
      {
-      "say": "Now picture a personal chef who moves into your kitchen. They ask what your family likes, then cook it right there. A forward deployed engineer does that with software, inside a customer's company.",
+      "say": "Then they call the factory: many homes have this problem, so build it into every kitchen. That report back turns one customer's fix into a feature for everyone.",
       "show": {
        "t": "scene",
-       "title": "A chef in *your* kitchen",
+       "title": "One fix, *every* kitchen",
        "nodes": [
         {
-         "id": "c",
-         "label": "Customer",
-         "sub": "has the problem",
-         "x": 25,
-         "y": 35,
+         "id": "home",
+         "label": "One customer",
+         "sub": "the fix",
+         "x": 20,
+         "y": 30,
          "tone": "amber"
         },
         {
-         "id": "e",
-         "label": "Forward deployed engineer",
-         "sub": "sits inside",
-         "x": 75,
-         "y": 35,
+         "id": "eng",
+         "label": "Engineer",
+         "sub": "writes it up",
+         "x": 50,
+         "y": 55,
          "tone": "teal"
         },
         {
-         "id": "s",
-         "label": "Working software",
-         "sub": "shipped there",
-         "x": 50,
-         "y": 70,
+         "id": "fac",
+         "label": "Product team",
+         "sub": "ships to all",
+         "x": 80,
+         "y": 30,
          "tone": "blue"
         }
        ],
        "edges": [
         [
-         "c",
-         "e"
+         "home",
+         "eng"
         ],
         [
-         "e",
-         "s"
+         "eng",
+         "fac"
         ]
        ],
        "steps": [
         {
          "at": 0.1,
-         "show": "c"
+         "show": "home"
         },
         {
-         "at": 0.3,
-         "show": "e",
+         "at": 0.4,
+         "show": "eng",
          "packet": [
-          "c",
-          "e"
+          "home",
+          "eng"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "fac",
+         "packet": [
+          "eng",
+          "fac"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Report back to product",
+          "tone": "blue",
+          "icon": "📣"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Hiring panels test the same habits. They ask how you found the real need, and whether you can explain it to a non-technical buyer in plain words.",
+      "show": {
+       "t": "points",
+       "title": "What interviewers listen for",
+       "items": [
+        "How you found the real need",
+        "Plain words for a non-technical buyer",
+        "What you handed back to product"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A customer asks for a dashboard. What does a forward deployed engineer do first?",
+     "opts": [
+      "Find the decision the dashboard is meant to support",
+      "Build the dashboard exactly as the request describes",
+      "Write a full design document before touching any data",
+      "Wait for product to ship a general feature for everyone"
+     ],
+     "ans": 0,
+     "why": "The request is only a guess at a solution. The engineer first learns the decision behind it, such as which shipments to rush, then builds for that need."
+    },
+    "work": [
+     "Next time you get a request, ask what decision it will change before you start building.",
+     "Write down one thing you built for a single team that other teams could reuse."
+    ]
+   },
+   {
+    "title": "What a forward deployed engineer does, step by step",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Job postings for forward deployed engineers jumped from six hundred forty-three to five thousand three hundred thirty in a year. What do these people actually do all day?",
+      "show": {
+       "t": "big",
+       "text": "643 → 5,330",
+       "sub": "forward deployed postings, April 2025 to April 2026",
+       "kicker": "Fast-growing role"
+      }
+     },
+     {
+      "say": "Step one, find the real problem. A customer asks for a dashboard. You learn the decision is which shipments to rush, and you build for that.",
+      "show": {
+       "t": "scene",
+       "title": "Step one: the *real* problem",
+       "nodes": [
+        {
+         "id": "ask",
+         "label": "Dashboard",
+         "sub": "the request",
+         "x": 25,
+         "y": 25,
+         "tone": "grey"
+        },
+        {
+         "id": "dec",
+         "label": "Which shipments to rush",
+         "sub": "the decision",
+         "x": 75,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "build",
+         "label": "Build for that",
+         "sub": "alert and rank list",
+         "x": 50,
+         "y": 70,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "ask",
+         "dec"
+        ],
+        [
+         "dec",
+         "build"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "ask"
+        },
+        {
+         "at": 0.4,
+         "show": "dec",
+         "glow": "dec"
+        },
+        {
+         "at": 0.7,
+         "show": "build",
+         "packet": [
+          "dec",
+          "build"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Step two, ship a working slice in days, inside their environment, then harden it. Step three, own the data path: messy sources, access rules, freshness, and the failure at three in the morning.",
+      "show": {
+       "t": "scene",
+       "title": "Slice first, then *harden*",
+       "nodes": [
+        {
+         "id": "src",
+         "label": "Messy sources",
+         "sub": "access rules",
+         "x": 20,
+         "y": 25,
+         "tone": "red"
+        },
+        {
+         "id": "slice",
+         "label": "Working slice",
+         "sub": "live in days",
+         "x": 50,
+         "y": 50,
+         "tone": "teal"
+        },
+        {
+         "id": "prod",
+         "label": "Production grade",
+         "sub": "fresh, monitored",
+         "x": 80,
+         "y": 25,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "src",
+         "slice"
+        ],
+        [
+         "slice",
+         "prod"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "src"
+        },
+        {
+         "at": 0.4,
+         "show": "slice",
+         "packet": [
+          "src",
+          "slice"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "prod",
+         "packet": [
+          "slice",
+          "prod"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Useful in days, solid after",
+          "tone": "teal",
+          "icon": "🚀"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Step four, agents act safely: they read context your pipeline built, propose actions, a person approves, everything is logged and reversible. Step five, report to product so one fix becomes a feature.",
+      "show": {
+       "t": "scene",
+       "title": "Agents with a *human* gate",
+       "nodes": [
+        {
+         "id": "ctx",
+         "label": "Pipeline context",
+         "sub": "data you built",
+         "x": 20,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "agent",
+         "label": "Agent",
+         "sub": "proposes action",
+         "x": 50,
+         "y": 50,
+         "tone": "plum"
+        },
+        {
+         "id": "human",
+         "label": "Person approves",
+         "sub": "logged, undoable",
+         "x": 80,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "prod",
+         "label": "Product team",
+         "sub": "gets the write-up",
+         "x": 50,
+         "y": 80,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "ctx",
+         "agent"
+        ],
+        [
+         "agent",
+         "human"
+        ],
+        [
+         "human",
+         "prod"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "ctx"
+        },
+        {
+         "at": 0.35,
+         "show": "agent",
+         "packet": [
+          "ctx",
+          "agent"
          ],
          "n": 2
         },
         {
          "at": 0.6,
-         "show": "s",
+         "show": "human",
          "packet": [
-          "e",
-          "s"
+          "agent",
+          "human"
          ],
-         "n": 3
+         "n": 2
         },
         {
          "at": 0.85,
-         "chip": {
-          "text": "Listen first, then build on site",
-          "tone": "teal",
-          "icon": "check"
-         }
+         "show": "prod",
+         "packet": [
+          "human",
+          "prod"
+         ],
+         "n": 2
         }
-       ]
-      }
-     },
-     {
-      "say": "That job barely existed a year ago. Now it is everywhere. Listening, explaining and building are the skills it rewards.",
-      "show": {
-       "t": "points",
-       "title": "Skills it rewards",
-       "items": [
-        "Listening",
-        "Explaining",
-        "Building"
        ]
       }
      }
     ],
     "check": {
-     "q": "What does a forward deployed engineer do?",
+     "q": "What should reach a customer's environment first in this role?",
      "opts": [
-      "Works inside a customer's environment, learns their need and ships software for them",
-      "Only answers support tickets from head office",
-      "Designs chips for cloud servers"
+      "A working slice in days that is hardened afterwards",
+      "A complete design document reviewed by every team",
+      "A polished demo built outside their own systems",
+      "A full platform released after several months of work"
      ],
      "ans": 0,
-     "why": "The role is defined by being embedded with the customer, finding what they actually need, and shipping production software there."
+     "why": "A real slice running on the customer's own data teaches you far more than a document or an off-site demo, and you can harden it once it proves useful."
     },
     "work": [
-     "Write down two stories where you listened to a business team and changed what you built.",
-     "Practise explaining your last project to a non-technical friend in 60 seconds."
+     "Pick one project and define the smallest slice that could run on real data this week.",
+     "List the approval, logging and undo steps any agent action in your pipeline would need."
     ]
    },
    {
-    "title": "A week in the life, and what interviews copy",
-    "level": "How it works",
-    "beats": [
-     {
-      "say": "How does a forward deployed engineer spend a week?",
-      "show": {
-       "t": "big",
-       "kicker": "Inside the role",
-       "text": "One week, three moves"
-      }
-     },
-     {
-      "say": "First, sit with the customer and find the real problem, not the one written in the ticket. Second, build a working solution on their data. Third, ship it to production and stay until people actually use it.",
-      "show": {
-       "t": "scene",
-       "title": "Discover, build, *ship*",
-       "nodes": [
-        {
-         "id": "d",
-         "label": "Discover",
-         "sub": "the real problem",
-         "x": 50,
-         "y": 18,
-         "tone": "amber"
-        },
-        {
-         "id": "b",
-         "label": "Build",
-         "sub": "on their data",
-         "x": 50,
-         "y": 45,
-         "tone": "blue"
-        },
-        {
-         "id": "s",
-         "label": "Ship",
-         "sub": "to production",
-         "x": 50,
-         "y": 72,
-         "tone": "teal"
-        }
-       ],
-       "edges": [
-        [
-         "d",
-         "b"
-        ],
-        [
-         "b",
-         "s"
-        ]
-       ],
-       "steps": [
-        {
-         "at": 0.1,
-         "show": "d"
-        },
-        {
-         "at": 0.4,
-         "show": "b",
-         "packet": [
-          "d",
-          "b"
-         ],
-         "n": 2
-        },
-        {
-         "at": 0.7,
-         "show": "s",
-         "packet": [
-          "b",
-          "s"
-         ],
-         "n": 2
-        },
-        {
-         "at": 0.9,
-         "chip": {
-          "text": "Stay until people use it",
-          "tone": "teal",
-          "icon": "check"
-         }
-        }
-       ]
-      }
-     },
-     {
-      "say": "Postings for this role rose from 643 to 5,330 in twelve months. That is about eight times. The top skills are Python, AI agents, TypeScript, AWS and LLMs. SQL and a modern data stack are simply assumed.",
-      "show": {
-       "t": "bars",
-       "title": "Postings, April to April",
-       "unit": "postings",
-       "items": [
-        [
-         "April 2025",
-         643,
-         ""
-        ],
-        [
-         "April 2026",
-         5330,
-         "about 8 times"
-        ]
-       ]
-      }
-     },
-     {
-      "say": "Interviewers test the same loop. Atlassian asks why click-through rose while conversions fell. You must ask questions first, then reason to a cause, then recommend.",
-      "show": {
-       "t": "scene",
-       "title": "The case round *mirrors* the job",
-       "nodes": [
-        {
-         "id": "q",
-         "label": "Ask",
-         "sub": "clarify the metric",
-         "x": 25,
-         "y": 35,
-         "tone": "amber"
-        },
-        {
-         "id": "r",
-         "label": "Reason",
-         "sub": "find the cause",
-         "x": 75,
-         "y": 35,
-         "tone": "blue"
-        },
-        {
-         "id": "a",
-         "label": "Recommend",
-         "sub": "clear next step",
-         "x": 50,
-         "y": 70,
-         "tone": "teal"
-        }
-       ],
-       "edges": [
-        [
-         "q",
-         "r"
-        ],
-        [
-         "r",
-         "a"
-        ]
-       ],
-       "steps": [
-        {
-         "at": 0.2,
-         "show": "q"
-        },
-        {
-         "at": 0.5,
-         "show": "r",
-         "packet": [
-          "q",
-          "r"
-         ],
-         "n": 2
-        },
-        {
-         "at": 0.8,
-         "show": "a",
-         "packet": [
-          "r",
-          "a"
-         ],
-         "n": 2
-        }
-       ]
-      }
-     }
-    ],
-    "check": {
-     "q": "Why does a case question like rising click-through with falling conversions reward asking questions first?",
-     "opts": [
-      "Interviewers dislike quick answers",
-      "The real cause depends on definitions and data you do not yet know",
-      "Questions buy time to recall the formula"
-     ],
-     "ans": 1,
-     "why": "Like the customer's ticket, the stated problem hides the real one. Clarifying definitions and data narrows the cause before you recommend."
-    },
-    "work": [
-     "Practise one metric puzzle aloud: ask three clarifying questions before any theory.",
-     "Check that your SQL and Python are sharp, since postings assume them."
-    ]
-   },
-   {
-    "title": "Case traps and reading the market",
+    "title": "Where the traps are",
     "level": "Inside and caveats",
     "beats": [
      {
-      "say": "Click-through went up but conversions fell. What do you say first?",
+      "say": "Click-through rose, but conversions fell. Is the new feature a win?",
       "show": {
        "t": "big",
-       "kicker": "The probe",
-       "text": "Clicks up. Conversions down."
+       "text": "Clicks ↑  Sales ↓",
+       "sub": "a classic product-round question",
+       "kicker": "Win or not?"
       }
      },
      {
-      "say": "Not a guess. Check the data first. Did the metric definition change? Did the traffic mix shift, with cheap clicks from people who never meant to buy? Is checkout broken? Name causes, then say how you would test each.",
+      "say": "Not yet. A click only measures curiosity; a conversion measures the outcome. Maybe a vague button drew the wrong visitors, or a later checkout step broke. Split the funnel step by step and by segment to find where people drop.",
       "show": {
        "t": "scene",
-       "title": "Three *suspects*",
+       "title": "Find where the funnel *leaks*",
        "nodes": [
         {
-         "id": "m",
-         "label": "Metric changed?",
-         "sub": "definition or tracking",
-         "x": 25,
+         "id": "click",
+         "label": "Click",
+         "sub": "went up",
+         "x": 20,
          "y": 30,
-         "tone": "blue"
+         "tone": "teal"
         },
         {
-         "id": "t",
-         "label": "Traffic mix?",
-         "sub": "wrong audience",
-         "x": 75,
-         "y": 30,
+         "id": "cart",
+         "label": "Add to cart",
+         "sub": "check this",
+         "x": 50,
+         "y": 50,
          "tone": "amber"
         },
         {
-         "id": "c",
-         "label": "Checkout broken?",
-         "sub": "funnel drop",
-         "x": 50,
-         "y": 65,
+         "id": "pay",
+         "label": "Pay",
+         "sub": "went down",
+         "x": 80,
+         "y": 30,
          "tone": "red"
         }
        ],
        "edges": [
         [
-         "m",
-         "c"
+         "click",
+         "cart"
         ],
         [
-         "t",
-         "c"
+         "cart",
+         "pay"
         ]
        ],
        "steps": [
         {
-         "at": 0.2,
-         "show": "m"
+         "at": 0.1,
+         "show": "click"
         },
         {
-         "at": 0.45,
-         "show": "t"
+         "at": 0.4,
+         "show": "cart",
+         "packet": [
+          "click",
+          "cart"
+         ],
+         "n": 3
         },
         {
          "at": 0.7,
-         "show": "c"
+         "show": "pay",
+         "packet": [
+          "cart",
+          "pay"
+         ],
+         "n": 1
         },
         {
-         "at": 0.9,
+         "at": 0.85,
+         "glow": "cart"
+        },
+        {
+         "at": 0.95,
          "chip": {
-          "text": "Name causes, then a test for each",
-          "tone": "teal",
-          "icon": "check"
+          "text": "Split by step and segment",
+          "tone": "amber",
+          "icon": "🔍"
          }
         }
        ]
       }
      },
      {
-      "say": "Candidates fail by diving into one theory, or by speaking jargon to a non-technical buyer, like when Google asks you to sell its cloud to a business leader.",
+      "say": "The same suspicion applies to agents. A demo shows one good run. An evaluation set of, say, two hundred real cases shows how often it is right, so the number decides whether it ships.",
       "show": {
-       "t": "points",
-       "title": "Common failures",
-       "items": [
-        "Locking onto one theory",
-        "Jargon with a business buyer",
-        "No clear recommendation"
+       "t": "scene",
+       "title": "A demo is not an *evaluation*",
+       "nodes": [
+        {
+         "id": "demo",
+         "label": "Demo",
+         "sub": "one good run",
+         "x": 25,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "eval",
+         "label": "Evaluation set",
+         "sub": "real cases",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "demo",
+         "eval"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "demo"
+        },
+        {
+         "at": 0.4,
+         "show": "eval",
+         "glow": "eval"
+        },
+        {
+         "at": 0.7,
+         "count": {
+          "key": "cases",
+          "label": "cases scored",
+          "to": 200,
+          "unit": "cases",
+          "tone": "teal"
+         }
+        }
        ]
       }
      },
      {
-      "say": "Also read the job market carefully. Postings are not hires. And location matters: in India, Google Cloud, Sarvam AI and Accenture were hiring, but Palantir, OpenAI and Anthropic had none then.",
+      "say": "And agents inherit data flaws. If a source is stale or access rules block a field, the agent confidently proposes wrong actions. Check freshness and permissions first, and keep an undo for every action.",
       "show": {
        "t": "scene",
-       "title": "Postings are not *hires*",
+       "title": "Bad data makes *confident* mistakes",
        "nodes": [
         {
-         "id": "y",
-         "label": "Hiring in India",
-         "sub": "Google Cloud, Sarvam AI, Accenture",
-         "x": 30,
-         "y": 35,
+         "id": "src",
+         "label": "Stale source",
+         "sub": "or blocked field",
+         "x": 20,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "agent",
+         "label": "Agent",
+         "sub": "sounds sure",
+         "x": 50,
+         "y": 50,
+         "tone": "amber"
+        },
+        {
+         "id": "act",
+         "label": "Wrong action",
+         "sub": "needs undo",
+         "x": 80,
+         "y": 30,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "src",
+         "agent"
+        ],
+        [
+         "agent",
+         "act"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "src"
+        },
+        {
+         "at": 0.4,
+         "show": "agent",
+         "packet": [
+          "src",
+          "agent"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "act",
+         "packet": [
+          "agent",
+          "act"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Check freshness and permissions first",
+          "tone": "teal",
+          "icon": "🛡️"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Click-through rose while conversions fell. What is the best first step?",
+     "opts": [
+      "Break the funnel down by step and by user segment",
+      "Call it a success because more people clicked",
+      "Roll the feature back at once without opening the data",
+      "Wait a month and hope the numbers even out"
+     ],
+     "ans": 0,
+     "why": "The two metrics measure different things. Splitting the funnel by step and segment shows where the drop happens and whether the cause is traffic mix, a misleading button or a broken step."
+    },
+    "work": [
+     "Before shipping an agent, build an evaluation set of real past cases and record its hit rate.",
+     "Add freshness and permission checks to the pipeline feeding any agent."
+    ]
+   },
+   {
+    "title": "When embedding is the wrong call",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Why would a software company pay an engineer to live inside one customer's office?",
+      "show": {
+       "t": "big",
+       "text": "One engineer, one customer",
+       "sub": "expensive by design",
+       "kicker": "Worth it?"
+      }
+     },
+     {
+      "say": "Because early on, the product does not fit messy real data, and only someone on site learns what is missing. It is costly, so it suits big contracts or immature products, not thousands of small accounts.",
+      "show": {
+       "t": "points",
+       "title": "Embed only when it pays",
+       "items": [
+        "Large contract, high stakes",
+        "Product still immature",
+        "Not for thousands of small accounts"
+       ]
+      }
+     },
+     {
+      "say": "The risk is drifting into consulting. Every custom build adds upkeep for you alone. The test: does the work return to product as a reusable feature? If not, price it as services, or choose self-serve tooling and support engineers instead.",
+      "show": {
+       "t": "scene",
+       "title": "Feature or *consulting*",
+       "nodes": [
+        {
+         "id": "custom",
+         "label": "Custom build",
+         "sub": "upkeep only for you",
+         "x": 20,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "feat",
+         "label": "Reusable feature",
+         "sub": "returns to product",
+         "x": 80,
+         "y": 30,
          "tone": "teal"
         },
         {
-         "id": "n",
-         "label": "None in India",
-         "sub": "Palantir, OpenAI, Anthropic",
-         "x": 70,
-         "y": 35,
+         "id": "svc",
+         "label": "Priced as services",
+         "sub": "if it never returns",
+         "x": 50,
+         "y": 75,
+         "tone": "grey"
+        }
+       ],
+       "edges": [
+        [
+         "custom",
+         "feat"
+        ],
+        [
+         "custom",
+         "svc"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "custom"
+        },
+        {
+         "at": 0.4,
+         "show": "feat",
+         "packet": [
+          "custom",
+          "feat"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.7,
+         "show": "svc",
+         "packet": [
+          "custom",
+          "svc"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "No path to product means services",
+          "tone": "amber",
+          "icon": "⚖️"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Mind the market too. In India, Google Cloud, Sarvam AI and Accenture were hiring for these roles, while Palantir, OpenAI and Anthropic had none at the time. Match your story to where the seats are.",
+      "show": {
+       "t": "scene",
+       "title": "Hiring in *India*",
+       "nodes": [
+        {
+         "id": "g",
+         "label": "Google Cloud",
+         "sub": "hiring",
+         "x": 20,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "s",
+         "label": "Sarvam AI",
+         "sub": "hiring",
+         "x": 50,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "a",
+         "label": "Accenture",
+         "sub": "hiring",
+         "x": 80,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "p",
+         "label": "Palantir, OpenAI, Anthropic",
+         "sub": "none at the time",
+         "x": 50,
+         "y": 70,
          "tone": "grey"
         }
        ],
        "edges": [],
        "steps": [
         {
-         "at": 0.3,
-         "show": "y"
+         "at": 0.1,
+         "show": [
+          "g",
+          "s",
+          "a"
+         ]
         },
         {
          "at": 0.6,
-         "show": "n"
-        },
-        {
-         "at": 0.85,
-         "chip": {
-          "text": "Check where roles really are",
-          "tone": "amber",
-          "icon": "alert"
-         }
-        }
-       ]
-      }
-     }
-    ],
-    "check": {
-     "q": "A product lead says conversions fell while click-through rose. Best first response?",
-     "opts": [
-      "Say the landing page is bad and propose a redesign",
-      "Clarify metric definitions and traffic mix, list causes, and say how to test each",
-      "Ask for a bigger ad budget"
-     ],
-     "ans": 1,
-     "why": "A structured list of testable causes beats an early guess. It shows you will not act on an unverified theory."
-    },
-    "work": [
-     "Build a checklist for metric puzzles: definition, population, funnel step, timing.",
-     "Rewrite one technical explanation with no jargon for a buyer."
-    ]
-   },
-   {
-    "title": "Is this role your best bet?",
-    "level": "Architect",
-    "beats": [
-     {
-      "say": "Is a forward deployed role right for you, or just a hot title?",
-      "show": {
-       "t": "big",
-       "kicker": "Decide on purpose",
-       "text": "Hot title, or right fit?"
-      }
-     },
-     {
-      "say": "Weigh the trade. You get customer impact and fast learning, but the work is high touch, may mean on site pressure, and does not scale like a product. Companies use it when each customer is different and the stakes are high.",
-      "show": {
-       "t": "scene",
-       "title": "High touch, *high impact*",
-       "nodes": [
-        {
-         "id": "g",
-         "label": "Gains",
-         "sub": "impact, fast learning",
-         "x": 28,
-         "y": 35,
-         "tone": "teal"
-        },
-        {
-         "id": "c",
-         "label": "Costs",
-         "sub": "on site, does not scale",
-         "x": 72,
-         "y": 35,
-         "tone": "amber"
-        },
-        {
-         "id": "f",
-         "label": "Fits when",
-         "sub": "each customer differs",
-         "x": 50,
-         "y": 70,
-         "tone": "blue"
-        }
-       ],
-       "edges": [
-        [
-         "g",
-         "f"
-        ],
-        [
-         "c",
-         "f"
-        ]
-       ],
-       "steps": [
-        {
-         "at": 0.2,
-         "show": "g"
-        },
-        {
-         "at": 0.45,
-         "show": "c"
-        },
-        {
-         "at": 0.75,
-         "show": "f",
-         "packet": [
-          "g",
-          "f"
-         ],
-         "n": 2
-        }
-       ]
-      }
-     },
-     {
-      "say": "The growth is real but from a small base, so treat 5,330 postings as a signal, not a guarantee. If you prefer deep platform work, a core data engineering role fits better.",
-      "show": {
-       "t": "points",
-       "title": "Read the signal",
-       "items": [
-        "Fast growth from a small base",
-        "Postings are not guaranteed offers",
-        "Deep platform fans: stay core data engineering"
-       ]
-      }
-     },
-     {
-      "say": "Either way, split your preparation. Half the loop is people and product, so give it half your time. Build a story linking business analytics, data engineering and agentic automation for a go to market team.",
-      "show": {
-       "t": "scene",
-       "title": "Split prep *evenly*",
-       "nodes": [
-        {
-         "id": "a",
-         "label": "Technical prep",
-         "sub": "half",
-         "x": 28,
-         "y": 35,
-         "tone": "blue"
-        },
-        {
-         "id": "p",
-         "label": "People and product prep",
-         "sub": "half",
-         "x": 72,
-         "y": 35,
-         "tone": "amber"
-        },
-        {
-         "id": "s",
-         "label": "One career story",
-         "sub": "analytics, data, agents",
-         "x": 50,
-         "y": 70,
-         "tone": "teal"
-        }
-       ],
-       "edges": [
-        [
-         "a",
-         "s"
-        ],
-        [
-         "p",
-         "s"
-        ]
-       ],
-       "steps": [
-        {
-         "at": 0.2,
-         "show": "a"
-        },
-        {
-         "at": 0.45,
          "show": "p"
         },
         {
-         "at": 0.75,
-         "show": "s",
-         "packet": [
-          "p",
-          "s"
-         ],
-         "n": 3
-        },
-        {
-         "at": 0.9,
-         "chip": {
-          "text": "Prepare both halves",
-          "tone": "teal",
-          "icon": "check"
-         }
+         "at": 0.85,
+         "dim": "p"
         }
        ]
       }
      }
     ],
     "check": {
-     "q": "Which is the strongest reason to hesitate about a forward deployed role?",
+     "q": "When is embedding an engineer with one customer a poor choice?",
      "opts": [
-      "It requires no coding",
-      "Work is high touch and customer specific, which suits some people less than deep platform work",
-      "Postings are falling quickly"
+      "Thousands of small accounts that all have similar needs",
+      "A large contract where the product is still immature",
+      "A customer whose data is messy and poorly documented",
+      "Work that is likely to become a reusable product feature"
      ],
-     "ans": 1,
-     "why": "The role trades scale and depth for customer proximity. If you prefer building shared platforms, core data engineering may suit you better."
+     "ans": 0,
+     "why": "Embedding is costly per customer, so it only pays on large, high-stakes accounts or while the product is immature. Across many small accounts, self-serve tooling and support scale better."
     },
     "work": [
-     "List what you enjoy more: customer problems or platform internals, then pick targets.",
-     "Draft a two minute story that ties your analytics, data and automation work together.",
-     "Put equal time on behavioral and case practice in your weekly plan."
+     "For any custom customer build, write down how it will return to product, or price it as services.",
+     "Compare your target employers' India openings and tailor your story to the ones actually hiring."
     ]
    }
   ]

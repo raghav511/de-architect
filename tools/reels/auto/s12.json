@@ -1067,191 +1067,423 @@
   ]
  },
  "12.4 The capstone, presented": {
-  "hash": "71a384022b24",
+  "hash": "404e225155c7",
   "sec": "12.4",
   "reels": [
    {
-    "title": "The open kitchen: a repo that proves it",
+    "title": "The assistant who only suggests",
     "level": "New to it",
     "beats": [
      {
-      "say": "Would you hire a chef who only says they can cook, or one who lets you walk into the kitchen?",
+      "say": "Would you let a brand new assistant sign company cheques all alone? Of course not. Yet many AI projects quietly do exactly that.",
       "show": {
        "t": "big",
-       "kicker": "Proof beats claims",
-       "text": "Open kitchen",
-       "sub": "Let them look inside"
+       "text": "Suggest, don't sign",
+       "sub": "An AI that acts alone is a risk"
       }
      },
      {
-      "say": "A project repository is that open kitchen. The first file, called the README, says in one paragraph what the platform does. Then a map of the parts. Then how to run it.",
+      "say": "Here is the safer way. Each morning a clerk puts one folder on the desk for every problem: what broke, what worked last time, and the rulebook page. That is the pipeline building the context.",
       "show": {
        "t": "scene",
-       "title": "The *README* order",
+       "title": "A *folder* per problem",
        "nodes": [
         {
-         "id": "para",
-         "label": "One paragraph",
-         "sub": "what it does",
-         "x": 20,
+         "id": "clerk",
+         "label": "Pipeline",
+         "sub": "the clerk",
+         "x": 50,
          "y": 25,
          "tone": "blue"
         },
         {
-         "id": "map",
-         "label": "Map",
-         "sub": "architecture diagram",
+         "id": "folder",
+         "label": "Evidence row",
+         "sub": "one folder per failure",
          "x": 50,
-         "y": 25,
+         "y": 60,
          "tone": "teal"
-        },
-        {
-         "id": "run",
-         "label": "How to run",
-         "sub": "steps",
-         "x": 80,
-         "y": 25,
-         "tone": "amber"
         }
        ],
        "edges": [
         [
-         "para",
-         "map"
+         "clerk",
+         "folder"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "clerk"
+        },
+        {
+         "at": 0.5,
+         "show": "folder"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "clerk",
+          "folder"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Evidence is prepared, not hunted",
+          "tone": "teal",
+          "icon": "folder"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The assistant reads one folder and suggests one move from a short menu, such as try again or open a ticket. It only suggests.",
+      "show": {
+       "t": "points",
+       "title": "The short menu",
+       "items": [
+        "Rerun a partition",
+        "Backfill a range",
+        "Pause a schedule",
+        "Open a ticket"
+       ]
+      }
+     },
+     {
+      "say": "The manager signs. A cashier with a tiny key carries it out and writes it in a ledger. Suggest, sign, do, record.",
+      "show": {
+       "t": "scene",
+       "title": "Four hands, one *job*",
+       "nodes": [
+        {
+         "id": "agent",
+         "label": "Agent",
+         "sub": "suggests",
+         "x": 20,
+         "y": 25,
+         "tone": "plum"
+        },
+        {
+         "id": "boss",
+         "label": "Person",
+         "sub": "signs",
+         "x": 80,
+         "y": 25,
+         "tone": "amber"
+        },
+        {
+         "id": "tool",
+         "label": "Tool",
+         "sub": "does it",
+         "x": 20,
+         "y": 60,
+         "tone": "blue"
+        },
+        {
+         "id": "ledger",
+         "label": "Audit table",
+         "sub": "records it",
+         "x": 80,
+         "y": 60,
+         "tone": "teal",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "agent",
+         "boss"
         ],
         [
-         "map",
-         "run"
+         "boss",
+         "tool"
+        ],
+        [
+         "tool",
+         "ledger"
         ]
        ],
        "steps": [
         {
          "at": 0.1,
-         "show": "para"
+         "show": "agent"
         },
         {
-         "at": 0.4,
-         "show": "map",
+         "at": 0.3,
+         "show": "boss",
          "packet": [
-          "para",
-          "map"
-         ],
-         "n": 2
+          "agent",
+          "boss"
+         ]
         },
         {
-         "at": 0.7,
-         "show": "run",
+         "at": 0.5,
+         "show": "tool",
          "packet": [
-          "map",
-          "run"
+          "boss",
+          "tool"
+         ]
+        },
+        {
+         "at": 0.75,
+         "show": "ledger",
+         "packet": [
+          "tool",
+          "ledger"
+         ]
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "The AI never holds the pen",
+          "tone": "amber",
+          "icon": "pen"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "In the cheque analogy, what is the agent's job?",
+     "opts": [
+      "Read one prepared folder and suggest one move",
+      "Sign and carry out the fix when it feels sure",
+      "Search every log itself and then fix things",
+      "Replace the manager who approves each action"
+     ],
+     "ans": 0,
+     "why": "The agent only reads prepared evidence and proposes. A person approves and a separate narrow tool acts, so a wrong guess cannot change production by itself."
+    },
+    "work": [
+     "Write down who signs off today when a pipeline fix touches production.",
+     "List the three most common failures you fix by hand and what you check first each time."
+    ]
+   },
+   {
+    "title": "Five steps from failure to fix",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How can an agent help fix a failed pipeline without ever touching production? It never does. Five steps keep it safe.",
+      "show": {
+       "t": "big",
+       "text": "Propose. Approve. Act. Record.",
+       "sub": "The model never runs the fix"
+      }
+     },
+     {
+      "say": "One: a scheduled job builds one evidence row per failed run. It holds the error tail, last good run, input row counts and freshness, lineage, schema changes, and the matching runbook section.",
+      "show": {
+       "t": "scene",
+       "title": "One *evidence* row",
+       "nodes": [
+        {
+         "id": "run",
+         "label": "Failed run",
+         "sub": "late or errored",
+         "x": 25,
+         "y": 25,
+         "tone": "red"
+        },
+        {
+         "id": "job",
+         "label": "Context job",
+         "sub": "incremental, tested",
+         "x": 75,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "ev",
+         "label": "Evidence table",
+         "sub": "one row per failure",
+         "x": 50,
+         "y": 60,
+         "tone": "teal",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "run",
+         "job"
+        ],
+        [
+         "job",
+         "ev"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "run"
+        },
+        {
+         "at": 0.35,
+         "show": "job",
+         "packet": [
+          "run",
+          "job"
+         ]
+        },
+        {
+         "at": 0.6,
+         "show": "ev",
+         "packet": [
+          "job",
+          "ev"
          ],
-         "n": 2
+         "n": 3
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Agent reads this, not raw logs",
+          "tone": "teal",
+          "icon": "table"
+         }
         }
        ]
       }
      },
      {
-      "say": "Short notes explain why you picked each tool. A diary of things that broke shows you have really operated it. A table of scores shows how well your helper agent did.",
+      "say": "Two: the agent picks exactly one of four actions, rerun a partition, backfill a range, pause a schedule, or open a ticket. It cites three evidence lines and a confidence. Anything else becomes a ticket.",
       "show": {
-       "t": "points",
-       "title": "What else is inside",
-       "items": [
-        "Short notes: why each tool",
-        "Incident diary: what broke",
-        "Score table: how the agent did"
+       "t": "scene",
+       "title": "A *closed* list",
+       "nodes": [
+        {
+         "id": "ev",
+         "label": "Evidence row",
+         "sub": "input",
+         "x": 25,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "ag",
+         "label": "Agent",
+         "sub": "1 action, 3 lines, confidence",
+         "x": 75,
+         "y": 25,
+         "tone": "plum"
+        },
+        {
+         "id": "prop",
+         "label": "Proposal",
+         "sub": "backfill, 0.82",
+         "x": 50,
+         "y": 60,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "ev",
+         "ag"
+        ],
+        [
+         "ag",
+         "prop"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "ev"
+        },
+        {
+         "at": 0.35,
+         "show": "ag",
+         "packet": [
+          "ev",
+          "ag"
+         ]
+        },
+        {
+         "at": 0.65,
+         "show": "prop",
+         "packet": [
+          "ag",
+          "prop"
+         ]
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Unsure means open a ticket",
+          "tone": "amber",
+          "icon": "list"
+         }
+        }
        ]
       }
      },
      {
-      "say": "And you say plainly: this is a personal project on made-up data, built to learn. Honesty earns more trust than hype.",
+      "say": "Three: a person taps Approve in Slack or a web app. Four: a narrow tool with least-privilege login runs it, and every step lands in an audit table. A backfill writes a new snapshot, so rollback is one command.",
       "show": {
-       "t": "big",
-       "kicker": "Honest scope",
-       "text": "Personal. Synthetic. Built to learn.",
-       "sub": "Trust beats hype"
+       "t": "flow",
+       "title": "Approve to audit",
+       "steps": [
+        {
+         "label": "Approve",
+         "sub": "who, when, exact action"
+        },
+        {
+         "label": "Narrow tool",
+         "sub": "least privilege"
+        },
+        {
+         "label": "New snapshot",
+         "sub": "rollback ready"
+        },
+        {
+         "label": "Audit table",
+         "sub": "every step logged"
+        }
+       ]
       }
      }
     ],
     "check": {
-     "q": "Why does an incident diary help in a portfolio repo?",
+     "q": "Why does a separate tool run the approved action instead of the model?",
      "opts": [
-      "It makes the repo longer",
-      "It shows you have operated what you built, not just built it",
-      "It replaces the README",
-      "It hides the bugs"
+      "It limits the blast radius to a few permitted actions",
+      "It makes the model faster at choosing a good action",
+      "It removes the need to log approvals and outcomes",
+      "It lets the model see more of the raw logs"
      ],
-     "ans": 1,
-     "why": "Operating a system means things break. A cleaned-up record of failures and fixes is evidence of real experience."
+     "ans": 0,
+     "why": "A narrow tool with least-privilege credentials can only do the listed actions, so even a wrong or manipulated proposal cannot do more damage than the list allows."
     },
     "work": [
-     "Write your README opening paragraph in plain words so a non-engineer understands it.",
-     "Ask a friend to open your repo and say what it does after one minute."
-    ]
+     "Sketch the columns of an evidence row for your own failed runs.",
+     "Define your closed action list and the rollback for each action."
+    ],
+    "part": "1 of 2"
    },
    {
-    "title": "The five-minute demo script",
+    "title": "The five-minute demo",
     "level": "How it works",
     "beats": [
      {
-      "say": "You get asked, tell me about a project. What do you say in five minutes?",
+      "say": "An interviewer says, tell me about a project. You get five minutes. How do you spend them?",
       "show": {
        "t": "big",
-       "kicker": "Tell me about a project",
-       "text": "300 seconds",
-       "sub": "Every second planned"
+       "text": "Five minutes",
+       "sub": "Plan each second"
       }
      },
      {
-      "say": "Spend thirty seconds on the problem. Then one minute on the architecture: how data flows from source to table to dashboard.",
+      "say": "Thirty seconds on the problem. One minute on the architecture. Then two minutes, the heart of it: a failure happens, the evidence row appears, the agent proposes a backfill with three evidence lines, and you approve it on your phone.",
       "show": {
        "t": "bars",
-       "title": "First minute and a half",
-       "unit": "sec",
-       "items": [
-        [
-         "Problem",
-         30,
-         "why it exists"
-        ],
-        [
-         "Architecture",
-         60,
-         "source to table to dashboard"
-        ]
-       ]
-      }
-     },
-     {
-      "say": "Give two minutes to the star moment: a live failure. The agent diagnoses it and posts the cause to Slack while the interviewer watches. Watching beats hearing about it.",
-      "show": {
-       "t": "bars",
-       "title": "The star moment",
-       "unit": "sec",
-       "items": [
-        [
-         "Problem",
-         30,
-         ""
-        ],
-        [
-         "Architecture",
-         60,
-         ""
-        ],
-        [
-         "Live failure and Slack",
-         120,
-         "the longest block"
-        ]
-       ]
-      }
-     },
-     {
-      "say": "Then one minute of evaluation numbers: incidents, scores, cost per incident. Finish with thirty seconds on what you would build next. Rehearse three times so it fits.",
-      "show": {
-       "t": "bars",
-       "title": "Full script",
-       "unit": "sec",
+       "title": "Where the time goes",
+       "unit": "seconds",
        "items": [
         [
          "Problem",
@@ -1266,7 +1498,7 @@
         [
          "Live failure",
          120,
-         ""
+         "approve on phone"
         ],
         [
          "Evaluation",
@@ -1274,287 +1506,267 @@
          ""
         ],
         [
-         "Next",
+         "Next steps",
          30,
          ""
         ]
        ]
       }
+     },
+     {
+      "say": "The audit table then shows every step. Spend a minute on evaluation numbers: approval rate, wrong share, and cost per incident. Finish with thirty seconds on what you would build next.",
+      "show": {
+       "t": "points",
+       "title": "Numbers to show",
+       "items": [
+        "Approved unchanged",
+        "Share wrong",
+        "Failure to fix time",
+        "Cost per incident"
+       ]
+      }
+     },
+     {
+      "say": "Rehearse three times. And say plainly it is a personal platform on synthetic data. Honesty builds trust.",
+      "show": {
+       "t": "big",
+       "text": "Rehearse three times",
+       "sub": "Honest scope beats big claims"
+      }
      }
     ],
     "check": {
-     "q": "Which part of the five-minute demo gets the most time, and why?",
+     "q": "Which part of the demo deserves the most time?",
      "opts": [
-      "Architecture, because diagrams are impressive",
-      "The live failure diagnosed by the agent, because showing it working is stronger than describing it",
-      "What you build next, because it shows ambition",
-      "The problem statement, to set context"
+      "The live failure, from evidence to approved fix",
+      "The architecture, shown component by component",
+      "The list of tools and versions you used",
+      "The ideas for what you would build next"
      ],
-     "ans": 1,
-     "why": "Two minutes go to the live failure and Slack post. Seeing the system work end to end is the most convincing proof."
+     "ans": 0,
+     "why": "A live failure diagnosed, approved and recorded shows the whole system working. Architecture and next steps support it but get far less time."
     },
     "work": [
-     "Time yourself running the demo script three times and trim whatever overruns.",
-     "Write one sentence per segment so you can hit each time box."
-    ]
+     "Time yourself giving the demo and trim until it lands at five minutes.",
+     "Record a backup video of the live failure in case the network fails."
+    ],
+    "part": "2 of 2"
    },
    {
-    "title": "When the demo or the questions bite back",
+    "title": "When proposals go wrong",
     "level": "Inside and caveats",
     "beats": [
      {
-      "say": "What happens when your live demo breaks for real, in front of the interviewer?",
+      "say": "What goes wrong when an agent proposes fixes and a human just clicks approve?",
       "show": {
        "t": "big",
-       "kicker": "Failure mode",
-       "text": "The demo fails",
-       "sub": "Plan for it"
+       "text": "Approval can fail too",
+       "sub": "Four gotchas"
       }
      },
      {
-      "say": "Plan for it. Inject one known failure, so the same break happens each time. The agent is not deterministic, so also keep a recorded run ready as backup. Say so calmly.",
+      "say": "First, stale evidence. If the evidence table runs an hour late, the agent proposes a fix for a problem that already changed. So that table has its own freshness check, and proposals expire.",
       "show": {
        "t": "scene",
-       "title": "A *safe* live failure",
+       "title": "*Stale* evidence",
        "nodes": [
         {
-         "id": "inj",
-         "label": "Injected failure",
-         "sub": "same break every time",
-         "x": 20,
+         "id": "ev",
+         "label": "Evidence table",
+         "sub": "60 minutes old",
+         "x": 25,
          "y": 25,
-         "tone": "red"
+         "tone": "amber",
+         "kind": "disk"
         },
         {
-         "id": "agent",
+         "id": "ag",
          "label": "Agent",
-         "sub": "varies run to run",
-         "x": 50,
+         "sub": "proposes",
+         "x": 75,
          "y": 25,
-         "tone": "blue"
+         "tone": "plum"
         },
         {
-         "id": "slack",
-         "label": "Slack post",
-         "sub": "cause and fix",
-         "x": 80,
-         "y": 25,
-         "tone": "teal"
-        },
-        {
-         "id": "rec",
-         "label": "Recorded run",
-         "sub": "backup",
+         "id": "bad",
+         "label": "Wrong fix",
+         "sub": "world has moved",
          "x": 50,
          "y": 60,
-         "tone": "grey"
+         "tone": "red"
         }
        ],
        "edges": [
         [
-         "inj",
-         "agent"
+         "ev",
+         "ag"
         ],
         [
-         "agent",
-         "slack"
-        ],
-        [
-         "agent",
-         "rec"
+         "ag",
+         "bad"
         ]
        ],
        "steps": [
         {
          "at": 0.1,
-         "show": "inj"
+         "show": "ev"
         },
         {
          "at": 0.4,
-         "show": [
-          "agent",
-          "slack"
-         ],
+         "show": "ag",
          "packet": [
-          "inj",
-          "agent"
-         ],
-         "n": 2
+          "ev",
+          "ag"
+         ]
         },
         {
          "at": 0.7,
-         "show": "rec",
+         "show": "bad",
+         "packet": [
+          "ag",
+          "bad"
+         ]
+        },
+        {
+         "at": 0.9,
          "chip": {
-          "text": "Keep a fallback",
+          "text": "Check freshness, expire proposals",
           "tone": "amber",
-          "icon": "shield"
+          "icon": "clock"
          }
         }
        ]
       }
      },
      {
-      "say": "Interviewers probe decisions. Why does the agent only propose fixes? Because a wrong automatic change to production data costs far more than a human click. Each record should name the option you rejected and the price you accepted.",
+      "say": "Second, error logs are untrusted text. A log line saying ignore your rules is a prompt injection. A closed action list and a narrow tool mean the worst result is a bad proposal, not a bad action.",
       "show": {
        "t": "points",
-       "title": "A good decision record",
+       "title": "Untrusted input",
        "items": [
-        "The choice",
-        "The option you rejected",
-        "The price you accepted",
-        "Why the agent only proposes"
+        "Logs can carry instructions",
+        "Closed list limits choices",
+        "Narrow tool limits power",
+        "Worst case: a bad proposal"
        ]
       }
      },
      {
-      "say": "Show misses in the evaluation table too. A table with only perfect scores looks invented.",
+      "say": "Third, rubber stamping. If people approve ninety-nine in a hundred without reading, approval is theatre. Show the evidence beside the button. Fourth, make actions idempotent, so a double click never backfills twice.",
       "show": {
-       "t": "big",
-       "kicker": "Evaluation",
-       "text": "Show the misses",
-       "sub": "Perfect scores look invented"
+       "t": "points",
+       "title": "Human and retry traps",
+       "items": [
+        "Show evidence by the button",
+        "Track approved unchanged rate",
+        "Idempotent actions",
+        "Double click is safe"
+       ]
       }
      }
     ],
     "check": {
-     "q": "Why should the agent only propose fixes rather than apply them?",
+     "q": "A log line says to ignore the rules and drop a table. What stops the damage?",
      "opts": [
-      "Proposals are cheaper to compute",
-      "A wrong automatic change to production data is costly, and a human approval is cheap",
-      "Slack cannot run commands",
-      "Agents cannot read logs"
+      "The closed action list and the least-privilege tool",
+      "A longer prompt telling the model to ignore logs",
+      "The confidence score being above a set threshold",
+      "The audit table recording the action afterwards"
      ],
-     "ans": 1,
-     "why": "The asymmetry is the point: a human check costs seconds, while a wrong automatic change can corrupt data and take hours to undo."
+     "ans": 0,
+     "why": "Prompts can be bypassed. The closed list and the narrow credentials make the harmful action impossible to run, whatever the model was tricked into proposing."
     },
     "work": [
-     "Create a deterministic failure you can trigger on demand and record a backup run of it.",
-     "Add a rejected alternative and its cost to each design decision record.",
-     "Include at least one incident the agent got wrong in your evaluation table."
+     "Add an expiry time to every proposal and reject approvals after it.",
+     "Make each action idempotent with a request ID and test a double click."
     ]
    },
    {
-    "title": "Presenting limits like an architect",
+    "title": "When not to use the agent",
     "level": "Architect",
     "beats": [
      {
-      "say": "Your demo is done. What separates a staff answer from a student answer?",
+      "say": "When is an approving-human agent the wrong tool?",
       "show": {
        "t": "big",
-       "kicker": "Staff level",
-       "text": "Judgment",
-       "sub": "Not just features"
+       "text": "Not every failure needs an agent",
+       "sub": "Pick the cheapest safe tool"
       }
      },
      {
-      "say": "Judgment about limits. Say what synthetic data cannot prove: real volume, messy upstream changes, real users. Then name what you expect to break first at scale, for example many small files in the table, or agent cost growing with incident count.",
+      "say": "If one failure causes eighty percent of incidents, write a plain rule. A retry with backoff is free, instant and testable. Save the agent for the long tail, where each failure looks different.",
       "show": {
-       "t": "scene",
-       "title": "What *breaks* first",
-       "nodes": [
-        {
-         "id": "syn",
-         "label": "Synthetic data",
-         "sub": "cannot prove scale",
-         "x": 20,
-         "y": 25,
-         "tone": "grey"
-        },
-        {
-         "id": "files",
-         "label": "Small files",
-         "sub": "table slows down",
-         "x": 50,
-         "y": 25,
-         "tone": "amber"
-        },
-        {
-         "id": "cost",
-         "label": "Agent cost",
-         "sub": "grows with incidents",
-         "x": 80,
-         "y": 25,
-         "tone": "red"
-        }
-       ],
-       "edges": [
+       "t": "bars",
+       "title": "Incidents by cause",
+       "unit": "percent",
+       "items": [
         [
-         "syn",
-         "files"
+         "Known flaky source",
+         80,
+         "plain retry rule"
         ],
         [
-         "syn",
-         "cost"
+         "Long tail",
+         20,
+         "agent proposes"
         ]
-       ],
-       "steps": [
-        {
-         "at": 0.1,
-         "show": "syn"
-        },
-        {
-         "at": 0.4,
-         "show": "files",
-         "packet": [
-          "syn",
-          "files"
-         ],
-         "n": 2
-        },
-        {
-         "at": 0.7,
-         "show": "cost",
-         "packet": [
-          "syn",
-          "cost"
-         ],
-         "n": 2,
-         "chip": {
-          "text": "Name your risks",
-          "tone": "amber",
-          "icon": "alert"
-         }
-        }
        ]
       }
      },
      {
-      "say": "Cost per incident is your argument. If the agent costs cents and saves a human thirty minutes, automation pays. If it is wrong half the time, it only drafts, which is why it proposes and never applies.",
+      "say": "Measure it like production: share approved unchanged, share wrong, minutes from failure to fix, cost per incident, and how often it rightly said open a ticket.",
       "show": {
        "t": "points",
-       "title": "Cost as an argument",
+       "title": "Evaluation table",
        "items": [
-        "Cents per incident versus 30 human minutes",
-        "Accuracy decides how much autonomy",
-        "Low accuracy means draft only"
+        "Approved unchanged",
+        "Share wrong",
+        "Failure to fix time",
+        "Cost per incident",
+        "Correct ticket calls"
        ]
       }
      },
      {
-      "say": "Choose next steps from the incident log, not from fashion. Build what failed most often.",
+      "say": "If rerun a partition is approved unchanged ninety-five percent of the time, consider auto-approving only that action, with rollback. Keep humans on backfills and pauses. Autonomy is earned by numbers.",
       "show": {
-       "t": "big",
-       "kicker": "What next",
-       "text": "Follow the incidents",
-       "sub": "Evidence over fashion"
+       "t": "flow",
+       "title": "Earning autonomy",
+       "steps": [
+        {
+         "label": "Human approves all",
+         "sub": "collect data"
+        },
+        {
+         "label": "Measure by action",
+         "sub": "95 percent unchanged"
+        },
+        {
+         "label": "Auto-approve low risk",
+         "sub": "rollback ready"
+        },
+        {
+         "label": "Humans keep high risk",
+         "sub": "backfill, pause"
+        }
+       ]
       }
      }
     ],
     "check": {
-     "q": "An interviewer asks what you would build next. Which answer shows the strongest judgment?",
+     "q": "Rerun a partition is approved unchanged 98 percent of the time. What is a sound next step?",
      "opts": [
-      "Adopt the newest tool in the ecosystem",
-      "Rebuild everything on a larger cluster",
-      "Fix the failure type that appears most in the incident log, with the evaluation numbers as the baseline",
-      "Add more dashboards"
+      "Auto-approve that one action with rollback in place",
+      "Auto-approve every action on the closed list",
+      "Remove the audit table to save storage cost",
+      "Let the model call the warehouse directly"
      ],
-     "ans": 2,
-     "why": "Choosing next work from recorded failures and measured results is evidence-driven, and it shows you treat the platform as an operated system."
+     "ans": 0,
+     "why": "Evidence per action justifies loosening control for a low-risk, reversible action only. Riskier actions need their own evidence, and auditing stays on."
     },
     "work": [
-     "Add a limits section to the README listing what synthetic data cannot show.",
-     "Count incidents by type and pick your next feature from the top one.",
-     "Compute average agent cost per incident and compare it with the human time saved."
+     "Rank your incident causes and replace the top repeating one with a plain rule.",
+     "Report approval and wrong-proposal rates per action type, not overall."
     ]
    }
   ]
