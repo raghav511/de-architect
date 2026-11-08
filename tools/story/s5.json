@@ -1,0 +1,103 @@
+{
+ "season": 5,
+ "title": "The Loop",
+ "logline": "Handed a joint plan instead of a crown, Marcus writes the strategy that unites two data teams, defends it to the board and a customer, then sits his own staff interview loop and must choose where to build next.",
+ "modules": [
+  {
+   "mid": "r01",
+   "ep": "The Joint Plan",
+   "logline": "Asha refuses to pick a winner, so Marcus and Victor must write one strategy, run one migration without drama, and lead two teams neither of them manages.",
+   "scenes": [
+    "Asha closes the leadership meeting: no single head of data platform. Marcus and Victor will co-write a two-year strategy for both teams, due in six weeks. Nobody hands Marcus a ticket. So what does a staff architect actually own?",
+    "Victor drafts eleven pages arguing Delta; Marcus drafts nine arguing Iceberg. Asha reads both first pages and stops. \"Neither of you tells me what you are deciding, or what it costs to do nothing.\" What belongs in a design doc that moves a decision?",
+    "The first move is Lumen's finance tables onto the shared Iceberg lake. The Finance director has one question for Marcus: \"How will I know the new revenue number is right before you switch the old one off?\"",
+    "Mei forwards the bill: running Lumen's and Meridian's pipelines side by side costs more each month than either alone. Dev adds that nobody has agreed when the revenue table must land. Who owns reliability and cost when it spans two teams?",
+    "Lumen's analytics team declines to move their dashboards. Their manager reports to Victor, not Marcus, and says so politely in the Slack thread. Marcus has no authority over them. How does he change what they do anyway?",
+    "Marcus sits on the panel for a new staff engineer. The candidate says \"we\" for every result and gives no numbers. Afterwards Marcus tries to tell his own migration story out loud and stalls at the result. Could he pass this round himself?"
+   ],
+   "teasers": [
+    "Two architects, two drafts, and a CTO who reads only the first page.",
+    "Finance wants proof the numbers match before anything is switched off.",
+    "Mei finds the price of running two platforms at once, line by line.",
+    "A team that does not report to Marcus says no to his migration.",
+    "Marcus interviews a staff candidate and discovers his own stories have no numbers.",
+    "The strategy is signed. Now the board wants the whole data foundation on one blueprint."
+   ],
+   "boss": "Weekend review: Asha has given Marcus and Victor one hour with the leadership team. Defend the strategy, the migration plan and its double-run cost, and answer every question with a number, a trade-off and a name.",
+   "finale": "Fourteen days of matching revenue numbers, and Finance signs the cutover. Victor presents the migration at all-hands and credits Lena. Then Asha forwards a note from the board: \"Show us the full foundation, sized and priced, next month.\"",
+   "zoe": "Zoe: \"Did you and Victor stop arguing?\" Marcus: \"We wrote down what we both want, then let the numbers decide who was right.\""
+  },
+  {
+   "mid": "o05",
+   "ep": "The Blueprint",
+   "logline": "Marcus turns everything Meridian has learned into one data foundation blueprint, runs it under launch-day load in the simulator, and defends it in front of the board.",
+   "scenes": [
+    "Marcus opens a blank blueprint and types Kafka, Iceberg, Spark. Asha deletes the line. \"Start with what the company decides, and how much data that takes.\" How many events does Meridian produce on its busiest day, and who uses them?",
+    "Victor proposes seven principles. Dev reads them and shrugs: \"Nobody would disagree with any of these.\" Marcus realises a principle that never says no settles nothing. Which few rules will end next year's arguments before they start?",
+    "The whiteboard fills layer by layer: Debezium and Kafka for ingestion, Iceberg with a REST catalog, Spark and dbt, Flink for surge, Trino for serving. Victor asks for each rejected alternative. Can Marcus defend every single box?",
+    "Kofi wants revenue owned centrally; the Orders team wants refunds as their own product. Dev asks who approves access to rider data at two in the morning. Who owns which data product, and what does the platform enforce for them?",
+    "Marcus runs the blueprint in the simulator's foundation challenge at festival peak. Kafka lag climbs past ten minutes and the run fails. Mei leans over: \"And what does the version that passes cost per year?\"",
+    "Board day. Marcus has ten minutes and forty slides. A board member interrupts on slide three: \"What are you not doing in the first ninety days, and why?\" How does a staff engineer defend a blueprint under pressure?"
+   ],
+   "teasers": [
+    "Victor writes seven principles, and Dev says none of them would ever say no.",
+    "One whiteboard, eight layers, and Victor wants the rejected option for every box.",
+    "Kofi and the Orders team both claim revenue. Somebody has to own it.",
+    "The simulator turns Diwali traffic on the blueprint, and Kafka starts falling behind.",
+    "Ten minutes in front of the board, and the first question is about what he left out.",
+    "Meridian's biggest business customer wants a dashboard by Friday, and Marcus keeps his laptop closed."
+   ],
+   "boss": "Weekend review: the board's technical adviser gets thirty minutes with the blueprint. Expect questions on peak sizing, cost per event, the migration order and the decision you would reverse first if you were wrong.",
+   "finale": "The simulator run passes at launch-day load, and the board approves the first ninety days. Asha says one more thing: Swiftline Logistics, Meridian's largest business customer, wants Marcus on site on Monday.",
+   "zoe": "Zoe: \"What is a blueprint?\" Marcus: \"A drawing of the whole house before you build it, with how much every room costs.\""
+  },
+  {
+   "mid": "s11",
+   "ep": "On Site",
+   "logline": "At Swiftline Logistics, Marcus learns to find the real problem behind a request, ship something useful in a day, and stay calm when a customer says his numbers are wrong.",
+   "scenes": [
+    "Swiftline's operations director opens the meeting: \"We need a dashboard of every delivery, by Friday.\" Tom is already nodding. Marcus keeps his laptop closed. What decision will this dashboard change, and who will look at it?",
+    "The real question surfaces: why are Swiftline's deliveries running late? The director wants one answer. Marcus draws the stages on the whiteboard, order placed to delivered. Where does lateness actually come from, and how would he prove it?",
+    "Marcus has one day and a read-only copy of Swiftline's order database. Lena finds the stage timestamps are stored in three time zones. What is the smallest thing worth building today, on their real, messy data?",
+    "The director replies to the chart: \"Your late rate is 18%. Our operations report says 11%. Your dashboard is wrong.\" She cannot say more. Marcus has five minutes before her next call. Which number is right?",
+    "Swiftline wants to test a new promised delivery time in two cities. Tom wants results in three days. Halfway through, the split shows 53 to 47 instead of 50 to 50. Can anyone trust this experiment?",
+    "Swiftline's lead engineer hands Marcus an unfamiliar pipeline in their repository, with a coding assistant open beside it. \"Tell me what this does and where it breaks.\" Marcus has not written a line of it. Where does he start?"
+   ],
+   "teasers": [
+    "The customer asked for a dashboard. The real question is why deliveries are late.",
+    "One day, one user, one decision, and timestamps in three time zones.",
+    "Swiftline's director says 18% is wrong, because her own report says 11%.",
+    "A planned 50/50 experiment comes back 53/47, and Tom wants to ship anyway.",
+    "Marcus is handed someone else's pipeline and an AI assistant, and asked where it breaks.",
+    "A recruiter from Hyperion calls with one question: are you open to a staff role?"
+   ],
+   "boss": "Weekend review: a mock customer gives Marcus a vague brief and forty minutes. Discover the decision, break the problem into parts, propose the smallest useful build, and explain a disputed number calmly.",
+   "finale": "Swiftline renews for three years and asks Meridian to make the late-delivery view a product feature. That evening, Marcus's phone shows an unknown number. A recruiter from Hyperion asks if he is open to a staff role.",
+   "zoe": "Zoe: \"Why was the lady cross?\" Marcus: \"We counted late from different starting lines, so we both had a true number. Now we use the same line.\""
+  },
+  {
+   "mid": "s12",
+   "ep": "The Loop",
+   "logline": "Marcus sits a staff interview loop at Hyperion round by round, mirroring the learner's own, and finishes with two offers and a choice about where to build next.",
+   "scenes": [
+    "Jonah, Hyperion's recruiter, is friendly and fast: six rounds, final week in November, staff level. He pauses. \"Any questions for me?\" Marcus realises he does not know what each round tests, or whether AI help is allowed. What should he ask?",
+    "Round two: Ines, coding. A shared editor, a text file and a request to count words in Spark with flatMap and reduceByKey, then a window query for consecutive months. Twenty-five minutes. Can Marcus think aloud and type at once?",
+    "Round three: Sam, system design. \"Design the data platform for a delivery company growing ten times in two years.\" Marcus recognises the problem. Sam pushes at minute twelve: \"What breaks first at peak?\" Can he size it out loud?",
+    "Round four: Priya, data modelling and product sense. Model trips, drivers and cancellations for a ride-sharing app, then pick a north star metric and its guardrails. Priya asks which table answers \"completed trips\". Will Marcus define it before he draws?",
+    "Round five: Ravi, behavioural. \"Tell me about influencing a team you had no authority over.\" Marcus starts with Lumen's dashboards. Ravi digs three levels deep: what did you do, what did it change, and how was that measured?",
+    "Final round: Elena, the hiring manager, asks for a project deep dive. Marcus shares five minutes on the Meridian foundation, a live failure and its fix. Elena asks: \"What would you build next, and why there?\" What does he say?"
+   ],
+   "teasers": [
+    "Ines opens a shared editor: count words in Spark, then a window query.",
+    "Sam asks Marcus to design a platform he has already built once, at ten times scale.",
+    "Priya wants a ride-sharing model, and one precise definition of a completed trip.",
+    "Ravi asks for a story about influence, then asks for the numbers behind it.",
+    "The hiring manager wants five minutes on the thing Marcus is proudest of.",
+    "Two offers, one dinner table, and a choice that is finally his to make."
+   ],
+   "boss": "Weekend review: the full loop, back to back. Recruiter questions, Spark and SQL coding, a platform design sized for peak, a ride-sharing model, two behavioural stories with numbers, and a five-minute project demo. Aim for seven out of ten in every round.",
+   "finale": "Hyperion offers staff and a fresh platform; Asha offers Principal and the foundation he drew. At Friday coffee Grace says, \"Pick the work you will be glad to explain in five years.\" At dinner, Nadia and Zoe wait. Marcus smiles and starts to answer.",
+   "zoe": "Zoe: \"Did you pass your test?\" Marcus: \"Two places want me now, so I get to choose where I build next, and you two get a vote.\""
+  }
+ ]
+}

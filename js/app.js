@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.36.28';
+const VERSION = '1.36.29';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -204,9 +204,9 @@ function chipFor(k) { return { py: ['Python', 'c-py'], dsa: ['DSA', 'c-dsa'], co
 function chip(k) { const c = chipFor(k); return el('span', { class: 'chip ' + c[1], text: c[0] }); }
 
 /* ---------------- shell ---------------- */
-const NAV = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/playbook', 'My playbook', 'book'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/sim', 'Design simulator', 'design'], ['#/loop', 'Interview loop', 'quiz'], ['#/git', 'Git lessons', 'git'], ['#/terminal', 'Terminal', 'code'], ['#/news', 'What is new in AI', 'news'], ['#/recent', 'Asked this week', 'quiz'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/mock', 'Mock interview', 'quiz'], ['#/recall', 'Daily recall', 'quiz'], ['#/coach', 'Coach', 'spark'], ['#/progress', 'Progress', 'prog']];
+const NAV = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/playbook', 'My playbook', 'book'], ['#/story', 'Meridian series', 'book'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'code'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'design'], ['#/sim', 'Design simulator', 'design'], ['#/loop', 'Interview loop', 'quiz'], ['#/git', 'Git lessons', 'git'], ['#/terminal', 'Terminal', 'code'], ['#/news', 'What is new in AI', 'news'], ['#/recent', 'Asked this week', 'quiz'], ['#/quiz/0', 'Quizzes', 'quiz'], ['#/mock', 'Mock interview', 'quiz'], ['#/recall', 'Daily recall', 'quiz'], ['#/coach', 'Coach', 'spark'], ['#/progress', 'Progress', 'prog']];
 /* the sidebar and the More sheet group every section under Learn, Practice, Interview and You (Today stays on top) */
-const NAV_GROUPS = [['learn', 'Learn', ['#/path', '#/reels', '#/learn/0', '#/quiz/0']], ['practice', 'Practice', ['#/practice', '#/projects', '#/design', '#/sim', '#/git', '#/terminal']], ['interview', 'Interview', ['#/loop', '#/live', '#/recall', '#/recent', '#/mock', '#/coach']], ['you', 'You', ['#/progress', '#/playbook', '#/news']]];
+const NAV_GROUPS = [['learn', 'Learn', ['#/path', '#/story', '#/reels', '#/learn/0', '#/quiz/0']], ['practice', 'Practice', ['#/practice', '#/projects', '#/design', '#/sim', '#/git', '#/terminal']], ['interview', 'Interview', ['#/loop', '#/live', '#/recall', '#/recent', '#/mock', '#/coach']], ['you', 'You', ['#/progress', '#/playbook', '#/news']]];
 const NAV_LIVE = ['#/live', 'Live mock', 'quiz'];
 const navItem = h => h === '#/live' ? NAV_LIVE : NAV.find(x => x[0] === h);
 const navGroupOf = r => (NAV_GROUPS.find(g => g[2].some(h => h.split('/')[1] === r)) || [])[0];
@@ -274,6 +274,7 @@ function route() {
     else if (r === 'quiz') vQuiz(p[1]);
     else if (r === 'interview') vInterview(p[1], p[2]);
     else if (r === 'compare') vCompare(p[1]);
+    else if (r === 'story') vStory();
     else if (r === 'progress') vProgress();
     else if (r === 'profile') vProfile();
     else if (r === 'terminal') vTerminal(p[1], p[2]);
@@ -956,7 +957,7 @@ function saveSettings(body) {
     const st0 = g('st_start'); if (/^\d{4}-\d\d-\d\d$/.test(st0)) { const d = new Date(st0 + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); if (iso(d) !== S.start) S.since = iso(new Date()); S.start = iso(d); } S.settings.syncUrl = su; S.settings.googleClientId = g('st_gcid');
     /* F9: no daily time limit; the old minute settings (capWd … buildWe) stay saved and synced, untouched and unused */
     if (g('st_set')) S.settings.setSize = g('st_set') === 'double' ? 'double' : 'smallest'; S.settings.studyTime = g('st_time') || '07:00'; S.settings.accent = g('st_accent') || 'teal'; S.settings.name = g('st_name'); applyTheme(); S.settings.ai = g('st_ai') !== 'off'; applyAi();
-    S.settings.fun = g('st_fun') !== 'off'; S.settings.sound = g('st_sound') === 'on';
+    if (g('st_story')) S.settings.story = g('st_story') === 'off' ? 'off' : 'on'; S.settings.fun = g('st_fun') !== 'off'; S.settings.sound = g('st_sound') === 'on';
     S.settings.coachVia = g('st_coach') || 'mac'; S.settings.gradeModel = g('st_grade') || 'auto'; S.settings.prefsAt = Date.now(); /* newest preferences win when devices sync */
     const nt = body.querySelector('#st_notify').checked; S.settings.notifyUpdates = nt;
     if (nt && window.Notification && Notification.permission === 'denied') { S.settings.notifyUpdates = false; save(false); setTimeout(() => toast('Notifications are blocked for this site in the browser settings, so update alerts stay in the app.', null, 7000), 400); body.querySelector('#st_notify').checked = false; } /* QA fix 11 */
@@ -983,7 +984,7 @@ function vProfile() {
   const panels = {
     sync: [f('st_sync', 'Sync URL (Apps Script, ends in ?k=your key)', S.settings.syncUrl, 'url', 'https://script.google.com/macros/s/…/exec?k=…'), f('st_gcid', 'Google client ID (for Sign in with Google; not a secret)', S.settings.googleClientId || '', 'text', '…apps.googleusercontent.com'), note('Your plan, minutes and AI choices sync across devices. Theme, keys and this URL stay on this device.'),
       el('label', { class: 'row', style: { gap: '10px', fontSize: '14.5px' } }, [el('input', { type: 'checkbox', id: 'st_notify', checked: S.settings.notifyUpdates ? 'checked' : null, style: { width: '22px', height: '22px' } }), 'Notify me when an app update is available'])],
-    look: [sel('st_accent', 'Accent colour', S.settings.accent || 'teal', [['teal', 'Teal'], ['blue', 'Blue'], ['plum', 'Plum']]), f('st_name', 'Your name (used in the greeting)', S.settings.name || '', 'text', (typeof authGet === 'function' && (authGet() || {}).name) || 'Your first name'), sel('st_fun', 'Celebrations (confetti when a module ships or a warm-up goes well)', S.settings.fun === false ? 'off' : 'on', [['on', 'On'], ['off', 'Off']]), sel('st_sound', 'Sounds in the warm-up', S.settings.sound ? 'on' : 'off', [['off', 'Off'], ['on', 'On']])],
+    look: [sel('st_accent', 'Accent colour', S.settings.accent || 'teal', [['teal', 'Teal'], ['blue', 'Blue'], ['plum', 'Plum']]), f('st_name', 'Your name (used in the greeting)', S.settings.name || '', 'text', (typeof authGet === 'function' && (authGet() || {}).name) || 'Your first name'), sel('st_fun', 'Celebrations (confetti when a module ships or a warm-up goes well)', S.settings.fun === false ? 'off' : 'on', [['on', 'On'], ['off', 'Off']]), sel('st_story', 'Meridian story (a short scene each day and tomorrow\'s hook)', S.settings.story === 'off' ? 'off' : 'on', [['on', 'On'], ['off', 'Off: recall and plans only']]), sel('st_sound', 'Sounds in the warm-up', S.settings.sound ? 'on' : 'off', [['off', 'Off'], ['on', 'On']])],
     plan: [f('st_start', 'Week 1 starts (pick any day in that week)', S.start, 'date'), el('div', { class: 'tri' }, [sel('st_set', 'Daily set', S.settings.setSize === 'double' ? 'double' : 'smallest', [['smallest', 'Smallest: one item per section'], ['double', 'Double: two items per section']]), f('st_time', 'Study time', S.settings.studyTime || '07:00', 'time')]), el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'There is no daily time limit: each day holds one item from every section of Learn, Practice and Interview, and XP decides when the module moves on. Minutes are shown as a guide.' })],
     ai: [sel('st_ai', 'AI features', S.settings.ai === false ? 'off' : 'on', [['on', 'On: instant grading, practice runs and the Claude Code track'], ['off', 'Off: study without AI (self-check with model answers)']]),
       el('div', { class: 'duo' }, [sel('st_coach', 'Coach answers with', S.settings.coachVia || 'mac', [['mac', 'Claude Code on my Mac'], ['hints', 'Hints only (no AI)']]), sel('st_grade', 'Grading model', S.settings.gradeModel || 'auto', [['auto', 'Automatic'], ['haiku', 'Haiku (cheapest)'], ['sonnet', 'Sonnet (most thorough)']])]),
@@ -1067,6 +1068,8 @@ function mergeState(a, b) {
   by('reels', (x, y) => when(x) > when(y) ? Object.assign({}, y, x) : Object.assign({}, x, y));
   /* the daily set (F9): one day's picks from both devices (the first device's order, then the other's extras), done once either finished it */
   by('dayset', (x, y) => { const ids = new Set(), items = []; [].concat(x.items || [], y.items || []).forEach(r => { if (r && !ids.has(r.id)) { ids.add(r.id); items.push(r); } }); return { items, at: Math.min(x.at || Infinity, y.at || Infinity), full: Math.max(x.full || 0, y.full || 0) || undefined }; });
+  /* the Meridian series (js/story.js): one day's episode; opened and planned stay set once either device set them */
+  by('story', (x, y) => Object.assign({}, x, y, { open: x.open || y.open, plan: y.plan || x.plan, m: x.m || y.m, i: x.m ? x.i : y.i }));
   by('cmp', (x, y) => ((x.at || 0) >= (y.at || 0) ? Object.assign({}, x, { done: x.done || y.done }) : Object.assign({}, y, { done: y.done || x.done })));
   by('recall', (x, y) => when(x) > when(y) ? x : y); /* daily recall: the newer rating of an item wins */
   by('steps', (x, y) => when(x) > when(y) ? x : y); /* integrated week steps: the newer edit of a step wins */
