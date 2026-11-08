@@ -107,47 +107,82 @@ function reelVoiceSheet(onPick) {
   return sheet;
 }
 
+/* speeds from a quarter to double (F4); the reel in view picks it up on its next line */
+function reelSpeedSheet(onPick) {
+  const cur = +S.settings.reelSpeed || 1;
+  const sheet = el('div', { class: 'rsheet rspeed', role: 'dialog', 'aria-label': 'Playback speed' }, [el('div', { class: 'row' }, [el('b', { class: 'grow', text: 'Playback speed' }), el('button', { class: 'rbtn', 'aria-label': 'Close', onclick: () => { sheet.remove(); onPick(cur); } }, svg(RI.x, 20))]),
+    el('div', { class: 'rspeeds', role: 'radiogroup', 'aria-label': 'Speed' }, REEL_SPEEDS.map(v => el('button', { class: 'rvopt' + (v === cur ? ' on' : ''), role: 'radio', 'aria-checked': String(v === cur), onclick: () => { S.settings.reelSpeed = v; save(); sheet.remove(); onPick(v); } }, v === 1 ? 'Normal' : v + '×')))]);
+  return sheet;
+}
 /* the player: a vertical feed like Shorts. Every reel is a full-screen slide that snaps; the slide in view plays,
    all others are silent; only the slides next to the current one are kept rendered, and the next reel's first
    recording is fetched ahead */
+/* outline icons for the player (Instagram-like: no boxes, a label under each) */
+const RI = { x: '<path d="M6 6l12 12M18 6L6 18"/>', heart: '<path d="M12 20s-7-4.4-9-8.6C1.6 8.3 3.6 5 7 5c2 0 3.4 1.1 5 3 1.6-1.9 3-3 5-3 3.4 0 5.4 3.3 4 6.4C19 15.6 12 20 12 20z"/>',
+  speed: '<path d="M4.5 16a8 8 0 1 1 15 0"/><path d="M12 13l4-4"/><circle cx="12" cy="13" r="1"/>', voice: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>',
+  mute: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>', play: '<path d="M8 5.5v13l11-6.5z" fill="currentColor"/>' };
+const REEL_SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+/* the player's dark full-screen frame with a close button and a "Reels" title; the loading and empty states use it too,
+   so the Reels page looks the same from the first frame (F5, F6) */
+function reelFrame() {
+  const ov = el('div', { class: 'reelv', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Reels' });
+  const close = () => { ov.remove(); if (history.length > 1) history.back(); else location.hash = '#/today'; };
+  const top = el('div', { class: 'rtop' }, [el('button', { class: 'rbtn rx', 'aria-label': 'Close reels', onclick: () => ov.dispatchEvent(new Event('rclose')) }, svg(RI.x, 22)), el('b', { class: 'rtitle', text: 'Reels' }), el('span', { class: 'grow' })]);
+  ov.addEventListener('rclose', close);
+  ov.appendChild(top); document.body.appendChild(ov); cleanup.push(() => ov.remove());
+  return { ov, top };
+}
+function reelLoading() {
+  const f = reelFrame(), note = el('span', { class: 'rload-note', text: '' });
+  f.ov.appendChild(el('div', { class: 'rslide rskel', role: 'status', 'aria-live': 'polite' }, [el('div', { class: 'rload' }, [el('i', { class: 'rspin', 'aria-hidden': 'true' }), el('b', { text: 'Getting your reels ready' }), note]),
+    el('div', { class: 'rinfo', 'aria-hidden': 'true' }, [el('i', { class: 'rsk w30' }), el('i', { class: 'rsk w70' }), el('i', { class: 'rsk w90' }), el('i', { class: 'rsk w60' })])]));
+  /* the reels download once (about 1 MB); say so if it takes a while instead of leaving a bare line */
+  setTimeout(() => { note.textContent = 'The first time, the reels download once (about 1 MB). After that they open instantly, even offline.'; }, 2500);
+  return f.ov;
+}
 async function vReels(id) {
-  shell('Reels', 'Short explainers', [el('p', { class: 'muted', text: 'Loading reels…' })], { back: '#/today' });
+  shell('Reels', 'Short explainers', [], { back: '#/today' });
+  const wait = reelLoading();
   let q, at = 0;
   const mode = S.settings.reelMode || 'shuffle';
   if (id && reelMid(id)) { q = await reelsFor(reelMid(id)); at = Math.max(0, q.findIndex(r => r.id === id)); }
   else q = mode === 'week' ? await reelQueue() : await reelShuffle(S.settings.reelFilter || 'all');
+  if (!document.body.contains(wait)) return; /* left the page while loading */
   if (!q.length && mode !== 'week') { toast('Nothing matches that filter yet. Showing everything.'); S.settings.reelFilter = 'all'; q = await reelShuffle('all'); }
-  if (!q.length) { $('#page').textContent = ''; $('#page').appendChild(el('section', { class: 'card pad' }, el('p', { text: 'No reels for this week yet.' }))); return; }
+  wait.remove();
+  if (!q.length) { const f = reelFrame(); f.ov.appendChild(el('div', { class: 'rslide rskel' }, el('div', { class: 'rload' }, [el('b', { text: 'No reels for this week yet' }), el('span', { class: 'rload-note', text: 'Switch to Shuffle to watch reels from every module.' }), el('button', { class: 'btn pri', onclick: () => { S.settings.reelMode = 'shuffle'; save(); f.ov.remove(); vReels(); } }, 'Shuffle')]))); return; }
   reelPlayer(q, at, !(id && reelMid(id)));
 }
 let reelUnlocked = false; /* browsers allow sound only after a first tap */
 function reelPlayer(q, at, feedMode) {
   const speed = () => +S.settings.reelSpeed || 1;
-  const ov = el('div', { class: 'reelv', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Reels' });
+  const { ov, top } = reelFrame();
   const feed = el('div', { class: 'rfeed' });
   const slides = q.map((r, i) => el('section', { class: 'rslide', 'data-i': String(i), 'aria-label': r.title }));
-  feed.append(...slides); ov.appendChild(feed);
+  feed.append(...slides); ov.insertBefore(feed, top);
   let cur = -1, C = null; /* C: the playing slide's controller */
-  const close = () => { if (C) C.stop(); ov.remove(); if (history.length > 1) history.back(); else location.hash = '#/today'; };
+  ov.addEventListener('rclose', () => { if (C) C.stop(); }, true);
+  const close = () => ov.dispatchEvent(new Event('rclose'));
   const mode = S.settings.reelMode || 'shuffle', setMode = (m, f) => { S.settings.reelMode = m; if (f) S.settings.reelFilter = f; save(); if (C) C.stop(); ov.remove(); vReels(); };
   const sw = feedMode ? el('div', { class: 'rmode', role: 'tablist', 'aria-label': 'Reel order' }, [['week', 'My week'], ['shuffle', 'Shuffle']].map(([k, n]) => el('button', { role: 'tab', 'aria-selected': String(mode === k), onclick: () => setMode(k) }, n))) : el('span', { class: 'grow' });
-  const top = el('div', { class: 'rtop' }, [el('button', { class: 'rbtn', 'aria-label': 'Close reels', onclick: close }, '✕'), el('span', { class: 'grow' }), sw, el('span', { class: 'grow' }), el('span', { class: 'rcount' })]);
+  top.lastChild.replaceWith(sw); top.appendChild(el('span', { class: 'rcount' }));
   if (feedMode && mode === 'shuffle') ov.classList.add('hasfilt'); /* room under the filter row for the reel title */
   if (feedMode && mode === 'shuffle') ov.appendChild(el('div', { class: 'rfilters', role: 'toolbar', 'aria-label': 'Shuffle filter' }, REEL_TRACKS.map(([k, n]) => el('button', { class: (S.settings.reelFilter || 'all') === k ? 'on' : '', 'aria-pressed': String((S.settings.reelFilter || 'all') === k), onclick: () => setMode('shuffle', k) }, n))));
-  ov.appendChild(top);
-  document.body.appendChild(ov);
-  cleanup.push(() => { if (C) C.stop(); ov.remove(); });
+  cleanup.push(() => { if (C) C.stop(); });
   function controller(i) {
     const r = q[i], slide = slides[i];
     let bi = 0, playing = false, fx = null, audio = null, timer = null, tok = 0;
     const bars = el('div', { class: 'rbars' }), stage = el('div', { class: 'rstage' }), cap = el('p', { class: 'rcap', 'aria-live': 'polite' }), hint = el('div', { class: 'rtap' });
-    const head = el('div', { class: 'rhead' }, [el('div', { class: 'grow' }, [r.level ? el('span', { class: 'rlevel', text: r.level }) : null, el('b', { text: r.title + (r.part ? ' · ' + r.part : '') }), el('span', { text: modLabel(r.m) + ' · ' + (r.head || r.sec) + ' · ' + reelSecs(r) + ' s' + (r.auto ? ' · quick reel' : '') })])]);
+    const head = el('div', { class: 'rhead' }, [el('div', { class: 'grow' }, [r.level ? el('span', { class: 'rlevel', text: r.level }) : null, el('b', { text: r.title + (r.part ? ' · ' + r.part : '') }), el('span', { class: 'rmeta', text: modLabel(r.m) + ' · ' + (r.head || r.sec) + ' · ' + reelSecs(r) + ' s' + (r.auto ? ' · quick reel' : '') })])]);
     const saved = () => !!(S.playbook || {})[r.id];
+    const icon = (d, label) => [svg(d, 28), el('small', { text: label })];
+    const speedBtn = el('button', { class: 'rbtn ricon', 'aria-label': 'Speed, now ' + speed() + '×', onclick: () => { const was = playing; pause(); ov.appendChild(reelSpeedSheet(v => { speedBtn.lastChild.textContent = v + '×'; speedBtn.setAttribute('aria-label', 'Speed, now ' + v + '×'); if (was) play(); })); } }, icon(RI.speed, speed() + '×'));
     const rail = el('div', { class: 'rrail' }, [
-      el('button', { class: 'rbtn rheart' + (saved() ? ' on' : ''), 'aria-label': 'Save to My playbook', onclick: e => { if (!r.work) { toast('This quick reel has no work list yet.'); return; } S.playbook = S.playbook || {}; if (saved()) delete S.playbook[r.id]; else S.playbook[r.id] = { title: r.title, m: r.m, sec: r.head || r.sec, items: r.work, at: iso(new Date()) }; save(); e.currentTarget.classList.toggle('on', saved()); } }, '♥'),
-      el('button', { class: 'rbtn rsm', 'aria-label': 'Speed', onclick: e => { S.settings.reelSpeed = { 1: 1.25, 1.25: 1.5, 1.5: 1 }[speed()] || 1; save(); e.currentTarget.textContent = speed() + '×'; if (playing) beat(); } }, speed() + '×'),
-      el('button', { class: 'rbtn rsm', 'aria-label': 'Choose a voice', onclick: () => { const was = playing; pause(); ov.appendChild(reelVoiceSheet(() => { if (was) play(); })); } }, S.settings.reelVoice === false ? 'Muted' : 'Voice')]);
-    slide.textContent = ''; slide.append(bars, head, stage, cap, rail, hint);
+      el('button', { class: 'rbtn ricon rheart' + (saved() ? ' on' : ''), 'aria-label': 'Save to My playbook', 'aria-pressed': String(saved()), onclick: e => { if (!r.work) { toast('This quick reel has no work list yet.'); return; } S.playbook = S.playbook || {}; if (saved()) delete S.playbook[r.id]; else S.playbook[r.id] = { title: r.title, m: r.m, sec: r.head || r.sec, items: r.work, at: iso(new Date()) }; save(); e.currentTarget.classList.toggle('on', saved()); e.currentTarget.setAttribute('aria-pressed', String(saved())); } }, icon(RI.heart, 'Save')),
+      speedBtn,
+      el('button', { class: 'rbtn ricon', 'aria-label': 'Choose a voice', onclick: () => { const was = playing; pause(); ov.appendChild(reelVoiceSheet(() => { if (was) play(); })); } }, icon(S.settings.reelVoice === false ? RI.mute : RI.voice, S.settings.reelVoice === false ? 'Muted' : 'Voice'))]);
+    const info = el('div', { class: 'rinfo' }, [head, cap]);
+    slide.textContent = ''; slide.append(stage, info, bars, rail, hint);
     function paintBars() { bars.textContent = ''; r.beats.concat([null]).forEach((_, k) => bars.appendChild(el('i', { class: k < bi ? 'on' : k === bi ? 'cur' : '' }))); }
     let wd = null; /* watchdog: a recording that stops arriving falls back to captions (QA fix 8) */
     function stop() { tok++; clearTimeout(timer); timer = null; clearInterval(wd); wd = null; if (audio) { audio.onended = audio.onerror = audio.onloadedmetadata = null; audio.pause(); audio = null; } try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { } if (fx) fx.stop(); }
@@ -172,12 +207,13 @@ function reelPlayer(q, at, feedMode) {
       else viaVoice();
     }
     function play() { reelUnlocked = true; playing = true; slide.classList.add('playing'); hint.textContent = ''; beat(); }
-    function pause() { playing = false; stop(); if (fx) fx.finish(); slide.classList.remove('playing'); }
+    function pause() { playing = false; stop(); if (fx) fx.finish(); slide.classList.remove('playing'); if (bi < r.beats.length && !hint.firstChild) hint.appendChild(playBig(false)); }
+    function playBig(first) { return el('button', { class: 'rstart', 'aria-label': 'Play' + (first ? '. Swipe up for the next reel, tap the sides to step' : ''), onclick: e => { e.stopPropagation(); play(); } }, [el('span', { class: 'rplayc' }, svg(RI.play, 34)), first ? el('span', { class: 'rhint', text: 'Swipe up for the next reel · tap the sides to step' }) : null]); }
     function step(d) { const was = playing; stop(); bi = Math.max(0, Math.min(r.beats.length, bi + d)); if (was && bi < r.beats.length) beat(); else { const b = render(); if (b && fx) fx.finish(); if (!b) { playing = false; reelDone(r); } } }
     /* taps: left third back, right third forward, middle pause or play (like stories) */
     slide.addEventListener('click', e => { if (e.target.closest('button,a,input,label,.rendcard,.rsheet')) return; const x = e.clientX - slide.getBoundingClientRect().left, w = slide.clientWidth; if (x < w / 3) step(-1); else if (x > 2 * w / 3) step(1); else (playing ? pause() : play()); });
     const b0 = render(); if (b0 && fx) fx.finish();
-    return { play, pause, stop: () => { playing = false; stop(); slide.classList.remove('playing'); }, step, get playing() { return playing; }, slide };
+    return { play, pause, stop: () => { playing = false; stop(); slide.classList.remove('playing'); }, step, playBig, get playing() { return playing; }, slide };
   }
   const built = {};
   function activate(i) {
@@ -188,7 +224,7 @@ function reelPlayer(q, at, feedMode) {
     Object.keys(built).forEach(k => { if (Math.abs(+k - i) > 1) { slides[k].textContent = ''; delete built[k]; } }); /* keep only neighbours rendered */
     for (const k of [i - 1, i, i + 1]) if (k >= 0 && k < q.length && !built[k]) built[k] = controller(k);
     C = built[i];
-    if (reelUnlocked) C.play(); else { const h = slides[i].querySelector('.rtap'); h.appendChild(el('button', { class: 'rstart', onclick: e => { e.stopPropagation(); C.play(); } }, [el('b', { text: '▶ Play' }), el('span', { text: 'Swipe up for the next reel · tap the sides to step' })])); }
+    if (reelUnlocked) C.play(); else { const h = slides[i].querySelector('.rtap'); h.textContent = ''; h.appendChild(C.playBig(true)); }
     const nb = q[i + 1] && (q[i + 1].beats[0] || {}).audio; if (nb) { const a = new Audio(); a.preload = 'auto'; a.src = nb; } /* fetch the next reel's first line ahead */
   }
   function go(i) { if (i < 0 || i >= q.length) { if (i >= q.length) toast('That was the last reel in this feed.'); return; } feed.scrollTo({ top: slides[i].offsetTop, behavior: 'smooth' }); }

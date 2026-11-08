@@ -12,3 +12,4 @@
 - 2026-11-07 · dbt (4.10) and dimensional modelling (M1.8) lenses · lens test extended (cards, internals counts, interview sets, M1.8 scheduled) · pass
 - 2026-11-07 · 1.35.2 · Iceberg architect's lens · new flows lens journey (7 rows, 6 internals, interview and quiz sets, 4-level reels, 8.5 link) · pass
 - 2026-11-07 · release train · reels page error (backlog 1): broken pictures in neighbouring reels; engine fallback, build.py checks, reelPlayable · Q41 (fails without the fix), reels journey de-flaked · 40/40 trust (now 41 with F1's Q40), smoke Reels 3/3, reels journey 7 of the last 7
+- 2026-11-08 · release train · reels player F3–F6 (user feedback): Instagram-style layout, one frame for loading and playing, speeds 0.25×–2× · new reels player journey in flows.js · reels journeys 3/3, smoke Reels, Q23, Q41
