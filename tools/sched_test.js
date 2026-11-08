@@ -12,7 +12,13 @@ const BASE = process.argv[2] || 'http://localhost:8811/';
     const sc = schedule();
     const ids = new Set();
     sc.units.forEach(u => { if (ids.has(u.uid)) out.push('duplicate uid ' + u.uid); ids.add(u.uid); if (!u.day) out.push('unplanned ' + u.uid); if (!u.mins || u.mins > 60 && u.kind !== 'project') out.push('unit too long ' + u.uid + ' ' + u.mins); if (!u.href || !u.title) out.push('unit missing link/title ' + u.uid); });
-    Object.entries(sc.byDay).forEach(([k, us]) => { if (k === '0000-00-00') return; const d = new Date(k + 'T00:00:00'), cap = capOf(d), m = us.reduce((a, u) => a + u.mins, 0); if (m > cap + 5 && us.length > 1) out.push('over budget ' + k + ' ' + m + '/' + cap); });
+    Object.entries(sc.byDay).forEach(([k, us]) => { if (k === '0000-00-00') return; const d = new Date(k + 'T00:00:00'), cap = capOf(d), rd = us.filter(u => !isBuild(u)), bd = us.filter(isBuild), m = rd.reduce((a, u) => a + u.mins, 0), bm = bd.reduce((a, u) => a + u.mins, 0), bcap = budgets(d).build;
+      if (m > cap + 5 && rd.length > 1) out.push('over budget ' + k + ' ' + m + '/' + cap);
+      if (bm > bcap + 5 && bd.length > 1) out.push('design and build over budget ' + k + ' ' + bm + '/' + bcap); });
+    // Design and build: never before its module's reading has started
+    const firstRead = {}; sc.units.forEach(u => { if (!isBuild(u) && u.day && (!firstRead[u.mid] || u.day < firstRead[u.mid])) firstRead[u.mid] = u.day; });
+    sc.units.filter(u => isBuild(u) && !u.isDone).forEach(u => { if (firstRead[u.mid] && u.day < firstRead[u.mid]) out.push('design/project before its module starts: ' + u.uid + ' ' + u.day + ' < ' + firstRead[u.mid]); });
+    if (!sc.units.some(isBuild)) out.push('no design or project steps planned');
     // order: module days must be non-decreasing in MODS order
     // (the Claude Code track is ordered on its own: it runs alongside the main path)
     [MODS.filter(m => !isCC(m)), MODS.filter(isCC)].forEach(list => { let last = ''; list.forEach(m => { const s = sc.span[m]; if (s.first && s.first < last) out.push('module ' + m + ' starts before previous ends ' + s.first + ' < ' + last); if (s.first) last = s.first; }); });

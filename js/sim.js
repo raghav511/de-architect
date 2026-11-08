@@ -1005,11 +1005,13 @@ function simCard(mid, opts) {
     el('div', { class: 'stack', style: { gap: '6px' } }, sc.map(s => el('a', { class: 'simsc', href: '#/sim/sc/' + s.id + tail, 'data-sc': s.id }, [el('span', { class: 'grow' }, [el('b', { text: (done[s.id] ? '✓ ' : '') + s.t }), el('small', { text: s.lvl + ' · ' + s.secs + ' s run' + (ex[s.id] && ex[s.id].best != null ? ' · best exam ' + ex[s.id].best : '') })]), el('span', { class: 'chip ' + (opts.exam ? 'c-ai' : done[s.id] ? 'c-dsa' : 'c-arch'), text: opts.exam ? 'Exam' : done[s.id] ? 'Passed' : 'Learn it' })])))]);
 }
 /* Today, below the plan: this week's first unpassed challenge, else a quick start */
-function simToday() {
+/* the simulator challenge as a row in Today's Design and build part: the next one you have not passed, from this
+   module or the next ones; a challenge passed today stays on today's plan as done */
+function simTodayItem(k) {
   if (typeof schedule !== 'function') return null; const sc = schedule(), done = simState().done;
   const wk = sc.units.filter(u => u.day >= sc.today).slice(0, 60).map(u => u.mid || (u.uid || '').split(':')[0]);
   const mods = [sc.cur].concat(wk).filter((x, i, a) => x && a.indexOf(x) === i);
-  const s = mods.map(m => SIM_SC.find(x => x.mid === m && !done[x.id])).find(Boolean);
+  const s = SIM_SC.find(x => done[x.id] === k) || mods.map(m => SIM_SC.find(x => x.mid === m && !done[x.id])).find(Boolean);
   if (!s) return null;
-  return el('section', { class: 'card pad row wrap simtoday' }, [el('span', { class: 'simab', style: { background: 'var(--plum)' }, text: 'SIM' }), el('div', { class: 'grow stack', style: { gap: '0' } }, [el('b', { text: 'Simulator challenge: ' + s.t }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Module ' + modLabel(s.mid) + ' · about 5 minutes' })]), el('a', { class: 'btn sm', href: '#/sim/sc/' + s.id + (done[s.id] ? '/exam' : ''), text: done[s.id] ? 'Take the exam' : 'Learn it' })]);
+  return { id: 'sim:' + s.id, chip: 'design', t: 'Simulator challenge: ' + s.t, sub: 'Build it, run traffic, break it and fix it until it passes · module ' + modLabel(s.mid), mins: 20, href: '#/sim/sc/' + s.id, auto: done[s.id] === k };
 }

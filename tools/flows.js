@@ -163,10 +163,12 @@ async function T(name, fn, opt) {
   await T('schedule: weekday budget is 60, weekend 120, settings change it', async p => {
     const mon = new Date(); mon.setDate(mon.getDate() + ((8 - mon.getDay()) % 7 || 7)); mon.setHours(8, 0, 0, 0);
     await p.clock.setFixedTime(mon); await go(p, '#/today', 900);
-    let m = (await text(p, '#page')).match(/Reading and labs\s*\d+ \/ (\d+) min/); ok(m && +m[1] <= 65, 'Monday plan over 60: ' + (m && m[1]));
+    /* the reading lane (lessons, labs, quiz, Git, drills, interview sets; not design and build) fills the reading minutes */
+    const lane = () => p.evaluate(() => { const sc = schedule(); return (sc.byDay[sc.today] || []).filter(u => !isBuild(u)).reduce((a, u) => a + u.mins, 0); });
+    let m = await lane(); ok(m <= 65, 'Monday plan over 60: ' + m);
     await p.evaluate(() => { S.settings.capWd = 90; save(); route(); }); await p.waitForTimeout(500);
-    m = (await text(p, '#page')).match(/Reading and labs\s*\d+ \/ (\d+) min/); ok(m && +m[1] > 60 && +m[1] <= 95, 'budget 90 not applied: ' + (m && m[1]));
-    ok(/90-minute day/.test(await text(p, '#page')), 'day chip not updated');
+    m = await lane(); ok(m > 60 && m <= 95, 'budget 90 not applied: ' + m);
+    ok(/90-minute reading day/.test(await text(p, '#page')), 'day chip not updated');
   });
 
   await T('settings: profile saves as you go, reopen shows values, bad minutes fall back, theme applies', async p => {
@@ -535,7 +537,7 @@ async function T(name, fn, opt) {
 
   await T('today: the day chip says when the plan runs over the budget', async p => {
     await go(p, '#/today', 900);
-    const r = await p.evaluate(() => { const sc = schedule(), d = new Date(); d.setHours(0, 0, 0, 0); const us = sc.byDay[sc.today] || []; return { plan: us.reduce((a, u) => a + u.mins, 0), cap: capOf(d), chip: [...document.querySelectorAll('.daynav .chip')].map(x => x.innerText).join() }; });
+    const r = await p.evaluate(() => { const sc = schedule(), d = new Date(); d.setHours(0, 0, 0, 0); const us = (sc.byDay[sc.today] || []).filter(u => !isBuild(u)); return { plan: us.reduce((a, u) => a + u.mins, 0), cap: capOf(d), chip: [...document.querySelectorAll('.daynav .chip')].map(x => x.innerText).join() }; });
     ok(r.plan <= r.cap ? !/over/.test(r.chip) : new RegExp((r.plan - r.cap) + ' min over').test(r.chip), 'chip does not match the plan: ' + JSON.stringify(r));
   });
 
@@ -956,12 +958,41 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => Object.keys((S.metrics || {})[iso(new Date())] || {}).length > 0 && ((S.metrics[iso(new Date())].ev || {}).reel_open || 0) > 0), 'usage totals are not recorded');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
+  await T('today: the plan tabs are Learn, Practice and Interview with minutes; Practice holds design, Git and the simulator challenge, Learn the reels, Interview the loop drill and written mock', async p => {
+    await go(p, '#/today', 800); await p.waitForSelector('.plan .dsum', { timeout: 30000 });
+    const tabs = await p.$$eval('.plan .dsum', b => b.map(x => x.getAttribute('aria-label')));
+    ok(tabs.length === 3 && /^Learn: \d+ of \d+ minutes/.test(tabs[0]) && /^Practice: \d+ of \d+ minutes/.test(tabs[1]) && /^Interview: \d+ of \d+ minutes/.test(tabs[2]), 'tabs should be Learn, Practice, Interview with minutes: ' + tabs.join(' | '));
+    ok(/Reels for today/.test(await all(p, '#grp-reels')), 'no Reels row in Learn');
+    await p.click('#tab-grp-coding'); await p.waitForTimeout(200);
+    const pr = await text(p, '#grp-build');
+    ok(/Design problem:/.test(pr) && /Git \d+:/.test(pr) && await p.$eval('#grp-hour', e => e.hidden) && !(await p.$eval('#grp-coding', e => e.hidden)), 'Practice does not hold the design problem, Git and the coding track: ' + pr.slice(0, 200));
+    ok(/written mock/.test(await all(p, '#grp-interview')), 'no written mock link in Interview');
+    ok(await p.evaluate(() => !document.querySelector('.simtoday, .looptoday')), 'separate simulator or loop cards are still below the plan');
+    const iv = await p.$$eval('#grp-interview a.xlink', a => a.map(x => x.getAttribute('href')));
+    ok(iv.some(h => /^#\/loop\/r\d\//.test(h)), 'no interview loop drill row in the Interview tab: ' + iv.join(' '));
+    /* a learner whose module has a simulator challenge, with room in the day: the challenge is a row with its minutes */
+    const r = await p.evaluate(() => { const sid = SIM_SC[0], i = MODS.indexOf(sid.mid); MODS.slice(0, i).forEach(m => modUnits(m).forEach(u => { S.done[u.uid] = '2026-01-01'; })); S.settings.buildWd = 120; S.settings.buildWe = 120; save(); schedFlush(); route(); return sid; });
+    await p.waitForTimeout(800); await p.evaluate(() => document.getElementById('tab-grp-coding').click()); await p.waitForTimeout(200); /* a module-shipped celebration may cover the page */
+    const b = await text(p, '#grp-build');
+    ok(/Simulator challenge: /.test(b) && /20 min/.test(b), 'no simulator challenge row: ' + b.slice(0, 300));
+    ok(/your 120 design and build minutes/.test(b), 'Design and build minutes from Profile not used: ' + b.slice(0, 300));
+    /* the reading budget check counts reading only; the scheduler keeps design steps out of reading days */
+    const lanes = await p.evaluate(() => { const sc = schedule(), out = []; Object.entries(sc.byDay).forEach(([k, us]) => { if (k < sc.today) return; const d = new Date(k + 'T00:00:00'), rd = us.filter(u => !isBuild(u) && !u.isDone), m = rd.reduce((a, u) => a + u.mins, 0); if (rd.length > 1 && m > capOf(d) + 5) out.push(k); }); return out; });
+    ok(!lanes.length, 'reading over budget on ' + lanes.slice(0, 3).join(', '));
+  });
+
+  await T('profile: Design and build minutes save and sync with the other plan settings', async p => {
+    await go(p, '#/today', 1200); await profile(p, 'plan'); await setField(p, '#st_bwd', '45'); await p.waitForTimeout(400);
+    const r = await p.evaluate(() => ({ v: S.settings.buildWd, pref: PREF_KEYS.includes('buildWd') && PREF_KEYS.includes('buildWe') }));
+    ok(r.v === 45 && r.pref, 'not saved or not synced: ' + JSON.stringify(r));
+  });
+
   await T('today: one Today box holds reading, quiz, coding, interview practice and coaching, with a summary on top and interview capped at its minutes', async p => {
     await go(p, '#/today', 1200); await p.waitForSelector('.plan .daysum');
-    const t = await text(p, '.plan .daysum'); ok(/Reading/.test(t) && /Coding/.test(t) && /Interview/.test(t), 'summary row incomplete: ' + t);
+    const t = await text(p, '.plan .daysum'); ok(/Learn/.test(t) && /Practice/.test(t) && /Interview/.test(t), 'summary row incomplete: ' + t);
     ok(/^Today/.test(await text(p, '.plan h2')), 'the box is not called Today');
     ok(await p.evaluate(() => !!document.querySelector('.plan #grp-coach .coachnote')), 'coaching is not inside Today');
-    const ivm = await p.evaluate(() => [...document.querySelectorAll('#grp-interview .xit .s, #grp-coach .xit .s')].reduce((a, x) => a + (+(x.textContent.match(/^(\d+) min/) || [0, 0])[1]), 0)); ok(ivm <= 45, 'interview and coaching take ' + ivm + ' min');
+    const ivm = await p.evaluate(() => [...document.querySelectorAll('#grp-interview .xit .s, #grp-coach .xit .s')].reduce((a, x) => a + (+(x.textContent.match(/^(\d+) min/) || [0, 0])[1]), 0)); const ivcap = await p.evaluate(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return budgets(d).iv; }); ok(ivm <= ivcap + 5, 'interview and coaching take ' + ivm + ' of ' + ivcap + ' min');
     ok(await p.evaluate(() => ![...document.querySelectorAll('.grid2 > .stack > section h2')].some(h => /^Coach$|Coding track/.test(h.textContent))), 'a separate Coach or Coding card is still beside the plan');
     await p.click('.dsum:has-text("Interview")'); await p.waitForTimeout(800);
     ok(await p.evaluate(() => { const r = document.getElementById('grp-interview').getBoundingClientRect(); return r.top >= 0 && r.top < innerHeight; }), 'tapping Interview did not bring it into view');
@@ -1360,7 +1391,7 @@ async function T(name, fn, opt) {
   await T('sim in the program: module chapter and lab list its challenges; Today shows one; passing one adds XP', async p => {
     await go(p, '#/learn/s05/chapter', 1500); await p.waitForSelector('.simmod'); ok(/Real time/.test(await text(p, '.simmod')), 'no challenges on the s05 chapter');
     await go(p, '#/learn/s00/chapter', 1200); ok(!(await p.$('.simmod')), 'a module without challenges shows a card');
-    await go(p, '#/today', 1200); const t = await p.$('.simtoday'); if (t) ok(/Simulator challenge/.test(await text(p, '.simtoday')), 'Today card text');
+    await go(p, '#/today', 1200); const t = await p.$('#grp-build a.xlink[href^="#/sim/sc/"]'); if (t) ok(/Simulator challenge/.test(await t.innerText()), 'Today row text');
     const x0 = await p.evaluate(() => gameXP()); await p.evaluate(() => { simState().done.cdc = iso(new Date()); }); ok((await p.evaluate(() => gameXP())) === x0 + 25, 'no XP for a passed challenge');
   });
   await T('sim quick start: a design problem opens a fitting starter named after it, with a way back; a blank design offers starters', async p => {
@@ -1498,8 +1529,9 @@ async function T(name, fn, opt) {
     ok((await p.$$('.lpround')).length === 9, 'not nine rounds'); await p.click('.lpco summary'); const t = await text(p, '#page');
     ok(/Recruiter screen/.test(t) && /Code comprehension/.test(t) && /Leadership and past project/.test(t) && /SQL, live/.test(t) && /Data modelling/.test(t) && /Product sense/.test(t) && /Meta/.test(t) && /% ready/.test(t), 'hub text: ' + t.slice(0, 300));
     ok(await p.$('nav.side a[href="#/loop"]'), 'Interview loop not in the menu');
-    await go(p, '#/today', 1400); const c = await p.$('.looptoday a'); ok(c, 'no Interview loop card on Today'); const h = await c.getAttribute('href');
-    await c.click(); await p.waitForSelector('.tabs [aria-selected=true]'); ok(/#\/loop\/r\d\/\w+/.test(h) && (await p.evaluate(() => location.hash)) === h, 'Today card went to ' + h);
+    await go(p, '#/today', 1400); await p.waitForSelector('.plan .dsum'); await p.evaluate(() => document.getElementById('tab-grp-interview').click());
+    const c = await p.$('#grp-interview a.xlink[href^="#/loop/"]'); ok(c, 'no Interview loop row in Today\'s Interview tab'); const h = await c.getAttribute('href');
+    await c.click(); await p.waitForSelector('.tabs [aria-selected=true]'); ok(/#\/loop\/r\d\/\w+/.test(h) && (await p.evaluate(() => location.hash)) === h, 'Today row went to ' + h);
   });
   await T('loop recruiter: the pitch builds from four parts, saves, and raises readiness', async p => {
     await loopGo(p, '#/loop/r1/pitch');

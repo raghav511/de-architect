@@ -108,18 +108,18 @@ let SCHED = null, SCHED_DAY = '';
 function schedFlush() { SCHED = null; }
 function schedule() {
   /* the key also covers ticks and plan settings changed without save(), so a stale plan is never shown */
-  const st = S.settings || {}, day = iso(new Date()) + '|' + S.start + '|' + S.since + '|' + st.capWd + '|' + st.capWe + '|' + JSON.stringify(S.done || {}) + '|' + Object.keys(S.doneAt || {}).length + '|' + JSON.stringify(S.quiz || {}).length + '|' + Object.keys(S.solved || {}).length + '|' + MODS.length;
+  const st = S.settings || {}, day = iso(new Date()) + '|' + S.start + '|' + S.since + '|' + st.capWd + '|' + st.capWe + '|' + st.buildWd + '|' + st.buildWe + '|' + JSON.stringify(S.done || {}) + '|' + Object.keys(S.doneAt || {}).length + '|' + JSON.stringify(S.quiz || {}).length + '|' + Object.keys(S.solved || {}).length + '|' + MODS.length;
   if (SCHED && SCHED_DAY === day) return SCHED;
   SCHED_DAY = day; return (SCHED = scheduleNow());
 }
 function scheduleNow() {
   const units = [].concat(...MODS.map(modUnits));
   const t = new Date(); t.setHours(0, 0, 0, 0);
-  const byDay = {}, used = {};
-  const put = (k, u) => { (byDay[k] = byDay[k] || []).push(u); used[k] = (used[k] || 0) + u.mins; u.day = k; };
+  const byDay = {}, used = {}, bused = {}; /* reading minutes and Design and build minutes are counted apart */
+  const put = (k, u) => { (byDay[k] = byDay[k] || []).push(u); const c = isBuild(u) ? bused : used; c[k] = (c[k] || 0) + u.mins; u.day = k; };
   units.forEach(u => { const d = doneDate(u); u.isDone = !!d; if (d) put(d, u); });
   if (S.cv && S.cv.units) units.forEach(u => { if (u.isDone && !S.cv.units[u.uid] && tracked(u)) S.cv.units[u.uid] = unitHash(u); }); /* remember which version you finished */
-  const cur = new Date(t), q = units.filter(u => !u.isDone && !isCC(u.mid)), cq = units.filter(u => !u.isDone && isCC(u.mid)); let guard = 0;
+  const cur = new Date(t), q = units.filter(u => !u.isDone && !isCC(u.mid) && !isBuild(u)), bq = units.filter(u => !u.isDone && isBuild(u)), cq = units.filter(u => !u.isDone && isCC(u.mid)); let guard = 0;
   const ccDay = {}; units.forEach(u => { if (u.isDone && isCC(u.mid) && u.day) ccDay[u.day] = (ccDay[u.day] || 0) + 1; });
   /* Claude Code pace: enough steps a week to finish around when the main path does (1 to 3 a week) */
   const wk = 5 * capOf(new Date(2026, 0, 5)) + 2 * capOf(new Date(2026, 0, 3)), sum = a => a.reduce((x, u) => x + u.mins, 0);
@@ -136,6 +136,17 @@ function scheduleNow() {
     if (fi > 0) { put(k, q.splice(fi, 1)[0]); continue; }
     cur.setDate(cur.getDate() + 1);
   }
+  /* Design and build (design problems and project sessions) run in their own lane with their own minutes (budgets().build),
+     in program order, never before their module's reading has started */
+  const first = {}; units.forEach(u => { if (!isBuild(u) && u.day && u.day !== '0000-00-00' && (!first[u.mid] || u.day < first[u.mid])) first[u.mid] = u.day; });
+  const bcur = new Date(t); guard = 0;
+  while (bq.length && guard++ < 6000) {
+    const k = iso(bcur), u = bq[0], f = first[u.mid];
+    if (f && f > k) { bcur.setTime(new Date(f + 'T00:00:00').getTime()); continue; }
+    const rem = budgets(bcur).build - (bused[k] || 0);
+    if (u.mins <= rem + 5 || !(bused[k] > 0)) { put(k, bq.shift()); continue; }
+    bcur.setDate(bcur.getDate() + 1);
+  }
   /* within a day the main path comes first, so a carried-over step is never pushed below a Claude Code step */
   Object.values(byDay).forEach(a => a.sort((x, y) => isCC(x.mid) - isCC(y.mid)));
   /* days since the start with nothing ticked: their steps were not skipped, they moved to today and later */
@@ -144,7 +155,7 @@ function scheduleNow() {
   const span = {};
   units.forEach(u => { const s = span[u.mid] = span[u.mid] || { first: null, last: null, n: 0, done: 0, mins: 0 }; if (u.day !== '0000-00-00') { if (!s.first || u.day < s.first) s.first = u.day; if (!s.last || u.day > s.last) s.last = u.day; } s.n++; s.mins += u.mins; if (u.isDone) s.done++; });
   const next = units.find(u => !u.isDone);
-  return { units, byDay, used, span, missed, today: iso(t), cur: next ? next.mid : MODS[MODS.length - 1], next };
+  return { units, byDay, used, bused, span, missed, today: iso(t), cur: next ? next.mid : MODS[MODS.length - 1], next };
 }
 function curMid() { return schedule().cur; }
 function weeksText(sp) { if (!sp || !sp.first) return 'done'; const a = weekOf(sp.first), b = weekOf(sp.last); return (a === b ? 'Week ' + a : 'Weeks ' + a + '–' + b) + ' · ' + shortDate(sp.first) + (sp.first !== sp.last ? ' – ' + shortDate(sp.last) : ''); }
@@ -186,7 +197,9 @@ function unitCard(u, opts) {
 /* the day's other two groups. Each has its own minutes (Profile › Plan), so carried work never makes the day longer.
    Newest work comes first; leftovers from earlier this week follow; whatever doesn't fit, and anything from an earlier
    week's set, waits for the weekend's catch-up minutes instead of mixing into the new week's theme. */
-function budgets(d) { const we = d.getDay() === 0 || d.getDay() === 6, n = (v, x) => +v > 0 ? +v : x; return { code: we ? n(S.settings.codeWe, 80) : n(S.settings.codeWd, 50), iv: we ? n(S.settings.ivWe, 45) : n(S.settings.ivWd, 30) }; }
+function budgets(d) { const we = d.getDay() === 0 || d.getDay() === 6, n = (v, x) => +v > 0 ? +v : x; return { code: we ? n(S.settings.codeWe, 80) : n(S.settings.codeWd, 50), iv: we ? n(S.settings.ivWe, 55) : n(S.settings.ivWd, 40), build: we ? n(S.settings.buildWe, 60) : n(S.settings.buildWd, 30) }; }
+/* design problems and project sessions: the Design and build part of the day (their own lane in the scheduler) */
+function isBuild(u) { return u.kind === 'design' || u.kind === 'project'; }
 const SQMAP = [0, null, 1, 2, 3, 4, null], SPMAP = [null, 0, 1, 2, 3, null, 4];
 const WKC = {}; /* each week's problem sets, filtered once */
 function wk(k, w) { return (WKC[k + w] = WKC[k + w] || byWeek(DATA[k], w)); }
@@ -224,8 +237,10 @@ function interviewItems(off, k, cur) {
   /* company questions: this module's first, newest first; each ticked on its own page */
   const rq = off ? [] : recentOpen().sort((a, b) => (b.mid === cur) - (a.mid === cur) || (b.found || '').localeCompare(a.found || '')).map(q => ({ id: 'rq:' + q.id, chip: q.TAG || 'talk', t: q.company + ': ' + q.Q.replace(/\*\*/g, '').slice(0, 90) + (q.Q.length > 90 ? '…' : ''), sub: (q.found >= iso(new Date(Date.now() - 7 * 864e5)) ? 'Asked this week' : 'Found ' + shortDate(q.found)) + (q.mid === cur ? ' · this module' : ''), mins: 5, href: '#/recent', auto: false, lock: true }));
   const rc = !off && typeof recallItem === 'function' ? recallItem() : null; /* daily recall set (js/recall.js), right after the mock */
-  const [now, later] = fill([mock].concat(rc ? [rc] : [], coach.filter(x => !x.auto), coach.filter(x => x.auto), rq), cap);
-  return { iv: now.filter(x => x.id === 'mock' || x.id === 'recall' || x.id.startsWith('rq:')), coach: now.filter(x => x.id.startsWith('coach')), later, laterQ: later.filter(x => x.id.startsWith('rq:')).length, laterC: later.filter(x => x.id.startsWith('coach')).length };
+  const loop = typeof loopTodayItem === 'function' ? [loopTodayItem(k)] : []; /* the interview loop's drill for the day (js/loop.js) */
+  const [now, later] = fill([mock].concat(rc ? [rc] : [], loop, coach.filter(x => !x.auto), coach.filter(x => x.auto), rq), cap);
+  if (rq.length && !now.some(x => x.id.startsWith('rq:'))) now.push(later.splice(later.indexOf(rq[0]), 1)[0]); /* an open company question always keeps one row (5 minutes) */
+  return { iv: now.filter(x => x.id === 'mock' || x.id === 'recall' || x.id.startsWith('loop:') || x.id.startsWith('rq:')), coach: now.filter(x => x.id.startsWith('coach')), later, laterQ: later.filter(x => x.id.startsWith('rq:')).length, laterC: later.filter(x => x.id.startsWith('coach')).length };
 }
 function xDone(k, x) { return x.auto || +(((S.xdone || {})[k] || {})[x.id] || 0) > 0; } /* a tick is its time, an untick minus its time, so sync keeps the later one */
 function xGroup(k, title, note, items, id, extra, foot) {
@@ -249,7 +264,7 @@ function weekStrip(sc, k0) {
   return el('div', { class: 'wkstrip' }, days.map(d => {
     const k = iso(d), us = sc.byDay[k] || [], off = Math.round((d - t) / 864e5), mins = us.reduce((a, u) => a + u.mins, 0);
     return el('a', { class: 'wkday' + (k === sc.today ? ' today' : '') + (k === k0 ? ' sel' : '') + (off < 0 ? ' past' : ''), href: '#/today/' + off, 'aria-label': dayName(k) + ' ' + shortDate(k) }, [
-      el('div', { class: 'row' }, [el('b', { class: 'grow', text: DN[(d.getDay() + 6) % 7].slice(0, 3) + ' ' + d.getDate() }), el('span', { class: 's', text: mins + '/' + capOf(d) })]),
+      el('div', { class: 'row' }, [el('b', { class: 'grow', text: DN[(d.getDay() + 6) % 7].slice(0, 3) + ' ' + d.getDate() }), el('span', { class: 's', text: mins + '/' + (capOf(d) + budgets(d).build) })]),
       el('div', { class: 'stack', style: { gap: '3px' } }, us.length ? us.map(u => el('span', { class: 'wu' + (u.isDone ? ' ok' : ''), title: u.title, text: (u.isDone ? '✓ ' : '') + (KIND[u.kind] || [u.kind])[0] + ' · ' + u.title })) : [el('span', { class: 's', text: off < 0 ? (sc.missed.includes(k) ? 'Missed · moved to today' : 'Before you began') : 'free' })])]);
   }));
 }
@@ -261,11 +276,16 @@ function vToday(off) {
   const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + off);
   const k = iso(d), cap = capOf(d), us = sc.byDay[k] || [];
   const pre = k < S.start, C = pre ? { now: [], catchup: [], later: [] } : codingItems(off), V = pre ? { iv: [], coach: [], later: [] } : interviewItems(off, k, sc.cur);
-  const xc = C.now.concat(C.catchup), xs = xc.concat(V.iv, V.coach);
+  /* Design and build: the scheduled design problem and project sessions, then a simulator challenge when today's build minutes have room */
+  const bB = budgets(d).build, bUsed = us.filter(isBuild).reduce((a, u) => a + u.mins, 0);
+  const simX = off === 0 && !pre && typeof simTodayItem === 'function' ? [simTodayItem(k)].filter(x => x && (x.auto || bUsed + x.mins <= bB + 5)) : [];
+  /* Reels for today, as a row in Learn; it ticks itself once a reel is watched today */
+  const reelsX = off === 0 && !pre ? [{ id: 'reels', chip: 'core', t: 'Reels for today', sub: '30 to 60 second explainers of today\'s reading, each with a quick check', mins: 5, href: '#/reels', auto: Object.values(S.reels || {}).some(x => x && x.seen === k) }] : [];
+  const xc = C.now.concat(C.catchup), xs = xc.concat(V.iv, V.coach, simX, reelsX);
   /* remember the day a step was first planned, so a step carried to a later day says where it came from */
   if (off === 0 && !pre) { S.planned = S.planned || {}; let ch = 0; us.forEach(u => { if (!u.isDone && !S.planned[u.uid]) { S.planned[u.uid] = k; ch = 1; } }); if (ch) save(false); }
   const fromOf = u => { const p = (S.planned || {})[u.uid]; return p && p < k && !u.isDone ? shortDate(p).slice(0, 3) : ''; };
-  const hourDone = us.filter(u => u.isDone).reduce((a, u) => a + u.mins, 0), hourMins = us.reduce((a, u) => a + u.mins, 0);
+  const hourDone = us.filter(u => u.isDone).reduce((a, u) => a + u.mins, 0), hourMins = us.reduce((a, u) => a + u.mins, 0), readMins = us.filter(u => !isBuild(u)).reduce((a, u) => a + u.mins, 0);
   const doneMins = hourDone + xs.filter(x => xDone(k, x)).reduce((a, x) => a + x.mins, 0), planMins = hourMins + xs.reduce((a, x) => a + x.mins, 0);
   const m = (us.slice().reverse().find(u => !isCC(u.mid)) || us[0] || {}).mid || sc.cur, M = MOD[m], sp = sc.span[m];
   const hr = new Date().getHours();
@@ -275,30 +295,36 @@ function vToday(off) {
     el('a', { class: 'btn icon sm', href: '#/today/' + (off + 1), 'aria-label': 'Next day' }, svg(I.fwd, 18)),
     off ? el('a', { class: 'btn sm', href: '#/today', text: 'Back to today' }) : null,
     el('span', { class: 'grow' }),
-    el('span', { class: 'chip ' + (cap > 60 ? 'c-arch' : 'c-core'), text: (cap >= 120 ? cap / 60 + '-hour' : cap + '-minute') + ' day' + (hourMins > cap ? ' · ' + (hourMins - cap) + ' min over' : '') })]);
+    el('span', { class: 'chip ' + (cap > 60 ? 'c-arch' : 'c-core'), text: (cap >= 120 ? cap / 60 + '-hour' : cap + '-minute') + ' reading day' + (readMins > cap ? ' · ' + (readMins - cap) + ' min over' : '') })]);
   const pct = planMins ? Math.round(100 * doneMins / planMins) : 0, cur = off === 0 ? us.find(u => !u.isDone) : null;
   const ring = el('span', { class: 'ring', role: 'img', 'aria-label': pct + '% of the plan done', html: '<svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="17" fill="none" stroke="var(--line)" stroke-width="5"/><circle cx="21" cy="21" r="17" fill="none" stroke="var(--teal)" stroke-width="5" stroke-linecap="round" stroke-dasharray="' + (pct * 1.068).toFixed(1) + ' 107" transform="rotate(-90 21 21)"/></svg>' });
   /* Reading and labs: program order, so an unfinished earlier module comes first in its own block (later reading builds on it) */
-  const reading = us.filter(u => u.kind !== 'quiz'), quiz = us.filter(u => u.kind === 'quiz');
+  /* the day in the app's three groups: Learn (reading, labs, quiz, reels), Practice (Git, drills, design, projects, simulator, coding) and Interview (module interview set, mock, loop drill, company questions, coach) */
+  const isPract = u => isBuild(u) || u.kind === 'git' || u.kind === 'practice';
+  const reading = us.filter(u => u.kind !== 'quiz' && u.kind !== 'talk' && !isPract(u)), quiz = us.filter(u => u.kind === 'quiz'), build = us.filter(isPract), talk = us.filter(u => u.kind === 'talk');
   const mods = [...new Set(reading.filter(u => !isCC(u.mid)).map(u => u.mid))], oldMod = mods.length > 1 ? mods[0] : null;
   const card = u => unitCard(u, { fold: true, cur: false, from: fromOf(u) });
   const upNext = cur && !pre ? el('section', { class: 'upnext' }, [unitCard(cur, { cur: true, from: fromOf(cur) })]) : null; /* Up next is the first card on the screen; the list below holds the rest */
   const sec = (id, title, sub, kids) => el('div', { class: 'xgroup stack tsec', id, style: { gap: '8px' } }, [el('div', { class: 'row wrap xghead' }, [el('h3', { class: 'grow', text: title }), sub ? el('span', { class: 'muted', style: { fontSize: '14px' }, text: sub }) : null])].concat(kids));
   const mm = xs => xs.filter(u => u.isDone).reduce((a, u) => a + u.mins, 0) + ' / ' + xs.reduce((a, u) => a + u.mins, 0) + ' min';
   const rest = xs => xs.filter(u => u !== cur);
-  const readSec = pre ? null : sec('grp-hour', 'Reading and labs', mm(reading) + (quiz.length ? '' : ' of your ' + cap), (oldMod ? [el('span', { class: 'lbl', style: { color: 'var(--amber-d)' }, text: 'Finish ' + modLabel(oldMod) + ' first · later reading builds on it' })].concat(rest(reading.filter(u => u.mid === oldMod)).map(card), [el('span', { class: 'lbl', text: modLabel(mods[1]) + ' · ' + modTitle(mods[1]) })], rest(reading.filter(u => u.mid !== oldMod)).map(card)) : rest(reading).map(card)).concat(reading.length ? [] : [el('p', { class: 'muted', style: { margin: 0 }, text: off < 0 ? 'Nothing was done on this day.' : 'No reading planned for this day.' })]));
+  const readSec = pre ? null : sec('grp-hour', 'Reading and labs', mm(reading), (oldMod ? [el('span', { class: 'lbl', style: { color: 'var(--amber-d)' }, text: 'Finish ' + modLabel(oldMod) + ' first · later reading builds on it' })].concat(rest(reading.filter(u => u.mid === oldMod)).map(card), [el('span', { class: 'lbl', text: modLabel(mods[1]) + ' · ' + modTitle(mods[1]) })], rest(reading.filter(u => u.mid !== oldMod)).map(card)) : rest(reading).map(card)).concat(reading.length ? [] : [el('p', { class: 'muted', style: { margin: 0 }, text: off < 0 ? 'Nothing was done on this day.' : 'No reading planned for this day.' })]));
+  const buildSec = pre || !(build.length || simX.length) ? null : sec('grp-build', 'Design, build and Git', mm(build.concat(simX.map(x => ({ mins: x.mins, isDone: xDone(k, x) })))), rest(build).map(card).concat(simX.length ? [xGroup(k, '', '', simX)] : [], [el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'The design problem, project sessions and a simulator challenge use your ' + bB + ' design and build minutes; Git labs and drills come from your reading minutes (Profile › Plan).' })]));
+  const reelSec = reelsX.length ? xGroup(k, 'Reels', '', reelsX, 'grp-reels') : null;
+  const talkSec = pre || !talk.length ? null : sec('grp-talk', 'This module\'s interview set', mm(talk), rest(talk).map(card));
   const quizSec = quiz.length ? sec('grp-quiz', 'Quiz', mm(quiz) + ' · part of your ' + cap + ' minutes', rest(quiz).map(card)) : null;
   const ivB = budgets(d).iv, codeB = budgets(d).code;
   const codeSec = pre || !xc.length ? null : xGroup(k, 'Coding track', '', C.now, 'grp-coding', el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'Reviews due today, then today\'s set, then anything left from earlier this week. ' + codeB + ' minutes a day.' }),
     C.catchup.length || C.later.length ? el('div', { class: 'stack', style: { gap: '8px' } }, [C.catchup.length ? el('span', { class: 'lbl', style: { color: 'var(--amber-d)' }, text: 'Weekend catch-up · earlier sets' }) : null].concat(C.catchup.length ? [xGroup(k, '', '', C.catchup)] : [], [C.later.length ? el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: C.later.length + ' more problem' + (C.later.length > 1 ? 's' : '') + ' wait' + (C.later.length > 1 ? '' : 's') + (C.olderWaiting ? ' (' + C.olderWaiting + ' from earlier sets, kept for the weekend)' : '') + '. ' }) : null])) : null);
-  const ivSec = pre || !V.iv.length ? null : xGroup(k, 'Interview practice', '', V.iv, 'grp-interview', el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'Interview practice and coaching share ' + ivB + ' minutes: the mock first, then a short recall set, then your coach\'s items, then this week\'s company questions.' }),
-    V.laterQ ? el('a', { class: 'tlink', href: '#/recent', style: { fontWeight: 600, fontSize: '14px' }, text: V.laterQ + ' more company question' + (V.laterQ > 1 ? 's' : '') + ' in the queue ›' }) : null);
+  const ivSec = pre || !V.iv.length ? null : xGroup(k, 'Interview practice', '', V.iv, 'grp-interview', el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'Interview practice and coaching share ' + ivB + ' minutes: the mock first, then a short recall set, then the interview loop drill, then your coach\'s items, then this week\'s company questions.' }),
+    el('div', { class: 'row wrap', style: { gap: '14px' } }, [V.laterQ ? el('a', { class: 'tlink', href: '#/recent', style: { fontWeight: 600, fontSize: '14px' }, text: V.laterQ + ' more company question' + (V.laterQ > 1 ? 's' : '') + ' in the queue ›' }) : null, el('a', { class: 'tlink', href: '#/mock', style: { fontWeight: 600, fontSize: '14px' }, text: 'Prefer writing? The written mock ›' })]));
   const cn = off === 0 ? coachNote() : null;
   const coachSec = pre || (!V.coach.length && !cn) ? null : (V.coach.length ? xGroup(k, 'Coaching', '', V.coach, 'grp-coach', cn, V.laterC ? el('a', { href: '#/coach', style: { fontWeight: 600, fontSize: '14px' }, text: V.laterC + ' more coach item' + (V.laterC > 1 ? 's' : '') + ' tomorrow ›' }) : null) : sec('grp-coach', 'Coaching', '', [cn]));
   const allDone = us.every(u => u.isDone) && xs.every(x => xDone(k, x));
-  /* Reading, Coding and Interview are tabs of one plan box; it opens on the first part with work left (or the last one you picked) */
-  const PANES = { 'grp-hour': ['grp-hour', 'grp-quiz'], 'grp-coding': ['grp-coding'], 'grp-interview': ['grp-interview', 'grp-coach'] };
-  const PARTS = [['grp-hour', 'Reading', us.map(u => [u.mins, u.isDone])], ['grp-coding', 'Coding', xc.map(x => [x.mins, xDone(k, x)])], ['grp-interview', 'Interview', V.iv.concat(V.coach).map(x => [x.mins, xDone(k, x)])]].filter(g => g[2].length);
+  /* Learn, Practice and Interview are tabs of one plan box; it opens on the first part with work left (or the last one you picked) */
+  const PANES = { 'grp-hour': ['grp-hour', 'grp-quiz', 'grp-reels'], 'grp-coding': ['grp-build', 'grp-coding'], 'grp-interview': ['grp-talk', 'grp-interview', 'grp-coach'] };
+  const xm = xs => xs.map(x => [x.mins, xDone(k, x)]), um = us => us.map(u => [u.mins, u.isDone]);
+  const PARTS = [['grp-hour', 'Learn', um(reading.concat(quiz)).concat(xm(reelsX))], ['grp-coding', 'Practice', um(build).concat(xm(simX), xm(xc))], ['grp-interview', 'Interview', um(talk).concat(xm(V.iv), xm(V.coach))]].filter(g => g[2].length);
   const tabNow = PARTS.some(g => g[0] === todayTab) ? todayTab : ((PARTS.find(g => !g[2].every(x => x[1])) || PARTS[0] || [])[0]);
   const pane = (s, g) => { if (s && PARTS.length > 1 && g !== tabNow) s.hidden = true; if (s) s.setAttribute('role', 'tabpanel'); return s; };
   const plan = el('section', { class: 'card pad stack plan' }, [
@@ -309,7 +335,7 @@ function vToday(off) {
     nav,
     off === 0 && sc.missed.length ? el('div', { class: 'hint behind', role: 'status' }, [el('b', { text: 'Catching up · ' }), missedText(sc.missed) + ' moved to today. Nothing was skipped.']) : null,
     pre ? el('p', { style: { margin: 0 }, text: 'Your plan starts ' + shortDate(S.start) + '.' }) : null,
-    pane(readSec, 'grp-hour'), pane(quizSec, 'grp-hour'), pane(codeSec, 'grp-coding'), pane(ivSec, 'grp-interview'), pane(coachSec, 'grp-interview'),
+    pane(readSec, 'grp-hour'), pane(quizSec, 'grp-hour'), pane(reelSec, 'grp-hour'), pane(buildSec, 'grp-coding'), pane(codeSec, 'grp-coding'), pane(talkSec, 'grp-interview'), pane(ivSec, 'grp-interview'), pane(coachSec, 'grp-interview'),
     off === 0 && !pre ? el('div', { class: 'row wrap', style: { gap: '14px', fontSize: '14px' } }, [revDue().length > 3 ? el('a', { class: 'tlink', href: '#/practice/review', style: { fontWeight: 600 }, text: (revDue().length - 3) + ' more reviews due ›' }) : null, el('a', { class: 'tlink', href: '#/practice/tests', style: { fontWeight: 600 }, text: 'Timed coding tests ›' })]) : null,
     off === 0 && allDone && sc.next ? el('div', { class: 'hint' }, [el('b', { text: 'Done for today. ' }), 'Want to keep going? Next up: ' + sc.next.title + ' (planned ' + shortDate(sc.next.day) + '). ', el('a', { href: sc.next.href, text: 'Start it now' })]) : null]);
   const D = DATA.design[m];
@@ -327,10 +353,8 @@ function vToday(off) {
     hero,
     off === 0 ? whatsNewCard() : null,
     el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [modCard, off === 0 ? el('div', { id: 'rtodayslot' }) : null])]),
-    off === 0 && typeof simToday === 'function' ? simToday() : null,
-    off === 0 && typeof loopToday === 'function' ? loopToday() : null,
     off === 0 ? el('div', { id: 'gcardslot' }) : null,
-    el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', style: { minWidth: 'max-content' }, text: 'This week' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'minutes planned / budget · tap a day to see it' }), el('button', { class: 'btn sm', onclick: exportIcs, text: 'Add to calendar' })]), weekStrip(sc, k)])]);
+    el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', style: { minWidth: 'max-content' }, text: 'This week' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'reading and design minutes planned / budget · tap a day to see it' }), el('button', { class: 'btn sm', onclick: exportIcs, text: 'Add to calendar' })]), weekStrip(sc, k)])]);
   if (off === 0) { reelToday().then(c => { const s = document.getElementById('rtodayslot'); if (c && s) s.replaceWith(c); }); gameCard().then(c => { const s = document.getElementById('gcardslot'); if (c && s) s.replaceWith(c); }); gameShipCheck(); }
 }
 let todayTab = null; /* the plan tab picked on Today, kept while the app is open */
