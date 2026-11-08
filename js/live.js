@@ -1,7 +1,7 @@
 /* Data Architect · live mock interview (#/live/DATE). One question per screen, answered by voice or typing.
    Built from the week's modules: concept, under the hood, architect's lens, one staff-level slot that rotates by
    weekday (data/staff.json), and recall from an earlier week. Weekends: a 35-minute, 7-question round in one company's style.
-   An AI interviewer (API key, else Claude Code on the Mac) asks a follow-up and scores each answer on a rubric;
+   An AI interviewer (Claude Code on the Mac) asks a follow-up and scores each answer on a rubric;
    with AI off you mark yourself against the model answer. State: S.live[date]. Loaded before app.js. */
 'use strict';
 const LIVE_LEN = { wd: [20, 4], we: [35, 5] }; /* minutes, minutes per question */
@@ -71,18 +71,10 @@ async function liveQuestions(k) {
    answers saved before this field existed are 'self' when marked by hand, else AI */
 function liveBy(a) { return !a ? '' : a.skipped ? 'skip' : a.by || (a.self ? 'self' : a.sc ? 'ai' : ''); }
 function liveAvg(a) { const s = a && a.sc; if (!s) return NaN; const v = LIVE_DIMS.map(d => +s[d[0]] || 0); return Math.max(1, v.reduce((x, y) => x + y, 0) / v.length - 0.25 * (+a.simHints || 0)); } /* simulator suggestions opened while sketching cost 0.25 each */
-function liveRouteName() { return !aiOn() ? 'you' : S.settings.aiKey ? 'key' : 'mac'; }
+function liveRouteName() { return !aiOn() ? 'you' : 'mac'; }
 
 /* one AI turn; returns the reply text or throws */
 async function liveAsk(system, user) {
-  if (S.settings.aiKey) {
-    const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': S.settings.aiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: S.settings.aiModel || 'claude-haiku-5-5', max_tokens: 900, system, messages: [{ role: 'user', content: user }] }) });
-    const j = await r.json().catch(() => ({}));
-    if (r.status === 401) throw new Error('The API key saved in Profile › AI was rejected.');
-    const t = (j.content || []).map(c => c.text || '').join(''); if (!t) throw new Error((j.error && j.error.message) || 'No answer from the AI service.');
-    return t;
-  }
   const r = await macCall('chat', { page: 'Live mock interview (' + new Date().toDateString() + ')', problem: '', code: '', question: system + '\n\n' + user, history: [] });
   if (!r || !r.text) throw new Error('No answer came back from your Mac.');
   return r.text;
@@ -156,7 +148,7 @@ function liveStart(page, k, m) {
     el('span', { class: 'muted', text: 'Built from this week: ' + m.week.map(x => modLabel(x)).join(', ') + (m.style ? ' · ' + m.style + '-style round' : '') }),
     el('ol', { class: 'lslots' }, m.qs.map(q => el('li', {}, [el('b', { text: q.label }), q.carried ? el('span', { class: 'chip c-ai', text: 'from ' + shortDate(q.carried) }) : null, el('span', { class: 'muted', text: ' · ' + q.q.replace(/\*\*|`/g, '').slice(0, 70) + (q.q.length > 70 ? '…' : '') })]))),
     el('div', { class: 'row wrap' }, [el('span', { class: 'lbl', text: 'Level' }), lv]),
-    el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: via === 'key' ? 'Follow-ups and scores come from the AI with the API key on this device (a few cents with the default model).' : via === 'mac' ? 'Follow-ups and scores come from Claude Code on your Mac (it must be awake).' : 'AI features are off: after each answer you compare with the model answer and mark yourself. Self-marked rounds count for practice and XP; promotions past Senior on the ladder need AI scoring.' }),
+    el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: via === 'mac' ? 'Follow-ups and scores come from Claude Code on your Mac (it must be awake).' : 'AI features are off: after each answer you compare with the model answer and mark yourself. Self-marked rounds count for practice and XP; promotions past Senior on the ladder need AI scoring.' }),
     el('button', { class: 'btn pri', onclick: () => { m.i = 0; m.started = Date.now(); save(); route(); } }, 'Start'),
     el('a', { href: '#/mock/' + k, class: 'muted tlink', style: { fontSize: '14px' }, text: 'Prefer writing long answers? Take the written mock instead' })]));
 }

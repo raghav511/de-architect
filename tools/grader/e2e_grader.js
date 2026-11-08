@@ -7,7 +7,7 @@ const [BASE, SYNC, GPORT] = [process.argv[2] || 'http://localhost:8811/', proces
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 (async () => {
   const b = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
-  const ctx = await b.newContext(); const p = await ctx.newPage();
+  const ctx = await b.newContext({ bypassCSP: true }); /* the fake sync server and test grader are outside the app's CSP */ const p = await ctx.newPage();
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   let direct = false; /* the app always calls 127.0.0.1:8765; send it to the test grader only when direct is on */
   await ctx.route('http://127.0.0.1:8765/**', async r => { if (!direct) return r.abort(); const u = r.request().url().replace(':8765', ':' + GPORT); const res = await r.fetch({ url: u }); await r.fulfill({ response: res }); });
@@ -57,10 +57,10 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ok((said.match(/Stub coach/g) || []).length >= 2, 'coach bubble: answered through the sync relay too');
   direct = true;
 
-  ok(await p.evaluate(async () => { S.settings.aiKey = 'sk-ant-revoked'; let hitApi = false; const f = window.fetch; window.fetch = (u, o) => { if (/api\.anthropic\.com/.test(u)) { hitApi = true; return Promise.resolve(new Response(JSON.stringify({ type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } }), { status: 401 })); } return f(u, o); };
+  ok(await p.evaluate(async () => { let hitApi = false; const f = window.fetch; window.fetch = (u, o) => { if (/api\.anthropic\.com/.test(u)) hitApi = true; return f(u, o); };
     const box = document.createElement('div'); await askCoach('what is today?', { title: 'Today' }, box); const okMac = /Stub coach/.test(box.innerText) && !hitApi;
-    const keep = window.macCall; window.macCall = async () => { throw new Error('nograder'); }; const box2 = document.createElement('div'); await askCoach('q', { title: 't' }, box2); window.macCall = keep; window.fetch = f; S.settings.aiKey = '';
-    return okMac && /rejected/.test(box2.innerText); }), 'coach bubble: Mac answers first even with a saved key; a rejected key is explained');
+    const keep = window.macCall; window.macCall = async () => { throw new Error('nograder'); }; const box2 = document.createElement('div'); await askCoach('q', { title: 't' }, box2); window.macCall = keep; window.fetch = f;
+    return okMac && !hitApi && /grader on your Mac/.test(box2.innerText); }), 'coach bubble: answers only through the Mac; without the grader it points to it and never calls an AI service');
   ok(await p.evaluate(async () => { const keep = window.macCall; window.macCall = async () => ({ score: 1, verdict: 'x' }); const box = document.createElement('div'); await askCoach('q', { title: 't' }, box); window.macCall = keep; return /out of date/.test(box.innerText); }), 'coach bubble: an out-of-date grader on the Mac is explained');
 
   // 4. practice run in Claude Code shows the answer and its cost

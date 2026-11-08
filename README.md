@@ -13,7 +13,7 @@ An AI-first study app for senior data engineer and data architect roles. It runs
 - **Git**: one hands-on lesson per module; `labs/git/gitlab.sh` builds a broken repo and checks your fix (16 labs).
 - **System design studio**: a problem statement and deliverable per module, six steps with notes, calculator and timer.
 - **What is new in AI**, refreshed weekly. **Search** everything with ⌘K or `/`.
-- **Progress**, **Sync progress** across devices (Google Apps Script), backup and restore, and a coach (hints; free-form with your own API key).
+- **Progress**, **Sync progress** across devices (Google Apps Script), backup and restore, and a coach (hints; free-form through Claude Code on your Mac; no API key is ever stored in the browser).
 
 ## Test loop
 

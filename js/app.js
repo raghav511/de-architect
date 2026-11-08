@@ -47,7 +47,14 @@ let S = load();
 function load() {
   let s = {};
   try { s = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { s = {}; }
-  return Object.assign({ start: null, proj: {}, done: {}, doneAt: {}, undone: {}, code: {}, solved: {}, runs: {}, hints: {}, secs: {}, quiz: {}, iv: {}, tests: {}, settings: {}, layout: {}, rev: {}, mock: {}, grades: {}, recall: {}, updated: 0, week: null }, s);
+  if (s && s.settings && ('aiKey' in s.settings || 'aiModel' in s.settings)) { dropAiKey(s); try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { } } /* gone from storage the first time this version opens */
+  return dropAiKey(Object.assign({ start: null, proj: {}, done: {}, doneAt: {}, undone: {}, code: {}, solved: {}, runs: {}, hints: {}, secs: {}, quiz: {}, iv: {}, tests: {}, settings: {}, layout: {}, rev: {}, mock: {}, grades: {}, recall: {}, updated: 0, week: null }, s));
+}
+/* the app no longer stores or uses an API key (security, 2026-11-08): any page on raghav511.github.io could read it.
+   A key left by an older version is deleted on load, after a restore and after a merge; AI runs only through Claude Code on the Mac. */
+function dropAiKey(s) {
+  if (s && s.settings && typeof s.settings === 'object') { delete s.settings.aiKey; delete s.settings.aiModel; if (s.settings.coachVia === 'key') s.settings.coachVia = 'mac'; }
+  return s;
 }
 let saveT = null;
 /* a change made just before the tab closes or the phone locks is written at once, not lost with the 150 ms timer */
@@ -57,7 +64,7 @@ let lastWrite = (() => { try { return localStorage.getItem(KEY); } catch (e) { r
 function writeState() {
   const cur = localStorage.getItem(KEY);
   if (lastWrite !== null && cur && cur !== lastWrite && typeof mergeState === 'function') { try { const o = JSON.parse(cur), keep = S.settings; S = Object.assign(load(), mergeState(o, S), { settings: Object.assign({}, o.settings, keep) }); } catch (e) { } }
-  const s = JSON.stringify(S); localStorage.setItem(KEY, s); lastWrite = s;
+  dropAiKey(S); const s = JSON.stringify(S); localStorage.setItem(KEY, s); lastWrite = s;
 }
 function flushSave() { if (!saveT) return; clearTimeout(saveT); saveT = null; try { writeState(); } catch (e) {} }
 addEventListener('pagehide', flushSave); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSave(); });
@@ -923,7 +930,7 @@ function vProgress() {
 }
 const SECRET_KEYS = ['aiKey', 'syncUrl', 'openaiKey']; /* only on this device: never in a backup file (QA fix 4) */
 function exportProgress() { const out = JSON.parse(JSON.stringify(S)); out.settings = Object.assign({}, out.settings); SECRET_KEYS.forEach(k => delete out.settings[k]); delete out.syncing; const b = new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' }); const a = el('a', { href: URL.createObjectURL(b), download: 'data-architect-progress-' + iso(new Date()) + '.json' }); document.body.appendChild(a); a.click(); a.remove(); }
-function importProgress(e) { const f = e.target.files[0]; if (!f) return; f.text().then(t => { const old = JSON.stringify(S); try { const j = JSON.parse(t); if (!j || typeof j !== 'object' || Array.isArray(j) || !j.start || !('solved' in j || 'done' in j)) throw new Error('not a backup'); /* trust fix 19 */ const mine = {}; SECRET_KEYS.forEach(k => { if (S.settings[k]) mine[k] = S.settings[k]; }); S = Object.assign(load(), j); S.settings = Object.assign({}, S.settings, mine); /* QA fix 5: keep this device's key and sync URL */ e.target.value = ''; save(); toast('Backup restored', () => { S = JSON.parse(old); save(); route(); }); route(); } catch (x) { toast('That file is not a Data Architect backup.'); } }); }
+function importProgress(e) { const f = e.target.files[0]; if (!f) return; f.text().then(t => { const old = JSON.stringify(S); try { const j = JSON.parse(t); if (!j || typeof j !== 'object' || Array.isArray(j) || !j.start || !('solved' in j || 'done' in j)) throw new Error('not a backup'); /* trust fix 19 */ const mine = {}; SECRET_KEYS.forEach(k => { if (S.settings[k]) mine[k] = S.settings[k]; }); S = Object.assign(load(), j); S.settings = Object.assign({}, S.settings, mine); dropAiKey(S); /* QA fix 5: keep this device's key and sync URL */ e.target.value = ''; save(); toast('Backup restored', () => { S = JSON.parse(old); save(); route(); }); route(); } catch (x) { toast('That file is not a Data Architect backup.'); } }); }
 
 /* ---------------- Settings, sync, update ---------------- */
 function graderStatus() {
@@ -932,7 +939,7 @@ function graderStatus() {
   return t;
 }
 function syncLabel() { return S.syncing ? 'Syncing…' : S.lastSync && Date.now() - S.lastSync < 60000 ? 'Synced' : 'Sync progress'; }
-/* preferences that follow you across devices; the API key, sync URL, theme and notifications stay per device */
+/* preferences that follow you across devices; the sync URL, theme and notifications stay per device */
 const PREF_KEYS = ['capWd', 'capWe', 'codeWd', 'codeWe', 'ivWd', 'ivWe', 'studyTime', 'ai', 'coachVia', 'gradeModel', 'name'];
 /* Settings live on the Profile page (avatar, top right); settings() is kept for the buttons that say "Open settings" */
 function settings(focusId) { if (focusId === 'st_sync') profileTab = 'sync'; if (location.hash !== '#/profile') location.hash = '#/profile'; else route(); if (focusId) setTimeout(() => { const x = document.getElementById(focusId); if (x) x.focus(); }, 150); }
@@ -945,7 +952,7 @@ function saveSettings(body) {
     const su = g('st_sync'); /* trust fix 20: refuse a sync URL that cannot work, warn when it has no key */
     if (su && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/(exec|dev)([?#]|$)|^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(su)) { toast('That sync URL is not a Google Apps Script web app (https://script.google.com/macros/s/…/exec). Your progress only syncs to your own script, so settings were not saved.', null, 7000); return false; } /* security review 13 */
     if (su && /script\.google\.com/.test(su) && !/[?&]k=/.test(su)) setTimeout(() => toast('Saved. This sync URL has no ?k= key: anyone with the URL could read your progress.', null, 7000), 400);
-    const st0 = g('st_start'); if (/^\d{4}-\d\d-\d\d$/.test(st0)) { const d = new Date(st0 + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); if (iso(d) !== S.start) S.since = iso(new Date()); S.start = iso(d); } S.settings.syncUrl = su; S.settings.googleClientId = g('st_gcid'); S.settings.aiKey = g('st_key'); S.settings.aiModel = g('st_model') || 'claude-haiku-5-5';
+    const st0 = g('st_start'); if (/^\d{4}-\d\d-\d\d$/.test(st0)) { const d = new Date(st0 + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); if (iso(d) !== S.start) S.since = iso(new Date()); S.start = iso(d); } S.settings.syncUrl = su; S.settings.googleClientId = g('st_gcid');
     const wd = Math.round(+g('st_wd')), we = Math.round(+g('st_we')); S.settings.capWd = wd >= 15 && wd <= 600 ? wd : 60; S.settings.capWe = we >= 15 && we <= 720 ? we : 120; const nb = (id, lo, hi, def) => { const v = Math.round(+g(id)); return v >= lo && v <= hi ? v : def; }; S.settings.codeWd = nb('st_cwd', 0, 300, 50); S.settings.codeWe = nb('st_cwe', 0, 300, 80); S.settings.ivWd = nb('st_iwd', 15, 300, 30); S.settings.ivWe = nb('st_iwe', 15, 300, 45); S.settings.studyTime = g('st_time') || '07:00'; S.settings.accent = g('st_accent') || 'teal'; S.settings.name = g('st_name'); applyTheme(); S.settings.ai = g('st_ai') !== 'off'; applyAi();
     S.settings.fun = g('st_fun') !== 'off'; S.settings.sound = g('st_sound') === 'on';
     S.settings.coachVia = g('st_coach') || 'mac'; S.settings.gradeModel = g('st_grade') || 'auto'; S.settings.prefsAt = Date.now(); /* newest preferences win when devices sync */
@@ -977,8 +984,8 @@ function vProfile() {
     look: [sel('st_accent', 'Accent colour', S.settings.accent || 'teal', [['teal', 'Teal'], ['blue', 'Blue'], ['plum', 'Plum']]), f('st_name', 'Your name (used in the greeting)', S.settings.name || '', 'text', (typeof authGet === 'function' && (authGet() || {}).name) || 'Your first name'), sel('st_fun', 'Celebrations (confetti when a module ships or a warm-up goes well)', S.settings.fun === false ? 'off' : 'on', [['on', 'On'], ['off', 'Off']]), sel('st_sound', 'Sounds in the warm-up', S.settings.sound ? 'on' : 'off', [['off', 'Off'], ['on', 'On']])],
     plan: [f('st_start', 'Week 1 starts (pick any day in that week)', S.start, 'date'), el('div', { class: 'tri' }, [f('st_wd', 'Reading, weekday minutes', S.settings.capWd || 60, 'number'), f('st_we', 'Reading, weekend minutes', S.settings.capWe || 120, 'number'), f('st_time', 'Study time', S.settings.studyTime || '07:00', 'time')]), el('div', { class: 'tri' }, [f('st_cwd', 'Coding, weekday', S.settings.codeWd || 50, 'number'), f('st_cwe', 'Coding, weekend', S.settings.codeWe || 80, 'number')]), el('div', { class: 'tri' }, [f('st_iwd', 'Interview and coaching, weekday', S.settings.ivWd || 30, 'number'), f('st_iwe', 'Interview and coaching, weekend', S.settings.ivWe || 45, 'number')])],
     ai: [sel('st_ai', 'AI features', S.settings.ai === false ? 'off' : 'on', [['on', 'On: instant grading, practice runs and the Claude Code track'], ['off', 'Off: study without AI (self-check with model answers)']]),
-      el('div', { class: 'duo' }, [sel('st_coach', 'Coach answers with', S.settings.coachVia || 'mac', [['mac', 'Claude Code on my Mac'], ['key', 'My API key'], ['hints', 'Hints only (no AI)']]), sel('st_grade', 'Grading model', S.settings.gradeModel || 'auto', [['auto', 'Automatic'], ['haiku', 'Haiku (cheapest)'], ['sonnet', 'Sonnet (most thorough)']])]),
-      el('div', { class: 'duo' }, [f('st_key', 'API key (Anthropic, only on this device)', S.settings.aiKey, 'password', 'sk-ant-…'), f('st_model', 'Coach model', S.settings.aiModel || 'claude-haiku-5-5', 'text')]), note('The key is kept in this browser for raghav511.github.io, where other pages of the same account also run. Use a key with a monthly spend limit.'), graderStatus()],
+      el('div', { class: 'duo' }, [sel('st_coach', 'Coach answers with', S.settings.coachVia || 'mac', [['mac', 'Claude Code on my Mac'], ['hints', 'Hints only (no AI)']]), sel('st_grade', 'Grading model', S.settings.gradeModel || 'auto', [['auto', 'Automatic'], ['haiku', 'Haiku (cheapest)'], ['sonnet', 'Sonnet (most thorough)']])]),
+      note('AI runs through Claude Code on your Mac (the grader service, directly or through Sync). No API key is stored in this browser.'), graderStatus()],
     data: [note('Back up your progress to a file or restore it, without cloud sync.'), el('a', { class: 'btn', href: '#/progress', style: { alignSelf: 'flex-start' }, text: 'Back up or restore' })] };
   const tabBtns = T.map(([k, t]) => el('button', { role: 'tab', id: 'pt_' + k, 'aria-controls': 'pp_' + k, 'aria-selected': String(k === profileTab), tabindex: k === profileTab ? '0' : '-1', onclick: () => pick(k), text: t }));
   const tablist = el('div', { class: 'tabs ptabs', role: 'tablist', 'aria-label': 'Settings', onkeydown: e => { const i = T.findIndex(x => x[0] === profileTab), n = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (n) { e.preventDefault(); pick(T[(i + n + T.length) % T.length][0]); $('#pt_' + profileTab).focus(); } } }, tabBtns);
@@ -1152,10 +1159,8 @@ function coachFab() {
     r.onend = () => { mic.style.background = ''; mic.setAttribute('aria-pressed', 'false'); }; r.onerror = () => { mic.style.background = ''; mic.setAttribute('aria-pressed', 'false'); toast('Could not hear you. Check microphone permission.'); };
     r.start();
   } }, svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>', 18));
-  const file = el('input', { type: 'file', accept: 'image/*', capture: 'environment', style: { display: 'none' }, onchange: e => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => send(inp.value || 'Explain this image', rd.result); rd.readAsDataURL(f); } });
-  const cam = el('label', { class: 'btn icon', 'aria-label': 'Photo', title: 'Photo' }, [svg('<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>', 18), file]);
   const panel = el('div', { class: 'coach', role: 'dialog', 'aria-label': 'Ask the coach', style: { display: coachOpen ? 'flex' : 'none' } }, [el('div', { class: 'row' }, [el('h2', { class: 'grow', style: { fontSize: '18px' }, text: 'Ask the coach' }), el('button', { class: 'btn icon sm', 'aria-label': 'Close', onclick: () => toggle(false) }, '×')]),
-    el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'It sees this page and answers through Claude Code on your Mac (or your API key, if set in Settings): hints and questions before answers. Type or speak; photos need an API key.' }), msgs, el('div', { class: 'stack', style: { gap: '8px' } }, [inp, el('div', { class: 'row' }, [mic, cam, el('span', { class: 'grow' }), el('button', { class: 'btn pri', onclick: () => send(inp.value), text: 'Send' })])])]);
+    el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'It sees this page and answers through Claude Code on your Mac: hints and questions before answers. Type or speak.' }), msgs, el('div', { class: 'stack', style: { gap: '8px' } }, [inp, el('div', { class: 'row' }, [mic, el('span', { class: 'grow' }), el('button', { class: 'btn pri', onclick: () => send(inp.value), text: 'Send' })])])]);
   const fab = el('button', { class: 'fab', 'aria-label': 'Ask the coach', 'aria-expanded': String(coachOpen), onclick: () => toggle(!coachOpen) }, svg(I.spark, 24));
   function toggle(v) { coachOpen = v; panel.style.display = v ? 'flex' : 'none'; fab.setAttribute('aria-expanded', String(v)); if (v) setTimeout(() => inp.focus(), 30); }
   wrap.append(panel, fab);
@@ -1165,25 +1170,14 @@ async function askCoach(q, ctx, box) {
   q = (q || '').trim();
   const reply = el('div', { class: 'm' }, [el('span', { class: 'spin' })]);
   box.appendChild(reply);
-  const key = S.settings.aiKey;
   /* what "it sees this page" means: the visible text of the page, trimmed */
   const seen = (($('#page') || {}).innerText || '').replace(/\n{2,}/g, '\n').slice(0, 2500);
-  /* Settings → Coach bubble answers with: the Mac first (default), the API key first, or hints only */
-  const via = aiOn() ? (S.settings.coachVia || 'mac') : 'hints';
-  const order = via === 'hints' ? [] : via === 'key' ? ['key', 'mac'] : ['mac', 'key'];
-  const notes = [];
-  for (const src of order) {
-    if (src === 'key') {
-      if (!key) { if (via === 'key') notes.push('No API key is saved on this device.'); continue; }
-      const r = await askWithKey(q, ctx, key, seen);
-      if (r.text) { reply.innerHTML = md2(r.text); return; }
-      notes.push(r.why);
-    } else {
-      if (ctx.img) { if (!key) notes.push('Photos need an API key in Settings.'); continue; }
-      const r = await askMac(q, ctx, box, reply, seen);
-      if (r.text) { reply.innerHTML = md2(r.text); return; }
-      if (r.why) notes.push(r.why);
-    }
+  /* Settings → Coach bubble answers with: Claude Code on the Mac (default), or hints only */
+  const via = aiOn() && S.settings.coachVia !== 'hints' ? 'mac' : 'hints', notes = [];
+  if (via === 'mac') {
+    const r = await askMac(q, ctx, box, reply, seen);
+    if (r.text) { reply.innerHTML = md2(r.text); return; }
+    if (r.why) notes.push(r.why);
   }
   reply.textContent = (notes.length ? notes.join(' ') + ' ' : '') + hintText(ctx, via === 'hints');
 }
@@ -1200,20 +1194,6 @@ async function askMac(q, ctx, box, reply, seen) {
     const m = String(e.message || e);
     return { why: m === 'nograder' ? '' : m === 'timeout' ? 'Your Mac did not answer in time. Is it awake, with the grader running?' : 'Claude Code on your Mac could not answer: ' + m.slice(0, 160) + '.' };
   }
-}
-/* the coach through an Anthropic API key saved on this device */
-async function askWithKey(q, ctx, key, seen) {
-  try {
-    const content = [];
-    if (ctx.img) content.push({ type: 'image', source: { type: 'base64', media_type: ctx.img.split(';')[0].slice(5), data: ctx.img.split(',')[1] } });
-    content.push({ type: 'text', text: 'Page: ' + (ctx.title || ctx.page || '') + '\n' + seen + (ctx.problem ? '\nProblem: ' + ctx.problem : '') + (ctx.code ? '\nMy code:\n' + ctx.code.slice(0, 4000) : '') + '\n\nMy question: ' + (q || 'Give me a hint.') });
-    const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: S.settings.aiModel || 'claude-haiku-5-5', max_tokens: 600, system: 'You are a data engineering interview coach for a senior data engineer preparing for tier-1 and architect roles. Give intuition and a guiding question before answers. Never give a full solution unless the user explicitly asks for it. Keep replies under 150 words, plain language.', messages: [{ role: 'user', content }] }) });
-    const j = await r.json();
-    if (r.status === 401 || (j.error && /api.key|authentication/i.test(j.error.message || j.error.type || ''))) return { why: 'The API key saved in Settings was rejected (revoked or mistyped): remove it in Settings.' };
-    const text = (j.content || []).map(c => c.text || '').join('');
-    return text ? { text } : { why: 'The AI service returned no answer' + (j.error && j.error.message ? ': ' + j.error.message : '') + '.' };
-  } catch (e) { return { why: 'The coach could not reach the AI service with your API key. Check your connection.' }; }
 }
 function hintText(ctx, plain) {
   const hs = ctx.hints || [], more = !plain && aiOn();
