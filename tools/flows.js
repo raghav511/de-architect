@@ -755,16 +755,16 @@ async function T(name, fn, opt) {
     const w = await text(p, '.whatsnew'); ok(/1 new module/.test(w) && /Data mesh/.test(w), 'What is new does not list O1: ' + w.replace(/\s+/g, ' ').slice(0, 300));
     ok(await p.evaluate(() => !Object.keys(S.done).some(k => k.startsWith('o01:'))), 'an O1 step was marked done');
   });
-  await T('module A6: AI engineering in production sits right after A5 with chapter, lens, seven stub-only exercises, design problem, quiz, interview set and lens reels; an existing learner is told about it and nothing is marked done', async p => {
+  await T('module A6: AI engineering in production sits right after A5 with chapter (serving to guardrails and governance), lens, eleven stub-only exercises, design problem, quiz, interview set and lens reels; an existing learner is told about it and nothing is marked done', async p => {
     await go(p, '#/path', 1500);
     ok(await p.evaluate(() => MODS.indexOf('a06') === MODS.indexOf('a05') + 1 && modLabel('a06') === 'AI 6'), 'A6 is not right after A5');
     ok(await p.$('.pcard[data-mid=a06]') && /AI engineering in production/.test(await all(p, '.pcard[data-mid=a06]')), 'A6 not on the Path');
     await go(p, '#/learn/a06/chapter', 1500); await p.waitForSelector('.lens');
-    ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return document.querySelectorAll('.prose h2').length >= 9 && l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details:not(.fresh)').length === 5 && /KV cache/.test(l.textContent) && /Time to first token|time to first token/.test(document.querySelector('.prose').textContent); }), 'A6 chapter or lens incomplete');
+    ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return document.querySelectorAll('.prose h2').length >= 11 && /LoRA/.test(document.querySelector('.prose').textContent) && /ISO\/IEC 42001/.test(document.querySelector('.prose').textContent) && l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details:not(.fresh)').length === 5 && /KV cache/.test(l.textContent) && /Time to first token|time to first token/.test(document.querySelector('.prose').textContent); }), 'A6 chapter or lens incomplete');
     const r = await p.evaluate(async () => { const s = await sprint('a06'), us = modUnits('a06'), xs = DATA.py.filter(x => x.m === 'a06');
       return { quiz: s.quiz.length, iv: s.interview.length, ex: xs.map(x => x.id).join(), build: us.filter(u => u.kind === 'build').map(u => u.href).join(), design: us.some(u => u.kind === 'design'),
         reels: (await reelsFor('a06')).filter(x => x.sec === 'A6.7').map(x => x.level), net: xs.some(x => /fetch|urllib|requests|anthropic|openai/i.test(x.sol + x.sig)) }; });
-    ok(r.quiz >= 12 && r.iv >= 8 && r.ex === 'ya061,ya062,ya063,ya064,ya065,ya066,ya067' && /#\/py\/ya061/.test(r.build) && /#\/py\/ya065/.test(r.build) && r.design && !r.net, 'A6 steps: ' + JSON.stringify(r));
+    ok(r.quiz >= 16 && r.iv >= 12 && r.ex === 'ya061,ya062,ya063,ya064,ya065,ya066,ya067,ya068,ya069,ya0610,ya0611' && /#\/py\/ya061/.test(r.build) && /#\/py\/ya065/.test(r.build) && /#\/py\/ya068/.test(r.build) && r.design && !r.net, 'A6 steps: ' + JSON.stringify(r));
     ok(r.reels.length === 8 && ['New to it', 'How it works', 'Inside and caveats', 'Architect'].every(lv => r.reels.includes(lv)), 'A6 lens reels: ' + JSON.stringify(r.reels));
     await go(p, '#/design/a06', 1200); ok(/200,000 conversations a day/.test(await text(p, '#page')), 'A6 design problem missing');
     await go(p, '#/py/ya065', 2000); const pg = await text(p, 'body'); ok(/regression gate/i.test(pg) && /it is a stub/.test(pg), 'the judge-stub exercise does not open');
