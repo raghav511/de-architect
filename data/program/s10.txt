@@ -176,6 +176,59 @@ Interviewers now add AI to general design questions. Two kinds of follow-up are 
 4. What does it cost per run as data grows?
 5. What happens with duplicates, late data and nulls?
 
+### Four AI designs, worked
+
+AI-engineer loops now have a design round of their own. The method from 10.2 still applies: requirements, an estimate, the flow, then depth where the interviewer points. What changes is the arithmetic (tokens, not just requests), the budgets (time to first token, cost per request) and the failure modes (rate limits, wrong answers, actions that cannot be undone). Prices below are assumptions for the arithmetic, not quotes; say yours out loud.
+
+**A. RAG over 10 million documents at 1,000 questions a second, with a latency budget.**
+
+*Estimate.* 10 million documents of about 2,000 tokens, cut into chunks of about 500 tokens, is about 40 million chunks. At 1,024 dimensions in float32 a vector is 4 KB, so the index is about 160 GB, or about 40 GB quantised to int8, plus graph overhead: shard it (four shards of 10 million chunks) and replicate each shard for search throughput. 1,000 questions a second is 86 million a day; at about 2,000 input and 300 output tokens each, that is about 170 billion input tokens a day, so at an assumed $0.20 per million input tokens, input alone is about $35,000 a day before caching. That number drives the design.
+
+*Flow.* Gateway (identity, quotas) → embed the question → hybrid retrieval (vector search plus keyword search, merged by rank fusion), **filtered by the user's permissions**, which are stored with each chunk → rerank the top 50 with a cross-encoder → build the prompt with numbered passages → the model answers with citations, streamed. A semantic cache sits before the model: questions whose embedding is very close to one already answered get the stored answer.
+
+*Latency budget (p95, to the first token).* Gateway 10 ms, embedding 20 ms, retrieval 50 ms, reranking 100 ms, prompt 10 ms, model time to first token 500 to 800 ms: about 1 to 1.5 seconds, then the answer streams. The model is the budget; everything else must stay small.
+
+*Decisions to defend.* The cache (hit rates of 30 to 60% on support-style traffic) and routing easy questions to a small model are the two cost levers; prompt caching of the fixed system prompt is a third. Freshness: documents change through CDC or events, and only changed chunks are re-embedded. Wrong answers: answer only from the retrieved passages, cite them, and say "I do not know" below a retrieval score; measure groundedness on a golden set before every change. *Failure:* the provider throttles (cache, a second provider through the gateway), a shard dies (replicas), the cache empties after a deploy (warm it, or have throughput for a cold cache).
+
+Prove it: [Teach me this design](#/sim/teach/airag) and the challenge [RAG at 1,000 questions a second](#/sim/sc/ragqps).
+
+**B. A support agent with tools and handoff to a person.**
+
+*Requirements.* Answer customers in chat, look up orders, issue refunds and cancellations within policy, and hand the conversation to a person with the full history when it cannot help. Never refund twice; never refund above a limit without approval.
+
+*Flow.* One agent (not several: the task does not split into independent parts) with a short list of tools. Read tools such as order status run inline. Write tools (refund, cancel) and the handoff are **jobs on a queue**, each with an idempotency key, so a retry never acts twice; refunds over the limit wait for a person's approval. The agent replies at once ("your refund is on its way") and the worker does the slow part. The person who takes a handoff sees the transcript and the agent's notes.
+
+*Estimate.* 60 messages a second at peak, 2 to 4 model calls per turn, so 120 to 240 model calls a second. Budget: a reply within about 2.5 seconds.
+
+*Decisions to defend.* Guardrails live in the tools, not the prompt: the refund tool itself enforces the limit and the customer's ownership of the order. Prompt injection: text from customers and tool results is data; the agent cannot call tools it was not given. Evals: a golden set of conversations scored on resolution, correct tool use and wrong-action rate, and a regression gate before every prompt or model change. Observability: one trace per turn with every model and tool call, tokens and latency.
+
+Prove it: [Teach me this design](#/sim/teach/aiagent) and the challenge [Support agent: slow tools and handoff](#/sim/sc/agenttools).
+
+**C. A company LLM gateway.**
+
+*Requirements.* Every team calls models through one service. Teams never hold provider keys; each has a quota and a monthly budget; spend is reported per team; a provider outage does not stop the company.
+
+*Flow.* Team key → gateway → policy checks (quota as a token bucket per team, budget, allowed models, PII redaction where required) → cache (exact, then semantic) → **router** (by task, or small model first and escalate when it is unsure) → provider, with retries, timeouts and failover to a second provider or region → a trace with tokens, cost, latency and team for every call. Batch work goes to the providers' batch APIs at a lower price.
+
+*Estimate.* 300 requests a second at peak from three teams; if two thirds are short classification and extraction prompts, routing them to a model at a tenth of the price cuts the bill by about half or more.
+
+*Decisions to defend.* Where quotas are enforced (the gateway, before the call), what happens at the limit (queue batch work, reject interactive work with a clear error), how model upgrades are rolled out (shadow traffic and evals first, then a percentage), and who owns it (a platform team, as a product with an SLA).
+
+Prove it: [Teach me this design](#/sim/teach/aigateway) and the challenge [Company LLM gateway: route by task](#/sim/sc/llmgw).
+
+**D. Document extraction at scale.**
+
+*Requirements.* Extract fields (supplier, dates, line items, totals) from 13 million invoices a day, three times that at month-end, into a table finance can trust, within minutes.
+
+*Flow.* Store each raw file keyed by its content hash (a re-sent file is not processed twice) → workers split pages and run OCR or layout parsing → **a queue** in front of the model → the model extracts into a fixed JSON schema with a confidence per field → validation (schema, totals that add up, dates that parse) → low-confidence or failing documents go to a person; their corrections become eval and fine-tuning data → the lake keeps raw file, fields, model and prompt version, and review outcome.
+
+*Estimate.* 150 documents a second; a ten-page invoice is about 10,000 input tokens, so about 1.5 million tokens a second, which is why work that can wait goes to batch capacity at about half the price, and why a smaller fine-tuned model becomes worth it once labelled data exists.
+
+*Decisions to defend.* The queue turns bursts into backlog instead of errors and keeps calls under the rate limit. Idempotency by content hash. Field-level evals (precision and recall per field on a labelled set) and a review rate target. Re-running a document after a prompt change touches only the documents whose prompt version is old.
+
+Prove it: [Teach me this design](#/sim/teach/aiextract) and the challenge [Document extraction: survive month-end](#/sim/sc/extract).
+
+
 @@lab
 ## Build: eight one-page design documents (2.5 hours)
 

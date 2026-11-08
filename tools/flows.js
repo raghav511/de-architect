@@ -1527,6 +1527,23 @@ async function T(name, fn, opt) {
     ok(r.every(x => /false>true$/.test(x)), 'scale challenges: ' + r.join(' '));
   });
 
+  await T('AI design round: 10.7 works four AI designs (RAG at 1,000 QPS, support agent, LLM gateway, document extraction) whose challenges fail until cached, routed or queued, with Teach me walkthroughs and an AI topic in the loop', async p => {
+    await go(p, '#/learn/s10/chapter', 1800); const ch = await all(p, '#page');
+    ok(/Four AI designs, worked/.test(ch) && /time to the first token|first token/i.test(ch) && /idempotency key/.test(ch) && /token bucket/.test(ch) && /content hash/.test(ch), 'AI designs missing from 10.7');
+    for (const id of ['ragqps', 'agenttools', 'llmgw', 'extract']) ok(await p.$('#page a[href="#/sim/sc/' + id + '"]'), 'no link to challenge ' + id);
+    for (const id of ['airag', 'aiagent', 'aigateway', 'aiextract']) ok(await p.$('#page a[href="#/sim/teach/' + id + '"]'), 'no link to walkthrough ' + id);
+    await p.click('#page a[href="#/sim/sc/ragqps"]'); await p.waitForSelector('#sim_check'); ok(/1,000 questions a second/.test(await text(p, '.simside')), 'RAG challenge did not open');
+    const r = await p.evaluate(() => ['ragqps', 'agenttools', 'llmgw', 'extract'].map(id => { const sc = SIM_SC.find(x => x.id === id), d = simFromSc(sc), g0 = SIM.grade(d, sc); SIM_HINTS[id].fix.forEach(f => simApplyFix(d, f)); return id + ':' + g0.pass + '>' + SIM.grade(d, sc).pass + ':' + SIM_HINTS[id].fix.map(f => f.insert || f.add || f.set).join(); }));
+    ok(r.every(x => /false>true:(cache|queue|custom)$/.test(x)), 'AI challenges: ' + r.join(' '));
+    await go(p, '#/sim/teach/aigateway', 1600); await p.waitForSelector('.simcoach'); ok(/LLM gateway/.test(await text(p, '.simcoach')), 'gateway walkthrough did not open');
+    await go(p, '#/loop/r3/topics', 1200); await p.waitForFunction(() => !!DATA.loop, null, { timeout: 15000 }); await go(p, '#/loop/r3/topics', 900);
+    ok(/AI system designs/.test(await text(p, '.lpai')), 'no AI design section in round 3');
+    const ids = await p.$$eval('.lptopic', es => es.map(e => e.dataset.topic)); ok(['airag', 'aiagent', 'aigateway', 'aiextract'].every(x => ids.includes(x)), 'AI topics: ' + ids);
+    await p.click('.lptopic[data-topic=airag] summary'); ok(await p.$('.lptopic[data-topic=airag] a[href="#/sim/sc/ragqps"]') && /permission/i.test(await text(p, '.lptopic[data-topic=airag]')), 'RAG topic details or challenge chip missing');
+    await p.click('.lptopic[data-topic=airag] a[href="#/sim/teach/airag"]'); await p.waitForSelector('.simcoach'); ok(/RAG at scale/.test(await text(p, '.simcoach')), 'teach did not open from the loop');
+    await go(p, '#/sim', 1200); ok(!(await p.$('.simqbtn[data-tpl=airag]')), 'AI walkthroughs crowd the quick-start row');
+  });
+
   /* ---- interview loop (#/loop) ---- */
   const loopGo = async (p, h) => { await go(p, h, 1200); await p.waitForFunction(() => !!DATA.loop, null, { timeout: 15000 }); await p.waitForTimeout(200); };
   await T('loop: the hub lists nine rounds with readiness and company loops; the nav and Today link to it', async p => {

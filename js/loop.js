@@ -202,7 +202,8 @@ function loopTopics(D) {
   return el('div', { class: 'stack' }, [el('section', { class: 'card pad stack' }, [el('b', { text: 'Data platform designs start from the same flow' }),
     el('span', { class: 'muted', text: 'Sources → ingestion (Kafka, CDC, file drops) → processing (stream or batch) → storage (lake, warehouse, serving store) → consumers. Size every arrow with numbers, then go deep where the interviewer points: exactly once, late data, backfills, cost.' }),
     el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'The simulator\'s ' + scs.length + ' challenges test these designs under failure: ' + Object.keys(sim.done || {}).length + ' passed.' })])]
-    .concat(D.topics.map((t, i) => topic(t, i, true)), [el('details', { class: 'card pad lpweb' }, [el('summary', { text: 'Classic web designs (also asked at Google)' }), el('div', { class: 'stack', style: { marginTop: '10px' } }, (D.webTopics || []).map((t, i) => topic(t, i, false)))])]));
+    .concat(D.topics.map((t, i) => topic(t, i, true)), (D.aiTopics || []).length ? [el('section', { class: 'card pad stack lpai' }, [el('b', { text: 'AI system designs (the AI-engineer design round)' }),
+      el('span', { class: 'muted', text: 'Same method, new arithmetic: tokens per request, time to first token, cost per request, and the levers that move them (caching, routing, queues, rate limits). Worked in module 10.7.' })])].concat(D.aiTopics.map((t, i) => topic(t, i, false))) : [], [el('details', { class: 'card pad lpweb' }, [el('summary', { text: 'Classic web designs (also asked at Google)' }), el('div', { class: 'stack', style: { marginTop: '10px' } }, (D.webTopics || []).map((t, i) => topic(t, i, false)))])]));
 }
 /* back-of-the-envelope: four numbers from one scenario, accepted within 30% */
 function loopEstQs(t, f) {
