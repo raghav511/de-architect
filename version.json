@@ -1,8 +1,10 @@
 {
-  "version": "1.36.30",
+  "version": "1.36.31",
   "date": "2026-11-08",
   "notes": [
-    "No change to the app: a test that expected eleven A6 exercises now accepts the two added in A6.12 and any added later, while still catching a missing or renumbered one.",
+    "Every 'Tomorrow on Meridian' line is now a question that the next day's lesson answers, and the heading no longer appears twice.",
+    "Every scene now points to the practice it leads into (a lesson, exercise, guided step, simulator challenge, design problem or mock), and each day has a recall question for the next morning; the boss round gets a rematch line.",
+    "New threads run through the seasons: Marcus's decision log behind his promotion, the migration memo he and Victor co-sign, and Lena's first interview.",
     "1489 of 1489 reels now play in the natural Heart voice."
   ]
 }
