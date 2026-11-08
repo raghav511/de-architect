@@ -1,0 +1,4 @@
+# Module A6: AI engineering in production (serving, cost, gateways, evals and traces)
+- New module AI 6, right after AI 5: how language-model features run in production. Where the time goes (time to first token and decode speed), what happens inside a model server (the KV cache, batching, quantization), what one request costs and how caching, routing and cascades bring it down, and what an LLM gateway owns.
+- It also covers evals in production (a regression gate for every prompt or model change, and checking a judge model against people) and tracing every request, with an architect's lens on LLM gateways and serving, eight reels, a design problem, quiz and interview sets.
+- Seven new exercises run in your browser: cost per request, latency percentiles, a gateway call with retries, fallback and a budget, a model cascade, a regression gate, judge agreement and trace summaries. Every model and judge in them is a stand-in; nothing is sent to an AI service.

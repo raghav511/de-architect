@@ -1,0 +1,406 @@
+@@meta
+id: a06
+n: 6
+title: AI engineering in production: latency, cost, gateways, evals and traces
+goal: Run language-model features the way you run any production service: know where the time goes (time to first token, decode speed, p95), what is happening inside a model server (KV cache, batching, quantization), what one request costs and how routing, caching and cascades bring it down, put an LLM gateway in front of every model, gate prompt and model changes with an eval set and a judge you have checked against people, and trace every request so a slow or wrong answer can be explained.
+hours: 6
+
+@@tickets
+A601 | learn | 1 | Chapter part 1: what changes in production, where the time goes, inside a model server, what a request costs | You can split a request's latency into time to first token and decode, explain the KV cache, and price a feature per request and per month. | chapter:0-3
+A602 | learn | 1 | Chapter part 2: cheaper and faster, the LLM gateway, the architect's lens | You can name four cost levers with their risks and list what a gateway owns. | chapter:4-6
+A603 | learn | 0.75 | Chapter part 3: evals in production and tracing | You can describe a regression gate for a prompt change, how to check a judge against people, and what a trace span records. | chapter:7-8
+A604 | build | 1.25 | Exercises 1–4: cost, latency, a gateway call, a cascade | All four pass in the editor. | py:1-4
+A605 | build | 1 | Exercises 5–7: a regression gate, judge agreement, trace summaries | All three pass in the editor; every model and judge in them is a stub. | py:5-7
+A606 | practice | 0.5 | Latency and cost drills | Five drills answered, then checked against the model answers. | practice
+A607 | test | 0.5 | Quiz A6 | 80% or better. | quiz
+A608 | talk | 0.75 | Interview set A6 | 6 of 8 answered out loud and ticked. | interview
+
+@@readings
+- **In this app: the chapter.** A6.1 to A6.9 cover everything the labs, quiz and interviews need. Tap ⓘ to read a source on its own site.
+- **Reading note: serving engines.** Open-source servers such as vLLM keep the attention cache in fixed-size blocks so many requests share GPU memory, and add new requests to a running batch at every step instead of waiting for a batch to finish. Most of their speed comes from those two ideas. [ⓘ](https://docs.vllm.ai/en/latest/)
+- **Reading note: prompt caching.** Providers can reuse the work already done for a prompt prefix they have seen recently, which lowers both the price of those input tokens and the time to first token. It only works when the stable part of the prompt comes first and is byte-for-byte identical. [ⓘ](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching)
+- **Reading note: tracing language-model calls.** OpenTelemetry has semantic conventions for generative AI: standard span attributes for the model, the input and output token counts and the operation, so any tracing backend can show cost and latency per call. [ⓘ](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
+- **Reading note: models as judges.** Using a model to grade answers scales evaluation, but judges lean toward longer answers, toward the first of two options and toward their own family's style. Check a judge against human labels before trusting it. [ⓘ](https://arxiv.org/abs/2306.05685)
+
+@@chapter
+## A6.1 What changes in production
+
+A demo answers one question well. A production feature answers a million a day, for real users, on a budget, without leaking anything, and someone gets paged when it breaks. The model is one component; the work of an AI engineer is everything around it.
+
+Four numbers decide whether a feature survives:
+
+- **Quality:** the share of answers that are right, measured on an eval set and on sampled live traffic, never by feel.
+- **Latency:** how long until the user sees something, and how long until the answer is complete, at the 95th percentile, not the average.
+- **Cost:** dollars per request, times requests per day. A feature that costs more than it earns is switched off, however clever.
+- **Safety:** what it can read, what it can change, and what it must never say.
+
+The path of one request:
+
+```
+user ─> app ─> LLM gateway ─> (cache?) ─> model server or API ─> streamed tokens back
+              │  keys, quotas, retries,     │ prefill the prompt, then
+              │  fallbacks, redaction,      │ decode one token at a time
+              └─ one trace span per step ───┘
+```
+
+Everything in this module hangs on that path: where the time goes, what each step costs, the gateway that guards it, and the evals and traces that tell you whether it works.
+
+## A6.2 Where the time goes
+
+A model answers in two phases.
+
+**Prefill.** The server reads the whole prompt at once. All input tokens are processed in parallel, so this phase is limited by compute and is fast per token. A 3,000-token prompt takes a few hundred milliseconds on a busy server.
+
+**Decode.** The answer comes out one token at a time. Each new token needs a pass through the whole model, and each pass must read every weight from GPU memory. Decoding is limited by memory bandwidth, not arithmetic, which is why it is slow per token and why output tokens cost more than input tokens.
+
+That gives the two numbers every latency discussion uses:
+
+- **Time to first token (TTFT):** queueing plus network plus prefill. This is what the user feels as "is it working?".
+- **Decode speed (tokens per second):** how fast the rest streams. At 50 tokens a second, a 300-token answer takes 6 seconds after the first token.
+
+**Stream the answer.** With streaming, perceived latency is the TTFT; without it, the user waits for the last token. Almost every chat feature streams.
+
+**Budget with the 95th percentile.** The mean hides the slow tail: long prompts, busy servers and retries all land there. A budget for a support assistant might look like this:
+
+| Step | p95 budget |
+|---|---|
+| Gateway and auth | 20 ms |
+| Retrieval and reranking | 250 ms |
+| Queue and prefill of 3,000 tokens | 600 ms |
+| **Time to first token** | **under 1 second** |
+| Decode 300 tokens at 50 per second | 6 s, streamed |
+
+When the budget is blown, the levers are: a shorter prompt (less prefill), fewer output tokens (ask for brevity, set a maximum), a smaller or faster model, a closer region, prompt caching, or doing the work before the user asks (precompute summaries in batch).
+
+## A6.3 Inside a model server
+
+If you self-host, or need to explain why an API behaves as it does, four ideas carry most of the weight.
+
+**Memory for the weights.** A model's weights take parameters times bytes per parameter. A 70-billion-parameter model in 16-bit precision needs about 140 GB, so it spans two 80 GB GPUs before serving a single user.
+
+**The KV cache.** During decode, the model would recompute attention over the whole conversation for every new token. Instead it keeps the keys and values it has already computed for each token in every layer: the KV cache. That makes decode fast, but it costs memory per token in flight. For a 70B-class model with 80 layers, 8 key-value heads of size 128 and 16-bit values, that is 2 × 80 × 8 × 128 × 2 bytes ≈ 0.33 MB per token, so one 32,000-token conversation holds about 10 GB. Long contexts are expensive because of this cache, not because of the weights.
+
+**Continuous batching.** A GPU reading all its weights to produce one token for one user wastes most of that read. Serving many requests together shares it. Old servers waited for a whole batch to finish; modern servers add and remove requests at every decode step, and keep the KV cache in small fixed-size blocks so memory is not wasted on gaps. Throughput rises several times. The trade-off: bigger batches mean more tokens per second for the server and slightly slower tokens for each user.
+
+**Quantization.** Store the weights in fewer bits: 8-bit halves memory, 4-bit quarters it. Less memory to read means faster decode and fewer GPUs, at a small loss in quality that you must measure on your own eval set, not assume.
+
+Two more you should recognise. **Speculative decoding:** a small draft model guesses several tokens and the large model checks them in one pass; when the guesses are right, several tokens come out for the price of one pass, with the same output quality. **Distillation:** train a small model on a large model's answers for one narrow task, so the small model can serve it.
+
+**API or self-host?** Use an API until something forces a change: very high steady volume where GPUs you keep busy are cheaper, data that may not leave your network, or a fine-tuned open model. Self-hosting means owning GPU capacity, utilisation, upgrades and on-call.
+
+## A6.4 What a request costs
+
+APIs charge per million tokens, with output priced several times higher than input, and cached input priced much lower. Work the arithmetic every time; it is the first follow-up in any AI design round.
+
+A worked example with illustrative prices. A support assistant gets 200,000 requests a day. Each sends 3,000 input tokens (2,000 of them a fixed system prompt and policy text) and gets 300 tokens back. The large model costs $3 per million input tokens, $15 per million output tokens and $0.30 per million cached input tokens.
+
+| Version | Per request | Per day |
+|---|---|---|
+| Large model, no caching: 3,000 × $3 + 300 × $15, per million | $0.0135 | $2,700 |
+| With the 2,000-token prefix cached | $0.0081 | $1,620 |
+| Plus 70% of requests answered by a small model ($0.25 in, $1.25 out) | about $0.0032 | about $640 |
+
+Three habits follow from the arithmetic.
+
+- **Count output tokens first.** They cost the most per token and they also set the latency.
+- **Put the stable part of the prompt first.** Instructions, tool definitions and shared documents first, the user's question last, so the prefix can be cached.
+- **Send work that can wait to a batch interface.** Offline jobs such as classifying yesterday's tickets usually cost about half through a provider's batch API, in exchange for results within hours.
+
+The monthly bill is what leadership sees; cost per resolved conversation is what tells you whether the feature pays for itself.
+
+## A6.5 Making it cheaper and faster
+
+Every lever trades something. Name the trade-off when you propose one.
+
+| Lever | What it saves | What it risks |
+|---|---|---|
+| **Prompt caching** (a stable prefix) | Input cost and time to first token | Nothing, if the prefix really is identical; a timestamp at the top breaks it |
+| **Routing** by task (a classifier or rules send easy tasks to a small model) | Cost, often latency | Wrong routes give worse answers; measure each route on an eval set |
+| **Cascades** (small model first, escalate when unsure or when a check fails) | Cost when most requests stay small | Escalated requests cost more and take longer than calling the large model alone |
+| **Semantic caching** (reuse an answer to a similar earlier question) | Whole calls | Near-identical questions with different answers ("refund order 1041" and "1042"), stale answers, one user's answer shown to another; use only for public, stable answers |
+| **Shorter context** (retrieve less, summarise history) | Prefill time and input cost | Missing facts lower quality |
+| **Smaller or distilled model** | Cost and latency | Quality on hard cases; needs its own eval |
+| **Batch and precompute** | Cost, and latency at request time | Freshness |
+
+The rule that keeps this honest: no lever ships without an eval run before and after (A6.8), because every one of them can quietly lower quality.
+
+## A6.6 The LLM gateway
+
+Once three teams call models, each has its own keys, retry code, logging and bill. A gateway is one service in front of every model, the same way an API gateway sits in front of services.
+
+What it owns:
+
+- **Keys and access.** Teams authenticate to the gateway; provider keys never live in application code.
+- **Quotas and budgets.** Requests and tokens per minute per team, and a daily spending limit with an alert before it is reached.
+- **Retries and fallbacks.** Retry rate-limit errors once with backoff; on an outage or timeout, fall back to another model or provider that has passed the same evals. Never retry forever.
+- **Timeouts.** A time-to-first-token timeout and a total timeout, so a stuck call does not hold a user or a worker.
+- **Caching.** Prompt-cache-friendly ordering, and an exact-match cache for repeated batch prompts.
+- **Redaction and policy.** Remove personal data before it leaves, block requests that break policy, and record which model saw what.
+- **Tracing and cost.** One span per call with model, prompt version, tokens, cost and latency, tagged with the team, so cost can be shown back per feature.
+
+Module A1's design problem asked you to sketch one; this section is what the interviewer will probe in it.
+
+What it does not own: the prompt and the product logic. Those stay with the team that owns the feature. A gateway that starts rewriting prompts becomes a bottleneck everyone waits on.
+
+Build or buy? Several open-source and managed gateways exist, and cloud providers offer one in front of their own models. Choose by whether it supports every provider you use, streams without adding noticeable latency, and exports traces to the tools you already run.
+
+## A6.7 Architect's lens: LLM gateway and serving
+
+The questions an architect is asked about putting language models into production, beyond writing the prompt.
+
+| Question | Short answer for an LLM gateway and model serving |
+|---|---|
+| **What problem does it solve?** | Many teams calling many models, each with its own keys, retries, logging and surprise bill. A gateway gives one front door with budgets, fallbacks, redaction and a trace per call; a serving layer (an API or your own model servers) turns GPUs into tokens at a known latency and cost. |
+| **Why it over the alternatives?** | Against each team calling providers directly: no shared budgets, no fallback when a provider is down, no record of which model saw which data. Against self-hosting everything: APIs are cheaper and simpler until volume is high and steady or data cannot leave your network. Against one huge model for everything: routing and cascades cut cost several times for the same quality on easy requests. |
+| **When not to use it?** | One team, one model and a small bill: a client library with retries is enough. Do not self-host models without steady volume or a hard data-residency rule, and do not add a semantic cache where answers depend on the user or change daily. |
+| **Who owns and pays for it?** | A platform team owns the gateway, provider contracts, quotas and the eval gate for new models. Feature teams own their prompts, eval sets and quality. Cost is charged back per team and per feature from the gateway's traces. |
+| **Where does it sit?** | Between applications and agents on one side and model APIs or self-hosted model servers on the other, next to the retrieval layer (a05) and the tracing backend. |
+| **How does it fail and scale?** | It scales horizontally as a stateless proxy; serving scales with GPUs, batching and quantization. It fails as provider outages and rate limits, timeouts on long prompts, cost spikes from a loop or a prompt that grew, quiet quality drops after a model update, and a gateway that adds latency or becomes a single point of failure. |
+| **When do you move off it?** | When a provider's own gateway covers every model you use, when one feature's volume justifies dedicated serving that bypasses the shared path, or when the gateway's rules have grown into product logic that belongs back with the teams. |
+
+### Under the hood
+
+**1. Why is time to first token so different from total response time, and which do you optimise?**
+<details><summary>Model answer</summary>
+
+The first token waits for queueing, the network and prefill, in which the whole prompt is processed in parallel; it grows with prompt length and server load. Every later token comes from one decode step, which reads all the weights from GPU memory to produce one token, so total time grows with the number of output tokens. Optimise TTFT for interactive features and stream the rest: shorten or cache the prompt, keep the region close, avoid queueing. Optimise total time for agents and batch steps, where nothing is shown until the end: fewer output tokens, a faster model, parallel calls where steps are independent.
+
+</details>
+
+**2. What is the KV cache, and why does it make long context expensive?**
+<details><summary>Model answer</summary>
+
+While generating, the model needs attention over every earlier token. Instead of recomputing it each step, the server keeps each token's keys and values for every layer in GPU memory. That memory grows linearly with the tokens in flight: for a 70B-class model, roughly a third of a megabyte per token, so one 32,000-token conversation holds about 10 GB. Long contexts therefore cut how many requests fit on a GPU at once, which lowers throughput and raises cost. That is why providers charge for long prompts, why prompt caching (reusing a prefix's cache) saves money and time, and why retrieving the right 3,000 tokens usually beats sending 100,000.
+
+</details>
+
+**3. How does continuous batching raise throughput, and what does it cost each user?**
+<details><summary>Model answer</summary>
+
+Decode is limited by reading the weights from memory, not by arithmetic, so one read can serve many requests at almost the same cost as one. Continuous batching adds new requests to the running batch at every decode step and removes finished ones, instead of waiting for a whole batch to end, and block-based KV cache management keeps memory from fragmenting. GPU use goes up several times. The cost to each user is a slightly slower decode per token and some queueing when the server is full; operators tune the maximum batch size to hold a latency target.
+
+</details>
+
+**4. When would you quantize a model, and how do you know it is safe?**
+<details><summary>Model answer</summary>
+
+When memory or cost is the limit: 8-bit weights halve memory and 4-bit quarter it, so a model fits on fewer GPUs and decodes faster because there is less to read per token. The risk is a quality loss that is small on average and larger on some tasks, such as long reasoning, code or rare languages. You know it is safe only by running your own eval set on both versions and comparing per task, plus a period of shadow traffic, never from a leaderboard number.
+
+</details>
+
+**5. A cascade sends questions to a small model first. When does it save money, and when does it lose?**
+<details><summary>Model answer</summary>
+
+Each request costs the small call, plus the large call when it escalates. It saves money when most requests stay on the small model and the small model is far cheaper; it loses when many escalate, since each escalation costs more and takes longer than calling the large model directly. The escalation signal matters most: a validator that checks the answer (it parses, cites a source, the SQL runs) is more reliable than the model's own confidence. Set the threshold on an eval set by plotting cost against quality, and watch the escalation rate in production because it drifts as traffic changes.
+
+</details>
+
+## A6.8 Evals in production
+
+Module A2 taught evals for building an agent. In production, the question changes: did this change make things better or worse for real users, and how would we know?
+
+**Offline evals gate changes.** Keep a golden set of a few hundred real questions with reference answers or grading notes, refreshed from production. Every change that can move quality runs it: a prompt edit, a new model version, a retrieval change, a cost lever from A6.5. In CI, the change fails when the mean score drops by more than the run-to-run noise **or** when any item drops sharply, because a steady mean can hide one case that broke badly.
+
+**Online evals watch reality.** Sample live traffic every day and score it: user signals (thumbs, retries, copying the answer, escalation to a person), automatic checks (does the answer cite a retrieved source, does the SQL run, does the JSON validate) and a judge on a sample. Compare by prompt version and model, the way you would compare an A/B test.
+
+**Models as judges.** A judge model with a written rubric scores answers far faster than people. Trust it only after checking it:
+
+- **Calibrate against people.** Have people label 100 to 200 answers; measure how often the judge agrees beyond chance (Cohen's kappa), not just the raw agreement. A judge that passes nearly everything can agree 70% of the time and still be close to useless.
+- **Know its biases.** Judges prefer longer answers, the first of two options when comparing a pair, and the style of their own model family. Randomise order in pairwise comparisons, ask for a score against specific criteria, and use a different model family from the one being judged.
+- **Keep it fixed.** Pin the judge's model version and prompt; a judge that changes makes last month's scores incomparable.
+
+**Grounding and hallucination.** For answers built on retrieved documents, check that every claim is supported by the retrieved text and that cited sources exist. Track the share of unsupported claims as a metric. Where the feature allows it, an answer that says "I could not find this" is better than a confident invention, and the eval set should reward it.
+
+## A6.9 Tracing an LLM system
+
+When a user reports a wrong or slow answer, you need to see exactly what happened for that one request. Logs per service cannot show it; a trace can.
+
+**One trace per request, one span per step.** Retrieval, each model call, each tool call, each retry and fallback. A span records:
+
+- the model and version, the prompt template and its version
+- input, cached and output tokens, and the cost
+- time to first token and total time, and the finish reason (complete, length limit, filtered)
+- for retrieval, which documents came back; for tools, the arguments and whether they succeeded
+- the team and feature, for cost reports
+
+OpenTelemetry's generative-AI conventions name these attributes, so the same traces work in any backend. Tools built for LLM tracing add a view of the prompt and answer for each span and a way to add a request to an eval set in one click.
+
+**Privacy.** Traces now contain user text. Redact personal data before it is stored, keep prompt bodies for a short time (days, not years), restrict who can read them, and keep the numbers (tokens, cost, latency) longer than the text.
+
+**From traces to dashboards and alerts.** Per feature: requests, p95 time to first token, cost per request and per day, error, timeout and fallback rates, cache hit rate, and the latest online eval score. Alert on a cost spike (an agent stuck in a loop, a prompt that doubled), on the fallback rate (a provider in trouble), and on a falling eval score after a model update. Every alert links to example traces.
+
+@@lab
+## In the app: cost, latency, a gateway and an eval gate (2.25 hours)
+
+Seven exercises run real tests in your browser. Every model and judge in them is a stub: nothing is sent to any AI service.
+
+1. **Cost per request, per model, per month,** with cached input priced separately.
+2. **Time to first token and tokens per second** from request timings, with nearest-rank percentiles.
+3. **A gateway call** with one retry on a rate limit, fallback on an outage, and a team budget.
+4. **A model cascade:** the small model first, the large one when unsure, and what that costs.
+5. **A regression gate** for a prompt change, scored by a judge, that fails on a mean drop or on one item that broke.
+6. **Can you trust the judge?** Agreement and Cohen's kappa against human labels.
+7. **From spans to a trace summary:** time, tokens, cost, the slowest step, and whether retrieval dominated.
+
+## Going further (optional, 45 minutes)
+
+Take one AI feature you know (or the support assistant in A6.4) and write its budget: requests per day, tokens in and out, cost per request and per month, p95 time to first token, and the two levers you would pull first. Then answer this module's design problem in the design studio.
+
+@@practice
+## Latency and cost drills (30 minutes)
+
+1. Users say the assistant "takes forever to start". Traces show a p95 time to first token of 4 seconds and a 14,000-token prompt. What do you change?
+2. The monthly bill doubled with no change in traffic. Where do you look?
+3. A team wants a semantic cache in front of their account-support bot. What do you ask first?
+4. Your provider has a two-hour outage. What should have happened, and what do you need in place?
+5. A new model version scores 2% higher on average on the golden set, but one category drops by 15%. Do you ship it?
+
+**Model answers:** 1, shorten the prompt (retrieve fewer, better chunks; summarise history), put the stable part first so it is cached, and check queueing on the server; stream the answer. 2, cost per request by feature from the gateway's traces: a prompt that grew, more output tokens, an agent loop, or traffic moved from a small to a large model. 3, whether answers depend on the user or the account (then no), how often they change, and how the cache key separates questions that look alike. 4, the gateway retries once and falls back to a second provider or model that has passed the same evals, with timeouts so requests do not hang; you need that fallback configured and tested before the outage. 5, not as is: find out what broke in that category, add those cases to the golden set, and ship only when the category recovers or the trade-off is agreed with the feature's owner.
+
+## Customer drill: "the AI feature is too expensive" (10 minutes)
+
+A product lead says: "Our assistant costs $90,000 a month and finance wants it cut in half without making it worse." Answer out loud in three minutes: what do you measure first, and which levers do you try in which order?
+
+<details><summary>A strong answer</summary>
+
+First measure, from traces: cost per request by feature, input versus output tokens, how much of each prompt is a stable prefix, the share of requests that are simple, and the current eval score. Then pull the safe levers first: order the prompt so the stable part is cached, cap output length, trim retrieved context to what the answers use, and move offline work to a batch interface. Next, route simple request types to a smaller model, or cascade with a validator, checking each change on the golden set before and after. Report cost per resolved conversation, not just the monthly total, and agree with the product lead which quality number must not move.
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: ai
+Q: Why is each output token slower and pricier than an input token?
+A) Output tokens are longer words, on average, than the input tokens are
+B) Each one needs its own pass that reads all the weights from memory
+C) Providers add a safety review step to every token they return
+D) Output tokens are always routed through a larger and slower model
+ANS: B
+WHY: Prefill processes the whole prompt in parallel; decode produces one token per pass, and each pass is limited by memory bandwidth.
+---
+TYPE: mcq
+TAG: ai
+Q: A chat feature has a p95 time to first token of 4 seconds with a 14,000-token prompt. What helps most?
+A) A larger model that can understand the long prompt much better
+B) A higher temperature, so that the answer starts a little sooner
+C) A shorter prompt with its stable part first, so it is cached
+D) Waiting for the full answer before showing anything at all
+ANS: C
+WHY: Time to first token is mostly queueing and prefill; less prefill and a cached prefix both cut it.
+---
+TYPE: mcq
+TAG: ai
+Q: What does the KV cache store, and what does it cost?
+A) Earlier answers to reuse for later users; it costs disk space on the server
+B) The model weights in a compressed form; it costs some accuracy
+C) User prompts kept for auditing; it costs storage and a privacy risk too
+D) Keys and values for tokens in flight; it costs GPU memory per token
+ANS: D
+WHY: The cache spares recomputing attention at each step, but its memory grows with every token in every active request, which is why long context is expensive.
+---
+TYPE: mcq
+TAG: ai
+Q: Which change usually needs an eval run before it ships?
+A) Every one of the others listed here
+B) Quantizing the model to 4-bit weights
+C) Routing easy questions to a small model
+D) Updating to a new model version
+ANS: A
+WHY: Each of these can quietly lower quality; none ships without scoring the golden set before and after.
+---
+TYPE: mcq
+TAG: ai
+Q: When is a semantic cache a bad idea?
+A) When the same public question is asked thousands of times a day
+B) When answers depend on the user's account or change daily
+C) When the answers are long and slow to generate each time
+D) When the questions are short and use common phrasing
+ANS: B
+WHY: A similar-looking question can need a different answer; for personal or fast-changing data, a semantic cache returns wrong or leaked answers.
+---
+TYPE: mcq
+TAG: arch
+Q: Which of these belongs in a shared LLM gateway rather than in each team's code?
+A) The prompt and its worked examples for each feature
+B) The product logic that decides what to ask
+C) Quotas, fallbacks, redaction and a trace per call
+D) The golden eval set for each team's own feature
+ANS: C
+WHY: Cross-cutting rules live once in the gateway; prompts, product logic and eval sets stay with the team that owns the feature.
+---
+TYPE: mcq
+TAG: ai
+Q: A judge model agrees with human labels 70% of the time but passes 90% of answers while people pass 60%. What is the honest summary?
+A) It is a good judge, since it agrees with people seven times in ten
+B) It is too lenient; agreement beyond chance is low, so it needs work
+C) It is fine as long as the judge is a larger model than the one judged
+D) It is better than people, since it is far more consistent than they are
+ANS: B
+WHY: Much of that 70% is agreement by chance when both sides mostly say pass; kappa is about 0.29.
+---
+TYPE: mcq
+TAG: ai
+Q: A new prompt keeps the mean golden-set score the same, but three questions that used to pass now fail badly. What should the gate do?
+A) Pass it, because the mean is the number that matters
+B) Fail it, and list the items whose score fell sharply
+C) Pass it, then fix those questions in the next one
+D) Ignore it, because three questions are just noise
+ANS: B
+WHY: A steady mean can hide cases that broke badly; the gate checks both the mean and sharp drops per item.
+---
+TYPE: fill
+TAG: ai
+Q: The time from sending a request until the first output token arrives is called time to first ____.
+ANS: token
+WHY: It covers queueing, the network and prefill, and is the latency users feel when the answer streams.
+---
+TYPE: fill
+TAG: ai
+Q: Storing model weights in 8 or 4 bits instead of 16 to save memory and speed up decoding is called ____.
+ANS: quantization | quantisation
+WHY: Fewer bits per weight means less to read per token; check quality on your own eval set.
+---
+TYPE: short
+TAG: ai
+Q: Price a feature: 100,000 requests a day, 2,000 input tokens (none cached) and 200 output tokens each, at $3 per million input and $15 per million output. Give cost per request, per day and per month, and say which tokens dominate.
+MODEL: Per request: 2,000 × $3 / 1,000,000 = $0.006 input, plus 200 × $15 / 1,000,000 = $0.003 output, so **$0.009**. Per day: 100,000 × $0.009 = **$900**. Per month (30 days): about **$27,000**.
+
+Input dominates here because the prompt is ten times longer than the answer; the first levers are caching the stable part of the prompt and retrieving less context. Output tokens still cost five times as much each, so capping the answer length matters too.
+---
+TYPE: short
+TAG: ai
+Q: What would you put on one span of a trace for a model call, and why each?
+MODEL: The model and its version and the prompt template version, so a change in quality can be tied to a change in either. Input, cached and output tokens and the cost, for cost per feature. Time to first token and total time, for latency. The finish reason, to spot truncated or filtered answers. Retries and whether a fallback was used, to see provider trouble. The team and feature, for chargeback. With retrieval and tool spans in the same trace, one bad answer can be explained step by step. Personal data is redacted before storage and prompt text is kept only briefly.
+
+@@interview
+Q: Design the serving path for a customer-support assistant that handles 200,000 conversations a day. Cover latency, cost and failure.
+TAG: ai
+A: Path: app, LLM gateway, retrieval (a05) and the model API, with streaming. Latency: a p95 budget with time to first token under a second (gateway 20 ms, retrieval 250 ms, queue and prefill 600 ms), streamed answers, the stable prompt prefix first so it is cached. Cost: about 3,000 input and 300 output tokens per request, so roughly $0.0135 on a large model and $2,700 a day; caching the prefix and routing simple intents to a small model bring it under $700 a day. Failure: the gateway retries a rate limit once, falls back to a second model that passed the same evals, and enforces timeouts and a daily budget. Quality: a golden set gates every prompt and model change, and live traffic is sampled and judged daily. Every request has a trace with tokens, cost and latency per step.
+---
+Q: What is the difference between time to first token and tokens per second, and how do you improve each?
+TAG: ai
+A: Time to first token is queueing, network and prefill of the prompt; it grows with prompt length and server load. Tokens per second is decode speed, one token per pass over the weights, limited by memory bandwidth. Improve the first with shorter prompts, prompt caching, a closer region and less queueing; improve the second with a faster or smaller model, quantization or speculative decoding, and fewer output tokens. Stream so users feel only the first.
+---
+Q: Our LLM bill doubled last month. How do you find out why and fix it?
+TAG: arch
+A: Break cost down from the gateway's traces by feature, team, model and token type. The usual causes: a prompt that grew (more retrieved context or history), longer answers, an agent looping on retries, traffic shifted to a larger model, or caching broken by a change at the top of the prompt. Fix the cause, then add guardrails: per-team budgets with alerts, a maximum output length, loop limits for agents, and cost per request on the feature's dashboard. Report cost per resolved conversation, not only the total.
+---
+Q: When would you self-host an open model instead of calling an API?
+TAG: arch
+A: When volume is high and steady enough that GPUs you keep busy cost less than per-token prices, when data cannot leave your network, or when you need a fine-tuned open model. The costs: GPU capacity planning, a serving engine with continuous batching, quantization choices checked against your evals, upgrades and on-call. Until one of those reasons is real, an API behind a gateway is cheaper in money and in people.
+---
+Q: What does an LLM gateway do, and who owns it?
+TAG: arch
+A: It is one front door to every model: authentication so provider keys stay out of code, quotas and budgets per team, one retry on rate limits and fallback on outages, timeouts, redaction of personal data, caching, and a trace per call with tokens, cost and latency for chargeback. A platform team owns it with the provider contracts and the eval gate for new models. Feature teams keep their prompts, product logic and eval sets; a gateway that edits prompts turns into a bottleneck.
+---
+Q: How do you know an LLM-as-judge is good enough to gate releases?
+TAG: ai
+A: Have people label 100 to 200 answers with the same rubric, then measure the judge's agreement beyond chance (Cohen's kappa), its pass rate against theirs, and where they disagree. Correct for known biases: randomise order in pairwise comparisons, score against explicit criteria rather than overall preference, and use a different model family from the one being judged. Pin the judge's model and prompt, and recheck it against fresh human labels every quarter or after any change to it.
+---
+Q: A model update raised the average eval score but users complain more. What happened, and what do you change?
+TAG: ai
+A: The average hid a regression: one category or a type of user got worse, the golden set no longer matches live traffic, or the judge rewards something users do not value, such as length. Look at scores by category and at the online signals (retries, escalations, thumbs down) per version in the traces. Add the failing cases to the golden set, gate on per-category drops as well as the mean, refresh the set from recent traffic, and check the judge against fresh human labels.
+---
+Q: How would you trace an agent that makes several model and tool calls per request?
+TAG: ai
+A: One trace per request, with a span for each model call, tool call, retrieval and retry, nested under the step that caused it. Each model span carries the model and prompt versions, input, cached and output tokens, cost, time to first token, total time and finish reason; tool spans carry the arguments and the result status. Use the OpenTelemetry generative-AI attribute names so any backend can read them. Redact personal data before storing, keep prompt text for days and numbers for longer, and alert on cost spikes, loop length and fallback rates with links to example traces.

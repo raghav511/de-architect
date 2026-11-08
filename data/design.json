@@ -128,5 +128,10 @@
   "title": "A golden path for new data products",
   "prompt": "A company of 300 engineers has 25 domain teams publishing data products. Starting a new batch product takes six weeks: teams copy an old repository, ask the platform team for a warehouse schema, an Airflow connection, access roles and alerts by ticket, and half of them skip tests. Design the golden path that gets a new product to its first production run in one day.",
   "deliverable": "A two-page design: the journey today versus with the path, the scaffolder's questions, what the template creates and which parts come from shared workflows, the defaults, the guardrails in CI with the waiver rule, how templates are versioned and upgraded, how it appears in the developer portal, the four numbers you will track, and two risks."
+ },
+ "a06": {
+  "title": "From pilot to 200,000 conversations a day",
+  "prompt": "A customer-support assistant works well in a pilot with 500 users. The company wants it for every customer: 200,000 conversations a day, peak 4x average, answers grounded in 30,000 help articles, a budget of $1,000 a day, and a p95 time to first token under one second. Last week a model update made refund answers worse and nobody noticed for six days. Design how it runs in production.",
+  "deliverable": "A two-page design: the request path with a p95 latency budget per step, the cost per request and per day with the two levers that bring it under budget (and their risks), the gateway rules it relies on, the golden set and regression gate every prompt or model change must pass, online checks on live traffic (including a judge you have checked against people), the trace each request writes and the three alerts you would set, and how a model update is rolled out."
  }
 }

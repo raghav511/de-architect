@@ -575,7 +575,7 @@ async function T(name, fn, opt) {
     await go(p, '#/today');
     const mods = await p.evaluate(() => MODS.slice(0, 14).join(' '));
     ok(mods === 's00 p01 p02 a01 p03 p04 a02 p05 p06 a03 m01 m02 m03 s01', 'module order: ' + mods);
-    const ai = await p.evaluate(() => MODS.join(' ')); ok(/s04 a04 d01/.test(ai) && /s06 a05 s07/.test(ai), 'AI data stack modules not after the warehouse and CDC modules: ' + ai);
+    const ai = await p.evaluate(() => MODS.join(' ')); ok(/s04 a04 d01/.test(ai) && /s06 a05 a06 s07/.test(ai), 'AI data stack modules not after the warehouse and CDC modules: ' + ai);
     const first = await p.evaluate(() => schedule().units.find(u => !isCC(u.mid)).mid); ok(first === 's00', 'first non-Claude-Code step should be in Setup: ' + first);
   });
 
@@ -754,6 +754,26 @@ async function T(name, fn, opt) {
     const w = await text(p, '.whatsnew'); ok(/1 new module/.test(w) && /Data mesh/.test(w), 'What is new does not list O1: ' + w.replace(/\s+/g, ' ').slice(0, 300));
     ok(await p.evaluate(() => !Object.keys(S.done).some(k => k.startsWith('o01:'))), 'an O1 step was marked done');
   });
+  await T('module A6: AI engineering in production sits right after A5 with chapter, lens, seven stub-only exercises, design problem, quiz, interview set and lens reels; an existing learner is told about it and nothing is marked done', async p => {
+    await go(p, '#/path', 1500);
+    ok(await p.evaluate(() => MODS.indexOf('a06') === MODS.indexOf('a05') + 1 && modLabel('a06') === 'AI 6'), 'A6 is not right after A5');
+    ok(await p.$('.pcard[data-mid=a06]') && /AI engineering in production/.test(await all(p, '.pcard[data-mid=a06]')), 'A6 not on the Path');
+    await go(p, '#/learn/a06/chapter', 1500); await p.waitForSelector('.lens');
+    ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return document.querySelectorAll('.prose h2').length >= 9 && l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details:not(.fresh)').length === 5 && /KV cache/.test(l.textContent) && /Time to first token|time to first token/.test(document.querySelector('.prose').textContent); }), 'A6 chapter or lens incomplete');
+    const r = await p.evaluate(async () => { const s = await sprint('a06'), us = modUnits('a06'), xs = DATA.py.filter(x => x.m === 'a06');
+      return { quiz: s.quiz.length, iv: s.interview.length, ex: xs.map(x => x.id).join(), build: us.filter(u => u.kind === 'build').map(u => u.href).join(), design: us.some(u => u.kind === 'design'),
+        reels: (await reelsFor('a06')).filter(x => x.sec === 'A6.7').map(x => x.level), net: xs.some(x => /fetch|urllib|requests|anthropic|openai/i.test(x.sol + x.sig)) }; });
+    ok(r.quiz >= 12 && r.iv >= 8 && r.ex === 'ya061,ya062,ya063,ya064,ya065,ya066,ya067' && /#\/py\/ya061/.test(r.build) && /#\/py\/ya065/.test(r.build) && r.design && !r.net, 'A6 steps: ' + JSON.stringify(r));
+    ok(r.reels.length === 8 && ['New to it', 'How it works', 'Inside and caveats', 'Architect'].every(lv => r.reels.includes(lv)), 'A6 lens reels: ' + JSON.stringify(r.reels));
+    await go(p, '#/design/a06', 1200); ok(/200,000 conversations a day/.test(await text(p, '#page')), 'A6 design problem missing');
+    await go(p, '#/py/ya065', 2000); const pg = await text(p, 'body'); ok(/regression gate/i.test(pg) && /it is a stub/.test(pg), 'the judge-stub exercise does not open');
+    await go(p, '#/today', 1200);
+    await seed(p, () => { S.done['s00:S001'] = iso(new Date()); Object.keys(S.cv.known).filter(k => k.startsWith('a06:')).forEach(k => delete S.cv.known[k]); S.updates = []; });
+    await p.waitForSelector('.whatsnew'); await p.click('.whatsnew button:has-text("See")');
+    const w = await text(p, '.whatsnew'); ok(/new module/.test(w) && /AI engineering in production/.test(w), 'What is new does not list A6: ' + w.replace(/\s+/g, ' ').slice(0, 300));
+    ok(await p.evaluate(() => !Object.keys(S.done).some(k => k.startsWith('a06:'))), 'an A6 step was marked done');
+  });
+
   await T('module O2: golden paths sit right after O1 (or DE 10 before O1 lands) with chapter, lens, four exercises, design problem, quiz and reels; an existing learner is told about it and nothing is marked done', async p => {
     await go(p, '#/path', 1500);
     ok(await p.evaluate(() => MODS.indexOf('o02') === MODS.indexOf(MODS.includes('o01') ? 'o01' : 's10') + 1 && modLabel('o02') === 'Org 2'), 'O2 is not in place');
