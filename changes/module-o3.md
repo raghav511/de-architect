@@ -1,0 +1,4 @@
+# Module O3: data governance
+- New module O3, Data governance that teams accept, after O2: finding personal data, roles versus attribute and tag policies with row and column rules, masking versus tokenisation versus pseudonymisation, lineage for impact and tag propagation, retention, erasure and legal holds, audit evidence, and governance as code.
+- An architect's lens with six under-the-hood answers, and four exercises that run in your browser: classify columns from sample values, decide full, masked or denied access per column, trace lineage impact and inherited PII tags, and plan retention with legal holds.
+- A design problem (govern a fintech lakehouse), ten quiz and seven interview questions, and twelve reels. If you started before this update, What is new lists it and nothing is marked done.
