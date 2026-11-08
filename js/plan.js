@@ -20,7 +20,16 @@ function modColor(m) { return m[0] === 'a' || m[0] === 'c' ? 'c-ai' : m[0] === '
 function dayName(k) { const d = new Date(k + 'T00:00:00'); return DN[(d.getDay() + 6) % 7]; }
 function shortDate(k) { const d = new Date(k + 'T00:00:00'); return DN[(d.getDay() + 6) % 7].slice(0, 3) + ' ' + d.getDate() + ' ' + d.toLocaleString('en', { month: 'short' }); }
 function weekOf(k) { const s = new Date(S.start + 'T00:00:00'), d = new Date(k + 'T00:00:00'); return Math.max(1, Math.floor(Math.round((d - s) / 864e5) / 7) + 1); }
-function capOf(d) { const we = d.getDay() === 0 || d.getDay() === 6; return we ? (+S.settings.capWe || 120) : (+S.settings.capWd || 60); }
+/* F9: no daily limit. The scheduler still lays steps on dates, but only as a forecast for Path and module dates, at your pace:
+   the minutes of steps you finished over the last 14 days, per day (30 to 240, 60 until there is a week of history) */
+let PACE = null, PACE_KEY = '';
+function capOf(d) {
+  const key = iso(new Date()) + '|' + Object.keys(S.doneAt || {}).length;
+  if (PACE_KEY !== key) { PACE_KEY = key; const since = Date.now() - 14 * 864e5, mins = {}; (typeof modUnits === 'function' && DATA.sprints ? [].concat(...MODS.map(m => DATA.sprints[m] ? modUnits(m) : [])) : []).forEach(u => { mins[u.uid] = u.mins; });
+    const done = Object.entries(S.doneAt || {}).filter(([, t]) => t >= since), sum = done.reduce((a, [id]) => a + (mins[id] || 0), 0);
+    PACE = done.length >= 5 ? Math.max(30, Math.min(240, Math.round(sum / 14))) : 60; }
+  return PACE;
+}
 
 /* ---------- module files ---------- */
 function headings(text) { const out = []; let fence = false; (text || '').split('\n').forEach(l => { if (/^```/.test(l)) fence = !fence; else if (!fence && /^## /.test(l)) out.push(l.slice(3).trim()); }); return out; }
@@ -198,7 +207,8 @@ function unitCard(u, opts) {
 /* the day's other two groups. Each has its own minutes (Profile › Plan), so carried work never makes the day longer.
    Newest work comes first; leftovers from earlier this week follow; whatever doesn't fit, and anything from an earlier
    week's set, waits for the weekend's catch-up minutes instead of mixing into the new week's theme. */
-function budgets(d) { const we = d.getDay() === 0 || d.getDay() === 6, n = (v, x) => +v > 0 ? +v : x; return { code: we ? n(S.settings.codeWe, 80) : n(S.settings.codeWd, 50), iv: we ? n(S.settings.ivWe, 55) : n(S.settings.ivWd, 40), build: we ? n(S.settings.buildWe, 60) : n(S.settings.buildWd, 30) }; }
+/* forecast lanes only (F9): the saved minute settings are no longer read */
+function budgets(d) { const we = d.getDay() === 0 || d.getDay() === 6; return { code: we ? 80 : 50, iv: we ? 55 : 40, build: we ? 60 : 30 }; }
 /* design problems and project sessions: the Design and build part of the day (their own lane in the scheduler) */
 function isBuild(u) { return u.kind === 'design' || u.kind === 'project'; }
 const SQMAP = [0, null, 1, 2, 3, 4, null], SPMAP = [null, 0, 1, 2, 3, null, 4];
@@ -263,101 +273,79 @@ function weekStrip(sc, k0) {
   const days = [];
   for (let i = 0; i < 7; i++) { const d = new Date(d0); d.setDate(d0.getDate() + i); days.push(d); }
   return el('div', { class: 'wkstrip' }, days.map(d => {
-    const k = iso(d), us = sc.byDay[k] || [], off = Math.round((d - t) / 864e5), mins = us.reduce((a, u) => a + u.mins, 0);
-    return el('a', { class: 'wkday' + (k === sc.today ? ' today' : '') + (k === k0 ? ' sel' : '') + (off < 0 ? ' past' : ''), href: '#/today/' + off, 'aria-label': dayName(k) + ' ' + shortDate(k) }, [
-      el('div', { class: 'row' }, [el('b', { class: 'grow', text: DN[(d.getDay() + 6) % 7].slice(0, 3) + ' ' + d.getDate() }), el('span', { class: 's', text: mins + '/' + (capOf(d) + budgets(d).build) })]),
-      el('div', { class: 'stack', style: { gap: '3px' } }, us.length ? us.map(u => el('span', { class: 'wu' + (u.isDone ? ' ok' : ''), title: u.title, text: (u.isDone ? '✓ ' : '') + (KIND[u.kind] || [u.kind])[0] + ' · ' + u.title })) : [el('span', { class: 's', text: off < 0 ? (sc.missed.includes(k) ? 'Missed · moved to today' : 'Before you began') : 'free' })])]);
+    const k = iso(d), off = Math.round((d - t) / 864e5), ds = (S.dayset || {})[k];
+    /* F9: what each day held (its daily set, or the steps done that day before daily sets) in XP and minutes; a tick for a full set */
+    const its = ds ? daySet(k) : (sc.byDay[k] || []).filter(u => u.isDone).map(u => ({ unit: u, xp: XP_KIND[u.kind] || 10, mins: u.mins, done: true, s: SEC_OF_KIND[u.kind] || 'lesson' }));
+    const xp = its.filter(x => x.done).reduce((a, x) => a + x.xp, 0) + (ds && ds.full ? DAY_BONUS : 0), mins = its.reduce((a, x) => a + x.mins, 0);
+    return el('a', { class: 'wkday' + (k === sc.today ? ' today' : '') + (k === k0 ? ' sel' : '') + (off < 0 ? ' past' : ''), href: '#/today/' + off, 'aria-label': dayName(k) + ' ' + shortDate(k) + (ds && ds.full ? ', full set done' : '') }, [
+      el('div', { class: 'row' }, [el('b', { class: 'grow', text: (ds && ds.full ? '✓ ' : '') + DN[(d.getDay() + 6) % 7].slice(0, 3) + ' ' + d.getDate() }), el('span', { class: 's', text: its.length ? xp + ' XP' : '' })]),
+      el('div', { class: 'stack', style: { gap: '3px' } }, its.length ? its.slice(0, 6).map(x => el('span', { class: 'wu' + (x.done ? ' ok' : ''), title: x.unit ? x.unit.title : x.x.t, text: (x.done ? '✓ ' : '') + (x.unit ? (KIND[x.unit.kind] || [x.unit.kind])[0] + ' · ' + x.unit.title : x.x.t) })).concat(its.length > 6 ? [el('span', { class: 's', text: '+' + (its.length - 6) + ' more · ' + mins + ' min' })] : [el('span', { class: 's', text: mins + ' min' })]) : [el('span', { class: 's', text: off < 0 ? 'Nothing that day' : off === 0 ? '' : 'Chosen that morning' })])]);
   }));
 }
 
 /* ---------------- Today ---------------- */
+/* F9 (user's design, approved 2026-11-08): the plan box holds the daily set, the smallest set that touches every section of
+   Learn, Practice and Interview (js/dayset.js). Minutes show on every row, section, tab and the day, as information only;
+   XP decides what a day holds and when the module advances. */
 function vToday(off) {
   off = +off || 0;
   const sc = schedule();
   const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + off);
-  const k = iso(d), cap = capOf(d), us = sc.byDay[k] || [];
-  const pre = k < S.start, C = pre ? { now: [], catchup: [], later: [] } : codingItems(off), V = pre ? { iv: [], coach: [], later: [] } : interviewItems(off, k, sc.cur);
-  /* Design and build: the scheduled design problem and project sessions, then a simulator challenge when today's build minutes have room */
-  const bB = budgets(d).build, bUsed = us.filter(isBuild).reduce((a, u) => a + u.mins, 0);
-  const simX = off === 0 && !pre && typeof simTodayItem === 'function' ? [simTodayItem(k)].filter(x => x && (x.auto || bUsed + x.mins <= bB + 5)) : [];
-  /* Reels for today, as a row in Learn; it ticks itself once a reel is watched today */
-  const reelsX = off === 0 && !pre ? [{ id: 'reels', chip: 'core', t: 'Reels for today', sub: '30 to 60 second explainers of today\'s reading, each with a quick check', mins: 5, href: '#/reels', auto: Object.values(S.reels || {}).some(x => x && x.seen === k) }] : [];
-  const xc = C.now.concat(C.catchup), xs = xc.concat(V.iv, V.coach, simX, reelsX);
-  /* remember the day a step was first planned, so a step carried to a later day says where it came from */
-  if (off === 0 && !pre) { S.planned = S.planned || {}; let ch = 0; us.forEach(u => { if (!u.isDone && !S.planned[u.uid]) { S.planned[u.uid] = k; ch = 1; } }); if (ch) save(false); }
-  const fromOf = u => { const p = (S.planned || {})[u.uid]; return p && p < k && !u.isDone ? shortDate(p).slice(0, 3) : ''; };
-  const hourDone = us.filter(u => u.isDone).reduce((a, u) => a + u.mins, 0), hourMins = us.reduce((a, u) => a + u.mins, 0), readMins = us.filter(u => !isBuild(u)).reduce((a, u) => a + u.mins, 0);
-  const doneMins = hourDone + xs.filter(x => xDone(k, x)).reduce((a, x) => a + x.mins, 0), planMins = hourMins + xs.reduce((a, x) => a + x.mins, 0);
-  const m = (us.slice().reverse().find(u => !isCC(u.mid)) || us[0] || {}).mid || sc.cur, M = MOD[m], sp = sc.span[m];
+  const k = iso(d), pre = k < S.start, ds = (S.dayset || {})[k];
+  const items = pre ? [] : off < 0 && !ds ? (sc.byDay[k] || []).filter(u => u.isDone).map(u => ({ s: SEC_OF_KIND[u.kind] || 'lesson', tab: (DAY_SECS.find(x => x[1] === (SEC_OF_KIND[u.kind] || 'lesson')) || ['learn'])[0], id: u.uid, unit: u, mins: u.mins, xp: XP_KIND[u.kind] || 10, done: true })) : daySet(k);
+  const sum = xs => ({ xp: xs.reduce((a, x) => a + x.xp, 0), xpd: xs.filter(x => x.done).reduce((a, x) => a + x.xp, 0), m: xs.reduce((a, x) => a + x.mins, 0), md: xs.filter(x => x.done).reduce((a, x) => a + x.mins, 0) });
+  const all = sum(items), full = items.length > 0 && items.every(x => x.done), fmt = n => n >= 60 ? Math.floor(n / 60) + ' h' + (n % 60 ? ' ' + (n % 60) + ' min' : '') : n + ' min';
+  const cur = off === 0 ? DAY_TABS.map(([t]) => items.find(x => x.tab === t && !x.done)).find(Boolean) : null;
+  const m = (cur && (cur.unit ? cur.unit.mid : null)) || MODS[dayCurIdx(sc)] || sc.cur, M = MOD[m], sp = sc.span[m];
   const hr = new Date().getHours();
+  const fromTxt = x => x.carried ? shortDate(x.carried).slice(0, 3) : '';
+  const row = x => x.unit ? unitCard(x.unit, { fold: true, cur: false, from: fromTxt(x) }) : xGroup(k, '', '', [Object.assign({}, x.x, { from: fromTxt(x), sub: x.x.sub + ' · +' + x.xp + ' XP' })]);
+  const upNext = cur && !pre ? el('section', { class: 'upnext' }, [cur.unit ? unitCard(cur.unit, { cur: true, from: fromTxt(cur) }) : el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'upn', text: 'Up next · ' + (DAY_SECS.find(s => s[1] === cur.s) || [, , ''])[2] }), xGroup(k, '', '', [Object.assign({}, cur.x, { sub: cur.x.sub + ' · +' + cur.xp + ' XP' })])])]) : null;
   const nav = el('div', { class: 'row wrap daynav', style: { gap: '8px' } }, [
     el('a', { class: 'btn icon sm', href: '#/today/' + (off - 1), 'aria-label': 'Previous day' }, svg(I.back, 18)),
     el('b', { style: { fontSize: '17px' }, text: (off === 0 ? 'Today · ' : off === 1 ? 'Tomorrow · ' : off === -1 ? 'Yesterday · ' : '') + dayName(k) + ' ' + shortDate(k).slice(4) }),
     el('a', { class: 'btn icon sm', href: '#/today/' + (off + 1), 'aria-label': 'Next day' }, svg(I.fwd, 18)),
-    off ? el('a', { class: 'btn sm', href: '#/today', text: 'Back to today' }) : null,
-    el('span', { class: 'grow' }),
-    el('span', { class: 'chip ' + (cap > 60 ? 'c-arch' : 'c-core'), text: (cap >= 120 ? cap / 60 + '-hour' : cap + '-minute') + ' reading day' + (readMins > cap ? ' · ' + (readMins - cap) + ' min over' : '') })]);
-  const pct = planMins ? Math.round(100 * doneMins / planMins) : 0, cur = off === 0 ? us.find(u => !u.isDone) : null;
-  const ring = el('span', { class: 'ring', role: 'img', 'aria-label': pct + '% of the plan done', html: '<svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="17" fill="none" stroke="var(--line)" stroke-width="5"/><circle cx="21" cy="21" r="17" fill="none" stroke="var(--teal)" stroke-width="5" stroke-linecap="round" stroke-dasharray="' + (pct * 1.068).toFixed(1) + ' 107" transform="rotate(-90 21 21)"/></svg>' });
-  /* Reading and labs: program order, so an unfinished earlier module comes first in its own block (later reading builds on it) */
-  /* the day in the app's three groups: Learn (reading, labs, quiz, reels), Practice (Git, drills, design, projects, simulator, coding) and Interview (module interview set, mock, loop drill, company questions, coach) */
-  const isPract = u => isBuild(u) || u.kind === 'git' || u.kind === 'practice';
-  const reading = us.filter(u => u.kind !== 'quiz' && u.kind !== 'talk' && !isPract(u)), quiz = us.filter(u => u.kind === 'quiz'), build = us.filter(isPract), talk = us.filter(u => u.kind === 'talk');
-  const mods = [...new Set(reading.filter(u => !isCC(u.mid)).map(u => u.mid))], oldMod = mods.length > 1 ? mods[0] : null;
-  const card = u => unitCard(u, { fold: true, cur: false, from: fromOf(u) });
-  const upNext = cur && !pre ? el('section', { class: 'upnext' }, [unitCard(cur, { cur: true, from: fromOf(cur) })]) : null; /* Up next is the first card on the screen; the list below holds the rest */
-  const sec = (id, title, sub, kids) => el('div', { class: 'xgroup stack tsec', id, style: { gap: '8px' } }, [el('div', { class: 'row wrap xghead' }, [el('h3', { class: 'grow', text: title }), sub ? el('span', { class: 'muted', style: { fontSize: '14px' }, text: sub }) : null])].concat(kids));
-  const mm = xs => xs.filter(u => u.isDone).reduce((a, u) => a + u.mins, 0) + ' / ' + xs.reduce((a, u) => a + u.mins, 0) + ' min';
-  const rest = xs => xs.filter(u => u !== cur);
-  const readSec = pre ? null : sec('grp-hour', 'Reading and labs', mm(reading), (oldMod ? [el('span', { class: 'lbl', style: { color: 'var(--amber-d)' }, text: 'Finish ' + modLabel(oldMod) + ' first · later reading builds on it' })].concat(rest(reading.filter(u => u.mid === oldMod)).map(card), [el('span', { class: 'lbl', text: modLabel(mods[1]) + ' · ' + modTitle(mods[1]) })], rest(reading.filter(u => u.mid !== oldMod)).map(card)) : rest(reading).map(card)).concat(reading.length ? [] : [el('p', { class: 'muted', style: { margin: 0 }, text: off < 0 ? 'Nothing was done on this day.' : 'No reading planned for this day.' })]));
-  const buildSec = pre || !(build.length || simX.length) ? null : sec('grp-build', 'Design, build and Git', mm(build.concat(simX.map(x => ({ mins: x.mins, isDone: xDone(k, x) })))), rest(build).map(card).concat(simX.length ? [xGroup(k, '', '', simX)] : [], [el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'The design problem, project sessions and a simulator challenge use your ' + bB + ' design and build minutes; Git labs and drills come from your reading minutes (Profile › Plan).' })]));
-  const reelSec = reelsX.length ? xGroup(k, 'Reels', '', reelsX, 'grp-reels') : null;
-  const talkSec = pre || !talk.length ? null : sec('grp-talk', 'This module\'s interview set', mm(talk), rest(talk).map(card));
-  const quizSec = quiz.length ? sec('grp-quiz', 'Quiz', mm(quiz) + ' · part of your ' + cap + ' minutes', rest(quiz).map(card)) : null;
-  const ivB = budgets(d).iv, codeB = budgets(d).code;
-  const codeSec = pre || !xc.length ? null : xGroup(k, 'Coding track', '', C.now, 'grp-coding', el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'Reviews due today, then today\'s set, then anything left from earlier this week. ' + codeB + ' minutes a day.' }),
-    C.catchup.length || C.later.length ? el('div', { class: 'stack', style: { gap: '8px' } }, [C.catchup.length ? el('span', { class: 'lbl', style: { color: 'var(--amber-d)' }, text: 'Weekend catch-up · earlier sets' }) : null].concat(C.catchup.length ? [xGroup(k, '', '', C.catchup)] : [], [C.later.length ? el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: C.later.length + ' more problem' + (C.later.length > 1 ? 's' : '') + ' wait' + (C.later.length > 1 ? '' : 's') + (C.olderWaiting ? ' (' + C.olderWaiting + ' from earlier sets, kept for the weekend)' : '') + '. ' }) : null])) : null);
-  const ivSec = pre || !V.iv.length ? null : xGroup(k, 'Interview practice', '', V.iv, 'grp-interview', el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'Interview practice and coaching share ' + ivB + ' minutes: the mock first, then a short recall set, then the interview loop drill, then your coach\'s items, then this week\'s company questions.' }),
-    el('div', { class: 'row wrap', style: { gap: '14px' } }, [V.laterQ ? el('a', { class: 'tlink', href: '#/recent', style: { fontWeight: 600, fontSize: '14px' }, text: V.laterQ + ' more company question' + (V.laterQ > 1 ? 's' : '') + ' in the queue ›' }) : null, el('a', { class: 'tlink', href: '#/mock', style: { fontWeight: 600, fontSize: '14px' }, text: 'Prefer writing? The written mock ›' })]));
-  const cn = off === 0 ? coachNote() : null;
-  const coachSec = pre || (!V.coach.length && !cn) ? null : (V.coach.length ? xGroup(k, 'Coaching', '', V.coach, 'grp-coach', cn, V.laterC ? el('a', { href: '#/coach', style: { fontWeight: 600, fontSize: '14px' }, text: V.laterC + ' more coach item' + (V.laterC > 1 ? 's' : '') + ' tomorrow ›' }) : null) : sec('grp-coach', 'Coaching', '', [cn]));
-  const allDone = us.every(u => u.isDone) && xs.every(x => xDone(k, x));
-  /* Learn, Practice and Interview are tabs of one plan box; it opens on the first part with work left (or the last one you picked) */
-  const PANES = { 'grp-hour': ['grp-hour', 'grp-quiz', 'grp-reels'], 'grp-coding': ['grp-build', 'grp-coding'], 'grp-interview': ['grp-talk', 'grp-interview', 'grp-coach'] };
-  const xm = xs => xs.map(x => [x.mins, xDone(k, x)]), um = us => us.map(u => [u.mins, u.isDone]);
-  const PARTS = [['grp-hour', 'Learn', um(reading.concat(quiz)).concat(xm(reelsX))], ['grp-coding', 'Practice', um(build).concat(xm(simX), xm(xc))], ['grp-interview', 'Interview', um(talk).concat(xm(V.iv), xm(V.coach))]].filter(g => g[2].length);
-  const tabNow = PARTS.some(g => g[0] === todayTab) ? todayTab : ((PARTS.find(g => !g[2].every(x => x[1])) || PARTS[0] || [])[0]);
-  const pane = (s, g) => { if (s && PARTS.length > 1 && g !== tabNow) s.hidden = true; if (s) s.setAttribute('role', 'tabpanel'); return s; };
+    off ? el('a', { class: 'btn sm', href: '#/today', text: 'Back to today' }) : null]);
+  const pct = all.xp ? Math.round(100 * all.xpd / all.xp) : 0;
+  const ring = el('span', { class: 'ring', role: 'img', 'aria-label': pct + '% of the day\'s XP earned', html: '<svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="17" fill="none" stroke="var(--line)" stroke-width="5"/><circle cx="21" cy="21" r="17" fill="none" stroke="var(--teal)" stroke-width="5" stroke-linecap="round" stroke-dasharray="' + (pct * 1.068).toFixed(1) + ' 107" transform="rotate(-90 21 21)"/></svg>' });
+  /* one pane per tab: its sections in order, each with its rows; when the tab is done, One more per section */
+  const IDS = { learn: 'grp-hour', practice: 'grp-coding', interview: 'grp-interview' };
+  const PARTS = DAY_TABS.map(([t, n]) => [IDS[t], n, items.filter(x => x.tab === t), t]).filter(g => g[2].length);
+  const tabNow = PARTS.some(g => g[0] === todayTab) ? todayTab : ((PARTS.find(g => !g[2].every(x => x.done)) || PARTS[0] || [])[0]);
+  const paneOf = ([id, n, xs, t]) => {
+    const secs = DAY_SECS.filter(s => s[0] === t).map(s => [s, xs.filter(x => x.s === s[1])]).filter(z => z[1].length), s0 = sum(xs), done = xs.every(x => x.done);
+    const kids = secs.map(([s, ys]) => { const z = sum(ys); return el('div', { class: 'xgroup stack tsec', id: 'sec-' + s[1], style: { gap: '8px' } }, [el('div', { class: 'row wrap xghead' }, [el('h3', { class: 'grow', text: s[2] }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: z.xpd + ' / ' + z.xp + ' XP · ' + z.m + ' min' })])].concat(ys.filter(x => x !== cur).map(row))); });
+    if (done && off === 0) kids.push(el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'muted', style: { fontSize: '14px' }, text: n + ' is done for today. Want more? Each adds its XP; none is required.' }), el('div', { class: 'row wrap', style: { gap: '8px' } }, DAY_SECS.filter(s => s[0] === t).map(s => el('button', { class: 'btn sm', onclick: () => dayMore(k, s[1]), text: 'One more: ' + s[2].toLowerCase() })))]));
+    const pane = el('div', { class: 'stack tpane', id, role: 'tabpanel', 'aria-label': n + ': ' + s0.xpd + ' of ' + s0.xp + ' XP, ' + s0.m + ' minutes', style: { gap: '14px' } }, kids);
+    if (PARTS.length > 1 && id !== tabNow) pane.hidden = true;
+    return pane;
+  };
   const plan = el('section', { class: 'card pad stack plan' }, [
-    el('div', { class: 'row planhead wrap' }, [ring, el('div', { class: 'grow stack', style: { gap: '0' } }, [el('div', { class: 'row', style: { gap: '8px' } }, [el('h2', { text: off === 0 ? 'Today' : pre ? 'Before your plan starts' : dayName(k) })]), pre ? null : el('span', { class: 'muted', style: { fontSize: '14px' }, text: doneMins + ' of ' + planMins + ' min done' })]),
+    el('div', { class: 'row planhead wrap' }, [ring, el('div', { class: 'grow stack', style: { gap: '0' } }, [el('div', { class: 'row', style: { gap: '8px' } }, [el('h2', { text: off === 0 ? 'Today' : pre ? 'Before your plan starts' : dayName(k) })]), pre ? null : el('span', { class: 'muted', style: { fontSize: '14px' }, text: all.xpd + ' of ' + all.xp + ' XP · about ' + fmt(all.m) + ' (' + fmt(all.md) + ' done)' })]),
       pre ? null : el('div', { class: 'row wrap daysum', role: 'tablist', 'aria-label': 'This day in parts' }, PARTS.map(([id, n, xs]) => {
-      const tot = xs.reduce((a, x) => a + x[0], 0), dn = xs.filter(x => x[1]).reduce((a, x) => a + x[0], 0), all = xs.every(x => x[1]);
-      return el('button', { class: 'dsum' + (all ? ' done' : ''), role: 'tab', id: 'tab-' + id, 'aria-selected': String(id === tabNow), 'aria-controls': PANES[id].join(' '), 'aria-label': n + ': ' + dn + ' of ' + tot + ' minutes done' + (all ? ', finished' : ''), onclick: () => { todayTab = id; document.querySelectorAll('.plan .dsum').forEach(b => b.setAttribute('aria-selected', String(b.id === 'tab-' + id))); Object.entries(PANES).forEach(([g, ids]) => ids.forEach(x => { const s = document.getElementById(x); if (s) s.hidden = g !== id; })); } }, [all ? svg(I.check, 14) : null, el('b', { text: n }), el('span', { text: dn + '/' + tot + ' min' })]); }))]),
+        const z = sum(xs), dn = xs.every(x => x.done);
+        return el('button', { class: 'dsum' + (dn ? ' done' : ''), role: 'tab', id: 'tab-' + id, 'aria-selected': String(id === tabNow), 'aria-controls': id, 'aria-label': n + ': ' + z.xpd + ' of ' + z.xp + ' XP, ' + z.m + ' minutes' + (dn ? ', finished' : ''), onclick: () => { todayTab = id; document.querySelectorAll('.plan .dsum').forEach(b => b.setAttribute('aria-selected', String(b.id === 'tab-' + id))); PARTS.forEach(([g]) => { const s = document.getElementById(g); if (s) s.hidden = g !== id; }); } }, [dn ? svg(I.check, 14) : null, el('b', { text: n }), el('span', { text: z.xpd + '/' + z.xp + ' XP · ' + z.m + ' min' })]); }))]),
     nav,
-    off === 0 && sc.missed.length ? el('div', { class: 'hint behind', role: 'status' }, [el('b', { text: 'Catching up · ' }), missedText(sc.missed) + ' moved to today. Nothing was skipped.']) : null,
     pre ? el('p', { style: { margin: 0 }, text: 'Your plan starts ' + shortDate(S.start) + '.' }) : null,
-    pane(readSec, 'grp-hour'), pane(quizSec, 'grp-hour'), pane(reelSec, 'grp-hour'), pane(buildSec, 'grp-coding'), pane(codeSec, 'grp-coding'), pane(talkSec, 'grp-interview'), pane(ivSec, 'grp-interview'), pane(coachSec, 'grp-interview'),
-    off === 0 && !pre ? el('div', { class: 'row wrap', style: { gap: '14px', fontSize: '14px' } }, [revDue().length > 3 ? el('a', { class: 'tlink', href: '#/practice/review', style: { fontWeight: 600 }, text: (revDue().length - 3) + ' more reviews due ›' }) : null, el('a', { class: 'tlink', href: '#/practice/tests', style: { fontWeight: 600 }, text: 'Timed coding tests ›' })]) : null,
-    off === 0 && allDone && sc.next ? el('div', { class: 'hint' }, [el('b', { text: 'Done for today. ' }), 'Want to keep going? Next up: ' + sc.next.title + ' (planned ' + shortDate(sc.next.day) + '). ', el('a', { href: sc.next.href, text: 'Start it now' })]) : null]);
+    off > 0 && !pre ? el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'A preview: the set is chosen on the morning of the day, from what is still open then.' }) : null,
+    !pre && items.length ? el('div', { class: 'hint' + (full ? '' : ' quiet'), role: 'status' }, full ? [el('b', { text: 'Daily set done · +' + DAY_BONUS + ' XP. ' }), 'It counts for your streak.'] : ['Finish all ' + items.length + ' for +' + DAY_BONUS + ' XP and a streak day. No time limit: the minutes are only a guide.']) : null].concat(PARTS.map(paneOf)));
   const D = DATA.design[m];
   const modCard = el('section', { class: 'card pad stack' }, [
     el('div', { class: 'row wrap', style: { gap: '6px' } }, [el('span', { class: 'chip ' + modColor(m), text: 'Module ' + modLabel(m) }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: weeksText(sp) })]),
     el('b', { style: { fontSize: '18px' }, text: M ? M.title : '' }), el('span', { style: { fontSize: '14.5px' }, text: M ? M.goal : '' }),
-    el('div', { class: 'row' }, [el('div', { class: 'bar grow' }, el('i', { style: { width: (sp ? Math.round(100 * sp.done / sp.n) : 0) + '%' } })), el('b', { text: sp ? sp.done + '/' + sp.n : '' })]),
+    el('div', { class: 'row' }, [el('div', { class: 'bar grow' }, el('i', { style: { width: (sp ? Math.round(100 * sp.done / sp.n) : 0) + '%' } })), el('b', { text: modXP(m) })]),
     el('details', { class: 'modmenu' }, [el('summary', { class: 'btn', text: 'Open module' }), el('div', { class: 'stack', style: { gap: '10px', marginTop: '10px' } }, [modLinks(m), D ? el('a', { class: 'tlink', href: '#/design/' + m, style: { fontWeight: 600, fontSize: '14px' }, text: 'Design problem: ' + D.title + ' ›' }) : null, el('a', { class: 'tlink', href: '#/path/' + m, style: { fontWeight: 600, fontSize: '14px' }, text: 'See every step of this module ›' })])])]);
-  /* while today has an open step, the plan's Up next card is the call to action; the banner only offers work ahead of plan */
-  const nx = off === 0 && !cur ? sc.next : null;
-  const hero = nx ? el('section', { class: 'hero' }, [el('div', { class: 'grow stack', style: { gap: '3px', minWidth: '200px' } }, [el('span', { class: 'lbl', text: (us.includes(nx) ? 'Up next' : 'Ahead of plan · next') + ' · ' + nx.mins + ' min · module ' + modLabel(nx.mid) }), el('b', { text: nx.title })]), el('a', { class: 'btn', href: nx.href, text: nx.cta + ' ›' })]) : null;
-  shell(off === 0 ? 'Today' : 'Plan · ' + shortDate(k), 'Module ' + modLabel(m) + ' · ' + weekText(k), [
-    el('div', { class: 'row greet' }, [el('div', { class: 'grow stack', style: { gap: '2px' } }, [el('h1', { text: (hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + (userName() ? ', ' + userName() : '') }), pre ? null : el('span', { class: 'muted', style: { fontSize: '14px' }, text: dayName(k) + ' ' + shortDate(k).slice(4) + ' · ' + doneMins + ' of ' + planMins + ' min done' })]), off === 0 ? gameMini() : null]),
+  shell(off === 0 ? 'Today' : 'Plan · ' + shortDate(k), 'Module ' + modLabel(m), [
+    el('div', { class: 'row greet' }, [el('div', { class: 'grow stack', style: { gap: '2px' } }, [el('h1', { text: (hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + (userName() ? ', ' + userName() : '') }), pre ? null : el('span', { class: 'muted', style: { fontSize: '14px' }, text: dayName(k) + ' ' + shortDate(k).slice(4) + ' · ' + all.xpd + ' of ' + all.xp + ' XP' })]), off === 0 ? gameMini() : null]),
     upNext,
-    hero,
     off === 0 ? whatsNewCard() : null,
     el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [modCard, off === 0 ? el('div', { id: 'rtodayslot' }) : null])]),
     off === 0 ? el('div', { id: 'gcardslot' }) : null,
-    el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', style: { minWidth: 'max-content' }, text: 'This week' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'reading and design minutes planned / budget · tap a day to see it' }), el('button', { class: 'btn sm', onclick: exportIcs, text: 'Add to calendar' })]), weekStrip(sc, k)])]);
+    el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', style: { minWidth: 'max-content' }, text: 'This week' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'XP earned and minutes · ✓ full set · tap a day to see it' }), el('button', { class: 'btn sm', onclick: exportIcs, text: 'Add to calendar' })]), weekStrip(sc, k)])]);
   if (off === 0) { reelToday().then(c => { const s = document.getElementById('rtodayslot'); if (c && s) s.replaceWith(c); }); gameCard().then(c => { const s = document.getElementById('gcardslot'); if (c && s) s.replaceWith(c); }); gameShipCheck(); }
 }
+/* module XP: earned in its steps out of what its steps are worth (F9; the module advances when every step is done) */
+function modXP(m) { const us = schedule().units.filter(u => u.mid === m), a = us.filter(u => u.isDone).reduce((s, u) => s + (XP_KIND[u.kind] || 10), 0), b = us.reduce((s, u) => s + (XP_KIND[u.kind] || 10), 0); return a + ' / ' + b + ' XP'; }
 let todayTab = null; /* the plan tab picked on Today, kept while the app is open */
 function missedText(ks) { const n = ks.map(k => shortDate(k).slice(0, 3)); return ks.length > 3 ? ks.length + ' missed days' : n.length === 1 ? n[0] : n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1]; }
 function weekText(k) { return 'Week ' + weekOf(k); }

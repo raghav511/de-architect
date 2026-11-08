@@ -4,14 +4,15 @@
    An AI interviewer (Claude Code on the Mac) asks a follow-up and scores each answer on a rubric;
    with AI off you mark yourself against the model answer. State: S.live[date]. Loaded before app.js. */
 'use strict';
-const LIVE_LEN = { wd: [20, 4], we: [35, 5] }; /* minutes, minutes per question */
+const LIVE_LEN = { wd: [20, 4], we: [35, 5], one: [5, 5] }; /* minutes, minutes per question; one: a weekday's single question (F9) */
 const LIVE_ROT = { 1: 'scale', 2: 'page', 3: 'defend', 4: 'metric', 5: 'lead' }; /* Monday to Friday staff slot */
 const LIVE_WE = ['org', 'migrate', 'cost', 'estimate', 'deep'];
 const LIVE_DIMS = [['correct', 'Correctness'], ['depth', 'Depth, internals'], ['trade', 'Trade-offs'], ['clear', 'Structure, clarity']];
 const LIVE_CHECKS = [['rejected', 'Named what you rejected'], ['limits', 'Said where it stops scaling'], ['operate', 'Said how you would run it']];
 const LIVE_STYLES = ['Uber', 'Meta', 'Google', 'Salesforce'];
 
-function liveWeekend(k) { const d = new Date(k + 'T00:00:00').getDay(); return d === 0 || d === 6; }
+/* F9: Monday to Friday one question, Saturday the full 5-question mock, Sunday the 7-question boss round (liveMode in js/dayset.js) */
+function liveWeekend(k) { return new Date(k + 'T00:00:00').getDay() === 0; }
 /* the main-path modules planned in the week of day k (Monday to Sunday), plus the current one */
 function liveWeekMods(k) {
   const sc = schedule(), d0 = new Date(k + 'T00:00:00'); d0.setDate(d0.getDate() - ((d0.getDay() + 6) % 7));
@@ -130,8 +131,10 @@ async function vLive(k) {
   let m = S.live[k];
   if (!m) {
     if (k !== today) { $('#page').textContent = ''; $('#page').appendChild(el('section', { class: 'card pad stack' }, [el('p', { style: { margin: 0 }, text: 'There was no live mock on this day.' }), el('a', { href: '#/live', text: 'Go to today\'s live mock' })])); return; }
-    const we = liveWeekend(k), r = await liveQuestions(k);
-    m = S.live[k] = { kind: we ? 'we' : 'wd', mins: LIVE_LEN[we ? 'we' : 'wd'][0], per: LIVE_LEN[we ? 'we' : 'wd'][1], level: S.settings.liveLevel || 'staff', style: we ? LIVE_STYLES[Math.floor(new Date(k + 'T00:00:00').getTime() / 864e5 / 7) % LIVE_STYLES.length] : '', week: r.week, mod: r.mod, qs: r.qs, ans: {}, i: -1, t: Date.now() };
+    const we = liveWeekend(k), r = await liveQuestions(k), one = !we && typeof liveMode === 'function' && liveMode(k) === 'one', kd = we ? 'we' : one ? 'one' : 'wd';
+    /* a weekday's one question: a carried weak answer first, else the slot of the day (Mon concept, Tue under the hood, Wed lens, Thu staff, Fri recall) */
+    if (one) { const g = new Date(k + 'T00:00:00').getDay(), slot = ['concept', 'deep', 'lens', LIVE_ROT[g], 'recall'][g - 1]; r.qs = [r.qs.find(x => x.carried) || r.qs.find(x => x.slot === slot) || r.qs[Math.min(g - 1, r.qs.length - 1)]].filter(Boolean); }
+    m = S.live[k] = { kind: kd, mins: LIVE_LEN[kd][0], per: LIVE_LEN[kd][1], level: S.settings.liveLevel || 'staff', style: we ? LIVE_STYLES[Math.floor(new Date(k + 'T00:00:00').getTime() / 864e5 / 7) % LIVE_STYLES.length] : '', week: r.week, mod: r.mod, qs: r.qs, ans: {}, i: -1, t: Date.now() };
     save();
   }
   const page = $('#page'); page.textContent = '';

@@ -273,6 +273,7 @@ function route() {
     else if (r === 'loop') vLoop(p[1], p[2]);
     else if (r === 'quiz') vQuiz(p[1]);
     else if (r === 'interview') vInterview(p[1], p[2]);
+    else if (r === 'compare') vCompare(p[1]);
     else if (r === 'progress') vProgress();
     else if (r === 'profile') vProfile();
     else if (r === 'terminal') vTerminal(p[1], p[2]);
@@ -940,7 +941,7 @@ function graderStatus() {
 }
 function syncLabel() { return S.syncing ? 'Syncing…' : S.lastSync && Date.now() - S.lastSync < 60000 ? 'Synced' : 'Sync progress'; }
 /* preferences that follow you across devices; the sync URL, theme and notifications stay per device */
-const PREF_KEYS = ['capWd', 'capWe', 'codeWd', 'codeWe', 'ivWd', 'ivWe', 'buildWd', 'buildWe', 'studyTime', 'ai', 'coachVia', 'gradeModel', 'name'];
+const PREF_KEYS = ['capWd', 'capWe', 'codeWd', 'codeWe', 'ivWd', 'ivWe', 'buildWd', 'buildWe', 'setSize', 'studyTime', 'ai', 'coachVia', 'gradeModel', 'name'];
 /* Settings live on the Profile page (avatar, top right); settings() is kept for the buttons that say "Open settings" */
 function settings(focusId) { if (focusId === 'st_sync') profileTab = 'sync'; if (location.hash !== '#/profile') location.hash = '#/profile'; else route(); if (focusId) setTimeout(() => { const x = document.getElementById(focusId); if (x) x.focus(); }, 150); }
 /* no default name (the repository is public): the name typed in Profile › Look, else the first name of the Google
@@ -953,7 +954,8 @@ function saveSettings(body) {
     if (su && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/(exec|dev)([?#]|$)|^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(su)) { toast('That sync URL is not a Google Apps Script web app (https://script.google.com/macros/s/…/exec). Your progress only syncs to your own script, so settings were not saved.', null, 7000); return false; } /* security review 13 */
     if (su && /script\.google\.com/.test(su) && !/[?&]k=/.test(su)) setTimeout(() => toast('Saved. This sync URL has no ?k= key: anyone with the URL could read your progress.', null, 7000), 400);
     const st0 = g('st_start'); if (/^\d{4}-\d\d-\d\d$/.test(st0)) { const d = new Date(st0 + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); if (iso(d) !== S.start) S.since = iso(new Date()); S.start = iso(d); } S.settings.syncUrl = su; S.settings.googleClientId = g('st_gcid');
-    const wd = Math.round(+g('st_wd')), we = Math.round(+g('st_we')); S.settings.capWd = wd >= 15 && wd <= 600 ? wd : 60; S.settings.capWe = we >= 15 && we <= 720 ? we : 120; const nb = (id, lo, hi, def) => { const v = Math.round(+g(id)); return v >= lo && v <= hi ? v : def; }; S.settings.codeWd = nb('st_cwd', 0, 300, 50); S.settings.codeWe = nb('st_cwe', 0, 300, 80); S.settings.ivWd = nb('st_iwd', 15, 300, 40); S.settings.ivWe = nb('st_iwe', 15, 300, 55); S.settings.buildWd = nb('st_bwd', 15, 300, 30); S.settings.buildWe = nb('st_bwe', 15, 300, 60); S.settings.studyTime = g('st_time') || '07:00'; S.settings.accent = g('st_accent') || 'teal'; S.settings.name = g('st_name'); applyTheme(); S.settings.ai = g('st_ai') !== 'off'; applyAi();
+    /* F9: no daily time limit; the old minute settings (capWd … buildWe) stay saved and synced, untouched and unused */
+    if (g('st_set')) S.settings.setSize = g('st_set') === 'double' ? 'double' : 'smallest'; S.settings.studyTime = g('st_time') || '07:00'; S.settings.accent = g('st_accent') || 'teal'; S.settings.name = g('st_name'); applyTheme(); S.settings.ai = g('st_ai') !== 'off'; applyAi();
     S.settings.fun = g('st_fun') !== 'off'; S.settings.sound = g('st_sound') === 'on';
     S.settings.coachVia = g('st_coach') || 'mac'; S.settings.gradeModel = g('st_grade') || 'auto'; S.settings.prefsAt = Date.now(); /* newest preferences win when devices sync */
     const nt = body.querySelector('#st_notify').checked; S.settings.notifyUpdates = nt;
@@ -982,7 +984,7 @@ function vProfile() {
     sync: [f('st_sync', 'Sync URL (Apps Script, ends in ?k=your key)', S.settings.syncUrl, 'url', 'https://script.google.com/macros/s/…/exec?k=…'), f('st_gcid', 'Google client ID (for Sign in with Google; not a secret)', S.settings.googleClientId || '', 'text', '…apps.googleusercontent.com'), note('Your plan, minutes and AI choices sync across devices. Theme, keys and this URL stay on this device.'),
       el('label', { class: 'row', style: { gap: '10px', fontSize: '14.5px' } }, [el('input', { type: 'checkbox', id: 'st_notify', checked: S.settings.notifyUpdates ? 'checked' : null, style: { width: '22px', height: '22px' } }), 'Notify me when an app update is available'])],
     look: [sel('st_accent', 'Accent colour', S.settings.accent || 'teal', [['teal', 'Teal'], ['blue', 'Blue'], ['plum', 'Plum']]), f('st_name', 'Your name (used in the greeting)', S.settings.name || '', 'text', (typeof authGet === 'function' && (authGet() || {}).name) || 'Your first name'), sel('st_fun', 'Celebrations (confetti when a module ships or a warm-up goes well)', S.settings.fun === false ? 'off' : 'on', [['on', 'On'], ['off', 'Off']]), sel('st_sound', 'Sounds in the warm-up', S.settings.sound ? 'on' : 'off', [['off', 'Off'], ['on', 'On']])],
-    plan: [f('st_start', 'Week 1 starts (pick any day in that week)', S.start, 'date'), el('div', { class: 'tri' }, [f('st_wd', 'Reading, weekday minutes', S.settings.capWd || 60, 'number'), f('st_we', 'Reading, weekend minutes', S.settings.capWe || 120, 'number'), f('st_time', 'Study time', S.settings.studyTime || '07:00', 'time')]), el('div', { class: 'tri' }, [f('st_cwd', 'Coding, weekday', S.settings.codeWd || 50, 'number'), f('st_cwe', 'Coding, weekend', S.settings.codeWe || 80, 'number')]), el('div', { class: 'tri' }, [f('st_iwd', 'Interview and coaching, weekday', S.settings.ivWd || 40, 'number'), f('st_iwe', 'Interview and coaching, weekend', S.settings.ivWe || 55, 'number')]), el('div', { class: 'tri' }, [f('st_bwd', 'Design and build, weekday', S.settings.buildWd || 30, 'number'), f('st_bwe', 'Design and build, weekend', S.settings.buildWe || 60, 'number')])],
+    plan: [f('st_start', 'Week 1 starts (pick any day in that week)', S.start, 'date'), el('div', { class: 'tri' }, [sel('st_set', 'Daily set', S.settings.setSize === 'double' ? 'double' : 'smallest', [['smallest', 'Smallest: one item per section'], ['double', 'Double: two items per section']]), f('st_time', 'Study time', S.settings.studyTime || '07:00', 'time')]), el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'There is no daily time limit: each day holds one item from every section of Learn, Practice and Interview, and XP decides when the module moves on. Minutes are shown as a guide.' })],
     ai: [sel('st_ai', 'AI features', S.settings.ai === false ? 'off' : 'on', [['on', 'On: instant grading, practice runs and the Claude Code track'], ['off', 'Off: study without AI (self-check with model answers)']]),
       el('div', { class: 'duo' }, [sel('st_coach', 'Coach answers with', S.settings.coachVia || 'mac', [['mac', 'Claude Code on my Mac'], ['hints', 'Hints only (no AI)']]), sel('st_grade', 'Grading model', S.settings.gradeModel || 'auto', [['auto', 'Automatic'], ['haiku', 'Haiku (cheapest)'], ['sonnet', 'Sonnet (most thorough)']])]),
       note('AI runs through Claude Code on your Mac (the grader service, directly or through Sync). No API key is stored in this browser.'), graderStatus()],
@@ -1063,6 +1065,9 @@ function mergeState(a, b) {
   const when = v => v && typeof v === 'object' ? (v.at || v.t || 0) : 0;
   by('live', (x, y) => !!x.done !== !!y.done ? (x.done ? x : y) : Object.keys(x.ans || {}).length !== Object.keys(y.ans || {}).length ? (Object.keys(x.ans || {}).length > Object.keys(y.ans || {}).length ? x : y) : when(x) > when(y) ? x : y);
   by('reels', (x, y) => when(x) > when(y) ? Object.assign({}, y, x) : Object.assign({}, x, y));
+  /* the daily set (F9): one day's picks from both devices (the first device's order, then the other's extras), done once either finished it */
+  by('dayset', (x, y) => { const ids = new Set(), items = []; [].concat(x.items || [], y.items || []).forEach(r => { if (r && !ids.has(r.id)) { ids.add(r.id); items.push(r); } }); return { items, at: Math.min(x.at || Infinity, y.at || Infinity), full: Math.max(x.full || 0, y.full || 0) || undefined }; });
+  by('cmp', (x, y) => ((x.at || 0) >= (y.at || 0) ? Object.assign({}, x, { done: x.done || y.done }) : Object.assign({}, y, { done: y.done || x.done })));
   by('recall', (x, y) => when(x) > when(y) ? x : y); /* daily recall: the newer rating of an item wins */
   by('steps', (x, y) => when(x) > when(y) ? x : y); /* integrated week steps: the newer edit of a step wins */
   ['playbook', 'tabs', 'gitlab', 'rq', 'planned', 'metrics'].forEach(k => by(k, (x, y) => y));

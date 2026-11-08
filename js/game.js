@@ -16,7 +16,7 @@ function gameXP() {
   const sc = schedule(), g = gameState(); let xp = 0;
   sc.units.forEach(u => { if (u.isDone) xp += XP_KIND[u.kind] || 10; });
   ['py', 'dsa', 'sql', 'spark'].forEach(k => (DATA[k] || []).forEach(x => { if (S.solved[x.id]) xp += XP_LV[x.lv] || 15; }));
-  Object.values(S.live || {}).forEach(m => { if (m && m.done) { const a = Object.values(m.ans || {}).map(liveAvg).filter(v => !isNaN(v)); xp += 40 + (a.length ? Math.round(10 * a.reduce((x, y) => x + y, 0) / a.length) : 0); } });
+  Object.values(S.live || {}).forEach(m => { if (m && m.done) { const a = Object.values(m.ans || {}).map(liveAvg).filter(v => !isNaN(v)), av = a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0; xp += m.kind === 'one' ? 8 + Math.round(2 * Math.max(0, av - 2)) : 40 + Math.round(10 * av); } }); /* a weekday's one live question (F9): 8, plus 2 per rubric point above 2 */
   Object.values(S.mock || {}).forEach(m => { if (m && m.sub) xp += 30; });
   Object.values(g.warm).forEach(w => { xp += 2 * (w.right || 0) + (w.best || 0); });
   xp += 5 * Object.keys(S.rq || {}).length;
@@ -24,6 +24,11 @@ function gameXP() {
   xp += 25 * Object.keys((S.sim && S.sim.done) || {}).length; /* design simulator challenges passed */
   xp += 2 * Object.values(S.recall || {}).reduce((a, r) => a + ((r && r.n) || 0), 0); /* daily recall: 2 per item recalled */
   if (S.loop) { xp += 15 * Object.values(S.loop.cc || {}).filter(x => x && x.fixed).length + 10 * Object.values(S.loop.stories || {}).filter(x => x && !x.del && x.title).length; } /* interview loop: code fixed, stories written */
+  /* the daily set (F9): loop drills practised, interview-set questions ticked, comparisons written, and +20 for every full set */
+  if (S.loop) Object.values(S.loop.reps || {}).forEach(d => { xp += 10 * Object.keys(d || {}).length; });
+  Object.values(S.iv || {}).forEach(st => { Object.values(st || {}).forEach(v => { if (v === true || v === 1) xp += 5; }); });
+  Object.values(S.cmp || {}).forEach(c => { if (c && c.done) xp += 10; });
+  if (typeof dayBonusXP === 'function') xp += dayBonusXP();
   return xp;
 }
 /* the best weekend (boss) round at each level. Honest ladder (review 5): only rounds with no self-marked answer count
@@ -44,6 +49,12 @@ function gameGateText(L) {
 }
 /* days with real activity; a missed day is covered by that week's one freeze */
 function gameDays() {
+  /* F9: from the first daily set on, a streak day is a day whose full set was done; earlier days keep the old rule (any real activity) */
+  const first = typeof dayFirst === 'function' ? dayFirst() : null;
+  if (first) { const old = gameDaysAny(), days = new Set([...old].filter(k => k < first)); dayFullDays().forEach(k => days.add(k)); return days; }
+  return gameDaysAny();
+}
+function gameDaysAny() {
   const g = gameState(), days = new Set(Object.keys(g.days));
   Object.values(S.doneAt || {}).forEach(t => { if (t) days.add(iso(new Date(t))); });
   Object.entries(S.live || {}).forEach(([k, m]) => { if (m && m.done) days.add(k); });
