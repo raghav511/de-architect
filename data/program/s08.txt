@@ -94,6 +94,16 @@ bronze = (spark.readStream.format("cloudFiles")
 
 **Deployment.** Jobs, pipelines and their settings are defined in files and deployed through CI with asset bundles, the same discipline as Terraform.
 
+**Apps and agents.** Three newer pieces put applications and agents next to the data, and interviewers for AI data engineering roles now name them. The names and details change quickly, so check the current documentation before you rely on one.
+
+| Piece | What it is | Use it for |
+|---|---|---|
+| **Lakebase** | A managed Postgres database inside the Databricks platform, with storage separated from compute, and lakehouse tables that can be synced into it for fast lookups | Application state and low-latency reads: an agent's proposals and approvals, a feature lookup, an app's own tables, without running a separate database |
+| **Databricks Apps** | Hosting for data and AI web apps (Python or Node) on serverless compute inside the workspace, signed in with the workspace's identities and governed by Unity Catalog permissions | A small internal tool or the approval screen of an agent, deployed without your own servers |
+| **Agent Bricks** | A way to build an agent for a common task (such as extracting fields from documents or answering over your knowledge) from a description and your data, with evaluation generated and the agent tuned against it | A first version of an agent with an evaluation from day one, before deciding whether to build it by hand with the agent framework and model serving |
+
+Together they cover the deployed capstone in 12.4: the pipeline and evidence in Delta, the approvals in Lakebase, the screen as an App, and the agent built and evaluated with Agent Bricks or by hand.
+
 ## 8.4 Snowflake from the inside
 
 Snowflake has three layers that scale separately.

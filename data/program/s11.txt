@@ -34,6 +34,18 @@ The same skills define a role that is growing quickly. A **forward deployed engi
 
 Your profile fits. Years of analytical work with business teams, then data engineering, then agentic automation for a go-to-market team. This sprint trains the part of that profile that interviews test least directly and value most.
 
+### What a forward deployed team expects
+
+Postings and interview guides for the role describe much the same first months. Expect to be judged on these, in the interview and on the job.
+
+- **You find the real problem.** The customer asks for a dashboard; you learn that the decision behind it is which shipments to expedite, and build for that (11.2, 11.3).
+- **You ship something useful in days, then make it production grade.** A working slice in the customer's own environment beats a perfect design document (11.4).
+- **You own the data path end to end.** Messy sources, access rules, freshness, failures at 3 a.m.: the AI part only works when the data under it does.
+- **You put agents to work safely.** The agent reads context your pipeline built, proposes actions, and a person approves; every action is logged and can be undone. Evaluation numbers, not demos, decide whether it ships.
+- **You report back to product.** What you built for one customer should become a feature for every customer, so you write it up and argue for it.
+
+Your capstone can show all five: see [the deployed variant in 12.4](#/learn/s12/chapter).
+
 ## 11.2 Discovery
 
 Every engagement begins with a conversation in which the customer describes a symptom and you find the problem. Go in with a list, and leave with written answers.
