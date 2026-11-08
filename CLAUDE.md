@@ -104,6 +104,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.36.32: Tests: lab journeys skip the week steps; O5 sits after Leadership 1.
 - 1.36.31: Meridian editor pass: questions, links to practice, recall and the cross-season threads.
 - 1.36.30: Tests: the A6 journey counts its exercises from the bank.
 - 1.36.29: A hard stop for today's reels and a forgiving streak (ENGAGE 7 and 8); The Meridian series: Previously on, Tomorrow on, and the story (ENGAGE 1 and 3).
