@@ -99,6 +99,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.36.20: Module 7 lab runs in the app: the cloud batch path.
 - 1.36.19: AI system design round: four worked designs, challenges and walkthroughs; Module A6: AI engineering in production (serving, cost, gateways, evals and traces); Module O3: data governance; Tests: test browsers refuse outside hosts they do not stub.
 - 1.36.18: CLAUDE.md: merge the duplicated Architect's lens, Live mock and lens-plan bullets; Module 8 lab runs in the app: Delta, erasure, masking and an LLM step.
 - 1.36.17: F7 pilot: integrated week steps in Kafka (s05); Tests: profile journey no longer fills the removed API key field; Module 2 lab runs in the app: an Iceberg-style table; Module 3 lab runs in the app: Spark under load; Whole program in Today: Learn, Practice and Interview tabs (F2, F8).
