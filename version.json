@@ -1,13 +1,8 @@
 {
-  "version": "1.36.14",
+  "version": "1.36.15",
   "date": "2026-11-08",
   "notes": [
-    "New in D1 (D1.9): the architect's lens for Postgres. When to pick it over MySQL, a distributed SQL database or a warehouse, who owns it, how it fails and scales, and six under-the-hood answers: MVCC, vacuum and bloat, the WAL and replication slots, how the planner uses statistics, GIN, BRIN and partial indexes, connection poolers, and partitioning. Each answer says which Postgres version it needs and links to the step-through figure above it.",
-    "Three new interview questions, three quiz questions and eight reels for the lens.",
-    "New module O1, Data mesh and data products, right after DE 10: when domain ownership is the right answer and when it is not, what a data product needs (owner, contract, service levels, interfaces, catalog), the self-serve platform, federated governance enforced in code, product thinking, migrating from a central team, and the failure modes companies hit.",
-    "An architect's lens with six under-the-hood answers, and four exercises that run in your browser: check a data contract, an SLO report with its error budget, breaking or not between contract versions, and whether a product can be retired.",
-    "A design problem (move a central data team to domain-owned products), a simulator challenge (a shared platform with a noisy neighbour), ten quiz and seven interview questions, and twelve reels. If you started before this update, What is new lists it and nothing is marked done.",
-    "No change you will see: the every-feature test now tells a slow or missing connection apart from a real Python problem.",
-    "1065 of 1255 reels now play in the natural Heart voice."
+    "The app opens faster on phones: on 4G, Today is ready in about 5 seconds instead of 9 on a first visit, and in about 3 instead of 8 when you come back.",
+    "1093 of 1275 reels now play in the natural Heart voice."
   ]
 }
