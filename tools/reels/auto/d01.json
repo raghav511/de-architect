@@ -7110,9 +7110,9 @@
     "check": {
      "q": "Two jobs read n = 10, each adds one and writes back, and the result is 11. What is the best fix?",
      "opts": [
-      "Run the jobs more slowly",
-      "Use an atomic UPDATE that sets n = n + 1",
-      "Switch to dirty reads"
+      "Run the two jobs further apart in time",
+      "Use an atomic UPDATE: set n = n + 1",
+      "Switch the jobs to read uncommitted"
      ],
      "ans": 1,
      "why": "An atomic update does the read and write in one step inside the database, so neither increment can be overwritten."
@@ -7233,7 +7233,7 @@
      "Find rules in your system that span several rows, such as minimum staffing or stock limits.",
      "For each, use serializable isolation or SELECT ... FOR UPDATE on the rows you check, and add retry logic."
     ],
-    "part": "1 of 3"
+    "part": "1 of 4"
    },
    {
     "title": "Deadlocks and how to avoid them",
@@ -7343,7 +7343,7 @@
      "Make sure your application retries when the database aborts a transaction as a deadlock victim.",
      "Review code that updates multiple rows and sort the keys before locking."
     ],
-    "part": "2 of 3"
+    "part": "2 of 4"
    },
    {
     "title": "Why two merges on one Iceberg table collide",
@@ -7471,7 +7471,130 @@
      "Check whether your orchestrator can run two writers on one table at the same time, and serialize them if so.",
      "Partition merge workloads so concurrent jobs touch disjoint files."
     ],
-    "part": "3 of 3"
+    "part": "3 of 4"
+   },
+   {
+    "title": "Linearizable is not serializable",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Interviewers love this one. Is linearizable a weaker kind of serializable? No. They answer different questions.",
+      "show": {
+       "t": "big",
+       "text": "Two different promises",
+       "sub": "Not one ladder"
+      }
+     },
+     {
+      "say": "Serializable is about transactions. Many reads and writes behave as if they ran one at a time, in some order. But that order may ignore the clock: a transaction that finished before yours started can still appear after it.",
+      "show": {
+       "t": "scene",
+       "title": "Serializable: some *order*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Txn A",
+         "sub": "ends 10:00",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Txn B",
+         "sub": "starts 10:01",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "o",
+         "label": "Serial order",
+         "sub": "B then A is allowed",
+         "x": 50,
+         "y": 70,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "o"
+        ],
+        [
+         "b",
+         "o"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0,
+         "show": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": "o"
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "b",
+          "o"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "a",
+          "o"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Order may ignore the clock",
+          "tone": "amber",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Linearizable is about one object, like a key. Once a write finishes, every later read sees it, in real time. Strict serializable is both at once. Snapshot isolation and read committed sit below serializable, on the transaction side.",
+      "show": {
+       "t": "points",
+       "title": "Who promises what",
+       "items": [
+        "Serializable: transactions, some order",
+        "Linearizable: one object, real time",
+        "Strict serializable: both",
+        "Snapshot, read committed: weaker transactions"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A store says it is serializable. What does that alone not promise?",
+     "opts": [
+      "That reads respect the order on the clock",
+      "That transactions act as if run one by one",
+      "That no dirty reads ever happen"
+     ],
+     "ans": 0,
+     "why": "Serializable allows any serial order; matching real time is linearizability, and having both is strict serializability."
+    },
+    "work": [
+     "When a vendor says \"consistent\", ask: serializable, linearizable or strict serializable?",
+     "For read-after-write needs, such as a user seeing their own update, check for linearizable reads, not only the isolation level.",
+     "Write the guarantee each store gives into the design doc next to the invariant it protects."
+    ],
+    "part": "4 of 4"
    },
    {
     "title": "Choosing an isolation level on purpose",
@@ -7511,7 +7634,7 @@
       }
      },
      {
-      "say": "Use serializable only where an invariant spans rows, like on-call rules or inventory limits. Across regions, Spanner gives serializable but pays in commit latency.",
+      "say": "Use serializable only where an invariant spans rows, like on-call rules or inventory limits. Across regions, Spanner goes further: strictly serializable, which adds real-time order, and it pays in commit wait.",
       "show": {
        "t": "points",
        "title": "Where to pay for it",
@@ -7600,9 +7723,9 @@
     "check": {
      "q": "A table receives thousands of tiny concurrent commits per minute and most fail on conflict. Best response?",
      "opts": [
-      "Retry harder with no delay",
-      "Batch writes through a queue or partition by writer",
-      "Move to read committed"
+      "Retry each failed commit at once with no delay",
+      "Funnel writes through a queue or split by writer",
+      "Lower the isolation level to read committed"
      ],
      "ans": 1,
      "why": "Optimistic concurrency thrashes under heavy contention. Batching reduces commit count, and partitioning avoids overlap."

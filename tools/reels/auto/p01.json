@@ -4724,11 +4724,11 @@
       }
      },
      {
-      "say": "For heavy computation, use processes, a vectorised library, or the engine. Python 3.13 offers an optional free-threaded build, but treat it as new.",
+      "say": "For heavy computation, use processes, a vectorised library, or the engine. Python 3.14 officially supports a free-threaded build, but it is a separate opt-in install, so check your libraries first.",
       "show": {
        "t": "big",
-       "text": "CPU-bound: processes or engine",
-       "sub": "I/O-bound: threads work"
+       "text": "CPU work: processes or vectors",
+       "sub": "Free-threaded 3.14 is opt-in"
       }
      }
     ],

@@ -106,6 +106,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.36.35: Reel review: TLS turns off Kafka zero-copy, Kafka 4 opt-in consumer protocol, Parquet row-group size by writer, free-threaded Python 3.14, new reel on linearizable versus serializable.
 - 1.36.34: A cast you get to know, and case files after a full set (ENGAGE 6, 9).
 - 1.36.33: Episodes frame the work, the weekend finale with a rematch, the season map (ENGAGE 2, 4, 5).
 - 1.36.32: Tests: lab journeys skip the week steps; O5 sits after Leadership 1.
