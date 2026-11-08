@@ -330,6 +330,7 @@ function vToday(off) {
     nav,
     pre ? el('p', { style: { margin: 0 }, text: 'Your plan starts ' + shortDate(S.start) + '.' }) : null,
     off > 0 && !pre ? el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'A preview: the set is chosen on the morning of the day, from what is still open then.' }) : null,
+    off === 0 && !pre && typeof repairHint === 'function' && repairHint(k) ? el('div', { class: 'hint quiet', role: 'status' }, [repairHint(k)]) : null,
     !pre && items.length ? el('div', { class: 'hint' + (full ? '' : ' quiet'), role: 'status' }, full ? [el('b', { text: 'Daily set done · +' + DAY_BONUS + ' XP. ' }), 'It counts for your streak.'] : ['Finish all ' + items.length + ' for +' + DAY_BONUS + ' XP and a streak day. No time limit: the minutes are only a guide.']) : null].concat(PARTS.map(paneOf)));
   const D = DATA.design[m];
   const modCard = el('section', { class: 'card pad stack' }, [

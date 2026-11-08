@@ -51,8 +51,29 @@ function gameGateText(L) {
 function gameDays() {
   /* F9: from the first daily set on, a streak day is a day whose full set was done; earlier days keep the old rule (any real activity) */
   const first = typeof dayFirst === 'function' ? dayFirst() : null;
-  if (first) { const old = gameDaysAny(), days = new Set([...old].filter(k => k < first)); dayFullDays().forEach(k => days.add(k)); return days; }
+  if (first) { const old = gameDaysAny(), days = new Set([...old].filter(k => k < first)); dayFullDays().forEach(k => days.add(k)); gameRepaired().forEach(k => days.add(k)); return days; }
   return gameDaysAny();
+}
+/* a forgiving streak (ENGAGE 8): a day without a full set counts again when, within the next two days, a full set is done plus an
+   extra set's worth: one One more item finished in each of Learn, Practice and Interview. Earned by studying, never bought; one
+   repair day mends one missed day. */
+const REPAIR_DAYS = 2;
+function repairExtra(k) { const ds = (S.dayset || {})[k]; if (!ds || !ds.full) return false; let its = []; try { its = daySet(k); } catch (e) { } return ['learn', 'practice', 'interview'].every(t => its.some(x => x.more && x.done && x.tab === t)); }
+function gameRepaired() {
+  const ds = S.dayset || {}, out = new Set(), used = new Set(), first = typeof dayFirst === 'function' ? dayFirst() : null, today = iso(new Date()); if (!first) return out;
+  for (let d = first; d < today; d = dayAdd(d, 1)) {
+    if (ds[d] && ds[d].full) continue;
+    for (let j = 1; j <= REPAIR_DAYS; j++) { const r = dayAdd(d, j); if (r > today || used.has(r)) continue; if (repairExtra(r)) { out.add(d); used.add(r); break; } }
+  }
+  return out;
+}
+/* Today's note: which recent day can still count, and how (information only, never a warning) */
+function repairHint(k) {
+  const first = typeof dayFirst === 'function' ? dayFirst() : null; if (!first) return null;
+  const ds = S.dayset || {}, rep = gameRepaired();
+  for (let j = 1; j <= REPAIR_DAYS; j++) { const d = dayAdd(k, -j); if (d < first || (ds[d] && ds[d].full) || rep.has(d)) continue;
+    return 'You can still count ' + dayName(d) + ' in your streak: finish today\'s set, then One more in each tab.'; }
+  return null;
 }
 function gameDaysAny() {
   const g = gameState(), days = new Set(Object.keys(g.days));
