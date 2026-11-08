@@ -799,6 +799,18 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => location.hash.startsWith('#/learn/s02')), 'module 8 does not link to the Iceberg lens');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
+  await T('architect\'s lens: Postgres internals (D1.9) shows seven questions and six internals answers (MVCC and vacuum, WAL and slots, planner, GIN and BRIN, poolers, partitioning) that link to D1\'s figures, its interview and quiz questions join D1, and its reels cover four levels', async p => {
+    await go(p, '#/learn/d01/chapter', 1500); await p.waitForSelector('.lens');
+    ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details:not(.fresh)').length === 6 && /xmin/.test(l.textContent) && /max_slot_wal_keep_size/.test(l.textContent) && /CREATE STATISTICS/.test(l.textContent) && /BRIN/.test(l.textContent) && /PgBouncer/.test(l.textContent) && /DETACH PARTITION/.test(l.textContent); }), 'Postgres lens card incomplete');
+    ok(await p.evaluate(() => getComputedStyle(document.querySelector('.lens td')).display === 'block' && document.documentElement.scrollWidth <= innerWidth), 'Postgres lens is not stacked on a phone or scrolls sideways');
+    ok(await p.evaluate(() => [...document.querySelectorAll('.lens a[href^="#fig-"]')].every(a => document.getElementById(a.getAttribute('href').slice(1))) && document.querySelectorAll('.lens a[href^="#fig-"]').length >= 6), 'a lens figure link points at no figure');
+    await p.evaluate(() => { const l = document.querySelector('.lens'); l.querySelectorAll('details').forEach(d => d.open = true); l.querySelector('a[href="#fig-wal"]').click(); });
+    await p.waitForTimeout(1200);
+    ok(await p.evaluate(() => location.hash === '#/learn/d01/chapter' && Math.abs(document.getElementById('fig-wal').getBoundingClientRect().top) < innerHeight / 2), 'the WAL figure link did not scroll to the figure, or changed the route');
+    ok(await p.evaluate(async () => { const s = await sprint('d01'); return s.interview.filter(q => /Postgres does not scale|MVCC and vacuum in Postgres|primary ran out of disk/.test(q.Q)).length === 3 && s.quiz.filter(q => /row count is flat|append-only events table of 2 billion|wrong time zone/.test(q.Q)).length === 3; }), 'Postgres lens questions not in the interview set or quiz');
+    ok(await p.evaluate(async () => { const r = (await reelsFor('d01')).filter(x => x.sec === 'D1.9'); return r.length === 8 && new Set(r.map(x => x.level)).size === 4; }), 'Postgres lens reels missing or not at four levels');
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
   await T('live mock: Today links it; five questions from this week (concept, under the hood, lens, staff slot, recall); AI follow-up and rubric scores; weak answers open the next mock; self-marking with AI off', async p => {
     await p.route('https://api.anthropic.com/**', r => r.abort()); /* the app never calls an AI service from the browser */
     p.setDefaultTimeout(8000); p.on('pageerror', e => console.log('PAGEERR', e.message));

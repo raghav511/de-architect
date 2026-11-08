@@ -7728,5 +7728,865 @@
     "part": "2 of 2"
    }
   ]
+ },
+ "D1.9 Architect's lens: Postgres internals": {
+  "hash": "5dd74aa00226",
+  "sec": "D1.9",
+  "reels": [
+   {
+    "title": "Postgres as a careful librarian",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Why is Postgres the default database for so many companies?",
+      "show": {
+       "t": "big",
+       "text": "The careful librarian",
+       "sub": "Postgres in one picture"
+      }
+     },
+     {
+      "say": "Picture a librarian who never erases a page. When a book is corrected, a new copy goes on the shelf and the old one is marked out of date. Readers keep the version they started with, so nobody waits.",
+      "show": {
+       "t": "scene",
+       "title": "New copy, old one *marked*",
+       "nodes": [
+        {
+         "id": "o",
+         "label": "Old copy",
+         "sub": "out of date",
+         "x": 25,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "n",
+         "label": "New copy",
+         "sub": "current",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "o",
+         "n"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "o"
+        },
+        {
+         "at": 0.4,
+         "show": "n"
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "o",
+          "n"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Readers never block writers",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Every change is first written in a logbook, so after a power cut the librarian replays it. A cleaner, called vacuum, later clears the out of date copies.",
+      "show": {
+       "t": "points",
+       "title": "Three habits",
+       "items": [
+        "New versions, not edits",
+        "A logbook for every change",
+        "A cleaner for old copies"
+       ]
+      }
+     },
+     {
+      "say": "That is Postgres: one trusted record of the business, with strict rules and many extensions. It is not where you run huge analytics.",
+      "show": {
+       "t": "points",
+       "title": "Postgres is for",
+       "items": [
+        "The system of record",
+        "Many small transactions",
+        "Not big analytics scans"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "In the librarian picture, why do readers never wait for a writer?",
+     "opts": [
+      "The writer works at night",
+      "A change makes a new copy and readers keep their version",
+      "Readers lock the shelf first"
+     ],
+     "ans": 1,
+     "why": "Postgres keeps row versions, so each reader sees a consistent snapshot while writers add new versions."
+    },
+    "work": [
+     "List which of your systems is the record of truth and which only copy it.",
+     "Find out who runs vacuum and backups for your main database."
+    ]
+   },
+   {
+    "title": "MVCC, vacuum and bloat",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Your table has the same number of rows as last month, but it is three times bigger on disk. Why?",
+      "show": {
+       "t": "big",
+       "text": "Same rows, triple size",
+       "sub": "That is bloat"
+      }
+     },
+     {
+      "say": "An update in Postgres writes a new row version and marks the old one dead. Dead versions stay until vacuum proves no running query can still see them.",
+      "show": {
+       "t": "scene",
+       "title": "Dead versions *wait*",
+       "nodes": [
+        {
+         "id": "u",
+         "label": "UPDATE",
+         "sub": "new version",
+         "x": 25,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "d",
+         "label": "Dead rows",
+         "sub": "kept",
+         "x": 75,
+         "y": 30,
+         "tone": "red",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "u",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "u",
+          "d"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "u",
+          "d"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Vacuum reclaims them later",
+          "tone": "amber",
+          "icon": "⏱"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "One transaction left open for a day holds back every cleanup. So do sessions idle in a transaction and replication slots nobody reads.",
+      "show": {
+       "t": "bars",
+       "title": "Table size after a week",
+       "unit": "gigabytes",
+       "items": [
+        [
+         "",
+         1,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Fix the cause: time out idle transactions, drop unused slots, and lower autovacuum thresholds on large tables. Use pg repack to shrink without a long lock.",
+      "show": {
+       "t": "points",
+       "title": "Prevent bloat",
+       "items": [
+        "Kill idle transactions",
+        "Drop unused slots",
+        "Tune autovacuum per table"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does one long-open transaction cause bloat everywhere?",
+     "opts": [
+      "It locks every table",
+      "Vacuum cannot remove rows its snapshot might still need",
+      "It fills the write ahead log"
+     ],
+     "ans": 1,
+     "why": "Vacuum only removes versions no snapshot can see, and the oldest open snapshot sets that line."
+    },
+    "work": [
+     "Query pg_stat_activity for sessions idle in transaction.",
+     "Set idle_in_transaction_session_timeout on your app role."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "The WAL and replication slots",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "CDC stopped for a weekend, and on Monday the database was down. How?",
+      "show": {
+       "t": "big",
+       "text": "A weekend outage",
+       "sub": "Caused by a slot"
+      }
+     },
+     {
+      "say": "Every change goes to the write ahead log first. Replicas and change data capture read that log. A replication slot promises a reader that Postgres will keep every log file it has not confirmed.",
+      "show": {
+       "t": "scene",
+       "title": "A slot keeps the *log*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Primary",
+         "sub": "writes WAL",
+         "x": 25,
+         "y": 30,
+         "tone": "blue",
+         "kind": "disk"
+        },
+        {
+         "id": "c",
+         "label": "CDC reader",
+         "sub": "stopped",
+         "x": 75,
+         "y": 30,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "p",
+          "c"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "p",
+          "c"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "dim": "c"
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Unread WAL piles up",
+          "tone": "red",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "With the reader stopped, the log grows until the disk is full and the primary stops accepting writes.",
+      "show": {
+       "t": "bars",
+       "title": "WAL kept over a weekend",
+       "unit": "gigabytes",
+       "items": [
+        [
+         "",
+         1,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Alert on slot lag, set max slot WAL keep size so a stuck slot is dropped instead, and remove slots nobody owns. Since Postgres seventeen, slots can follow a failover.",
+      "show": {
+       "t": "points",
+       "title": "Guard the slot",
+       "items": [
+        "Alert on slot lag",
+        "Cap kept WAL",
+        "Drop unowned slots"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why can an unused logical replication slot fill the primary disk?",
+     "opts": [
+      "It copies every table nightly",
+      "The primary keeps all WAL the slot has not confirmed",
+      "It disables checkpoints"
+     ],
+     "ans": 1,
+     "why": "A slot guarantees its consumer the log, so unconfirmed WAL is never recycled."
+    },
+    "work": [
+     "List every replication slot and its owner.",
+     "Add an alert on slot lag in bytes."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Why the planner picks a bad plan",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "The same query ran in one second yesterday and ten minutes today. Nothing in the code changed.",
+      "show": {
+       "t": "big",
+       "text": "Same query, new plan",
+       "sub": "Estimates went wrong"
+      }
+     },
+     {
+      "say": "The planner picks a plan from estimated row counts, built from statistics such as common values and histograms. Wrong estimates give wrong plans: a nested loop over a million rows instead of a hash join.",
+      "show": {
+       "t": "bars",
+       "title": "Rows: estimated versus actual",
+       "unit": "thousand rows",
+       "items": [
+        [
+         "",
+         1,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Look at explain analyze. A gap of ten times or more is the clue. Causes are stale statistics after a big load, correlated columns like city and postcode, or a function on the column.",
+      "show": {
+       "t": "code",
+       "title": "Find the gap",
+       "text": "EXPLAIN (ANALYZE, BUFFERS)\nSELECT ... ;\n-- rows=1  actual rows=900000"
+      }
+     },
+     {
+      "say": "Run analyze, add extended statistics for correlated columns, and rewrite the filter. Postgres has no built in hints, so fix the estimate.",
+      "show": {
+       "t": "points",
+       "title": "Fix the estimate",
+       "items": [
+        "ANALYZE after loads",
+        "CREATE STATISTICS",
+        "No function on the column"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What usually explains a sudden bad Postgres plan?",
+     "opts": [
+      "The server ran out of CPU",
+      "Row estimates far from the actual counts",
+      "Too many replicas"
+     ],
+     "ans": 1,
+     "why": "The planner chooses from estimates; when statistics are stale or misleading, it picks the wrong join or scan."
+    },
+    "work": [
+     "Compare estimated and actual rows for your slowest query.",
+     "Run ANALYZE as the last step of every big load."
+    ],
+    "part": "1 of 3"
+   },
+   {
+    "title": "GIN, BRIN and other indexes",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "A B tree index on two billion rows takes forty gigabytes. Another index does the same job in a few megabytes. Which one?",
+      "show": {
+       "t": "big",
+       "text": "Forty gigabytes or a few megabytes",
+       "sub": "Pick the right index"
+      }
+     },
+     {
+      "say": "BRIN stores only the minimum and maximum for each range of pages. On an append only table filtered by time, it skips most of the table, like warehouse pruning. On random order it skips nothing.",
+      "show": {
+       "t": "bars",
+       "title": "Index size, two billion rows",
+       "unit": "gigabytes",
+       "items": [
+        [
+         "",
+         1,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "GIN is an inverted index from each element to its rows. Use it for JSON containment, arrays, full text search, and trigram search for text in the middle of a value.",
+      "show": {
+       "t": "scene",
+       "title": "Element to *rows*",
+       "nodes": [
+        {
+         "id": "k",
+         "label": "tag: urgent",
+         "sub": "element",
+         "x": 25,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "r",
+         "label": "Rows 4, 19, 77",
+         "sub": "matches",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "k",
+         "r"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "k",
+          "r"
+         ]
+        },
+        {
+         "at": 0.45,
+         "packet": [
+          "k",
+          "r"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.85,
+         "chip": {
+          "text": "Slower writes, fast lookups",
+          "tone": "teal",
+          "icon": "⇉"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Partial indexes cover only the rows you query, like open orders. Every index slows writes, so drop the ones never scanned.",
+      "show": {
+       "t": "points",
+       "title": "Index choices",
+       "items": [
+        "BRIN: ordered, huge tables",
+        "GIN: JSON, arrays, text",
+        "Partial: only hot rows"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "When is a BRIN index a poor choice?",
+     "opts": [
+      "On an append only table filtered by time",
+      "When the column values are in random physical order",
+      "When the table is very large"
+     ],
+     "ans": 1,
+     "why": "BRIN relies on each page range covering a narrow span of values; random order makes every range overlap."
+    },
+    "work": [
+     "Find indexes with zero scans in pg_stat_user_indexes.",
+     "Try BRIN on your largest time ordered table."
+    ],
+    "part": "2 of 3"
+   },
+   {
+    "title": "Connections and poolers",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your app scales to five hundred serverless functions, and Postgres falls over. Why?",
+      "show": {
+       "t": "big",
+       "text": "Five hundred connections",
+       "sub": "One process each"
+      }
+     },
+     {
+      "say": "Every Postgres connection is its own operating system process with its own memory. Hundreds of active ones fight for CPU and memory, so the default limit is only one hundred.",
+      "show": {
+       "t": "bars",
+       "title": "Throughput by active connections",
+       "unit": "percent",
+       "items": [
+        [
+         "",
+         1,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "A pooler such as PgBouncer keeps a few server connections and lends them out per transaction. Capacity multiplies, but session state breaks: plain set commands, temporary tables and held advisory locks leak between clients.",
+      "show": {
+       "t": "scene",
+       "title": "Lend per *transaction*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "App clients",
+         "sub": "500",
+         "x": 20,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "b",
+         "label": "PgBouncer",
+         "sub": "pool",
+         "x": 50,
+         "y": 30,
+         "tone": "plum"
+        },
+        {
+         "id": "p",
+         "label": "Postgres",
+         "sub": "40 connections",
+         "x": 80,
+         "y": 30,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "b"
+        ],
+        [
+         "b",
+         "p"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "a",
+          "b",
+          "p"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "a",
+          "b"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "b",
+          "p"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Use SET LOCAL, not SET",
+          "tone": "plum",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Keep transactions short and give batch jobs their own small pool.",
+      "show": {
+       "t": "points",
+       "title": "Pooling rules",
+       "items": [
+        "Few server connections",
+        "Short transactions",
+        "No session state"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What breaks under transaction pooling?",
+     "opts": [
+      "Committed transactions",
+      "Session settings that leak to other clients",
+      "Primary keys"
+     ],
+     "ans": 1,
+     "why": "Each transaction may get a different server connection, so session level state no longer belongs to one client."
+    },
+    "work": [
+     "Count active connections at peak against CPU cores.",
+     "Replace session SET commands with SET LOCAL."
+    ],
+    "part": "3 of 3"
+   },
+   {
+    "title": "Partitioning and when to leave Postgres",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Deleting last year from a huge table takes hours and bloats it. There is a one second way.",
+      "show": {
+       "t": "big",
+       "text": "Drop a year in a second",
+       "sub": "Declarative partitioning"
+      }
+     },
+     {
+      "say": "A partitioned table is split into child tables by month. Queries on recent months skip the rest, and old data leaves by detaching and dropping one partition, with no dead rows.",
+      "show": {
+       "t": "scene",
+       "title": "Detach, then *drop*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Trips",
+         "sub": "partitioned",
+         "x": 50,
+         "y": 12,
+         "tone": "blue"
+        },
+        {
+         "id": "j",
+         "label": "January",
+         "sub": "detach",
+         "x": 25,
+         "y": 60,
+         "tone": "grey"
+        },
+        {
+         "id": "n",
+         "label": "November",
+         "sub": "hot",
+         "x": 75,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "j"
+        ],
+        [
+         "t",
+         "n"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "t"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "j",
+          "n"
+         ]
+        },
+        {
+         "at": 0.6,
+         "dim": "j"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "No DELETE, no bloat",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Partitions all live on one server, so they add no write capacity. Scale up, add replicas, partition and pool first. Move to Citus or distributed SQL only when writes outgrow one primary or must commit in several regions.",
+      "show": {
+       "t": "points",
+       "title": "Scale in this order",
+       "items": [
+        "Bigger machine",
+        "Replicas and pooling",
+        "Partition, then shard"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why is detaching a partition better than deleting a year of rows?",
+     "opts": [
+      "It compresses the data",
+      "It is instant and leaves no dead rows to vacuum",
+      "It moves the year to another server"
+     ],
+     "ans": 1,
+     "why": "Detach and drop removes a whole child table at once, while DELETE leaves dead rows and index bloat."
+    },
+    "work": [
+     "Find your largest table that deletes old rows on a schedule.",
+     "Write down the write rate one primary would need before you shard."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Postgres, MySQL or distributed SQL",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "\"Postgres does not scale, let us move to a distributed database.\" What do you ask first?",
+      "show": {
+       "t": "big",
+       "text": "What exactly is limited?",
+       "sub": "Numbers before migrations"
+      }
+     },
+     {
+      "say": "Against MySQL, Postgres brings richer types, indexes, extensions and transactional schema changes. MySQL is equally solid for simple web workloads and shards very large behind Vitess.",
+      "show": {
+       "t": "scene",
+       "title": "Pick by *need*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Postgres",
+         "sub": "types, extensions",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "m",
+         "label": "MySQL",
+         "sub": "simple web, Vitess",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "d",
+         "label": "Distributed SQL",
+         "sub": "multi region writes",
+         "x": 50,
+         "y": 70,
+         "tone": "amber"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "p"
+        },
+        {
+         "at": 0.4,
+         "show": "m"
+        },
+        {
+         "at": 0.7,
+         "show": "d"
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Most limits come earlier",
+          "tone": "blue",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Distributed SQL such as CockroachDB or Spanner fits when writes outgrow one node or must commit in several regions, at higher latency and cost per write. Analytics belongs in a warehouse, fed by CDC.",
+      "show": {
+       "t": "points",
+       "title": "Before migrating",
+       "items": [
+        "Connections: add a pooler",
+        "Reads: add replicas",
+        "Analytics: move to a warehouse"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Analytics queries are slowing the Postgres primary. What is the usual fix?",
+     "opts": [
+      "Move the whole app to distributed SQL",
+      "Stream changes to a warehouse with CDC and query there",
+      "Raise max connections"
+     ],
+     "ans": 1,
+     "why": "Columnar warehouses serve large scans; CDC keeps them current without loading the primary."
+    },
+    "work": [
+     "Measure write rate and CPU on your primary at peak.",
+     "List analytics queries that run against the primary."
+    ],
+    "part": "2 of 2"
+   }
+  ]
  }
 }

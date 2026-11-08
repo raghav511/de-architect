@@ -199,6 +199,65 @@ Invalidate on write (delete the key when the row changes, often driven by CDC fr
 
 **Idempotency ties it together.** Retries, at-least-once delivery and replays (D1.7) are only safe when doing something twice has the same effect as doing it once. For a write API, the client sends an idempotency key with each request; the server stores the key with the result in the same transaction and returns the stored result when the key repeats.
 
+## D1.9 Architect's lens: Postgres internals
+
+The questions an architect is asked about Postgres, beyond writing SQL against it. Versions matter here: Postgres 17 (2024) and 18 (2025) changed vacuum memory, replication slots and I/O, and each answer says which release a feature needs.
+
+| Question | Short answer for Postgres |
+|---|---|
+| **What problem does it solve?** | A reliable, general-purpose transactional database: the system of record for application state, with strict SQL, real transactions, rich types (JSONB, arrays, ranges) and extensions (PostGIS, pgvector, pg_partman), on one server with replicas. |
+| **Why it over the alternatives?** | Against MySQL: richer types, indexes and extensions, stricter SQL and transactional DDL; MySQL (InnoDB) is just as solid for simple web workloads and has very large sharded deployments behind Vitess. Against a distributed SQL database (CockroachDB, YugabyteDB, Spanner): far simpler and cheaper while one primary can take the writes; distributed SQL wins when writes outgrow one node or must commit in several regions, at the cost of higher latency per write. Against a warehouse: Postgres stores rows for many small transactions; scans and aggregates over billions of rows belong in a columnar engine. |
+| **When not to use it?** | Analytics over large history (a warehouse or lakehouse); write volumes beyond one well-tuned primary (shard with Citus, or distributed SQL); very high-volume append-only events (Kafka, or an LSM store); search ranking at scale (a search engine); or as a queue for millions of jobs a minute. |
+| **Who owns and pays for it?** | A platform or database reliability team owns instances or the managed service (RDS, Aurora, Cloud SQL, AlloyDB), version upgrades, backups and point-in-time recovery, failover, poolers, extensions and parameter defaults. Application teams own schemas, migrations, queries and indexes. Data engineering owns its replication slots and read replicas used for extracts, since an abandoned slot can fill the primary's disk. |
+| **Where does it sit?** | Behind the applications as the source of truth, and at the start of the data platform: change data capture reads its WAL into Kafka or the lake (module 6), so analytics never query the primary. |
+| **How does it fail and scale?** | It scales up first (a bigger machine goes a long way), then out for reads with replicas, then by partitioning large tables and pooling connections; only then by sharding. It fails as connection exhaustion, autovacuum falling behind (bloat, then transaction ID wraparound), replication lag or a slot filling the disk, a lock queue behind a migration, a bad plan after statistics go stale, and lost recent writes when an asynchronous replica is promoted. |
+| **When do you move off it?** | When one primary cannot take the writes even after tuning, partitioning and moving reads away; when the business needs writes accepted in several regions at once; or when an analytics workload has grown inside it, which should move to a warehouse through CDC rather than off Postgres entirely. |
+
+### Under the hood
+
+**1. How does MVCC work in Postgres, and why do tables bloat?**
+<details><summary>Model answer</summary>
+
+Postgres never updates a row in place. Each row version (a tuple) carries the transaction id that created it (`xmin`) and the one that deleted it (`xmax`); an `UPDATE` writes a new version and marks the old one deleted, and each query's snapshot decides which versions it can see (step through [the isolation figure in D1.5](#fig-isolation)). Old versions stay in the table until `VACUUM` finds that no snapshot can still need them and marks the space reusable; the file does not shrink. Autovacuum runs this when about 20% of a table's rows have changed by default, which is too late for very large tables, so lower `autovacuum_vacuum_scale_factor` per table. Bloat comes from whatever holds back the oldest visible snapshot: long transactions, sessions left idle in a transaction, an abandoned replication slot, or a replica with `hot_standby_feedback`. Updates that change no indexed column and fit on the same page (HOT updates, helped by a lower `fillfactor`) avoid new index entries. Vacuum also freezes old rows, because transaction ids are 32-bit; if freezing falls far behind, Postgres stops accepting writes to prevent wraparound. Postgres 17 made vacuum use much less memory for dead-row tracking. Reclaim disk without a long exclusive lock with `pg_repack`, not `VACUUM FULL`.
+
+</details>
+
+**2. What does the WAL guarantee, and why can a replication slot fill the disk?**
+<details><summary>Model answer</summary>
+
+Every change is written to the write-ahead log before the data pages, and the log is flushed when a transaction commits, so after a crash Postgres replays it (step through [the WAL figure in D1.2](#fig-wal)). Checkpoints write dirty pages in the background so old WAL can be recycled. Replicas use the same log: physical streaming replication ships WAL bytes to standbys ([the replication figure in D1.3](#fig-replication)), and logical decoding (`wal_level = logical`) turns WAL into row changes for logical replication and CDC tools such as Debezium. A replication slot makes the primary keep every WAL segment its consumer has not confirmed, so a consumer that stops, or a slot nobody uses any more, makes WAL pile up until the disk is full and the primary stops. Guard it: alert on `pg_replication_slots` lag, set `max_slot_wal_keep_size` (Postgres 13 and later) so a stuck slot is invalidated instead, and drop slots you do not own. Before Postgres 17, logical slots did not survive a failover to a standby, so CDC had to be re-snapshotted; 17 can synchronise them to standbys (`sync_replication_slots`).
+
+</details>
+
+**3. How does the planner choose a plan, and why does it sometimes choose badly?**
+<details><summary>Model answer</summary>
+
+The planner is cost-based: it estimates how many rows each step returns from statistics that `ANALYZE` (also run by autovacuum) collects per column, such as the most common values, a histogram and the number of distinct values, then compares the cost of scans, join methods and join orders ([the scans figure in D1.2](#fig-scans) shows the choices). Bad plans come from bad estimates. Compare estimated and actual rows in `EXPLAIN (ANALYZE, BUFFERS)`: a gap of ten times or more is the usual cause. Typical reasons: statistics are stale after a large load (run `ANALYZE`), columns are correlated, such as city and postcode, and the planner multiplies their selectivities (fix with `CREATE STATISTICS`), a function or type cast on the column hides it from the index, or a prepared statement switched to a generic plan that ignores the actual parameter. Postgres has no built-in hints; the `pg_hint_plan` extension adds them, but fixing statistics and the query is the normal answer. Postgres 18 keeps statistics across a major-version upgrade, so plans no longer degrade right after one.
+
+</details>
+
+**4. When do you use GIN, BRIN, partial or expression indexes instead of a B-tree?**
+<details><summary>Model answer</summary>
+
+A B-tree ([the B+tree figure in D1.2](#fig-bplus)) serves equality, ranges and sorting on scalar values. GIN is an inverted index from each element to the rows that contain it: use it for `jsonb` containment (`@>`), arrays, full-text search and, with `pg_trgm`, `LIKE '%text%'`. It makes writes slower and is larger, so index only the paths you query. BRIN stores only the minimum and maximum of each range of pages: it is tiny and works when the table's physical order follows the column, as with an append-only events table filtered by time, much like a warehouse's pruning; on randomly ordered data it skips nothing. GiST serves geometry (PostGIS), ranges and exclusion constraints such as no overlapping bookings. A partial index (`WHERE status = 'open'`) indexes only the rows queries look for, and an expression index (`lower(email)`) matches a query that filters on the expression. `INCLUDE` columns allow index-only scans. Every index slows writes and needs vacuuming, so drop the ones `pg_stat_user_indexes` shows are never scanned. Postgres 18 added skip scan, so a multicolumn B-tree can serve a filter on its second column.
+
+</details>
+
+**5. Why does Postgres need a connection pooler, and what does transaction pooling break?**
+<details><summary>Model answer</summary>
+
+Each connection is a separate operating-system process with its own memory, and every query may use up to `work_mem` per sort or hash on top. Hundreds of active connections compete for CPU and memory, and thousands make every snapshot and lock check slower, so `max_connections` stays low (100 by default) while applications, serverless functions and job workers want far more. A pooler such as PgBouncer (or RDS Proxy) holds a small set of server connections, often two to four per CPU core, and lends them out. In session mode a client keeps its server connection until it disconnects, which saves little. In transaction mode the connection returns to the pool after each transaction, which multiplies capacity but breaks anything tied to a session: `SET` without `LOCAL`, temporary tables, advisory locks held across transactions, `LISTEN`, and named prepared statements unless the pooler supports them (PgBouncer 1.21 and later does). Keep transactions short ([the deadlock figure in D1.5](#fig-deadlock) shows why held locks hurt), set `idle_in_transaction_session_timeout`, and give batch jobs their own small pool.
+
+</details>
+
+**6. How does declarative partitioning help, and what are its limits?**
+<details><summary>Model answer</summary>
+
+Since Postgres 10, a partitioned table is split into child tables by range, list or hash of a key, on the same server ([the partitioning figure in D1.4](#fig-shard) shows the strategies). Queries that filter on the key are pruned to the matching partitions, at planning time or, for parameters, at execution time. The biggest win is lifecycle: dropping a month is `DETACH PARTITION` (with `CONCURRENTLY` from Postgres 14) and `DROP TABLE`, which is instant and leaves no dead rows, while `DELETE` of the same rows would bloat the table and its indexes. Vacuum and index builds also work per partition, so they are smaller. Limits: a primary key or unique constraint must include the partition key, a query without the key scans every partition, and thousands of partitions slow planning and use memory, so a few hundred is a sensible ceiling. Tools such as `pg_partman` create future partitions ahead of time. Partitioning is not sharding: every partition is still on one server, so it does not add write capacity; Citus or a distributed SQL database does.
+
+</details>
+
+
 @@lab
 ## Exercises 1–3 (1 hour)
 
@@ -337,6 +396,36 @@ TYPE: short
 TAG: core
 Q: Explain linearizability versus eventual consistency with one example of each.
 MODEL: Linearizability means the system acts like a single copy: once any read sees a write, all later reads do too; needed for things like a leader lease, a unique username or an account balance check (etcd, Spanner). Eventual consistency only promises replicas converge if writes stop; reads can be stale for a while, which is fine for a like counter or a product view count (Cassandra with low quorum settings, DNS).
+---
+TYPE: mcq
+TAG: core
+Q: A Postgres table's disk use keeps growing although its row count is flat, and `VACUUM` reclaims nothing. What is the most likely cause?
+A) Its `fillfactor` is too high for its update rate
+B) An old open transaction or an unused slot
+C) It has too many B-tree indexes on its columns
+D) `max_connections` is set lower than the app needs
+ANS: B
+WHY: Vacuum can only remove dead rows that no snapshot can still see; a long transaction, an idle-in-transaction session or a stale slot keeps them all.
+---
+TYPE: mcq
+TAG: core
+Q: An append-only events table of 2 billion rows is always filtered by `created_at`, and rows arrive in time order. Which index is smallest and still effective?
+A) A B-tree on `created_at`
+B) A GIN index on `created_at`
+C) A BRIN index on `created_at`
+D) A hash index on `created_at`
+ANS: C
+WHY: BRIN stores the minimum and maximum per range of pages, which prunes well when physical order follows the column, at a tiny fraction of a B-tree's size.
+---
+TYPE: mcq
+TAG: core
+Q: An app moves behind PgBouncer in transaction pooling mode, and some requests now see the wrong time zone. Why?
+A) PgBouncer rewrites each query's time zone
+B) A session `SET` leaks to other clients
+C) Transaction pooling turns off MVCC snapshots
+D) The pool is too large for the database server
+ANS: B
+WHY: In transaction mode each transaction may get a different server connection, so session state such as `SET timezone` leaks between clients; use `SET LOCAL` inside the transaction.
 
 @@interview
 Q: A popular dashboard's cache key expires and the database falls over. What happened, and how do you prevent it?
@@ -374,3 +463,15 @@ A: The source offsets and the job's state were not committed atomically with the
 Q: Why does a distributed system need consensus, and where have you relied on it?
 TAG: core
 A: Whenever nodes must agree on one thing despite failures: who the leader is, which configuration is current, whether a write is committed. Without it you get split brain, two leaders accepting conflicting writes. Raft and Paxos solve it with majority quorums and terms. I rely on it indirectly every day: Kafka's controller quorum (KRaft) for partition leadership, etcd behind Kubernetes, and ZooKeeper in older Hadoop and Kafka clusters. In my own designs I use those services for leader election and locks, with fencing tokens, instead of building my own.
+---
+Q: A team wants to move from Postgres to a distributed SQL database because "Postgres does not scale". How do you respond?
+TAG: arch
+A: Ask what is actually limited, with numbers. Most limits come before one primary's capacity: connections (add a pooler), reads (replicas and caching), vacuum and bloat on huge tables (tune autovacuum, partition and detach old data), bad plans (statistics and indexes), and analytics running on the primary (move it to a warehouse through CDC). Scale the machine up; a large instance takes a lot of writes. Distributed SQL is right when writes truly exceed one node after that, or when the business needs writes committed in several regions; it costs more per write in latency and money and needs schema changes for good key distribution. Citus is the middle path that keeps Postgres.
+---
+Q: Explain MVCC and vacuum in Postgres. What causes bloat, and how do you prevent transaction ID wraparound?
+TAG: core
+A: An update writes a new row version and marks the old one with the deleting transaction; each snapshot sees the versions valid for it, so readers never block writers. Dead versions stay until vacuum finds no snapshot needs them and marks the space reusable. Bloat comes from vacuum falling behind or being blocked: long transactions, idle-in-transaction sessions, abandoned replication slots, replicas with hot_standby_feedback, and default scale factors that are too lax for very large tables. Transaction ids are 32-bit, so vacuum must freeze old rows; monitor age(datfrozenxid), keep autovacuum healthy, and never let a blocked vacuum go unnoticed, or Postgres stops accepting writes to protect the data.
+---
+Q: CDC from Postgres stopped for a weekend and the primary ran out of disk. What happened and how do you prevent it?
+TAG: core
+A: The CDC connector reads through a logical replication slot, and the primary keeps all WAL the slot has not confirmed. With the consumer down, WAL piled up until the disk filled. Prevent it with an alert on slot lag (pg_replication_slots, the bytes between the current WAL position and the slot's confirmed position), max_slot_wal_keep_size so a stuck slot is invalidated instead of taking down the primary, a runbook to restart or re-snapshot the connector, and dropping unused slots. On Postgres 17 and later, sync the slot to standbys so CDC survives a failover.
