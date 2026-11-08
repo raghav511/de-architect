@@ -109,6 +109,45 @@ def short(s, n=160):
     return s if len(s) <= n else s[:n - 1] + '…'
 
 
+LIVE_DIMS = [('correct', 'correctness'), ('depth', 'depth and internals'), ('trade', 'trade-offs'), ('clear', 'structure and clarity')]  # as in js/live.js
+LIVE_CHECKS = [('rejected', 'named a rejected alternative'), ('limits', 'said where it stops scaling'), ('operate', 'said how to run it')]
+
+
+def live_scorecard(S):
+    """The last finished live mock, scored the way the app's scorecard (liveCard in js/live.js) scores it."""
+    live = {k: v for k, v in (S.get('live') or {}).items() if isinstance(v, dict) and v.get('done')}
+    out = ['', '## Last live mock scorecard']
+    if not live:
+        return out + ['No live mock finished yet.']
+    k = max(live)
+    m = live[k]
+    qs, ans = m.get('qs') or [], m.get('ans') or {}
+    rows = [(q, ans.get(str(i)) or ans.get(i) or {}) for i, q in enumerate(qs)]
+    def avg(a):  # liveAvg: the mean of the four scores, minus 0.25 per simulator suggestion opened, never below 1
+        sc = a.get('sc')
+        if not sc: return None
+        return max(1, sum(float(sc.get(d) or 0) for d, _ in LIVE_DIMS) / len(LIVE_DIMS) - 0.25 * float(a.get('simHints') or 0))
+    av = [v for v in (avg(a) for _, a in rows) if v is not None]
+    dims = []
+    for d, name in LIVE_DIMS:
+        v = [float(a['sc'][d]) for _, a in rows if a.get('sc') and a['sc'].get(d)]
+        dims.append((name, sum(v) / len(v) if v else 0))
+    scored = [d for d in dims if d[1]]
+    weakest = min(scored, key=lambda d: d[1]) if scored else None
+    skipped = sum(1 for _, a in rows if a.get('skipped'))
+    selfm = sum(1 for _, a in rows if a.get('sc') and a.get('self') and not a.get('skipped'))
+    ai = sum(1 for _, a in rows if a.get('sc') and not a.get('self') and not a.get('skipped'))
+    out.append('%s · %s round · module %s · %s level · overall %s of 4' % (k, 'weekend' if m.get('kind') == 'we' else 'weekday', m.get('mod', '?'), m.get('level', '?'), ('%.1f' % (sum(av) / len(av))) if av else '–'))
+    out.append('Averages: ' + '; '.join('%s %s' % (n, ('%.1f' % v) if v else '–') for n, v in dims) + '.')
+    out.append('Weakest: %s.' % ('%s (%.1f)' % weakest if weakest else 'none scored'))
+    out.append('Marked by: AI %d, self %d, skipped %d, of %d questions%s.' % (ai, selfm, skipped, len(qs), ' (AI scores can be wrong; self marks are the learner\'s own)' if ai or selfm else ''))
+    out.append('Staff checks: ' + ', '.join('%s %d of %d' % (n, sum(1 for _, a in rows if (a.get('checks') or {}).get(c)), len(qs)) for c, n in LIVE_CHECKS) + '.')
+    low = [(i, q, avg(a)) for i, (q, a) in enumerate(rows) if a.get('skipped') or (avg(a) is not None and avg(a) < 2.5)]
+    for i, q, v in low:
+        out.append('- Q%d below the bar (%s): %s' % (i + 1, 'skipped' if v is None or (rows[i][1].get('skipped')) else '%.1f' % v, short(q.get('q') or q.get('label'), 120)))
+    return out
+
+
 def digest(path, now=None):
     body = json.load(open(path))
     S, prev = body.get('data') or body, body.get('coach') or {}
@@ -188,15 +227,16 @@ def digest(path, now=None):
             out.append('Answer (%d words): %s' % (len(a.split()), a.strip() or '(no answer)'))
     missed = [k for k, v in (S.get('mock') or {}).items() if not v.get('sub') and k < now.strftime('%Y-%m-%d')]
     if missed: out.append('Started but not submitted: ' + ', '.join(sorted(missed)[-7:]))
+    out += live_scorecard(S)
     asked = sorted({short(q.get('q'), 90) for v in (S.get('mock') or {}).values() for q in v.get('qs', [])})
     out += ['', '## Questions already asked in mocks (do not repeat within 14 days)'] + ['- ' + q for q in asked[-40:]]
     # valid links
     i_cur = order.index(cur)
     near = [m for m in order[max(0, i_cur - 3):i_cur + 2] if m in mods]
-    for w, q in (S.get('quiz') or {}).items():  # modules where he took a quiz in the last 14 days
+    for w, q in (S.get('quiz') or {}).items():  # modules where the learner took a quiz in the last 14 days
         m = w if re.match(r'^[a-z]\d\d$', str(w)) else 's%02d' % int(w)
         if q.get('at') and now - ms(q['at']) < 14 * day and m in mods and m not in near: near.append(m)
-    for uid, t in done_at.items():  # and modules where he ticked steps
+    for uid, t in done_at.items():  # and modules where the learner ticked steps
         m = uid.split(':')[0]
         if now - ms(t) < 14 * day and m in mods and m not in near: near.append(m)
     near.sort(key=order.index)
