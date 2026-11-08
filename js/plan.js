@@ -95,7 +95,7 @@ function modUnits(m) {
   const extra = [];
   if (D) extra.push({ mid: m, uid: m + ':design', kind: 'design', mins: 40, title: 'Design problem: ' + D.title, goal: D.prompt, done: D.deliverable, href: '#/design/' + m, cta: 'Design', links: [] });
   extra.push({ mid: m, uid: m + ':news', kind: 'news', mins: 15, title: 'What is new in AI this week', goal: (DATA.news.items[0] ? DATA.news.items.slice(0, 3).map(x => x.title).join(' · ') : 'Short items on new AI developments, each with how to test the claim.'), done: 'You can say in two sentences what changed and how you would test it on your own eval set.', href: '#/news', cta: 'Read', links: [] });
-  U.splice(at, 0, ...extra);
+  U.splice(at, 0, ...extra, ...(typeof stepUnits === 'function' ? stepUnits(m) : [])); /* integrated week steps (js/steps.js) just before the quiz */
   if (pj && pj.env !== 'ai') {
     if (pj.status === 'ready') [1, 2].forEach(i => U.push({ mid: m, uid: m + ':proj.' + i, kind: 'project', mins: 60, title: 'Project: ' + pj.title + ' · session ' + i + ' of 2', goal: pj.goal, done: i === 2 ? 'make check passes for this week\'s milestones and you pasted the code into the project page.' : 'The environment is up and the first milestone passes.', href: '#/project/' + pj.id, cta: 'Build', links: [], auto: () => (pj.ms || []).length && pj.ms.every(x => msDone(pj.id)[x[0]]) }));
     else U.push({ mid: m, uid: m + ':proj', kind: 'project', mins: 30, title: 'Project brief: ' + pj.title, goal: pj.goal, done: 'You wrote the architecture in five boxes and listed the three riskiest parts. The full environment comes in a later update.', href: '#/project/' + pj.id, cta: 'Read', links: [] });
@@ -128,6 +128,7 @@ function scheduleNow() {
      Claude Code steps go first on their days, so the track runs every week alongside the main path */
   while ((q.length || cq.length) && guard++ < 6000) {
     const k = iso(cur);
+    if (q.length && q[0].ccSwap && cq.length) { cq.unshift(q.shift()); continue; } /* a module's With AI step (js/steps.js) takes the next Claude Code slot */
     if (cq.length && (ccDay[k] || 0) < (quota[cur.getDay()] || 0)) { put(k, cq.shift()); ccDay[k] = (ccDay[k] || 0) + 1; continue; }
     if (!q.length) { cur.setDate(cur.getDate() + 1); continue; }
     const rem = capOf(cur) - (used[k] || 0), u = q[0];
