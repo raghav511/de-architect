@@ -2,6 +2,22 @@
 Each reel narrates 30 to 60 seconds: 70 to 150 words at about 150 words a minute. A point that does not fit
 goes into the next reel ("part 2 of 2"). Run: python3 tools/reels/build.py"""
 import json, glob, os, re, runpy, sys
+import hashlib
+# the app loads one module at a time: data/reels/<mid>.json, named in data/reels/index.json by a hash of its text,
+# so the service worker can keep each file until its module changes (data/reels.json stays whole for the routines).
+# `build.py --split-only` re-splits the current data/reels.json (after voice.py links recordings, for example)
+def split(out):
+    os.makedirs('data/reels', exist_ok=True)
+    index = {}
+    for mid, reels in out.items():
+        body = json.dumps(reels, ensure_ascii=False, separators=(',', ':'))
+        index[mid] = hashlib.sha1(body.encode()).hexdigest()[:10]
+        open('data/reels/%s.json' % mid, 'w').write(body)
+    for f in os.listdir('data/reels'):
+        if f != 'index.json' and f[:-5] not in index: os.remove(os.path.join('data/reels', f))
+    json.dump(index, open('data/reels/index.json', 'w'), separators=(',', ':'))
+if '--split-only' in sys.argv:
+    split(json.load(open('data/reels.json'))); print('split data/reels.json into data/reels/'); sys.exit(0)
 out, errs = {}, []
 for f in sorted(glob.glob(os.path.join(os.path.dirname(__file__), 'r_*.py'))):
     d = runpy.run_path(f)
@@ -55,15 +71,5 @@ for reels in out.values():
             f = 'audio/reels/%s-%d-%s.m4a' % (r['id'], i, h)
             if os.path.exists(f): b['audio'] = f
 json.dump(out, open('data/reels.json', 'w'), ensure_ascii=False, separators=(',', ':'))
-# the app loads one module at a time: data/reels/<mid>.json, named in data/reels/index.json by a hash of its text,
-# so the service worker can keep each file until its module changes (data/reels.json stays whole for the routines)
-os.makedirs('data/reels', exist_ok=True)
-index = {}
-for mid, reels in out.items():
-    body = json.dumps(reels, ensure_ascii=False, separators=(',', ':'))
-    index[mid] = hashlib.sha1(body.encode()).hexdigest()[:10]
-    open('data/reels/%s.json' % mid, 'w').write(body)
-for f in os.listdir('data/reels'):
-    if f != 'index.json' and f[:-5] not in index: os.remove(os.path.join('data/reels', f))
-json.dump(index, open('data/reels/index.json', 'w'), separators=(',', ':'))
+split(out)
 print(sum(len(v) for v in out.values()), 'reels in', len(out), 'modules')
