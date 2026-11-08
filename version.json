@@ -1,10 +1,8 @@
 {
-  "version": "1.36.31",
+  "version": "1.36.32",
   "date": "2026-11-08",
   "notes": [
-    "Every 'Tomorrow on Meridian' line is now a question that the next day's lesson answers, and the heading no longer appears twice.",
-    "Every scene now points to the practice it leads into (a lesson, exercise, guided step, simulator challenge, design problem or mock), and each day has a recall question for the next morning; the boss round gets a rematch line.",
-    "New threads run through the seasons: Marcus's decision log behind his promotion, the migration memo he and Victor co-sign, and Lena's first interview.",
+    "No change to the app: three journeys failed after the week-steps roll-out and module O5. The lab journeys now leave the week steps out (they finish from their own work), and the module-order check expects the O5 capstone right after Leadership 1, as designed.",
     "1489 of 1489 reels now play in the natural Heart voice."
   ]
 }
