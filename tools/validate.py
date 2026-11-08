@@ -192,8 +192,13 @@ if '--no-run' not in sys.argv:
 # recent interview questions from the weekly research task
 rec = json.load(open('data/recent.json'))
 TAGS = {'py', 'dsa', 'core', 'arch', 'ai', 'git', 'cloud', 'streaming', 'modeling', 'design', 'behavioral', 'sql', 'spark'}
-ids = set()
+ids, texts = set(), {}
+def qnorm(s):  # the same question reworded only in case, markdown or punctuation is still the same question
+    return ' '.join(re.sub(r'[^a-z0-9]+', ' ', re.sub(r'[*`_]', '', (s or '').lower())).split())
 for q in rec.get('items', []):
+    k = qnorm(q.get('Q'))
+    if k and k in texts and texts[k] != q.get('id'): err('recent question', q.get('id'), 'repeats', texts[k], '(same question text): keep one id')
+    texts.setdefault(k, q.get('id'))
     for k in ('id', 'company', 'Q', 'A', 'found', 'TAG', 'url'):
         if not q.get(k): err('recent question', q.get('id'), 'missing', k)
     if q.get('id') in ids: err('recent question id repeated', q.get('id'))
