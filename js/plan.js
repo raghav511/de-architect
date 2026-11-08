@@ -32,11 +32,12 @@ function sliceH2(text, a, b) {
 function parseTickets(t) { return (t || '').split('\n').map(l => l.split('|').map(x => x.trim())).filter(p => p.length >= 6 && p[0]).map(p => ({ id: p[0], type: p[1], h: +p[2] || 0.5, title: p[3], done: p[4], tab: p[5] })); }
 async function loadModules() {
   const opt = u => fetch(u).then(r => r.ok ? r.json() : null).catch(() => null);
+  const core = BASE_MODS.concat(CC_MODS), coreP = Promise.all(core.map(m => sprint(m).catch(() => null))); /* module files download alongside the small data files */
   const [ext, design, git, news, recent] = await Promise.all([opt('data/extensions.json'), opt('data/design.json'), opt('data/git.json'), opt('data/news.json'), opt('data/recent.json')]);
   DATA.design = design || {}; DATA.git = git || []; DATA.news = news || { items: [] };
   DATA.recent = recent && Array.isArray(recent.items) ? recent : { items: [] };
-  MODS = BASE_MODS.concat(CC_MODS, ((ext && ext.modules) || []).filter(m => /^x\d\d$/.test(m)));
-  await Promise.all(MODS.map(m => sprint(m).catch(() => null)));
+  MODS = core.concat(((ext && ext.modules) || []).filter(m => /^x\d\d$/.test(m)));
+  await coreP; await Promise.all(MODS.filter(m => !core.includes(m)).map(m => sprint(m).catch(() => null)));
   MODS = MODS.filter(m => DATA.sprints[m]); MODS_ALL = MODS.slice(); applyAi();
   MODS.forEach(m => { const s = DATA.sprints[m]; MOD[m] = { id: m, title: s.meta.title || modLabel(m), goal: s.meta.goal || '', tickets: parseTickets(s.raw.tickets), ch: headings(s.raw.chapter), lab: headings(s.raw.lab), pr: headings(s.raw.practice), coding: s.coding.length }; });
 }
