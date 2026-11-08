@@ -751,6 +751,23 @@ async function T(name, fn, opt) {
     const w = await text(p, '.whatsnew'); ok(/1 new module/.test(w) && /Data mesh/.test(w), 'What is new does not list O1: ' + w.replace(/\s+/g, ' ').slice(0, 300));
     ok(await p.evaluate(() => !Object.keys(S.done).some(k => k.startsWith('o01:'))), 'an O1 step was marked done');
   });
+  await T('module O2: golden paths sit right after O1 (or DE 10 before O1 lands) with chapter, lens, four exercises, design problem, quiz and reels; an existing learner is told about it and nothing is marked done', async p => {
+    await go(p, '#/path', 1500);
+    ok(await p.evaluate(() => MODS.indexOf('o02') === MODS.indexOf(MODS.includes('o01') ? 'o01' : 's10') + 1 && modLabel('o02') === 'Org 2'), 'O2 is not in place');
+    ok(await p.$('.pcard[data-mid=o02]') && /Golden paths and self-serve templates/.test(await all(p, '.pcard[data-mid=o02]')), 'O2 not on the Path');
+    await go(p, '#/learn/o02/chapter', 1500); await p.waitForSelector('.lens');
+    ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return document.querySelectorAll('.prose h2').length >= 9 && l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details:not(.fresh)').length === 6 && !!l.querySelector('a[href="#/sim/sc/dlq"]') && !!l.querySelector('a[href="#/sim/sc/schema"]'); }), 'O2 chapter or lens incomplete');
+    const r = await p.evaluate(async () => { const s = await sprint('o02'), us = modUnits('o02'), xs = DATA.py.filter(x => x.m === 'o02');
+      return { quiz: s.quiz.length, iv: s.interview.length, ex: xs.map(x => x.id).join(), build: us.filter(u => u.kind === 'build').map(u => u.href).join(), design: us.some(u => u.kind === 'design'), reels: (await reelsFor('o02')).filter(x => x.sec === 'O2.9').map(x => x.level), tpl: (await reelsFor('o02')).filter(x => x.sec === 'O2.3').length }; });
+    ok(r.quiz >= 10 && r.iv >= 7 && r.ex === 'yo021,yo022,yo023,yo024' && /#\/py\/yo021/.test(r.build) && /#\/py\/yo023/.test(r.build) && r.design, 'O2 steps: ' + JSON.stringify(r));
+    ok(r.reels.length === 8 && ['New to it', 'How it works', 'Inside and caveats', 'Architect'].every(lv => r.reels.includes(lv)) && r.tpl === 4, 'O2 reels: ' + JSON.stringify(r.reels));
+    await go(p, '#/design/o02', 1200); ok(/golden path for new data products/i.test(await text(p, '#page')), 'O2 design problem missing');
+    await go(p, '#/today', 1200);
+    await seed(p, () => { S.done['s00:S001'] = iso(new Date()); Object.keys(S.cv.known).filter(k => k.startsWith('o02:')).forEach(k => delete S.cv.known[k]); S.updates = []; });
+    await p.waitForSelector('.whatsnew'); await p.click('.whatsnew button:has-text("See")');
+    const w = await text(p, '.whatsnew'); ok(/1 new module/.test(w) && /Golden paths/.test(w), 'What is new does not list O2: ' + w.replace(/\s+/g, ' ').slice(0, 300));
+    ok(await p.evaluate(() => !Object.keys(S.done).some(k => k.startsWith('o02:'))), 'an O2 step was marked done');
+  });
   await T('architect\'s lens: Python 1 shows a lens card with seven questions and four internals answers, stacked on a phone; Start here explains the data foundation', async p => {
     await go(p, '#/learn/p01/chapter', 1500); await p.waitForSelector('.lens');
     ok(await p.evaluate(() => document.querySelectorAll('.lens tbody tr').length === 7 && document.querySelectorAll('.lens details').length === 4), 'lens card incomplete');
