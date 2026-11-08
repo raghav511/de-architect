@@ -138,5 +138,10 @@
   "title": "Govern a fintech lakehouse",
   "prompt": "A payments company keeps 4 PB in an Iceberg lakehouse read by Spark, Trino and a warehouse, by 1,500 people in 12 countries. Card numbers, emails and national ids sit in raw and silver tables; access is 900 roles granted by ticket; erasure requests take six weeks and nobody is sure old snapshots are cleaned; regulators want proof of who saw customer data. Design the governance that fixes this in two quarters.",
   "deliverable": "A two-page design: how personal data is found and tagged (declared, detected, reviewed), the access model (roles versus tag and attribute policies, row and column rules, expiry and reviews) enforced in every engine, which data is masked, tokenised or pseudonymised and why, how lineage is collected and used, the retention classes and the erasure flow with legal holds and snapshot expiry, the audit evidence, the order you deliver it in, and two risks."
+ },
+ "o04": {
+  "title": "Run a data platform team as a product",
+  "prompt": "A data platform team of 12 serves 40 domain teams on a lakehouse that costs 4 million a year. There is no roadmap (the loudest request wins), incidents happen every week, 35% of spend has no team tag, a satisfaction survey scored 5 out of 10, and three teams have started building their own stacks. The new CTO wants a plan within a month and results within two quarters.",
+  "deliverable": "A two-page plan: the users and their top journeys, the platform's SLIs and SLOs with the error budget policy and burn-rate alerts, the on-call and incident changes, the showback model (tags, shared costs, unit costs) and when to move to chargeback, the intake and scoring for the roadmap with the capacity split, the five numbers you report monthly, what you will stop doing, and two risks."
  }
 }
