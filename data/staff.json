@@ -1326,6 +1326,23 @@
     "The outcome",
     "What it taught you about leading"
    ]
+  },
+  {
+   "id": "st81",
+   "kind": "page",
+   "mids": [
+    "s09"
+   ],
+   "q": "One config change took down the whole platform: a new rule pushed to every server at once ran in watch-only mode but still burned the CPU of every request. How do you ship changes safely from now on?",
+   "points": [
+    "First 15 minutes: roll the change back or hit the kill switch, through a path that does not depend on the overloaded fleet",
+    "Stages: a 1-5% canary or one cell, then one region, then the rest, with time at each stage to see real traffic",
+    "A gate per stage on errors, p99, CPU and memory per request and cost; a watch-only or shadow rule goes through the same gate",
+    "Automatic rollback in seconds when the gate fails; a person reads the alert after",
+    "Limit the blast radius: cells, regions, no single push that reaches everything",
+    "Treat config, rules, flags and shared macros as code: review, tests that measure cost, an owner",
+    "Blameless postmortem with the gap in the process, not the person"
+   ]
   }
  ]
 }

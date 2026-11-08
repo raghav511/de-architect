@@ -24,6 +24,7 @@ const SIM_K = {
   dbt: { t: 'dbt models', cat: 'ops', ab: 'DBT', cap: 5000, lat: 900, cost: 40, route: 'all', d: 'SQL transforms that build tables in the warehouse or lake' },
   dq: { t: 'Data quality checks', cat: 'ops', ab: 'DQ', cap: 10000, lat: 30, cost: 30, route: 'all', d: 'Contracts and tests (Great Expectations, dbt tests, Soda) run on the data as it lands' },
   registry: { t: 'Schema registry', cat: 'ops', ab: 'SR', cap: 20000, lat: 2, cost: 40, route: 'all', d: 'Checks every producer\'s schema; blocks breaking changes before they reach readers' },
+  rollout: { t: 'Staged rollout', cat: 'ops', ab: 'ROL', cap: 100000, lat: 1, cost: 30, route: 'all', pct: 5, d: 'Pushes config and rule changes in stages (a 5% canary, then by region) with a CPU and latency gate that rolls back on its own; wire it to the boxes it deploys to' },
   agg: { t: 'Pre-aggregator', cat: 'compute', ab: 'AGG', cap: 50000, lat: 5, cost: 60, route: 'miss', hit: 0.95, hitT: 'Folded in place (%)', d: 'Combines repeated keys in memory (a count-min sketch or a local top-K per task) and sends on only partial counts every second' },
   embed: { t: 'Embedding model', cat: 'compute', ab: 'EMB', cap: 300, lat: 60, cost: 250, route: 'all', d: 'Turns text into vectors (GPU or hosted model)' },
   trino: { t: 'Query engine (Trino)', cat: 'compute', ab: 'TRN', cap: 60, lat: 1200, cost: 260, route: 'all', d: 'Federated SQL over the lake; replicas = workers' },
@@ -58,7 +59,8 @@ const SIM_CHAOS = [
     ['cpu', 'CPU saturation', 'node', 'Each replica does a third of its usual work.'],
     ['leak', 'Memory leak', 'node', 'Capacity drains away a little every second until it is fixed.'],
     ['disk', 'Disk full', 'node', 'A store rejects every write.'],
-    ['az', 'Zone outage', 'all', 'Half of every box\'s replicas disappear at once.']]],
+    ['az', 'Zone outage', 'all', 'Half of every box\'s replicas disappear at once.'],
+    ['push', 'Config push', 'all', 'A new rule goes to every edge and compute box at once and triples the CPU of each request. Behind a staged rollout, only the canary gets it and the cost gate rolls it back.']]],
   ['Network', [
     ['slow', 'Latency on a wire', 'edge', 'Adds 300 ms to every call on the selected wire.'],
     ['part', 'Network partition', 'edge', 'Nothing gets through the selected wire.'],
@@ -82,7 +84,7 @@ const SIM_CH = {}; SIM_CHAOS.forEach(g => g[1].forEach(c => { SIM_CH[c[0]] = { i
 
 /* ---------------- engine ---------------- */
 const SIM = {
-  newRt(d) { return { t: 0, reps: {}, backlog: {}, crashAt: {}, leak: {}, herdAt: null, hist: [], chaos: [] }; },
+  newRt(d) { return { t: 0, reps: {}, backlog: {}, crashAt: {}, leak: {}, herdAt: null, pushAt: null, hist: [], chaos: [] }; },
   active(rt, t) { return rt.chaos.filter(c => t >= (c.from || 0) && (c.to == null || t < c.to)); },
   order(d) { /* Kahn's order from the sources; boxes in loops go last, and their back wires are ignored */
     const indeg = {}, out = {}; d.nodes.forEach(n => { indeg[n.id] = 0; out[n.id] = []; });
@@ -99,6 +101,9 @@ const SIM = {
     const { ord, out } = SIM.order(d), inc = {}, R = {};
     let mult = any('spike') ? 4 : 1;
     if (any('herd')) { if (rt.herdAt == null) rt.herdAt = t; mult *= 1 + 2 * Math.max(0, 1 - (t - rt.herdAt) / 30); } else rt.herdAt = null;
+    if (any('push')) { if (rt.pushAt == null) rt.pushAt = t; } else rt.pushAt = null;
+    /* a config push: everywhere at once, or only on a staged rollout's canary until its cost gate rolls it back (4 s) */
+    const gate = any('push') && d.nodes.find(x => x.k === 'rollout' && d.edges.some(e => e.a === x.id || e.b === x.id));
     const pullFrom = {}; /* consumers of a buffer lag instead of failing */
     d.edges.forEach(e => { if (N[e.a] && N[e.b] && (SIM_K[N[e.a].k].async || SIM_K[N[e.b].k].tail)) pullFrom[e.b] = e.a; }); /* a CDC connector tails the database log: it lags, it never fails the writes */
     ord.forEach(id => {
@@ -110,6 +115,7 @@ const SIM = {
         let h = 1;
         if (on(id, 'crash')) { if (rt.crashAt[id] == null) rt.crashAt[id] = t; h = n.standby && t - rt.crashAt[id] >= 3 ? 1 : 0; } else delete rt.crashAt[id];
         if (on(id, 'cpu')) h *= 0.33;
+        if (any('push') && (K.cat === 'edge' || K.cat === 'compute')) { const canary = gate && t - rt.pushAt < 4, pct = gate ? (gate.pct || SIM_K.rollout.pct) / 100 : 1; h *= gate ? (canary ? 1 - pct * 0.67 : 1) : 0.33; r.push = !gate ? 'on every box at once' : canary ? 'on the ' + Math.round(pct * 100) + '% canary while the cost gate watches CPU' : 'rolled back by the cost gate'; }
         if (on(id, 'leak')) { rt.leak[id] = Math.min(0.95, (rt.leak[id] || 0) + 0.04 * dt); h *= 1 - rt.leak[id]; } else delete rt.leak[id];
         if (on(id, 'disk') && K.cat === 'store') h = 0;
         if (on(id, 'lag')) h *= 0.2;
@@ -315,6 +321,12 @@ const SIM_SC = [
     goals: { err: 5, fresh: 5 },
     nodes: [['client', 40, 140, { rps: 3000 }], ['svc', 240, 140, { n: 6 }], ['pg', 440, 140, { n: 2, name: 'Primary region DB' }], ['cdc', 640, 140, { name: 'Cross-region replication' }], ['kv', 840, 140, { n: 2, name: 'Second region copy' }]], edges: [[0, 1], [1, 2], [2, 3], [3, 4]] },
   /* organisation (module O1): a shared platform needs isolation between domains */
+  { id: 'configpush', mid: 's09', lvl: 'Advanced', t: 'A config push saturates CPU everywhere', secs: 60,
+    chaos: [{ type: 'push', from: 15, to: 60 }],
+    q: 'Users send 12,000 requests a second through the gateways to the service fleet. At second 15 a new firewall-style rule ships to every box at once; it runs in watch-only mode, but its pattern match still triples the CPU of every request. Keep errors under 1% and p99 under 300 ms.',
+    hint: 'Correct is not the same as cheap. Ship config the way you ship code: a staged rollout that starts on a small canary, checks CPU and latency at each stage, and rolls back by itself, with a kill switch to turn the rule off everywhere.',
+    goals: { err: 1, p99: 300 },
+    nodes: [['client', 40, 140, { rps: 12000, name: 'Users (12,000 requests/s)' }], ['gw', 260, 140, { n: 2, name: 'Edge gateways' }], ['svc', 480, 140, { n: 20, name: 'Service fleet' }]], edges: [[0, 1], [1, 2]] },
   { id: 'mesh', mid: 'o01', lvl: 'Advanced', t: 'Shared platform, noisy neighbour', secs: 60,
     chaos: [{ type: 'backfill', on: 'files', from: 15, to: 50 }],
     q: 'Three domains publish data products through one shared warehouse. When the orders domain runs a backfill, every product slows and fails. Keep errors under 1% while the backfill runs.',
@@ -419,6 +431,8 @@ const SIM_HINTS = {
     fix: [{ insert: 'agg', a: 'stream', b: 'kv', o: { n: 4, hit: 0.97, name: 'Sketch and local top-K' }, why: 'Repeated tags are folded in memory, so the store sees about 4,500 writes a second of partial counts.' }] },
   metrics: { look: 'At second 15 the time-series box goes down and every sample written in those 10 seconds fails.', idea: 'Writes must not depend on the database being up: a durable log in front of it turns an outage into lag, and the ingest path keeps accepting samples (10.6, design 14).', change: 'Insert a Kafka topic between the ingesters and the database, with enough partitions for its 40 writers.',
     fix: [{ insert: 'kafka', a: 'stream', b: 'olap', o: { n: 4, parts: 48, name: 'Samples topic' }, why: 'Samples wait in Kafka during the restart; the database\'s headroom drains the backlog in about 20 seconds.' }] },
+  configpush: { look: 'At second 15 every gateway and every service box slows to a third at the same moment: the push reached all of them together, so nothing was left healthy to take the load.', idea: 'A watch-only rule still runs on every request; test what a change costs, not only whether it is right. Roll config out in stages (5% canary, then region by region), check CPU and latency at each stage, roll back automatically, and keep a kill switch (9.6).', change: 'Add a Staged rollout and wire it to the gateways and the service fleet (it deploys to them; it carries no traffic).',
+    fix: [{ add: 'rollout', to: 'gw', o: { name: 'Staged rollout + cost gate' }, why: 'The rule reaches only the 5% canary; the gate sees CPU jump and rolls it back in 4 seconds.' }, { add: 'rollout', to: 'svc', why: 'The service fleet takes changes through the same rollout.' }] },
   ragqps: { look: 'The LLM box is red from the start: 1,000 questions a second against 600, so 40% fail and p99 climbs.', idea: 'Every call you do not make is free and instant. Questions repeat, so a semantic cache (match by embedding similarity, not exact text) answers many without the model (10.7, design A).', change: 'Insert a cache between the RAG service and the LLM.',
     fix: [{ insert: 'cache', a: 'svc', b: 'llm', o: { hit: 0.5, name: 'Semantic cache' }, why: 'Half the questions are answered from the cache, so the model sees 500 a second, under its 600.' }] },
   agenttools: { look: 'From second 15 the order system box slows and p99 jumps: the reply waits for every tool call.', idea: 'Separate the conversation from the side effects. Reply now ("your refund is on its way"), and let a queue run refunds, cancellations and handoffs with idempotency keys and retries (10.7, design B).', change: 'Insert a queue between the agent service and the order system.',
@@ -439,7 +453,7 @@ function simApplyFix(d, f) {
   const mk = (k, x, y, o) => { const n = Object.assign({ id: nid('n'), k, x, y, name: SIM_K[k].t }, o || {}); d.nodes.push(n); return n; };
   const wire = (a, b) => { if (!d.edges.some(e => e.a === a && e.b === b)) d.edges.push({ id: nid('e'), a, b }); };
   if (f.set) { const n = byK(f.set); if (!n) return null; n[f.f] = f.v; return n.id; }
-  if (f.add) { const a = byK(f.from); if (!a) return null; const n = byK(f.add) || mk(f.add, a.x + (SIM_K[f.add].cat === 'ops' ? 0 : 220), a.y + 160, f.o); wire(a.id, n.id); return n.id; }
+  if (f.add) { const a = byK(f.from || f.to); if (!a) return null; const n = byK(f.add) || mk(f.add, a.x + (SIM_K[f.add].cat === 'ops' ? 0 : 220), a.y + 160, f.o); if (f.to) wire(n.id, a.id); else wire(a.id, n.id); return n.id; } /* to: the new box feeds the existing one (a control path, no traffic) */
   if (f.insert) { const a = byK(f.a), b = byK(f.b); if (!a || !b) return null; d.edges = d.edges.filter(e => !(e.a === a.id && e.b === b.id)); const n = mk(f.insert, Math.round((a.x + b.x) / 2), Math.round((a.y + b.y) / 2) + 110, f.o); wire(a.id, n.id); wire(n.id, b.id); return n.id; }
   if (f.reroute) { const a = byK(f.a), b = byK(f.b); if (!a) return null; d.edges = d.edges.filter(e => !(e.a === a.id && b && e.b === b.id)); const n = mk(f.reroute, (b ? b.x : a.x + 220), (b ? b.y : a.y) + 160, f.o); wire(a.id, n.id); return n.id; }
   return null;
@@ -846,7 +860,7 @@ function vSim(a, b, c) {
         if (r.idle) t += '; ' + r.idle + ' replicas sit idle (more readers than partitions)';
         if ((r.lag || 0) > 1) t += '; readers are ' + (r.fresh || 0).toFixed(1) + ' s behind';
         if (r.drop > 0.5) t += '; it drops ' + fmt(r.drop) + ' a second';
-        if (r.poison) t += '; bad records are ' + r.poison; if (r.schema) t += '; the schema change is ' + r.schema;
+        if (r.poison) t += '; bad records are ' + r.poison; if (r.schema) t += '; the schema change is ' + r.schema; if (r.push) t += '; the config push is ' + r.push;
         if (r.u >= 0.85 && !r.drop) t += '; near full, so latency climbs';
         parts.push(t + '.'); }
     } else if (sel && sel.e) { const e = d.edges.find(x => x.id === sel.e); if (e) { const c = act.find(x => x.target === e.id); parts.push('Wire ' + tname(e.id) + (m && e._v != null ? ': carries ' + fmt(e._v) + ' a second' : '') + (c ? '; ' + SIM_CH[c.type].t.toLowerCase() + ' is active on it' : '') + '.'); } }
