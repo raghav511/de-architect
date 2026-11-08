@@ -71,6 +71,20 @@ A repository that interviewers can open does more than any claim on a resume. Yo
 
 Prepare a **five-minute demo**: thirty seconds on the problem, one minute on the architecture, two minutes on a live failure being diagnosed by the agent and posted to Slack, one minute on the evaluation numbers, thirty seconds on what you would build next. Rehearse it three times. Use it when an interviewer says "tell me about a project".
 
+### A deployed variant: the agent that acts, with approval
+
+A chatbot that answers questions over a few documents is now the most common portfolio project, so it no longer tells an interviewer much. What stands out is the shape that AI data engineering and forward deployed teams actually ship: **a pipeline that builds the context, an agent that proposes an action from it, a person who approves, and a system that carries the action out and records it**. Your capstone already has the first half. This variant finishes it and puts it at a URL.
+
+1. **The pipeline builds the context.** A scheduled job assembles, for every failed or late run, one row of evidence: the run's error tail, the last good run, the freshness and row counts of its inputs, lineage (which tables feed it and which reports read it), recent schema changes and the runbook section that matches. This is ordinary data engineering: incremental, tested, with its own freshness check. The agent reads this table; it does not crawl logs itself.
+2. **The agent proposes, it does not act.** From one evidence row it proposes exactly one action from a closed list (rerun a partition, backfill a range, pause a schedule, open a ticket with a drafted fix) with the evidence lines it relied on and its confidence. Anything outside the list becomes "open a ticket".
+3. **A person approves.** The proposal appears in a small web app (or a Slack message with Approve and Reject). Approving records who approved, when, and the exact action.
+4. **The system acts and records it.** A narrow tool with its own least-privilege credentials runs the approved action, never the model directly. Every proposal, approval, action and outcome goes to an audit table, and every action has a documented way back (a backfill writes to a new snapshot you can roll back to).
+5. **It is deployed.** A URL an interviewer can open on their phone: the queue of proposals, one approved and executed example, and the evaluation table. On Databricks this is a Databricks App with its state (proposals, approvals) in Lakebase and the evidence in the lakehouse (8.3); elsewhere a small web service and a Postgres database do the same.
+
+Measure it like any production system: share of proposals approved unchanged, share wrong, time from failure to approved fix, cost per incident, and how often the agent correctly said "open a ticket" because it was not sure.
+
+In the five-minute demo, the two live minutes become: a failure happens, the evidence row appears, the agent proposes a backfill with three evidence lines, you approve it on your phone, the backfill runs, and the audit table shows all of it. That is the story forward deployed and AI data engineering interviewers ask for ([what they expect, in 11.1](#/learn/s11/chapter)).
+
 ## 12.5 Your resume
 
 - **Headline:** "Senior Data Engineer", followed by your strongest specialities. Lead with data engineering, since that is the role, and keep AI as the differentiator in the second line.

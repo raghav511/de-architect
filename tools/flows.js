@@ -1722,6 +1722,19 @@ async function T(name, fn, opt) {
     const b = await p.$eval('.lpnav .btn.pri', e => [e.getBoundingClientRect().bottom, document.querySelector('.tabbar').getBoundingClientRect().top]); ok(b[0] <= b[1], 'Next hidden under the tab bar');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
+  await T('AI data engineer project: the deployed agent capstone in 12.4, forward deployed expectations in 11.1, and Lakebase, Databricks Apps and Agent Bricks on the 8.3 map render and link', async p => {
+    await go(p, '#/learn/s12/chapter', 1500);
+    const c = await text(p, '#page');
+    ok(/A deployed variant: the agent that acts, with approval/.test(c) && /proposes, it does not act/i.test(c) && /person approves/i.test(c) && /audit table/.test(c), 'the deployed capstone variant is missing from 12.4');
+    ok(/most common portfolio project/.test(c), '12.4 does not warn against a plain chatbot project');
+    await p.click('#page a[href="#/learn/s11/chapter"]'); await p.waitForTimeout(1500);
+    ok(/#\/learn\/s11/.test(await p.evaluate(() => location.hash)) && /What a forward deployed team expects/.test(await text(p, '#page')), '12.4 does not link to the forward deployed expectations in 11.1');
+    ok(await p.$('#page a[href="#/learn/s12/chapter"]'), '11.1 does not link back to the capstone variant');
+    await go(p, '#/learn/s08/chapter', 1500);
+    const rows = await p.evaluate(() => [...document.querySelectorAll('#page table')].map(t => t.innerText).find(x => /Lakebase/.test(x)) || '');
+    ok(/Lakebase/.test(rows) && /Databricks Apps/.test(rows) && /Agent Bricks/.test(rows), 'Lakebase, Databricks Apps and Agent Bricks are not in a table in 8.3');
+  });
+
   await browser.close();
   results.forEach(r => console.log(r.join('  ')));
   const f = results.filter(r => r[0] === 'FAIL').length;
