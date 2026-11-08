@@ -102,6 +102,11 @@ function loopChoice(q, choices, picked, ans, why, onPick) {
 }
 
 /* ---------------- Today: one short drill a day ---------------- */
+/* the day's interview loop drill as a row in Today's Interview part; it ticks itself once you practise that round today */
+function loopTodayItem(k) {
+  const [r, tab, t] = LOOP_DAY[new Date(k + 'T00:00:00').getDay()], done = !!(loopState().reps[k] || {})[r];
+  return { id: 'loop:' + r, chip: 'talk', t: 'Interview loop: ' + t, sub: 'Round ' + r.slice(1) + ' · ' + LOOP_R[r], mins: 10, href: '#/loop/' + r + '/' + tab, auto: done };
+}
 function loopToday() {
   const [r, tab, t] = LOOP_DAY[new Date().getDay()], done = (loopState().reps[iso(new Date())] || {})[r];
   return el('section', { class: 'card pad row wrap looptoday' }, [el('span', { class: 'simab', style: { background: 'var(--blue)' }, text: 'R' + r[1] }),

@@ -956,6 +956,33 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => Object.keys((S.metrics || {})[iso(new Date())] || {}).length > 0 && ((S.metrics[iso(new Date())].ev || {}).reel_open || 0) > 0), 'usage totals are not recorded');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
+  await T('today: Design and build is its own tab with its own minutes (design problem, simulator challenge), and the loop drill is an Interview row', async p => {
+    await go(p, '#/today', 800); await p.waitForSelector('.plan .dsum', { timeout: 30000 });
+    const tabs = await p.$$eval('.plan .dsum', b => b.map(x => x.getAttribute('aria-label')));
+    ok(tabs.some(x => /^Design and build: 0 of \d+ minutes/.test(x)), 'no Design and build tab with minutes: ' + tabs.join(' | '));
+    ok(/^Reading/.test(tabs[0]) && tabs.length === 4, 'tabs should be Reading, Design and build, Coding, Interview: ' + tabs.join(' | '));
+    await p.click('#tab-grp-build'); await p.waitForTimeout(200);
+    ok(/Design problem:/.test(await text(p, '#grp-build')) && await p.$eval('#grp-hour', e => e.hidden), 'the design problem is not in the Design and build tab');
+    ok(await p.evaluate(() => !document.querySelector('.simtoday, .looptoday')), 'separate simulator or loop cards are still below the plan');
+    const iv = await p.$$eval('#grp-interview a.xlink', a => a.map(x => x.getAttribute('href')));
+    ok(iv.some(h => /^#\/loop\/r\d\//.test(h)), 'no interview loop drill row in the Interview tab: ' + iv.join(' '));
+    /* a learner whose module has a simulator challenge, with room in the day: the challenge is a row with its minutes */
+    const r = await p.evaluate(() => { const sid = SIM_SC[0], i = MODS.indexOf(sid.mid); MODS.slice(0, i).forEach(m => modUnits(m).forEach(u => { S.done[u.uid] = '2026-01-01'; })); S.settings.buildWd = 120; S.settings.buildWe = 120; save(); schedFlush(); route(); return sid; });
+    await p.waitForTimeout(800); await p.evaluate(() => document.getElementById('tab-grp-build').click()); await p.waitForTimeout(200); /* a module-shipped celebration may cover the page */
+    const b = await text(p, '#grp-build');
+    ok(/Simulator challenge: /.test(b) && /20 min/.test(b), 'no simulator challenge row: ' + b.slice(0, 300));
+    ok(/of your 120/.test(b), 'Design and build minutes from Profile not used: ' + b.slice(0, 120));
+    /* the reading budget check counts reading only; the scheduler keeps design steps out of reading days */
+    const lanes = await p.evaluate(() => { const sc = schedule(), out = []; Object.entries(sc.byDay).forEach(([k, us]) => { if (k < sc.today) return; const d = new Date(k + 'T00:00:00'), rd = us.filter(u => !isBuild(u) && !u.isDone), m = rd.reduce((a, u) => a + u.mins, 0); if (rd.length > 1 && m > capOf(d) + 5) out.push(k); }); return out; });
+    ok(!lanes.length, 'reading over budget on ' + lanes.slice(0, 3).join(', '));
+  });
+
+  await T('profile: Design and build minutes save and sync with the other plan settings', async p => {
+    await go(p, '#/today', 1200); await profile(p, 'plan'); await setField(p, '#st_bwd', '45'); await p.waitForTimeout(400);
+    const r = await p.evaluate(() => ({ v: S.settings.buildWd, pref: PREF_KEYS.includes('buildWd') && PREF_KEYS.includes('buildWe') }));
+    ok(r.v === 45 && r.pref, 'not saved or not synced: ' + JSON.stringify(r));
+  });
+
   await T('today: one Today box holds reading, quiz, coding, interview practice and coaching, with a summary on top and interview capped at its minutes', async p => {
     await go(p, '#/today', 1200); await p.waitForSelector('.plan .daysum');
     const t = await text(p, '.plan .daysum'); ok(/Reading/.test(t) && /Coding/.test(t) && /Interview/.test(t), 'summary row incomplete: ' + t);
@@ -1360,7 +1387,7 @@ async function T(name, fn, opt) {
   await T('sim in the program: module chapter and lab list its challenges; Today shows one; passing one adds XP', async p => {
     await go(p, '#/learn/s05/chapter', 1500); await p.waitForSelector('.simmod'); ok(/Real time/.test(await text(p, '.simmod')), 'no challenges on the s05 chapter');
     await go(p, '#/learn/s00/chapter', 1200); ok(!(await p.$('.simmod')), 'a module without challenges shows a card');
-    await go(p, '#/today', 1200); const t = await p.$('.simtoday'); if (t) ok(/Simulator challenge/.test(await text(p, '.simtoday')), 'Today card text');
+    await go(p, '#/today', 1200); const t = await p.$('#grp-build a.xlink[href^="#/sim/sc/"]'); if (t) ok(/Simulator challenge/.test(await t.innerText()), 'Today row text');
     const x0 = await p.evaluate(() => gameXP()); await p.evaluate(() => { simState().done.cdc = iso(new Date()); }); ok((await p.evaluate(() => gameXP())) === x0 + 25, 'no XP for a passed challenge');
   });
   await T('sim quick start: a design problem opens a fitting starter named after it, with a way back; a blank design offers starters', async p => {
@@ -1498,8 +1525,9 @@ async function T(name, fn, opt) {
     ok((await p.$$('.lpround')).length === 9, 'not nine rounds'); await p.click('.lpco summary'); const t = await text(p, '#page');
     ok(/Recruiter screen/.test(t) && /Code comprehension/.test(t) && /Leadership and past project/.test(t) && /SQL, live/.test(t) && /Data modelling/.test(t) && /Product sense/.test(t) && /Meta/.test(t) && /% ready/.test(t), 'hub text: ' + t.slice(0, 300));
     ok(await p.$('nav.side a[href="#/loop"]'), 'Interview loop not in the menu');
-    await go(p, '#/today', 1400); const c = await p.$('.looptoday a'); ok(c, 'no Interview loop card on Today'); const h = await c.getAttribute('href');
-    await c.click(); await p.waitForSelector('.tabs [aria-selected=true]'); ok(/#\/loop\/r\d\/\w+/.test(h) && (await p.evaluate(() => location.hash)) === h, 'Today card went to ' + h);
+    await go(p, '#/today', 1400); await p.waitForSelector('.plan .dsum'); await p.evaluate(() => document.getElementById('tab-grp-interview').click());
+    const c = await p.$('#grp-interview a.xlink[href^="#/loop/"]'); ok(c, 'no Interview loop row in Today\'s Interview tab'); const h = await c.getAttribute('href');
+    await c.click(); await p.waitForSelector('.tabs [aria-selected=true]'); ok(/#\/loop\/r\d\/\w+/.test(h) && (await p.evaluate(() => location.hash)) === h, 'Today row went to ' + h);
   });
   await T('loop recruiter: the pitch builds from four parts, saves, and raises readiness', async p => {
     await loopGo(p, '#/loop/r1/pitch');
