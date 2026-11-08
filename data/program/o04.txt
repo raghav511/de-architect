@@ -1,0 +1,323 @@
+@@meta
+id: o04
+n: 4
+title: Running the data platform as a product: users, service levels, adoption, cost showback and the roadmap
+goal: Run an internal data platform the way a good product team runs a product: know its users and their journeys, publish and meet service levels with error budgets, run on-call and incidents well, show each team what its data costs, measure adoption and outcomes instead of vanity numbers, prioritise a roadmap and say no, and fund and staff the team so it lasts.
+hours: 5
+
+@@tickets
+O401 | learn | 1 | Chapter part 1: the platform as a product, knowing your users, service levels and error budgets, on-call and incidents | You can write two SLIs and SLOs for a data platform and say what happens when its error budget runs out. | chapter:0-3
+O402 | learn | 1 | Chapter part 2: cost showback, adoption and outcomes, the roadmap, funding and failure modes, the architect's lens | You can explain showback against chargeback, name three outcome metrics, and score a backlog. | chapter:4-8
+O403 | build | 1 | Exercises 1–2: error budget burn alerts, cost showback by team | Both pass in the editor: burn rates with page or ticket decisions, and costs per team with the untagged share. | py:1-2
+O404 | build | 0.75 | Exercises 3–4: prioritise a backlog, read an adoption funnel | Both pass: a scored and ordered backlog with quick wins, and funnel conversions with the biggest drop. | py:3-4
+O405 | practice | 0.5 | Write a one-page platform product brief, then the customer drill | Users, top three journeys, two SLOs, the cost model and the three numbers you report, and the drill answered out loud. | practice
+O406 | test | 0.5 | Quiz O4 | 80% or better. | quiz
+O407 | talk | 0.75 | Interview set O4 | 5 of 7 answered out loud and ticked. | interview
+
+@@readings
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
+- **Reading note: Service level objectives.** An SLI measures something users feel (the share of good events), an SLO is the target for it over a window, and the error budget is what is left to spend. When the budget is gone, reliability work comes before new features. [ⓘ](https://sre.google/sre-book/service-level-objectives/)
+- **Reading note: Alerting on SLOs with burn rates.** Page when the budget is burning fast enough to run out in hours, ticket when it would run out in days; checking two windows at once avoids alerts for short blips. [ⓘ](https://sre.google/workbook/alerting-on-slos/)
+- **Reading note: FinOps.** Cloud cost becomes manageable when the teams that spend it can see it: tag resources, allocate shared costs, show each team its spend and unit costs, then optimise together. [ⓘ](https://www.finops.org/framework/)
+- **Reading note: Platform as a product.** Treat internal users as customers: research their needs, measure satisfaction and adoption, publish a roadmap, and make the platform compelling rather than mandatory. [ⓘ](https://martinfowler.com/articles/platform-prerequisites.html)
+
+@@chapter
+## O4.1 The platform as a product
+
+O1 to O3 built the pieces: data products owned by domains, golden paths, and governance as code. Someone has to run all of it, every day, for dozens of teams. That is the data platform team, and the teams that do it well run the platform as a **product**:
+
+- It has **users** (data engineers, analysts, ML engineers in domain teams) whose needs it researches.
+- It has a **value proposition**: ship a trusted data product in a day, not a month.
+- It has **service levels** it publishes and meets.
+- It has a **roadmap**, decided from evidence, and it says no to some requests.
+- It has **adoption and satisfaction** numbers, reported like any product's.
+- Often it has a **product manager**, not only engineers and a manager.
+
+The opposite is a platform team as a ticket desk: it does whatever arrives loudest, measures tickets closed, and is surprised when teams build their own stacks around it.
+
+## O4.2 Knowing your users
+
+A platform has several kinds of users with different jobs:
+
+| User | Main job | What hurts today |
+|---|---|---|
+| Domain data engineer | Build and run data products | Setup takes weeks; unclear failures |
+| Analyst | Find and query trusted data | Cannot tell which table is right; slow queries |
+| ML engineer | Build features and training sets | Point-in-time joins; slow backfills |
+| Data product owner | Keep consumers happy | No view of freshness, cost or usage |
+
+Find out what hurts the way product teams do: interview five users per type each quarter, shadow a journey end to end, read support questions, and run a short survey (satisfaction and "what would you change?"). Write the **top journeys** down with today's time and pain, and use them to decide what to build.
+
+## O4.3 Service levels for the platform
+
+The platform needs its own service levels, separate from each data product's. Pick **SLIs** that users feel, as a share of good events:
+
+- **Ingestion freshness:** share of sources whose data lands within its target (for example 15 minutes).
+- **Job success:** share of scheduled platform-run jobs that finish without a platform fault.
+- **Query latency:** share of interactive queries under 10 seconds.
+- **Availability:** share of minutes the catalog, orchestrator and query engines are up.
+
+An **SLO** is the target over a window: 99.5% of ingestion runs on time over 30 days. The **error budget** is what is allowed to fail: 0.5% of runs. Agree an **error budget policy** in advance: when the budget is spent, the team stops feature work and fixes reliability until it recovers.
+
+Alert on **burn rate** rather than on single failures. A burn rate of 1 uses the budget exactly over the window; 14.4 over an hour would use 2% of a 30-day budget in that hour. Page when it burns that fast, open a ticket when a 6-hour window burns at 6, and ignore short blips that do neither.
+
+## O4.4 On-call, incidents and communication
+
+Platform incidents hit every team at once, so run them well:
+
+- **On-call** with a rotation, a runbook per alert, and a limit on pages per shift; an alert nobody can act on is deleted or fixed.
+- **Incident roles:** an incident lead who coordinates, people who fix, and someone who communicates.
+- **A status page** for the platform: what is affected, since when, the next update time. Teams stop asking in ten channels when they can look in one place.
+- **Blameless reviews** after every serious incident: timeline, contributing causes, what changes, owners and dates. Track the actions to done.
+
+Measure **time to detect** and **time to restore**, and how often incidents are found by users before the platform team.
+
+## O4.5 Cost showback and unit costs
+
+Cloud data platforms spend money continuously, and nobody controls what they cannot see. **Showback** shows each team what its data costs; **chargeback** actually moves the money to the team's budget. Start with showback: it changes behaviour without a finance project.
+
+To show cost you need:
+
+1. **Tags** on every resource (team, product, environment), enforced by the golden path, so cost can be allocated.
+2. **Allocation of shared costs** (the catalog, shared clusters, the platform team itself) by a fair key such as usage share.
+3. **Unit costs** people can reason with: cost per TB scanned, per pipeline run, per data product per month, per active user.
+4. **A monthly report** to each team: their spend, the trend, the top three drivers and one suggestion.
+
+Track the **untagged share** of spend; if it is 30%, nobody trusts the report. Then optimise together: idle clusters, unpartitioned scans, forgotten dev environments, storage that should move to cheaper tiers.
+
+## O4.6 Adoption and outcomes
+
+Measure what tells you whether the platform helps:
+
+- **Adoption:** share of data products on the platform and its golden paths; weekly active users by type.
+- **Time to value:** days from "new data product" to its first consumer query.
+- **Delivery:** lead time for changes, deployment frequency, change failure rate and time to restore, for pipelines on the platform.
+- **Reliability:** SLO attainment and incidents found by users first.
+- **Satisfaction:** a quarterly survey score and the top complaints.
+- **Cost:** unit costs over time.
+
+Avoid vanity numbers: tables created, tickets closed, petabytes stored. Look at **funnels** too: of the teams who signed up, how many published a product, ran it in production and use it weekly? The step with the biggest drop is usually your next project.
+
+## O4.7 The roadmap and saying no
+
+Requests always exceed capacity. A roadmap turns them into choices:
+
+- Collect requests in one intake, with the problem, who has it and what it costs them today.
+- Score them openly, for example **RICE**: reach (teams affected) × impact × confidence ÷ effort.
+- Reserve capacity: something like 60% roadmap, 20% reliability and debt, 20% support and unplanned work, adjusted by the error budget.
+- Publish the roadmap quarterly, with what is not planned and why.
+- Plan deprecations like features: migration help, dates, and a way to see who still uses the old thing.
+
+Saying no clearly ("not this quarter, because X ranks higher; here is a workaround") keeps trust. Saying yes to everything means delivering nothing well.
+
+## O4.8 Funding, team shape and failure modes
+
+A platform team is usually funded centrally at first, because its value is spread across teams; as it matures, part of its compute is shown back or charged to the teams that use it. Size it to the number of teams it serves and the scope it owns; a common shape is one platform engineer per 8 to 15 engineers it supports, with a product manager once it serves more than a handful of teams.
+
+| Failure | What it looks like | Prevention |
+|---|---|---|
+| Ticket desk | The loudest request wins; no roadmap | Intake, scoring, a published roadmap |
+| Building for itself | Features users did not ask for | User research and adoption numbers |
+| Hidden cost | A surprise bill, nobody owns it | Tags, showback, unit costs |
+| Reliability debt | Incidents every week; features keep shipping | SLOs with an error budget policy |
+| Mandate instead of value | Teams forced onto a platform they resent | Make it the fastest way; measure satisfaction |
+| Hero dependence | Two people know how it works | Runbooks, rotation, docs, pairing |
+
+## O4.9 Architect's lens: running the data platform as a product
+
+The questions an architect is asked about running a data platform: how to know it is working, how to pay for it, and what to build next.
+
+| Question | Short answer for the platform as a product |
+|---|---|
+| **What problem does it solve?** | A shared data platform used by many teams drifts into a ticket desk with surprise bills and weekly incidents. Running it as a product (users, service levels, cost visibility, a roadmap and adoption numbers) keeps it reliable, affordable and actually used. |
+| **Why it over the alternatives?** | Against a ticket desk: research and a scored roadmap put effort where it helps most. Against each team running its own stack: one platform with service levels is cheaper and safer. Against a mandated platform: earned adoption shows whether it really helps. |
+| **When not to use it?** | A company with one or two data teams does not need a product manager, a status page and chargeback; a few engineers with shared practices are enough. Add the product practices as the number of teams and the cost grow. |
+| **Who owns and pays for it?** | A platform team with an engineering lead and a product manager owns the roadmap, service levels, on-call and cost reporting. It is usually funded centrally, with compute shown back or charged to the teams that use it. Leadership owns the funding decision and the error budget policy. |
+| **Where does it sit?** | Between the infrastructure (cloud, warehouse, compute) and the domain teams: it offers golden paths, shared services, governance and observability, and is accountable for their service levels. |
+| **How does it fail and scale?** | It scales by self-service and clear service levels, not by headcount per request. It fails as a ticket desk, a team building for itself, hidden cost, reliability debt, mandates instead of value, and dependence on a few heroes. |
+| **When do you move off it?** | When a managed service covers a part well enough, retire that part of the platform and keep the thin layer that adds your guardrails; when the company shrinks, fold the platform back into fewer teams. |
+
+### Under the hood
+
+**1. Which SLIs and SLOs would you set for a data platform?**
+<details><summary>Model answer</summary>
+
+Pick a few that users feel, as a share of good events over 30 days: ingestion freshness (share of source loads landing within their target, say 99.5%), platform job success (share of scheduled runs that do not fail for a platform reason, 99.5%), interactive query latency (share of queries under 10 seconds, 95%), and availability of the catalog, orchestrator and query engines (99.9%). Publish them, show attainment on a page, and agree an error budget policy with leadership in advance: when a budget is spent, reliability work comes before features until it recovers.
+
+</details>
+
+**2. How do burn-rate alerts work, and why are they better than alerting on every failure?**
+<details><summary>Model answer</summary>
+
+Burn rate is the observed error rate divided by the rate the budget allows: with a 99.5% SLO the budget is 0.5%, so 5% errors is a burn rate of 10. A burn rate of 1 uses the whole budget exactly over the window. Page when a short window burns very fast (about 14.4 over an hour, which would spend 2% of a 30-day budget in that hour), and open a ticket when a longer window burns steadily (about 6 over six hours). Checking a long and a short window together avoids paging for a blip that has already stopped. Alerting on every failure pages people for noise and teaches them to ignore pages.
+
+</details>
+
+**3. Showback or chargeback, and how do you make the numbers trusted?**
+<details><summary>Model answer</summary>
+
+Start with showback: each team sees its spend, trend, top drivers and unit costs every month, which changes behaviour without moving budgets. Move to chargeback for large, controllable costs once the numbers are trusted, because charging people for numbers they dispute damages trust. Trust comes from tags on every resource enforced by the golden path, a published and fair key for shared costs (usage share), a small untagged share, and unit costs people can act on, such as cost per TB scanned or per product per month.
+
+</details>
+
+**4. How do you decide what the platform team builds next?**
+<details><summary>Model answer</summary>
+
+One intake for requests, each with the problem, who has it and what it costs them today. Evidence from user research, support questions and funnels (where teams drop off). Score openly, for example RICE: reach times impact times confidence divided by effort. Reserve capacity for reliability (more when the error budget is low) and for support. Publish the quarterly roadmap with what is not planned and why. Review outcomes after delivery: did adoption, time to value or cost move?
+
+</details>
+
+**5. How do you show leadership that the platform is worth its cost?**
+<details><summary>Model answer</summary>
+
+Report outcomes, not activity: time from new data product to first consumer query (before and after), share of products on the platform, delivery metrics for pipelines on it, SLO attainment and incidents found by users first, satisfaction, and unit costs over time against the cost of each team running its own stack. Show the trend and one story per quarter of a team that shipped faster because of the platform. Avoid tables created and tickets closed.
+
+</details>
+
+**6. The platform has an incident every week and teams have started building their own stacks. What do you do?**
+<details><summary>Model answer</summary>
+
+Treat it as a product failure with two causes: reliability and trust. Set SLOs and an error budget policy, and since the budget is gone, pause features and spend the next weeks on the top incident causes from the reviews. Fix on-call: runbooks, actionable alerts only, a status page. In parallel, talk to the teams building their own stacks: what did they need that the platform did not give? Put those needs on the roadmap, and report SLO attainment and incidents monthly so teams see it improve before asking them to come back.
+
+</details>
+
+@@lab
+## In the app: service levels, cost and the roadmap in the browser (1.75 hours)
+
+Four exercises run real tests in your browser:
+
+1. **Error budget burn.** From hourly good and bad counts, compute burn rates over one and six hours and the budget left, and decide page, ticket or nothing.
+2. **Cost showback.** From usage and prices, show cost per team, the untagged share and the total.
+3. **Prioritise a backlog.** Score requests with RICE, order them, and pick the quick wins.
+4. **Adoption funnel.** From the steps each team reached, compute conversion between steps and find the biggest drop.
+
+## Going further (optional, 45 minutes)
+
+Write a one-page product brief for a platform you know, then answer this module's design problem in the design studio.
+
+@@practice
+## A one-page platform product brief (20 minutes)
+
+For a data platform you know: who its users are (by type); their top three journeys and how long each takes today; two SLOs with their error budget policy; how cost is shown to teams; and the three numbers you would report to leadership every month.
+
+## Customer drill: "what does the platform team actually do?" (10 minutes)
+
+A new CTO says: "We spend 4 million a year on the data platform and its team of 14. I can't tell what we get for it." Answer out loud in three minutes: what do you show in the next month?
+
+<details><summary>A strong answer</summary>
+
+Outcomes and costs, side by side. Cost: the 4 million broken down by compute, storage, tools and people, with unit costs (per TB scanned, per data product per month) and the share shown back to teams. Value: the number of teams and products on the platform, time from new product to first consumer query (and what it was before), SLO attainment and incidents this quarter, and satisfaction from a short survey. Then the roadmap: the top three bets for the next quarter with the outcome each should move, and what we stopped doing. Offer a monthly one-page report with the same numbers.
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: arch
+Q: A platform's ingestion SLO is 99.5% of loads on time over 30 days. What is the error budget?
+A) 99.5% of the loads that run in the window
+B) 0.5% of the loads may run late here
+C) Five late loads each day before an alert
+D) No late loads at all during the 30 days
+ANS: B
+WHY: The budget is what the SLO allows to fail: 100% minus 99.5%.
+---
+TYPE: mcq
+TAG: arch
+Q: The SLO allows 0.5% errors and the last hour had 7.2% errors. What is the burn rate, and what should happen?
+A) 7.2, so wait and see if it continues
+B) 14.4, which is fast enough to page
+C) 0.5, which is exactly as it was planned
+D) 1.0, which uses the budget evenly
+ANS: B
+WHY: 7.2% divided by 0.5% is 14.4; burning that fast for an hour spends 2% of a 30-day budget.
+---
+TYPE: mcq
+TAG: arch
+Q: The platform's error budget for the month is spent. What does a good error budget policy say?
+A) Raise the SLO target so that the budget grows again
+B) Pause feature work and fix reliability until it recovers
+C) Ignore it, because budgets reset at the start of each month
+D) Ask the users to report fewer incidents to the team
+ANS: B
+WHY: The policy, agreed in advance, trades feature work for reliability when users are being hurt.
+---
+TYPE: mcq
+TAG: arch
+Q: What is the difference between showback and chargeback?
+A) Showback moves budget; chargeback only reports the spend
+B) Showback reports spend; chargeback moves it to a budget
+C) They are two names for exactly the same kind of monthly report
+D) Chargeback is used for storage and showback for compute
+ANS: B
+WHY: Start with showback to build trust in the numbers, then charge back large controllable costs.
+---
+TYPE: mcq
+TAG: arch
+Q: Which number best shows a data platform delivers value?
+A) The number of tables that teams created this year
+B) Days from a new data product to its first consumer query
+C) The number of support tickets the team closed this month
+D) The number of petabytes the platform now stores in total
+ANS: B
+WHY: Time to value measures what users get; the others count activity or volume.
+---
+TYPE: mcq
+TAG: arch
+Q: A request reaches 10 teams, impact 2, confidence 0.8, effort 4. Another reaches 3 teams, impact 3, confidence 1.0, effort 1. Which ranks higher by RICE?
+A) The first, because it reaches many more teams than the second
+B) The second, scoring 9 against 4 for the first request
+C) They tie, because both requests have the same total effort
+D) The first, because effort does not count in a RICE score
+ANS: B
+WHY: RICE is reach × impact × confidence ÷ effort: 10×2×0.8÷4 = 4 and 3×3×1.0÷1 = 9.
+---
+TYPE: fill
+TAG: arch
+Q: Alerting on how fast the error budget is being used, rather than on each failure, is called ____-rate alerting.
+ANS: burn
+WHY: Page on fast burns and ticket on slow ones; ignore blips that do neither.
+---
+TYPE: fill
+TAG: arch
+Q: The share of spend without team tags is the ____ share; if it is high, nobody trusts the cost report.
+ANS: untagged
+WHY: Tags enforced by the golden path keep the untagged share small.
+---
+TYPE: short
+TAG: arch
+Q: What would you report to leadership every month about the data platform?
+MODEL: Outcomes and costs: share of data products and teams on the platform; time from new product to first consumer query; delivery metrics for pipelines on it; SLO attainment and incidents found by users first; satisfaction score and top complaints; total spend broken down with unit costs (per TB scanned, per product per month) and the untagged share; and the roadmap's next bets with the outcome each should move.
+---
+TYPE: short
+TAG: arch
+Q: Name three ways a platform team fails and how to prevent each.
+MODEL: Ticket desk where the loudest wins (one intake, open scoring, a published roadmap); building for itself (user research, adoption numbers); hidden cost (tags, showback, unit costs); reliability debt (SLOs with an error budget policy); mandates instead of value (make it the fastest way, measure satisfaction); hero dependence (runbooks, rotation, docs).
+
+@@interview
+Q: How would you run a data platform team as a product?
+TAG: arch
+A: Know the users by type (domain engineers, analysts, ML engineers, product owners) and their top journeys, with research every quarter. Publish service levels for the platform itself (ingestion freshness, job success, query latency, availability) with an error budget policy. Run on-call and incidents well, with a status page and blameless reviews. Show each team its cost with tags and unit costs. Keep one intake, score requests openly, reserve capacity for reliability and support, and publish the roadmap. Report outcomes monthly: adoption, time to value, delivery metrics, SLO attainment, satisfaction and unit costs.
+---
+Q: Which SLOs would you set for a data platform, and how would you alert on them?
+TAG: arch
+A: Ingestion freshness (99.5% of loads within target), platform job success (99.5%), interactive query latency (95% under 10 seconds) and availability of core services (99.9%), over 30 days. Alert on burn rate: page when an hour burns at about 14.4 times the allowed rate, ticket when six hours burn at about 6, and check a short window with the long one so blips do not page. Agree with leadership that a spent budget means reliability work before features.
+---
+Q: How would you introduce cost showback for a data platform?
+TAG: arch
+A: Enforce tags (team, product, environment) through the golden path and find the untagged spend first. Agree a fair key for shared costs, such as usage share. Define unit costs teams can act on: per TB scanned, per pipeline run, per product per month. Send each team a monthly report with spend, trend, top drivers and one suggestion, and review the biggest spenders together. Move to chargeback for large controllable costs only when the numbers are trusted.
+---
+Q: Your platform team receives 60 requests a quarter and can do 15. How do you decide?
+TAG: arch
+A: One intake with the problem, who has it and what it costs them. Group duplicates, then score openly with RICE (reach × impact × confidence ÷ effort), using evidence from research and funnels. Reserve capacity for reliability and support first, more if the error budget is low. Publish the plan with what is not planned and why, offer workarounds, and review whether delivered items moved the outcomes they promised.
+---
+Q: The CTO asks what the data platform's 4 million a year buys. What do you show?
+TAG: arch
+A: Costs and outcomes together. Spend broken down by compute, storage, tools and people, with unit costs and the share shown back to teams. Outcomes: teams and products on the platform, time to value before and after, delivery metrics, SLO attainment and incidents, satisfaction, and the cost of the alternative (each team running its own stack). Then the next quarter's bets with the outcome each should move, and what we stopped doing.
+---
+Q: Teams are building their own data stacks around your platform. What do you do?
+TAG: arch
+A: Find out why before anything else: talk to those teams and look at what they built. Usually the platform is unreliable, slow to start with, or missing a capability. Fix reliability first with SLOs and an error budget policy, put the missing needs on the roadmap, make the platform the fastest way to do the common journeys, and report improvements monthly. Keep the guardrails (security, governance, cost tags) required for everyone, on the platform or not.
+---
+Q: Tell me about a time you had to say no to a stakeholder's request.
+TAG: behavioral
+A: Answer with your own STAR story. A strong shape: a request that would have taken capacity from something more important; you showed the trade-off openly (what else would slip, with numbers); you offered an alternative or a later date; the stakeholder agreed or escalated and the decision held; and the result showed the choice was right. End with what you learned about saying no while keeping trust.
