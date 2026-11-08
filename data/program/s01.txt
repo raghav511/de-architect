@@ -442,6 +442,74 @@ Do not write a query. List five questions you would ask first. Then compare with
 
 The habit of asking before building is the core of forward deployed work, and it is also what design-round interviewers look for in the first five minutes.
 
+@@steps
+STEP: design
+TITLE: Design it: the walking skeleton
+MIN: 10
+SIM: skeleton
+BODY: A short simulator challenge on this week's pipeline: events into Kafka, landed in object storage, scheduled by Airflow. It fails as given. Find what is missing for a rerun to be safe, change the design and run it again until it passes.
+---
+STEP: fix
+TITLE: Read and fix: the hour that counts a row twice
+MIN: 10
+BODY: Data intervals are half-open: the start belongs to this run, the end to the next one. With `<=`, a row stamped exactly on the hour is loaded by two runs, so daily totals drift up by the rows that land on a boundary, a few per day, and nobody notices until a reconciliation. Catch it with a test that loads consecutive intervals and checks the total equals the source count.
+SPEC: An hourly job loads the rows of its data interval: from the interval's start, included, to its end, excluded. Run hour after hour, every row must be loaded exactly once.
+CODE:
+```
+def rows_in_interval(rows, start, end):
+    """rows: dicts with "ts" (ISO text). Return the rows with start <= ts < end."""
+    out = []
+    for r in rows:
+        if start <= r["ts"] <= end:
+            out.append(r)
+    return out
+```
+FIX:
+```
+def rows_in_interval(rows, start, end):
+    """rows: dicts with "ts" (ISO text). Return the rows with start <= ts < end."""
+    out = []
+    for r in rows:
+        if start <= r["ts"] < end:  # the end belongs to the next interval
+            out.append(r)
+    return out
+```
+BUG: 5
+TESTS: [["two hours in a row", "rows = [{\"ts\": \"2026-10-11T09:00:00\"}, {\"ts\": \"2026-10-11T09:30:00\"}, {\"ts\": \"2026-10-11T10:00:00\"}]\n[len(rows_in_interval(rows, \"2026-10-11T09:00:00\", \"2026-10-11T10:00:00\")), len(rows_in_interval(rows, \"2026-10-11T10:00:00\", \"2026-10-11T11:00:00\"))]", [2, 1]], ["a day of hours loads every row once", "rows = [{\"ts\": \"2026-10-11T%02d:00:00\" % h} for h in range(24)]\nsum(len(rows_in_interval(rows, \"2026-10-11T%02d:00:00\" % h, \"2026-10-11T%02d:00:00\" % (h + 1))) for h in range(23))", 23], ["an empty hour", "rows_in_interval([], \"2026-10-11T09:00:00\", \"2026-10-11T10:00:00\")", []]]
+---
+STEP: platform
+TITLE: Run it on the platform: Airflow, managed or on Kubernetes
+MIN: 8
+BODY: **Where Airflow runs.** Managed: Amazon MWAA, Google Cloud Composer and Astronomer run the scheduler, web server and metadata database for you; you pay per environment size and give up some versions and plugins. Self-run on Kubernetes usually means the official Helm chart with the Kubernetes executor, which starts one pod per task, or Celery workers that stay up.
+
+**What drives the bill.**
+- **The always-on parts.** Scheduler, web server, triggerer and the metadata database run all day, even when nothing is scheduled. That is most of a small team's cost.
+- **Workers.** Celery workers cost while idle; Kubernetes pods cost only while tasks run, but each start adds seconds.
+- **Heavy work inside tasks.** Airflow should orchestrate: start the Spark or warehouse job and wait for it. Doing the processing in the worker makes Airflow your most expensive compute.
+
+**Run it.** Alert on scheduler heartbeat, DAG file parse time, and how long tasks wait in the queue before they start. Keep top-level code in DAG files light: it runs every time the scheduler parses the file.
+CHECK: {"q": "Tasks start minutes late, and each DAG file takes 90 seconds to parse. What do you check first?", "c": ["Top-level code in DAG files that calls APIs", "More Celery workers so tasks can start", "A larger instance for the metadata database"], "a": 0, "why": "The scheduler runs a DAG file's top-level code on every parse. A network or database call there slows parsing for every DAG, and workers or a bigger database do not help."}
+---
+STEP: lead
+TITLE: Lead it: forty cron jobs and one orchestrator
+MIN: 10
+BODY: Answer out loud in two minutes first, then write the short version and compare it with the model answer. Listen for the fear behind each request, a default with a written exception, and how you would make the change cheap for the team you are asking to move.
+Q: Product analytics runs 40 jobs from cron on one server and wants to keep them. The platform team wants every pipeline in Airflow by the end of the quarter. You lead the data platform. What do you decide, and how?
+A: Start with what each side fears. Analytics fears a forced rewrite of jobs that work, with nothing gained for them. Platform fears a server nobody else understands, with no retries, no lineage and no alerts, failing at 3 a.m.
+
+Decide the default and the exception. New pipelines go to Airflow through a template (owner, retries, alerts, data interval). Existing cron jobs move only when they touch shared data or have failed in the last quarter; the rest stay, but they must report success and failure to the same alerting, and the server gets a named owner and a runbook.
+
+Make the move cheap. The platform team wraps a cron job as a single Airflow task in a day, with no rewrite, and shows analytics what they gain: reruns for a day from the UI, backfills and a history of runs.
+
+Agree it in a short review with both leads, move the five riskiest jobs first, and revisit in a month with the numbers: failures caught, hours spent. You are setting a default and a path, not a deadline that ignores what already works.
+---
+STEP: ai
+TITLE: With AI: is this rerun safe?
+MIN: 10
+BODY: **Where LLM tooling helps with Airflow.** Writing the boilerplate of a DAG from a description; explaining a failed task's log; turning a cron line into a schedule and saying what data interval each run will get. **Where it misleads:** it often writes `start_date=datetime.now()` or forgets `catchup`, which makes runs appear or vanish, and it may describe the data interval of Airflow 1 rather than 2 or 3. Check any schedule it writes against section 1.6, and test a change with one backfilled day before turning it on.
+TASK: Give Claude Code this week's DAG and the log of one failed run from your lab, and ask in one prompt: (1) is it safe to rerun that day as is, and why or why not, given how the task writes its output; (2) the exact command to rerun just that day; (3) one change that would make reruns safe if they are not. Paste your prompt and its answer below.
+RUBRIC: The answer says how the task writes (overwrite a partition, append, merge) and concludes from that whether a rerun duplicates data. The command reruns only the failed interval. If it proposes a change, it is an idempotent write (overwrite the interval's partition or merge on a key), not 'delete duplicates later'. You note one thing you checked yourself before trusting it.
+
 @@quiz
 TYPE: mcq
 TAG: cloud

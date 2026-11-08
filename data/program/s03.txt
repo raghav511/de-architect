@@ -357,6 +357,82 @@ Name the three numbers you would ask for before giving any explanation. Then com
 
 Notice the structure: split the total into its parts, then compare each part with what should drive it. That is decomposition, and it is the round forward deployed interviews weight most heavily.
 
+@@steps
+STEP: design
+TITLE: Design it: Spark under load
+MIN: 10
+SIM: spark
+BODY: A short simulator challenge on this week's batch job. It fails as given under load. Find the stage that holds everyone up, change the design and run it again until it passes. Say what you would look at in the Spark UI to prove it.
+---
+STEP: fix
+TITLE: Read and fix: the salted join that loses rows
+MIN: 10
+BODY: The small side was copied for salts 1 to n-1, so every big row whose salt is 0 matched nothing and vanished from an inner join: a quarter of the rows with n of 4, with no error and a job that finished faster. Catch it with a row-count check against the unsalted join on a sample, which every salting change should carry.
+SPEC: To spread a hot key over n tasks, each big row gets a salt from 0 to n-1 by position, and every small row is copied once per salt value, so every big row still finds its match. The result must equal a plain inner join.
+CODE:
+```
+def salted_join(big, small, key, n=4):
+    """Inner join big to small on key, with big rows salted by position."""
+    copies = {}
+    for r in small:
+        for s in range(1, n):
+            copies.setdefault((r[key], s), []).append(r)
+    out = []
+    for i, b in enumerate(big):
+        for m in copies.get((b[key], i % n), []):
+            out.append(dict(b, name=m["name"]))
+    return out
+```
+FIX:
+```
+def salted_join(big, small, key, n=4):
+    """Inner join big to small on key, with big rows salted by position."""
+    copies = {}
+    for r in small:
+        for s in range(n):  # every salt value, 0 included
+            copies.setdefault((r[key], s), []).append(r)
+    out = []
+    for i, b in enumerate(big):
+        for m in copies.get((b[key], i % n), []):
+            out.append(dict(b, name=m["name"]))
+    return out
+```
+BUG: 5
+TESTS: [["every big row is matched", "big = [{\"k\": 1, \"v\": i} for i in range(8)]\nlen(salted_join(big, [{\"k\": 1, \"name\": \"a\"}], \"k\"))", 8], ["the same rows as a plain join", "big = [{\"k\": 1, \"v\": i} for i in range(6)]\nsorted(r[\"v\"] for r in salted_join(big, [{\"k\": 1, \"name\": \"a\"}], \"k\", n=3))", [0, 1, 2, 3, 4, 5]], ["no match, no rows", "salted_join([{\"k\": 2, \"v\": 0}], [{\"k\": 1, \"name\": \"a\"}], \"k\")", []]]
+---
+STEP: platform
+TITLE: Run it on the platform: Spark, managed or on Kubernetes
+MIN: 8
+BODY: **Where Spark runs.** Managed: Databricks, Amazon EMR (on clusters or serverless), Google Dataproc and Azure Synapse or Fabric. They handle clusters, versions and autoscaling. On Kubernetes, the Spark operator runs the driver and executors as pods next to your other services; you own images, autoscaling and the shuffle storage.
+
+**What drives the bill.**
+- **Executor hours.** Size times time. One skewed task can keep a whole autoscaled cluster alive while the rest sit idle.
+- **Shuffle.** Disk and network for every wide operation; spill to disk makes stages slower and longer.
+- **Spot or preemptible machines.** Much cheaper, but a lost executor reruns its tasks; keep the driver on regular machines.
+
+**Run it.** Alert on job duration against its deadline, the ratio of the longest task to the median in the slowest stage, and spill. Record cost per run so a regression shows up the next morning, not at month end.
+CHECK: {"q": "A nightly Spark job costs twice as much, runs as long as before, and the cluster sits at its maximum size for the whole run. First suspect?", "c": ["One skewed task keeps idle executors alive", "A driver with too little memory for the plan", "A different compression codec for the output"], "a": 0, "why": "Autoscaled executors stay while any task in the stage runs. A single skewed task holds the whole cluster at its peak size for the stage's full duration."}
+---
+STEP: lead
+TITLE: Lead it: replace Spark with single-node engines?
+MIN: 10
+BODY: Answer out loud in two minutes, then compare. Listen for measuring before deciding, a written boundary, shared storage that keeps the choice reversible, and a trial with numbers.
+Q: An engineer shows that DuckDB on one large machine runs half of your Spark jobs ten times cheaper, and proposes moving everything off Spark. Your Spark platform has two people on it. What do you decide?
+A: Take the evidence seriously: many jobs process a few GB and pay for a cluster they do not need. The fear on the other side is a zoo of engines nobody can operate, and a rewrite that stalls halfway.
+
+Decide by job size and shape, not by engine loyalty. Measure every job's input size, runtime and cost for a month. Set a rule in writing: jobs under a threshold (say 50 GB of input and no streaming) may run on a single-node engine through the same orchestration, storage and table format; larger, wide or streaming jobs stay on Spark. Both read and write the same Iceberg or Delta tables, so the choice is per job and reversible.
+
+Make it cheap and safe: a template for single-node jobs with the same logging, retries and data checks, and a ceiling that alerts when a job outgrows its engine.
+
+Move ten jobs, compare cost and failures after a month, then decide how far to go. You are adding a tool with a boundary, not starting a migration.
+---
+STEP: ai
+TITLE: With AI: a diagnosis from the stage summary
+MIN: 10
+BODY: **Where LLM tooling helps with Spark.** Reading an explain plan and naming each exchange and join strategy, and reasoning over a small stage summary (section 3.9: code does the counting, the model does the reasoning). **Where it misleads:** it suggests raising shuffle partitions or executor memory for every problem, and it sometimes names configuration keys that do not exist. Compare its diagnosis with your own before you change anything.
+TASK: Run this week's stage summary on a skewed run from the lab and give Claude Code the summary and the formatted plan. Ask it for the slowest stage, its cause, and one change (in code or a real Spark setting) with the improvement it expects. Paste your prompt and its answer below.
+RUBRIC: It names the stage you found by hand and the evidence for it (the longest task far above the median, spill, a large shuffle read). The change fits the cause: adaptive skew join, salting the hot key or dropping NULL keys for skew, not more memory. Any setting it names is real (you checked one), and it says how to measure the result.
+
 @@quiz
 TYPE: mcq
 TAG: spark

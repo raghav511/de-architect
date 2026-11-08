@@ -330,6 +330,68 @@ What do you do in the meeting? Decide, then compare.
 
 You did not pick a winner. Most "the data is wrong" disputes are definition disputes, and the engineer's job is to make both definitions visible.
 
+@@steps
+STEP: design
+TITLE: Design it: a warehouse people trust
+MIN: 10
+DESIGN: yes
+BODY: Open this module's design problem and sketch the layers from raw to marts, the grain of the main fact table, how dimensions keep history, and where tests and freshness checks sit. Compare with the model answer, then tick the step. Say which single definition you would protect first and why.
+---
+STEP: fix
+TITLE: Read and fix: the incremental model that misses late rows
+MIN: 10
+BODY: The lookback was declared but never applied, so a row whose `updated_at` was a few minutes earlier than the last load, because its source committed late, was never loaded. Totals come out slightly low every day and match nothing. Catch it with a test that inserts a late row, and with a daily reconciliation of row counts between source and model.
+SPEC: Each run loads every row updated after the last load, minus a lookback window, so rows that arrive a little late are still picked up (the merge on the key makes reloading a row harmless). Times are minutes since midnight.
+CODE:
+```
+def incremental_rows(source, last_loaded, lookback_minutes=60):
+    """Rows to (re)load: updated after last_loaded minus the lookback window."""
+    cutoff = last_loaded
+    return [r for r in source if r["updated_at"] > cutoff]
+```
+FIX:
+```
+def incremental_rows(source, last_loaded, lookback_minutes=60):
+    """Rows to (re)load: updated after last_loaded minus the lookback window."""
+    cutoff = last_loaded - lookback_minutes
+    return [r for r in source if r["updated_at"] > cutoff]
+```
+BUG: 3
+TESTS: [["a row that arrived late is picked up", "[r[\"id\"] for r in incremental_rows([{\"id\": 1, \"updated_at\": 590}, {\"id\": 2, \"updated_at\": 610}], last_loaded=600)]", [1, 2]], ["rows older than the lookback stay out", "[r[\"id\"] for r in incremental_rows([{\"id\": 1, \"updated_at\": 500}, {\"id\": 2, \"updated_at\": 610}], last_loaded=600)]", [2]], ["new rows are always loaded", "len(incremental_rows([{\"id\": 3, \"updated_at\": 700}], last_loaded=600, lookback_minutes=0))", 1]]
+---
+STEP: platform
+TITLE: Run it on the platform: the warehouse and dbt bill
+MIN: 8
+BODY: **Where it runs.** The warehouse is Snowflake, BigQuery, Redshift or Databricks SQL. dbt runs as dbt Cloud (managed scheduling, docs and CI) or dbt Core in your own orchestrator, often Airflow on Kubernetes, with the same project.
+
+**What drives the bill.**
+- **Compute while it runs.** Snowflake charges warehouse size times seconds running, BigQuery bytes scanned or reserved slots. Auto-suspend and right-sized warehouses matter more than query tuning.
+- **Rebuilding instead of adding.** A model materialised as a table rebuilds everything on every run; an incremental model adds only what changed.
+- **BI traffic.** Dashboards that query raw tables on every refresh can cost more than the pipeline itself.
+
+**Run it.** Alert on failed tests, source freshness, and a model's runtime against its own history. Tag every query with the model or dashboard that ran it, so cost shows up by owner.
+CHECK: {"q": "After a new model shipped, the nightly dbt run costs three times as much. What is the likeliest cause?", "c": ["It is a table rebuilt in full on every run", "It has too many column tests attached to it", "dbt Cloud began to charge for each model"], "a": 0, "why": "A large model materialised as a table rescans and rewrites all its history every night; an incremental model would process only the new and changed rows."}
+---
+STEP: lead
+TITLE: Lead it: two correct numbers for active customers
+MIN: 10
+BODY: Answer out loud in two minutes, then compare. Listen for refusing a false choice, a quick visible step for the CEO, owned definitions in one place, and names that stop the confusion returning.
+Q: Finance and Product each show the CEO a different number of active customers, and both dashboards are correct by their own definitions. The CEO asks you to fix it by Friday. What do you do?
+A: Do not pick a winner by Friday; both numbers answer real questions. The fear on each side is losing a number their decisions depend on.
+
+Make the difference visible first: by Friday, one page with both definitions, both numbers, and what each is for (billing and revenue for Finance, product use for Product), so the CEO stops seeing a contradiction.
+
+Then fix the system: give each metric one owner and one definition in the semantic layer, with distinct names (paying customers, active users), and retire "active customers" as a bare term. Dashboards read only from those definitions; a test fails if a dashboard computes its own.
+
+Agree it with both heads in a short review, migrate the two dashboards first, and publish a glossary. You are ending the argument by naming two numbers properly, not by choosing one team over the other.
+---
+STEP: ai
+TITLE: With AI: tests and docs for one model
+MIN: 10
+BODY: **Where LLM tooling helps with dbt.** Writing column descriptions and tests from a model's SQL, explaining lineage, and drafting a first incremental version of a slow model. Section 4.9 explains why text-to-SQL for business users fails. **Where it misleads:** it invents columns, joins at the wrong grain and fans out rows, and writes tests that always pass. Run every generated test against data that should fail it.
+TASK: Give Claude Code one model from this week's project and ask it to add tests (unique and not-null keys, accepted values, a relationship to its dimension, a freshness check on its source) and a short description of each column. Then break one row in a copy of the data and run the tests. Paste your prompt, its tests and the failing run below.
+RUBRIC: The tests match the model's grain (the unique key is the real key, not a column that happens to be unique today). At least one test fails on the broken copy, which proves it can fail. Descriptions say what a value means for the business, not just its type. You removed or fixed anything it invented.
+
 @@quiz
 TYPE: mcq
 TAG: modeling

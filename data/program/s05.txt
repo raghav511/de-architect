@@ -460,7 +460,7 @@ BODY: **Where Kafka runs.** Most teams start managed: Confluent Cloud, Amazon MS
 - **Partitions.** Managed offerings price or cap them; each partition also costs broker memory and recovery time.
 
 **Run it.** Alert on consumer lag in seconds (not messages), under-replicated partitions and offline partitions. Size for the peak hour, not the daily average.
-CHECK: {"q": "Your MSK bill doubled after consumers moved to another zone. What is the cheapest first fix?", "c": ["Add brokers so each one carries less traffic", "Set client.rack on the consumers so they fetch from a replica in their own zone", "Lower the replication factor to 1"], "a": 1, "why": "Cross-zone transfer is billed per byte. Fetching from a same-zone follower removes it without giving up durability. Fewer replicas trades away the safety the design needs."}
+CHECK: {"q": "Your MSK bill doubled after consumers moved to another zone. What is the cheapest first fix?", "c": ["Add brokers so each one carries less traffic", "Fetch from a follower in the consumer zone", "Lower the replication factor from 3 to 1"], "a": 1, "why": "Cross-zone transfer is billed per byte. Setting client.rack lets consumers fetch from a follower replica in their own zone, which removes that traffic without giving up durability. Fewer replicas trades away the safety the design needs."}
 ---
 STEP: lead
 TITLE: Lead it: one Kafka or a Kafka per team
