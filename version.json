@@ -1,14 +1,19 @@
 {
-  "version": "1.36.16",
+  "version": "1.36.17",
   "date": "2026-11-08",
   "notes": [
-    "New in module 8 (8.8): the architect's lens for Snowflake and Databricks. When to pick each, or Iceberg on Trino, who owns and pays, how they fail and scale, and six under-the-hood answers: pruning and micro-partitions, clustering and search optimization, warehouse credits and the three caches, Time Travel and clones, Photon with deletion vectors and liquid clustering, Unity Catalog and serverless compute. Each feature says whether it is generally available.",
-    "Three new interview questions, three quiz questions and eight reels for the lens.",
-    "New module O2, Golden paths and self-serve templates, after O1: what a golden path is, which journeys to pave, what a template should create, keeping templates alive as they drift, the developer portal, guardrails instead of review gates, measuring a path, and how paths fail.",
-    "An architect's lens with six under-the-hood answers, and four exercises that run in your browser: render a template with checked parameters, report how far behind each repository is, run guardrails that honour expiring waivers, and measure whether the golden path is working.",
-    "A design problem (a golden path that gets a new data product to production in a day), ten quiz and seven interview questions, and twelve reels. If you started before this update, What is new lists it and nothing is marked done.",
-    "The \u24d8 source buttons and Udemy lecture links next to reading notes are easier to tap on a phone.",
-    "The simulator's All filter is easier to tap on a phone.",
-    "1129 of 1275 reels now play in the natural Heart voice."
+    "The Kafka week now has five short steps of up to 10 minutes before its quiz: Design it (a simulator challenge), Read and fix (find the offset bug and make the real tests pass), Run it on the platform (managed Kafka, Kubernetes and what drives the bill, with one check), Lead it (one Kafka or a Kafka per team, with a model answer) and With AI (where LLM tools help with Kafka, plus a Claude Code task on consumer lag that takes that week's Claude Code slot).",
+    "Each step finishes from the work itself (a passed challenge, passing tests, the right check, a good grade) or your own tick; nothing is ticked for you, and an edited step comes back as Updated.",
+    "No change for you: a test that filled the old API key field now checks an AI setting that still exists.",
+    "Module 2's lab now runs in your browser, with no Docker or Spark needed: an Iceberg-style table with snapshots, day partitions, columns tracked by id and time travel.",
+    "Four exercises with real tests: a MERGE on event id whose rerun adds nothing; files per day and a time-travel count read from the table's metadata; compacting 48 tiny files a day into one without changing the rows; and a view that keeps the Finance report working after a column rename.",
+    "The Docker lab with Spark, a catalog and Trino stays below as optional.",
+    "Module 3's lab now runs in your browser, with no Spark cluster needed: a small simulated cluster runs the enrichment join one task per shuffle partition, spills and runs out of memory under skew, and writes a real Spark event log.",
+    "Four exercises with real tests: read the plan (shuffles, join strategies, pushed filters); write the stage summary tool from 3.9; find the hot key and the NULLs from the partition sizes; and drop the NULLs and salt the hot key so the failing join finishes with the same rows.",
+    "The Docker lab with a real Spark setup stays below as optional.",
+    "Today's plan now has three tabs named like the app's main groups, Learn, Practice and Interview, each with its minutes: reading, quizzes and reels; Git, drills, coding, the design problem, project sessions and a simulator challenge; and your module's interview set, the live or written mock, a recall set, the interview loop drill, company questions and coaching.",
+    "Design problems and project sessions now have their own daily minutes (Profile \u203a Plan \u203a Design and build) instead of using your reading time, so the program finishes sooner.",
+    "The interview loop drill is now part of the day, so interview practice gets 10 more minutes by default (40 on weekdays, 55 at weekends); minutes you set yourself are kept.",
+    "1180 of 1295 reels now play in the natural Heart voice."
   ]
 }
