@@ -27,6 +27,24 @@ for f in sorted(glob.glob(os.path.join(os.path.dirname(__file__), 'auto', '*.jso
             words = sum(len(re.findall(r"\S+", b['say'])) for b in r['beats']); r['secs'] = round(words / 2.5)
             if not 60 <= words <= 160: errs.append('%s: %d words' % (r['id'], words)); continue
             out.setdefault(mid, []).append(r)
+# every picture in the shape js/reelfx.js draws: written reels sometimes give a flow as steps or nodes instead of items
+# (260 beats did, and a reel next to one crashed the player); anything else the engine cannot draw stops the build
+KINDS = {'scene', 'big', 'points', 'flow', 'bars', 'code', 'disk', 'shift', 'fig'}
+def picture(rid, s):
+    t = s.get('t', 'big')
+    if t == 'flow' and not isinstance(s.get('items'), list):
+        s['items'] = [x if isinstance(x, str) else x.get('label') or x.get('text') or '' for x in s.pop('steps', None) or s.pop('nodes', None) or []]
+        s['items'] = [x for x in s['items'] if x]
+    if t not in KINDS: return '%s: unknown picture type %r' % (rid, t)
+    if t in ('flow', 'points') and not (isinstance(s.get('items'), list) and all(isinstance(x, str) for x in s['items'])): return rid + ': %s picture needs items, a list of strings' % t
+    if t == 'bars' and not (isinstance(s.get('items'), list) and all(isinstance(x, list) and len(x) > 1 and isinstance(x[1], (int, float)) for x in s['items'])): return rid + ': bars picture needs items [[label, number, note]]'
+    if t == 'scene' and not all(isinstance(st, dict) and (not st.get('race') or isinstance(st['race'].get('items'), list)) and (not st.get('cells') or isinstance(st['cells'].get('items'), list)) for st in s.get('steps', [])): return rid + ': scene step with race or cells but no items'
+for reels in out.values():
+    for r in reels:
+        if not r.get('beats') or not all(isinstance(b.get('say'), str) for b in r['beats']): errs.append(r['id'] + ': needs beats, each with say'); continue
+        for b in r['beats']:
+            e = picture(r['id'], b.setdefault('show', {'t': 'big', 'text': ''}))
+            if e: errs.append(e)
 if errs: sys.exit('\n'.join(errs))
 # keep links to recordings that already match the text (tools/reels/voice.py records the rest)
 import hashlib

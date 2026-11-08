@@ -405,6 +405,26 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
     ok(/, Raj$/.test(h[0]) && h[1] === 'R', 'the Profile name did not win: ' + JSON.stringify(h));
   });
 
+  await T('Q41', 'every reel picture draws, and a reel next to broken pictures (or a reel with no beats) still plays without a page error', async p => {
+    await p.addInitScript(() => { window.__spoke = []; const fake = { speaking: false, speak: u => { window.__spoke.push(u.text); setTimeout(() => u.onend && u.onend(), 200); }, cancel: () => { }, getVoices: () => [], addEventListener: () => { } }; Object.defineProperty(window, 'speechSynthesis', { value: fake }); window.SpeechSynthesisUtterance = function (t) { this.text = t; }; });
+    await boot(p);
+    /* 1. every picture shipped in data/reels.json is drawn by the engine itself, not replaced by the fallback card */
+    const bad = await p.evaluate(async () => { await DATA.reelsP; const out = [], warn = console.warn; console.warn = (...a) => { if (/reel picture replaced/.test(a[0])) out.push(cur); }; let cur = '';
+      for (const [m, rs] of Object.entries(DATA.reels)) for (const r of rs) (r.beats || []).forEach((b, i) => { cur = r.id + ' beat ' + i; try { const f = FX.build(b.show || {}); f.finish(); f.stop(); } catch (e) { out.push(cur + ': ' + e.message); } });
+      console.warn = warn; return out; });
+    ok(!bad.length, bad.length + ' pictures could not be drawn, e.g. ' + bad.slice(0, 3).join(', '));
+    /* 2. a reel whose neighbours have pictures the engine cannot draw (the player renders neighbours too) plays, steps and moves on */
+    const id = await p.evaluate(async () => { await DATA.reelsP; const rs = DATA.reels.p03, at = 2, sec = rs[at].sec, say = 'A beat with a picture the engine cannot draw, read aloud all the same.';
+      const broken = (k, shows) => ({ id: 'p03-broken-' + k, sec, title: 'Broken ' + k, beats: shows.map(show => ({ say, show })) });
+      rs.splice(at, 0, broken(1, [{ t: 'flow' }, { t: 'bars', items: [{ label: 'a', value: 1 }] }]), { id: 'p03-nobeats', sec, title: 'No beats' }, broken(2, [{ t: 'scene', steps: [{ at: 0, race: {} }, { at: 0.1, cells: {} }] }, { t: 'wobble' }, null]), broken(3, [{ t: 'points', items: 'not a list' }]));
+      Object.keys(reelCache).forEach(k => delete reelCache[k]); return (await reelsFor('p03')).find(r => r.id === 'p03-broken-2').id; });
+    await p.evaluate(i => { location.hash = '#/reels/' + i; }, id); await p.waitForSelector('.rstart', { timeout: 15000 });
+    ok(await p.evaluate(async () => !(await reelsFor('p03')).some(r => r.id === 'p03-nobeats')), 'a reel with no beats was offered to the player');
+    await p.click('.rstart'); await p.waitForTimeout(1200);
+    await p.keyboard.press('ArrowRight'); await p.waitForTimeout(400); await p.keyboard.press('ArrowDown'); await p.waitForTimeout(1500); await p.keyboard.press('ArrowUp'); await p.waitForTimeout(1200);
+    ok(await p.evaluate(() => window.__spoke.length >= 2), 'the reels next to broken pictures did not play');
+  });
+
   await browser.close();
   for (const r of results) console.log(r[0].padEnd(5), r[1], r[2], r[3] ? '\n      ' + r[3] : '');
   console.log(results.filter(r => r[0] === 'PASS').length + ' passed, ' + results.filter(r => r[0] === 'FAIL').length + ' failed');

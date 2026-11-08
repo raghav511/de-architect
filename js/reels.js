@@ -44,12 +44,14 @@ async function reelsFor(m) {
   const hand = ((DATA.reels || {})[m] || []), parts = (s.raw.chapter || '').split(/\n(?=## )/), out = [];
   parts.forEach((p, i) => {
     const head = (/^## (.+)/.exec(p.trim()) || [])[1]; if (!head || REEL_META.test(head)) return;
-    const h = hand.filter(r => r.sec === head.split(' ')[0] || r.sec === head).map(r => Object.assign({ head, m }, r));
+    const h = hand.filter(r => (r.sec === head.split(' ')[0] || r.sec === head) && reelPlayable(r)).map(r => Object.assign({ head, m }, r));
     (h.length ? h : autoReels(m, head, p.replace(/^## .+\n/, ''), i)).forEach(r => out.push(r));
   });
   reelCarry(m, out);
   return (reelCache[m] = out);
 }
+/* a reel the player can step through: at least one beat, and every beat has narration */
+function reelPlayable(r) { return !!r && Array.isArray(r.beats) && r.beats.length > 0 && r.beats.every(b => b && typeof b.say === 'string'); }
 /* a section's reels are rewritten with new ids (a four-level series replaces an older single reel): carry each old
    reel's history, such as a review due after a missed check, to the first new reel of the same section (QA fix 9) */
 function reelCarry(m, list) {

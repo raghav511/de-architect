@@ -52,7 +52,7 @@ const FX = (() => {
     const seek = (id, on) => { const n = N[id]; if (n) n.el.classList.toggle('seeking', on !== false); };
     (s.steps || []).forEach(st => {
       const fn = () => { if (st.show) [].concat(st.show).forEach(show); if (st.packet) packet(st.packet[0], st.packet[1], st.n, st.color && TONE[st.color], st.ms); if (st.count) counter(st.count); if (st.chip) chip(st.chip); if (st.cells) cells(st.cells); if (st.race) race(st.race); if (st.glow) glow(st.glow); if (st.dim) dim(st.dim); if (st.seek) seek(st.seek, st.on); };
-      steps.push({ at: st.at || 0, fn });
+      steps.push({ at: st.at || 0, fn: () => { try { fn(); } catch (e) { console.warn('reel step skipped', e); } } }); /* one bad step never stops the reel */
     });
     return { root, steps, anims };
   }
@@ -77,7 +77,12 @@ const FX = (() => {
     return { title: s.text || '', steps: [] };
   }
 
+  /* a picture the engine cannot draw (reel data is written by a model and the daily refresh) becomes a plain caption card,
+     never a page error that stops the player: it also renders the neighbouring reels, so one bad picture broke a whole feed */
   function build(show) {
+    try { return make(show); } catch (e) { console.warn('reel picture replaced', e); return make({ t: 'big', text: (show && (show.title || show.text)) || '' }); }
+  }
+  function make(show) {
     const sp = legacy(show || {});
     const sc = scene(sp);
     if (sp.tall) sc.root.classList.add('fxtall');

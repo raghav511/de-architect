@@ -4,7 +4,6 @@ Top unblocked item goes next. Each item: goal served (1 understand, 2 remember, 
 
 ## Next
 
-1. **Intermittent page error in reels** (5): `Cannot read properties of undefined (reading 'length')` seen once in Q23 (2026-11-07); reproduce by repeating the reel tests, find the race, fix, add a test.
 2. **Ship the recorded reels** (2): every iteration, run `tools/reels/build.py` to link the Heart recordings finished so far and ship them; when the recording of all 1,194 reels finishes, ship the last batch. Test: reels flow, every beat has audio.
 4. **Architect's lens: Spark (s03)** (1, 3). Same test.
 8. **Architect's lens: Snowflake and Databricks (s08)** (1, 3).
@@ -30,6 +29,7 @@ Top unblocked item goes next. Each item: goal served (1 understand, 2 remember, 
 
 ## Done
 
+- Reels page error (backlog 1): the cause was reel pictures in a shape the engine did not draw (flows given as steps or nodes) in a neighbouring reel; the engine now never throws on a picture, build.py normalizes and checks every picture, reels without beats are dropped; Q41; the reels journey no longer clicks a fixed option of a shuffled check.
 - Unguessable quizzes (critic review item 3): per-attempt option order, answers by option, 189 options reworded (right option longest 87% → 21%), validate.py rule, quiz-same, Q36–Q39. Left: about 1,000 reel checks still have the right option longest (order is now shuffled; the daily reel review rewords up to 15 a day).
 - 1.35.2: Iceberg architect's lens (2.9, linked from 8.5) with 6 internals answers (v3 deletion vectors), 3 interview and 3 quiz questions, 8 reels.
 - 1.32.0: Kafka architect's lens (5.9) with 6 internals answers (v3 deletion vectors), 3 interview questions, 8 reels.
