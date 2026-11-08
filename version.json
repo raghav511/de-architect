@@ -1,15 +1,8 @@
 {
-  "version": "1.36.10",
+  "version": "1.36.11",
   "date": "2026-11-08",
   "notes": [
-    "13 new Hard DSA problems (tries, union-find, scheduling with heaps, Dijkstra, cheapest network, edit distance, backtracking, LFU cache) appear as a Hard stretch on the last days of each week's set.",
-    "6 new Hard Python problems at interview length (a latency report, late events with a watermark, streaming sessions, external sort, a sort-merge join, an hourly rollup in UTC) form a new step in P3 and P6.",
-    "10 DSA problems got tests that catch common wrong answers; if you solved one, it shows Updated: run your saved code again.",
-    "Two SQL labels are now honest (SCD Type 2 rider tier history is Easy, second highest salary is Medium) and two statements are clearer.",
-    "After you sign in with Google, the greeting and your avatar use your first name. A name you type in Profile \u203a Look still wins.",
-    "Module 5 gets an architect's lens on Flink and streaming engines (5.10): when Flink is worth it over Spark Structured Streaming, Kafka Streams or a managed service, and when a batch job every few minutes is the honest answer.",
-    "Six under-the-hood answers: checkpoints and barriers, exactly-once sinks through two-phase commit, watermarks and late data, state backends and RocksDB, Flink 2.0's state in object storage, and finding backpressure, which links to the simulator's partitions and hot key challenges.",
-    "Three interview and three quiz questions, and eight reels at four levels (built into the reel feed by the next release).",
-    "812 of 1239 reels now play in the natural Heart voice."
+    "What is new this week (AI agents): Claude API message threads that keep the conversation on the server, IP allowlisting for API keys, Snowflake's background agents and Async Agent API, self-healing pipelines, model routing in Cortex AI Gateway, and Kafka-compatible ingestion with no brokers.",
+    "Module A3's What is new in agents section matches the list, and each item has an experiment to run in the AI foundations labs."
   ]
 }

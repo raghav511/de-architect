@@ -3,64 +3,64 @@
  "note": "Refreshed every week by the program's research task. Each item says what changed, why it matters to a data engineer or architect, and how to test the claim yourself.",
  "items": [
   {
-   "title": "Snowflake: read and write another account's Iceberg tables through Horizon Catalog, with no secrets to manage (GA)",
-   "summary": "Announced on 1 November 2026. A Snowflake account can now read and write Apache Iceberg tables owned by a different Snowflake account through a Horizon Catalog integration, without creating, storing or rotating any secret. Authentication uses workload identity federation, Horizon vends short-lived storage credentials, both accounts work on the same files with no copy, and it covers cross-region access, catalog-linked databases and private connectivity.",
-   "why": "Sharing one copy of a table between business units or regions used to mean a service user, a key pair and a rotation runbook per link. Federated identity plus vended credentials removes the long-lived secret, which is the part security reviews and incidents care about, and keeps a single source of truth instead of two drifting copies.",
-   "try": "In the 8.5 chapter's two-engine design, add a second Snowflake account that writes to the same Iceberg table. Write down who commits to the catalog, how a concurrent write from each account is resolved (optimistic commit on the metadata pointer), and what credential each side holds before and after this change.",
-   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-01-horizon-catalog-integration-wif-ga",
-   "source": "Snowflake release notes",
-   "mid": "s08",
-   "sec": "8.5"
+   "title": "Claude API: message threads keep the conversation on the server, so each turn sends only the new messages (beta)",
+   "summary": "Released on 2 November 2026 in beta behind the message-threads-2026-08-12 header. The Messages API can keep a conversation on Anthropic's side; later requests send only the new messages. A thread expires 5 minutes after its last request and is deleted no more than an hour after last use. Available on the Claude API, Claude Platform on AWS, Claude models on Google Cloud and Microsoft Foundry.",
+   "why": "An agent loop resends its whole history every turn, so request size and latency grow with every tool call. Server-side threads shrink the payload, but the 5-minute expiry means a long-running agent still needs its own durable record of the run, the same split between hot state and a log you design for any pipeline.",
+   "try": "In projects/ai-foundations/labs/lab1_loop.py, log the request size in bytes per turn for a 10-turn run. Write down how the curve would change with server-side threads, and what your harness must persist itself so a run that pauses longer than 5 minutes can resume.",
+   "url": "https://platform.claude.com/docs/en/build-with-claude/message-threads",
+   "source": "Claude Platform docs",
+   "mid": "a01",
+   "sec": "A1.6"
   },
   {
-   "title": "BigQuery queries Iceberg tables in Unity Catalog, Glue and Snowflake Horizon in place, with an opt-in cross-cloud cache (GA)",
-   "summary": "Released on 2 November 2026. BigQuery's Lakehouse federated catalogs now reach remote Iceberg catalogs as a GA feature: Databricks Unity Catalog, AWS Glue Data Catalog, Snowflake Horizon Catalog and Workday Data Lake, from BigQuery and Spark, without migrating data, over the internet or Cross-Cloud Interconnect and inside VPC Service Controls. A separate GA option caches the remote files in your Google Cloud region to cut egress and speed up repeat queries; it is off by default.",
-   "why": "'One table, many engines' now crosses clouds and vendors through the catalog, not through copies. The cost question moves to egress: every remote scan pays transfer unless you cache, and a cache brings a freshness question you must answer in the design.",
-   "try": "Take a 2 TB table read daily from another cloud. Using the unit-costs table in module 10, price a full scan per day with and without the regional cache, then list what a stale cached file could break and how you would detect it.",
-   "url": "https://docs.cloud.google.com/bigquery/docs/release-notes#November_02_2026",
-   "source": "BigQuery release notes",
-   "mid": "s08",
-   "sec": "8.5"
+   "title": "Claude Console: IP allowlisting limits where a leaked API key works (beta)",
+   "summary": "Released on 5 November 2026 in beta. An organization can list up to 1,000 IPv4 or IPv6 addresses or CIDR ranges; API requests from anywhere else are refused. The same release lets the Admin API sign an Enterprise member out of Claude everywhere while keeping them in the organization.",
+   "why": "Agents and pipelines hold long-lived API keys on schedulers and CI runners. An allowlist turns a leaked key from 'usable from anywhere' into 'usable only from our egress IPs', the same network control you already put on a warehouse or a database.",
+   "try": "For the on-call agent in lab10_oncall.py, list every place its API key lives (laptop, CI, scheduler) and the egress IP of each. Decide which ranges go on the allowlist and what breaks first when a runner's IP changes.",
+   "url": "https://platform.claude.com/docs/en/manage-claude/ip-allowlist",
+   "source": "Claude Platform docs",
+   "mid": "a02",
+   "sec": "A2.7"
   },
   {
-   "title": "BigQuery: change history (APPENDS) and continuous queries now work on Iceberg managed tables (GA)",
-   "summary": "Released on 2 November 2026. The APPENDS table-valued function returns the rows appended to a BigQuery-managed Iceberg table over a time range, and BigQuery continuous queries can read new rows from these tables and write results back into them. On 3 November continuous queries also gained persistent and temporary SQL UDFs.",
-   "why": "Incremental processing over an open table no longer needs a watermark column you maintain yourself: the engine tells you what was appended since a time. It is append-only, though, so updates and deletes still need CDC-style merge logic, which is exactly the distinction interviewers probe.",
-   "try": "In the 6.3 lab, write the incremental step twice: once with a high-water-mark column and once as 'rows appended since the last run time'. Then add an update to an existing row and show which version misses it and why.",
-   "url": "https://docs.cloud.google.com/bigquery/docs/release-notes#November_02_2026",
-   "source": "BigQuery release notes",
-   "mid": "s06",
-   "sec": "6.3"
+   "title": "Snowflake: background agents with an Async Agent API and scheduled CoCo Automations (GA), bots in preview",
+   "summary": "Announced at Snowflake Expedition 2026 on 3 November 2026. CoCo Automations and the Async Agent API for scheduled and long-running agent work are generally available, as is sharing of skills and plugins. CoCo and CoWork Bots, always-on agents that act with the user's own access rights and check in only for decisions or sign-off, are coming in private preview.",
+   "why": "Long-running agents move from a chat window to a job you schedule, monitor and pay for like any pipeline. Acting with the user's rights keeps governance in the warehouse's roles, but it also means an agent can do anything its owner can, so the sign-off points are the guardrail.",
+   "try": "Turn lab10_oncall.py into an asynchronous job: start it, return a run id at once, poll for the result. Write down which steps need a human sign-off and what the agent may do without one.",
+   "url": "https://www.snowflake.com/en/news/press-releases/expedition-2026-coco-cowork/",
+   "source": "Snowflake press release",
+   "mid": "a03",
+   "sec": "A3.1"
   },
   {
-   "title": "dbt's remote MCP server lands on Databricks Marketplace and checks permissions on every tool call",
-   "summary": "In dbt's November 2026 release notes. The remote dbt MCP server can be installed from Databricks Marketplace. Each tool call is now checked against the project, environment, job or run it targets, calls without permission fail early with clearer errors, service tokens can use text_to_sql, and read-only users can query metrics through a shared analytics credential an admin sets up.",
-   "why": "This is the 'tools, not passwords' pattern from A4.4 shipped by a vendor: the agent gets narrow tools, and authorization is decided per call on the object touched, not once per session. It is a ready answer to 'how do you stop an agent reading what the user can't'.",
-   "try": "For the read-only data tool in Lab A4.3, write the per-call check: given a user, a tool and a target model, return allow or deny, and add three tests (allowed metric, model in another project, a write tool called by a read-only user).",
-   "url": "https://docs.getdbt.com/docs/dbt-versions/dbt-cloud-release-notes#november-2026",
-   "source": "dbt release notes",
-   "mid": "a04",
-   "sec": "A4.4"
+   "title": "Snowflake: self-healing pipelines trace a failure's likely cause and propose a fix for an engineer to review",
+   "summary": "Announced on 5 November 2026 at Snowflake Expedition. Scheduled runs of Snowflake's coding agent trace the likely cause of a pipeline failure and propose a fix for an engineer's review; the agent can run in a Snowflake-managed isolated container after you log off. Snowflake also announced a visual Pipeline Builder and Write-Audit-Publish on Iceberg tables.",
+   "why": "This is the on-call data agent you build in A3.5, now a vendor feature. The design questions stay yours: what evidence the agent must cite, which actions need approval, and how you score it on failures you injected yourself.",
+   "try": "Run lab11_eval.py against your on-call agent, then score a 'propose only, never apply' version on the same 10 injected failures. Compare correct cause, unsafe actions and cost per incident.",
+   "url": "https://itwire.com/business-it-news/data/snowflake-delivers-the-foundation-for-autonomous-data-engineering-powering-the-agentic-enterprise-with-trusted-live-data",
+   "source": "iTWire",
+   "mid": "a03",
+   "sec": "A3.5"
   },
   {
-   "title": "dbt Core 1.13.0-rc1 drops Python 3.10, and dbt v2.0.11 renames --run-cache-mode to --state-mode",
-   "summary": "dbt-core 1.13.0-rc1 was released on 4 November 2026 as a pre-release; it drops Python 3.10, which is end of life, and accepts the v2-only keys (info_schema, check-paths, checks) in dbt_project.yml. dbt v2.0.11 on 3 November renamed --run-cache-mode to --state-mode (the old flag stays as a deprecated alias) and DBT_AI_PROVIDER to DBT_ENGINE_AI_PROVIDER. In Studio IDE, v2 runs now follow the threads value in your credentials rather than the v2 default.",
-   "why": "CI images pinned to Python 3.10 will fail on the next upgrade, and scripts using the old flag or environment variable will warn now and break later. Threads changing under you changes warehouse concurrency and cost without any code change.",
-   "try": "In the 4.6 dbt project, list the Python version, flags and environment variables your CI job depends on, and write the one-line change each needs for 1.13 and v2.0.11. Then predict what happens to run time and warehouse load if threads drops from 48 to 4.",
-   "url": "https://github.com/dbt-labs/dbt/releases/tag/v1.13.0rc1",
-   "source": "dbt GitHub releases",
-   "mid": "s04",
-   "sec": "4.6"
+   "title": "Snowflake Cortex AI Gateway: automatic model tiers route each request to a model (private preview)",
+   "summary": "Announced on 3 November 2026. Auto model tiers with dynamic model routing for Snowflake's coding agent, part of Cortex AI Gateway, are in private preview. Cortex Training, serverless reinforcement learning and fine-tuning of open-weight models, is in public preview; Snowflake claims up to 61% lower cost than existing serverless training options.",
+   "why": "Routing cheap requests to a small model is the biggest cost lever after caching, and it is moving into the platform gateway. A router is only as good as the eval that says the cheap tier holds up for your tasks.",
+   "try": "In lab7_optimise.py, route each task to a small or a large model by a simple rule (input length or task type). Run lab5_evals.py on both and report pass rate and cost per passed task for routed versus always-large.",
+   "url": "https://www.snowflake.com/en/news/press-releases/expedition-2026-coco-cowork/",
+   "source": "Snowflake press release",
+   "mid": "a01",
+   "sec": "A1.6"
   },
   {
-   "title": "Airflow 3.4.0: task loops, a draining state, and breaking defaults for Python, Postgres and asset runs",
-   "summary": "Released on 6 November 2026. Task groups can now repeat at runtime with .loop() (an until condition and a max_iterations cap), an experimental Dag importer accepts Dags written in TypeScript, Go, Java or YAML, and a new 'draining' Dag state lets active runs finish and then pauses the Dag. Breaking: Python 3.11 or later is required, the Dataset alias is gone from the airflow module (use Asset from airflow.sdk), psycopg3 (postgresql+psycopg://) is the Postgres driver, asset-triggered Dags start one run per event instead of batching events, and try_number on an up_for_retry task now points at the next try.",
-   "why": "Upgrades break on exactly these lines: the metadata database connection string, old Dataset imports, and Dags that assumed several asset events would be batched into one run. Loops and draining are new tools for polling patterns and safe deploys that interviewers increasingly ask about.",
-   "try": "In projects/lakehouse/airflow/dags/lakehouse_daily.py, list every import and connection string an upgrade to 3.4 would touch, then sketch how a downstream Dag triggered by the daily table asset would behave if three events arrived in one minute (three runs now, not one) and whether its tasks are idempotent enough for that.",
-   "url": "https://airflow.apache.org/docs/apache-airflow/3.4.0/release_notes.html",
-   "source": "Apache Airflow release notes",
-   "mid": "s01",
-   "sec": "1.6"
+   "title": "Snowflake Datastream: Kafka-compatible ingestion with no brokers to run, and Snowpipe Streaming up to 20 GB a second",
+   "summary": "Announced on 5 November 2026. Snowflake Datastream accepts Kafka-protocol producers with no brokers or connectors to manage. Snowpipe Streaming with Elastic Channels reaches up to 20 GB a second with data ready in a median of three seconds; Streaming Transformations apply SQL to data in motion, and Interactive Analytics targets sub-second queries for apps and agents.",
+   "why": "Fresh features and context for agents usually means a Kafka cluster plus a connector. A Kafka-compatible endpoint inside the warehouse removes that hop, but you give up the topic as a shared, replayable log for other consumers, which is a trade-off to name in a design interview.",
+   "try": "Using the 5.9 lens table, compare a Kafka cluster with Connect into the warehouse against a Kafka-compatible warehouse endpoint for one agent's feature feed: who can replay, who else can consume, and what each costs at 50 MB a second.",
+   "url": "https://itwire.com/business-it-news/data/snowflake-delivers-the-foundation-for-autonomous-data-engineering-powering-the-agentic-enterprise-with-trusted-live-data",
+   "source": "iTWire",
+   "mid": "s05",
+   "sec": "5.9"
   }
  ]
 }

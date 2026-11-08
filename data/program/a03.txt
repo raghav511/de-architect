@@ -81,12 +81,12 @@ Evaluation: inject 10 known failures (schema change, OOM, late upstream, bad cre
 
 The field moves weekly, so this section is refreshed by the program's weekly research update. Concepts worth knowing now, with reports to read:
 
-- **Cost attribution as an API.** Anthropic's Usage and Cost Analytics API (beta) groups tokens and cost by model, workspace, API key and service account. Give each agent or pipeline its own key and load cost into the warehouse like any fact table. (Claude Platform release notes)
-- **Agents inside the stream processor.** Flink Agents 0.4.0 adds sub-agents, typed decisions and per-request model routing to Flink jobs; checkpoints can record a model's decision so replay after a crash does not call the model again. (Apache Flink)
-- **New fast tiers change routing.** OpenAI's GPT-6.1 Terra is a fast, efficient model for computer use and visual reasoning. Route cheap cases to it only after your own eval set says it holds up. (OpenAI API changelog)
-- **AI parsing as a SQL function.** Snowflake's AI_PARSE_DOCUMENT gained an agentic mode (preview) that interprets charts and tables in documents within one SQL call: document AI becomes an ordinary, governed pipeline step. (Snowflake)
-- **Millisecond streaming in declarative pipelines.** Spark Real-Time Mode is GA for Spark Declarative Pipelines, the low-latency path for features an agent or model reads. (Databricks)
-- **Cost guardrails as permissions.** Databricks Serverless Compute Access Controls (GA) make spend a matter of who may use which compute object, the platform version of a per-agent budget. (Databricks)
+- **Server-side conversation threads.** The Claude API's message threads (beta) keep the conversation on the server, so each agent turn sends only new messages. Threads expire after 5 idle minutes: a long-running agent still keeps its own log. (Claude Platform docs)
+- **Network limits on agent keys.** Claude Console IP allowlisting (beta) refuses API requests from outside up to 1,000 listed addresses or ranges, so a leaked key only works from your own runners. (Claude Platform docs)
+- **Agents as background jobs.** Snowflake's Async Agent API and scheduled CoCo Automations are GA; always-on bots that act with the user's rights and ask only for sign-off are coming in preview. (Snowflake)
+- **Self-healing pipelines.** Snowflake's coding agent traces a pipeline failure's likely cause and proposes a fix for review: the on-call agent of A3.5 as a product. Score it on your own injected failures. (iTWire)
+- **Routing in the gateway.** Cortex AI Gateway's automatic model tiers (private preview) pick a model per request; trust a router only after your eval set says the cheap tier holds up. (Snowflake)
+- **Streaming context without brokers.** Snowflake Datastream takes Kafka-protocol producers with no cluster to run, and Snowpipe Streaming reaches 20 GB a second, fresh in about three seconds. (iTWire)
 
 How to judge any new development: what problem does it remove, what does it cost per successful task, can you evaluate it on your own eval set within a day, and what new risk does it add?
 
