@@ -1,0 +1,2 @@
+# s10 10.6: five classic data designs (top-K, metrics, crawler, ID generator, ledger) and two simulator challenges
+- Module 10 adds five classic data system designs interviewers ask: trending top-K with a count-min sketch, a metrics platform, a web crawler, a Snowflake-style ID generator and a payments ledger. Two new simulator challenges let you fix trending counters and a metrics database restart.
