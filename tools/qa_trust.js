@@ -425,6 +425,55 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
     ok(await p.evaluate(() => window.__spoke.length >= 2), 'the reels next to broken pictures did not play');
   });
 
+  await T('Q51', 'daily recall: a seen interview answer comes back the next day, is answered before the model answer shows, and easy, hard or missed set the next gap (1, 3, 7, 21 days)', async p => {
+    await boot(p);
+    const m = await p.evaluate(() => MODS.find(x => DATA.sprints[x] && (DATA.sprints[x].interview || []).filter(q => q.Q && q.A).length >= 3));
+    await p.evaluate(mm => { location.hash = '#/interview/' + mm; }, m); await p.waitForTimeout(800);
+    const shows = await p.$$('button:has-text("Show model answer")'); await shows[0].click(); await shows[1].click(); await p.waitForTimeout(300);
+    const [e, tmr] = await p.evaluate(() => [Object.entries(S.recall || {}), recallDay(1)]);
+    ok(e.length === 2 && e.every(([id, r]) => /^iv:/.test(id) && r.due === tmr && r.box === 0), 'opening a model answer did not queue it for tomorrow: ' + JSON.stringify(e));
+    ok(!(await p.evaluate(() => recallItem())), 'an item seen today showed up for recall today');
+    /* tomorrow comes: make them due today, and tick a third question from before the queue existed */
+    await seed(p, mm => { Object.values(S.recall).forEach(r => { r.due = recallDay(0); }); S.iv[qk(mm)] = Object.assign(S.iv[qk(mm)] || {}, { 2: true }); }, m);
+    const row = await p.evaluate(() => recallItem());
+    ok(row && /Recall · 3 from memory/.test(row.t) && !row.auto, 'Today has no recall row of 3: ' + JSON.stringify(row));
+    await p.evaluate(() => { location.hash = '#/today'; }); await p.waitForTimeout(600);
+    ok(await p.evaluate(() => { const t = [...document.querySelectorAll('#grp-interview a, #grp-interview .item')].map(x => x.textContent).join(' '); return /Recall · 3 from memory/.test(t); }), 'the recall row is not in Today\'s interview part');
+    await p.evaluate(() => { location.hash = '#/recall'; }); await p.waitForTimeout(500);
+    ok(await p.isVisible('#rc_show') && !(await p.isVisible('button[data-rate]')), 'the answer or the marks showed before Show the answer');
+    const ids = await p.evaluate(() => recallState().left.map(x => x[0]));
+    const rate = async h => { await p.click('#rc_show'); await p.click('button[data-rate="' + h + '"]'); await p.waitForTimeout(300); };
+    await rate('missed'); await rate('easy'); await rate('hard');
+    const r = await p.evaluate(ids => ids.map(id => S.recall[id]), ids);
+    ok(r[0].due === await p.evaluate(() => recallDay(1)) && r[0].box === 0, 'missed did not come back tomorrow: ' + JSON.stringify(r[0]));
+    ok(r[1].due === await p.evaluate(() => recallDay(3)) && r[1].box === 1, 'easy did not move to 3 days: ' + JSON.stringify(r[1]));
+    ok(r[2].due === await p.evaluate(() => recallDay(1)) && r[2].n === 1, 'hard on a first recall did not repeat the 1-day gap: ' + JSON.stringify(r[2]));
+    ok(/Recall done for today/.test(await p.textContent('#page')) && (await p.evaluate(() => recallItem().auto)), 'the set did not finish and tick itself');
+    /* easy again later climbs to 7 then 21 and stays there */
+    const gaps = await p.evaluate(id => { const out = []; for (let i = 0; i < 4; i++) { S.recall[id].last = ''; out.push(recallRate(id, 'easy')); } return out; }, ids[1]);
+    ok(JSON.stringify(gaps) === '[7,21,21,21]', 'easy gaps after 3 days were ' + gaps);
+    /* sync keeps the newer rating of each item and both devices' items */
+    const mg = await p.evaluate(() => { const a = { recall: { x: { box: 1, at: 1 }, y: { box: 0, at: 5 } } }, b = { recall: { x: { box: 2, at: 9 }, z: { box: 0, at: 1 } } }; return mergeState(a, b).recall; });
+    ok(mg.x.box === 2 && mg.y && mg.z, 'merge lost recall entries: ' + JSON.stringify(mg));
+  });
+
+  await T('Q52', 'honest ladder: self-marked boss rounds count for practice and XP but cannot promote past Senior; an AI-scored round can, and the ladder says why', async p => {
+    await boot(p);
+    const k = '2026-11-01', round = by => ({ done: Date.now(), kind: 'we', level: 'staff', ans: { 0: Object.assign({ sc: { correct: 4, depth: 4, trade: 4, clear: 4 }, checks: {} }, by), 1: Object.assign({ sc: { correct: 4, depth: 4, trade: 4, clear: 4 }, checks: {} }, by) } });
+    const lv = async by => p.evaluate(([k, r]) => { S.live = {}; S.live[k] = r; window.gameXP = () => 5000; const L = gameLevel(5000); return [L.i, L.gated, gameStrip().textContent]; }, [k, round(by)]);
+    let r = await lv({ by: 'self' });
+    ok(r[0] === 3 && r[1] === 4 && /marked by you/.test(r[2]) && /Profile › AI/.test(r[2]), 'a self-marked 4.0 round promoted or did not say why: ' + JSON.stringify(r));
+    r = await lv({ self: true }); /* saved before the by field existed */
+    ok(r[0] === 3, 'an older self-marked round promoted: ' + JSON.stringify(r));
+    r = await lv({ by: 'ai' });
+    ok(r[0] === 4 && !r[1], 'an AI-scored 4.0 round did not promote to Staff: ' + JSON.stringify(r));
+    r = await lv({});
+    ok(r[0] === 4, 'an older AI-scored round (no by field, not self) stopped counting: ' + JSON.stringify(r));
+    /* one self-marked answer in a round keeps the whole round from promoting, and XP still counts it */
+    const mixed = await p.evaluate(k => { S.live = {}; S.live[k] = { done: Date.now(), kind: 'we', level: 'staff', ans: { 0: { sc: { correct: 4, depth: 4, trade: 4, clear: 4 }, by: 'ai' }, 1: { sc: { correct: 4, depth: 4, trade: 4, clear: 4 }, by: 'self' } } }; return [bossBest('staff'), bossBest('staff', true)]; }, k);
+    ok(mixed[0] === 0 && mixed[1] === 4, 'a mixed round was counted as AI-scored: ' + mixed);
+  });
+
   await browser.close();
   for (const r of results) console.log(r[0].padEnd(5), r[1], r[2], r[3] ? '\n      ' + r[3] : '');
   console.log(results.filter(r => r[0] === 'PASS').length + ' passed, ' + results.filter(r => r[0] === 'FAIL').length + ' failed');

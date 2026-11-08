@@ -67,6 +67,9 @@ async function liveQuestions(k) {
     if (weak.length) { prev[1].carriedTo = k; list = weak.concat(list.filter(x => !weak.some(w => w.q === x.q))).slice(0, list.length); } }
   return { qs: list, week, mod: cur };
 }
+/* who scored an answer (review 5): 'ai' (API key or the Mac grader), 'self' (AI off, or the AI reply could not be read), 'skip';
+   answers saved before this field existed are 'self' when marked by hand, else AI */
+function liveBy(a) { return !a ? '' : a.skipped ? 'skip' : a.by || (a.self ? 'self' : a.sc ? 'ai' : ''); }
 function liveAvg(a) { const s = a && a.sc; if (!s) return NaN; const v = LIVE_DIMS.map(d => +s[d[0]] || 0); return Math.max(1, v.reduce((x, y) => x + y, 0) / v.length - 0.25 * (+a.simHints || 0)); } /* simulator suggestions opened while sketching cost 0.25 each */
 function liveRouteName() { return !aiOn() ? 'you' : S.settings.aiKey ? 'key' : 'mac'; }
 
@@ -153,7 +156,7 @@ function liveStart(page, k, m) {
     el('span', { class: 'muted', text: 'Built from this week: ' + m.week.map(x => modLabel(x)).join(', ') + (m.style ? ' · ' + m.style + '-style round' : '') }),
     el('ol', { class: 'lslots' }, m.qs.map(q => el('li', {}, [el('b', { text: q.label }), q.carried ? el('span', { class: 'chip c-ai', text: 'from ' + shortDate(q.carried) }) : null, el('span', { class: 'muted', text: ' · ' + q.q.replace(/\*\*|`/g, '').slice(0, 70) + (q.q.length > 70 ? '…' : '') })]))),
     el('div', { class: 'row wrap' }, [el('span', { class: 'lbl', text: 'Level' }), lv]),
-    el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: via === 'key' ? 'Follow-ups and scores come from the AI with the API key on this device (a few cents with the default model).' : via === 'mac' ? 'Follow-ups and scores come from Claude Code on your Mac (it must be awake).' : 'AI features are off: after each answer you compare with the model answer and mark yourself.' }),
+    el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: via === 'key' ? 'Follow-ups and scores come from the AI with the API key on this device (a few cents with the default model).' : via === 'mac' ? 'Follow-ups and scores come from Claude Code on your Mac (it must be awake).' : 'AI features are off: after each answer you compare with the model answer and mark yourself. Self-marked rounds count for practice and XP; promotions past Senior on the ladder need AI scoring.' }),
     el('button', { class: 'btn pri', onclick: () => { m.i = 0; m.started = Date.now(); save(); route(); } }, 'Start'),
     el('a', { href: '#/mock/' + k, class: 'muted tlink', style: { fontSize: '14px' }, text: 'Prefer writing long answers? Take the written mock instead' })]));
 }
@@ -180,7 +183,7 @@ function liveQuestion(page, k, m) {
     const model = x.better || (q.points.length ? q.points.map(p => '- ' + p).join('\n') : q.model);
     if (model) body.appendChild(el('details', {}, [el('summary', { style: { cursor: 'pointer', fontWeight: 600 }, text: x.better ? 'A stronger answer' : 'Model answer' }), mdEl(model)]));
     body.appendChild(el('button', { class: 'btn pri', onclick: next }, i + 1 < m.qs.length ? 'Next question' : 'See your scorecard'));
-    note.textContent = isNaN(av) ? '' : 'Average ' + av.toFixed(1) + ' of 4' + (av < 2.5 ? ': this one opens your next mock on this module.' : '.');
+    note.textContent = isNaN(av) ? '' : 'Average ' + av.toFixed(1) + ' of 4' + (liveBy(x) === 'self' ? ' (marked by you)' : '') + (av < 2.5 ? ': this one opens your next mock on this module.' : '.');
   };
   const selfMark = () => {
     stage = 'self'; x.self = true; save(); body.textContent = '';
@@ -189,11 +192,11 @@ function liveQuestion(page, k, m) {
     const sc = x.scDraft = x.scDraft || {}, ck = x.ckDraft = x.ckDraft || {};
     LIVE_DIMS.forEach(([d, t]) => body.appendChild(el('div', { class: 'row wrap' }, [el('span', { class: 'grow', text: t }), el('div', { class: 'row', role: 'radiogroup', 'aria-label': t, style: { gap: '4px' } }, [1, 2, 3, 4].map(n => el('button', { class: 'btn sm', role: 'radio', 'aria-checked': String(sc[d] === n), onclick: e => { sc[d] = n; save(); e.target.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-checked', String(+b.textContent === n))); }, text: String(n) })))])));
     LIVE_CHECKS.forEach(([c, t]) => { const cb = el('input', { type: 'checkbox', id: 'lc' + c }); cb.checked = !!ck[c]; cb.onchange = () => { ck[c] = cb.checked; save(); }; body.appendChild(el('label', { class: 'row', for: 'lc' + c, style: { gap: '8px', minHeight: '36px' } }, [cb, t])); });
-    body.appendChild(el('button', { class: 'btn pri', onclick: () => { if (LIVE_DIMS.some(([d]) => !sc[d])) { note.textContent = 'Mark all four before going on.'; return; } x.sc = Object.assign({}, sc); x.checks = Object.assign({}, ck); stage = 'scored'; save(); showScored(); } }, 'Save my marks'));
+    body.appendChild(el('button', { class: 'btn pri', onclick: () => { if (LIVE_DIMS.some(([d]) => !sc[d])) { note.textContent = 'Mark all four before going on.'; return; } x.sc = Object.assign({}, sc); x.checks = Object.assign({}, ck); x.by = 'self'; stage = 'scored'; save(); showScored(); } }, 'Save my marks'));
   };
   const score = async () => {
     stage = 'scoring'; body.textContent = ''; note.textContent = ''; body.append(el('span', { class: 'spin' }), ' The interviewer is scoring your answer…');
-    try { Object.assign(x, await liveScore(m, q, x)); stage = 'scored'; save(); showScored(); }
+    try { Object.assign(x, await liveScore(m, q, x), { by: 'ai' }); stage = 'scored'; save(); showScored(); }
     catch (e) { body.textContent = ''; note.textContent = String(e.message || e) + ' Marking it yourself instead.'; selfMark(); }
   };
   const followup = () => {
@@ -229,11 +232,12 @@ function liveCard(page, k, m) {
   page.appendChild(el('section', { class: 'card pad stack live' }, [
     el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Scorecard · ' + shortDate(k) }), el('b', { text: all.toFixed(1) + ' of 4' })]),
     el('div', { class: 'lhire', text: liveHire(all, m) }),
+    done.some(([, a]) => liveBy(a) === 'self') ? el('p', { class: 'muted lselfnote', style: { margin: 0, fontSize: '13px' }, text: (done.filter(([, a]) => liveBy(a) === 'self').length) + ' answer' + (done.filter(([, a]) => liveBy(a) === 'self').length === 1 ? ' was' : 's were') + ' marked by you. Self-marked rounds count for practice and XP, but promotions past Senior need a round scored by the AI interviewer.' }) : null,
     done.some(([, a]) => a.fb) ? el('p', { class: 'muted', style: { margin: 0, fontSize: '13px' }, text: 'Scored by an AI interviewer, which can be wrong. Check each answer against the model answer below before you trust a score.' }) : null, /* QA fix 13 */
     el('div', { class: 'lscore' }, dim.map(([t, v]) => el('div', { class: 'row' }, [el('span', { class: 'grow', text: t }), el('b', { text: v ? v.toFixed(1) : '–' })]))),
     el('div', { class: 'lscore' }, checks.map(([t, n]) => el('div', { class: 'row' }, [el('span', { class: 'grow', text: t }), el('b', { text: n + ' of ' + m.qs.length })]))),
     weakest && weakest[1] ? el('div', { class: 'why' }, [el('b', { text: 'Weakest: ' }), weakest[0].toLowerCase() + '. ', weak ? weak + (weak === 1 ? ' answer opens' : ' answers open') + ' your next live mock on this module.' : 'Nothing carries over.']) : null,
-    el('div', { class: 'list' }, done.map(([q, a], i) => el('details', { class: 'item', style: { display: 'block' } }, [el('summary', { style: { cursor: 'pointer' } }, [el('b', { text: (i + 1) + '. ' + q.label }), el('span', { class: 'muted', text: ' · ' + (a.skipped ? 'skipped' : isNaN(liveAvg(a)) ? '–' : liveAvg(a).toFixed(1) + ' of 4') })]),
+    el('div', { class: 'list' }, done.map(([q, a], i) => el('details', { class: 'item', style: { display: 'block' } }, [el('summary', { style: { cursor: 'pointer' } }, [el('b', { text: (i + 1) + '. ' + q.label }), el('span', { class: 'muted', text: ' · ' + (a.skipped ? 'skipped' : isNaN(liveAvg(a)) ? '–' : liveAvg(a).toFixed(1) + ' of 4' + (liveBy(a) === 'self' ? ' · self' : '')) })]),
       el('div', { class: 'stack', style: { gap: '6px', marginTop: '6px' } }, [el('div', { html: mdi(q.q) }), a.a ? el('div', { class: 'lyou', text: 'You: ' + a.a }) : null, a.fb ? el('div', { class: 'why', text: a.fb }) : null, (a.better || q.points.length || q.model) ? mdEl(a.better || (q.points.length ? q.points.map(p => '- ' + p).join('\n') : q.model)) : null])]))),
     el('a', { class: 'btn pri', href: '#/today', text: 'Back to Today' })]));
 }

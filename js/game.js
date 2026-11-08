@@ -22,15 +22,25 @@ function gameXP() {
   xp += 5 * Object.keys(S.rq || {}).length;
   Object.values(S.reels || {}).forEach(r => { if (r.seen) xp += 3; if (r.ok) xp += 2; });
   xp += 25 * Object.keys((S.sim && S.sim.done) || {}).length; /* design simulator challenges passed */
+  xp += 2 * Object.values(S.recall || {}).reduce((a, r) => a + ((r && r.n) || 0), 0); /* daily recall: 2 per item recalled */
   if (S.loop) { xp += 15 * Object.values(S.loop.cc || {}).filter(x => x && x.fixed).length + 10 * Object.values(S.loop.stories || {}).filter(x => x && !x.del && x.title).length; } /* interview loop: code fixed, stories written */
   return xp;
 }
-/* the best weekend (boss) round at each level */
-function bossBest(level) { return Math.max(0, ...Object.entries(S.live || {}).filter(([k, m]) => m && m.done && m.kind === 'we' && (level !== 'staff' || m.level === 'staff')).map(([, m]) => { const a = Object.values(m.ans || {}).map(liveAvg).filter(v => !isNaN(v)); return a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0; })); }
+/* the best weekend (boss) round at each level. Honest ladder (review 5): only rounds with no self-marked answer count
+   towards Staff, Principal and Architect; pass any = true to include self-marked rounds (shown, never promoting) */
+function bossSelf(m) { return Object.values(m.ans || {}).some(a => typeof liveBy === 'function' ? liveBy(a) === 'self' : a.self); }
+function bossBest(level, any) { return Math.max(0, ...Object.entries(S.live || {}).filter(([k, m]) => m && m.done && m.kind === 'we' && (level !== 'staff' || m.level === 'staff') && (any || !bossSelf(m))).map(([, m]) => { const a = Object.values(m.ans || {}).map(liveAvg).filter(v => !isNaN(v)); return a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0; })); }
 function gameLevel(xp) {
   const best = bossBest('staff'); let i = 0;
   for (let j = 1; j < LADDER.length; j++) { if (xp < LADDER[j][1]) break; if (LADDER[j][2] && best < LADDER[j][2]) return { i, gated: j, best }; i = j; }
   return { i, gated: 0, best };
+}
+/* why a level is locked, in words */
+function gameGateText(L) {
+  if (!L.gated) return '';
+  const need = LADDER[L.gated][2], self = bossBest('staff', true), t = LADDER[L.gated][0];
+  if (self >= need && L.best < need) return t + ' needs an AI-scored boss round: your best (' + self.toFixed(1) + ') was marked by you. Turn on AI in Profile › AI.';
+  return t + ' unlocks when you pass an AI-scored weekend boss round at staff level with ' + need.toFixed(1) + '+' + (L.best ? ' (best ' + L.best.toFixed(1) + ')' : '');
 }
 /* days with real activity; a missed day is covered by that week's one freeze */
 function gameDays() {
@@ -66,7 +76,7 @@ function gameQuests() {
 function gameStrip() {
   const xp = gameXP(), L = gameLevel(xp), cur = LADDER[L.i], nx = LADDER[L.i + 1], st = gameStreak(), q = gameQuests();
   const lo = cur[1], hi = nx ? nx[1] : cur[1], pct = nx ? Math.min(100, Math.round(100 * (xp - lo) / (hi - lo))) : 100;
-  const gateTxt = L.gated ? LADDER[L.gated][0] + ' unlocks when you pass a weekend boss round at staff level with ' + LADDER[L.gated][2].toFixed(1) + '+' : '';
+  const gateTxt = gameGateText(L);
   return el('div', { class: 'gstrip' }, [
     el('div', { class: 'row', style: { gap: '10px' } }, [
       el('span', { class: 'glv', 'aria-hidden': 'true', text: 'L' + (L.i + 1) }),
