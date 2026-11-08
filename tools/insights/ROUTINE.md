@@ -6,7 +6,7 @@ yesterday and proposes improvements. **It never builds a suggestion that the lea
 ## 1. Act on approvals from earlier days
 
 Read the comments and approval state on the suggestions artifact (its link is in `tools/insights/artifact.txt`; use
-ArtifactComments to list comments, and the artifact's database rows if it has them). For each suggestion the learner
+ArtifactComments to list comments, and its database collection `decisions`: one row per suggestion, `<date>-s<n>`, with `status` approve or change and a `note`). For each suggestion the learner
 approved, in their own words ("approve 2", a thumbs up on suggestion 2, or the Approve button), build exactly what was
 approved, plus any change they asked for, with its tests, and ship it with `../qa/ship.sh` style steps (or
 `tools/refresh/ship.sh` in the refresh clone). A suggestion with change requests but no approval is redesigned, not built.
