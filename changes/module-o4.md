@@ -1,0 +1,4 @@
+# Module O4: running the data platform as a product
+- New module O4, Running the data platform as a product, after O3: knowing the platform's users, service levels and error budgets with burn-rate alerts, on-call and incidents, cost showback and unit costs, adoption and outcome numbers instead of vanity ones, a scored roadmap and saying no, and funding and failure modes.
+- An architect's lens with six under-the-hood answers, and four exercises that run in your browser: decide page, ticket or nothing from an error budget's burn rate, show cost by team with the untagged share, score a backlog with RICE, and find the biggest drop in an adoption funnel.
+- A design problem (run a 12-person platform team for 40 teams as a product), ten quiz and seven interview questions, and twelve reels. If you started before this update, What is new lists it and nothing is marked done.
