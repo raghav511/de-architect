@@ -47,6 +47,23 @@ work and never replaces it.
 - Marcus at home: on-call nights against Nadia's shifts; Zoe's dinner questions are the "explain it simply" moments.
 - Victor: rivalry in S4, alliance in S5.
 - Grace's Friday advice: one sentence a week that a staff engineer would say.
+- The promotion case: Grace asks Marcus to keep a decision log; each season finale adds an entry (the 2% gap, the one number,
+  launch night). Asha reads both logs before choosing in S4 (o04), and the Principal offer in S5 (s12) rests on that evidence.
+- The Lumen migration: two platforms meet in S4 (s08); in S5 (r01) Lumen's finance tables move onto the shared Iceberg lake, and
+  Marcus and Victor co-sign the migration memo (r01's design problem, "Migrate the Hive warehouse to Iceberg without downtime").
+- Hiring on both sides of the table: Marcus sits on a staff panel in r01 while Lena shadows her first interview; in s12 he is the
+  candidate, round by round.
+
+## Every hook ends in practice
+
+Each arc carries, besides its scenes and teasers:
+- `to`: six links, one per scene, to the practice that scene leads into (the module's chapter, lab, practice, quiz, interview
+  set or design problem, an exercise, an F7 step, a simulator challenge or the written mock). `build.py` refuses a link that
+  opens nothing real.
+- `recall`: six questions, one per day, taken from the question each day's scene ends on ("Recall: …?"), for the next morning's
+  cold open: a retrieval prompt, not a recap.
+- Teasers are one-line questions that the next day's scene and lesson answer, without repeating the card's own heading.
+- `rematch` (one line for the whole series): a weak weekend review is never a loss; it opens a rematch on the same arc next Sunday.
 
 ## Writing rules
 - Plain British-leaning English, present tense, third person about Marcus ("Marcus opens the pager…"). No em dashes.
