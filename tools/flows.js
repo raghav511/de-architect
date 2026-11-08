@@ -684,7 +684,7 @@ async function T(name, fn, opt) {
     ok(await p.$$eval('.rq', x => x.length) === 2, 'questions not listed');
     for (let i = 0; i < 2; i++) { await p.click('.rq .check[aria-pressed=false]'); await p.waitForTimeout(300); }
     await go(p, '#/today', 1000);
-    ok(!/Uber: Design trip events|Google: Find the second/.test(await all(p, '.plan')), 'rows still shown after ticking every question');
+    ok(await p.evaluate(() => [...document.querySelectorAll('.plan .xit')].filter(x => /Uber: Design trip events|Google: Find the second/.test(x.textContent)).every(x => x.classList.contains('done'))), 'a ticked question is not shown as done in the day');
     await go(p, '#/interview/s01', 1200); ok(/Asked recently at companies/.test(await text(p, '#page')) && /exactly-once counts/.test(await text(p, '#page')), 'module interview page does not show its recent question');
   });
 
@@ -1143,7 +1143,7 @@ async function T(name, fn, opt) {
     await hash(p, '#/py/y011', 600);
     for (let i = 0; i < 6; i++) { const b = await p.$('button.btn.dark:not([disabled])'); if (!b) break; await b.click(); await p.waitForTimeout(150); }
     let s = await state(p); ok(s.rev && s.rev.y011 && s.rev.y011.box === 0, 'not queued after opening the solution: ' + JSON.stringify(s.rev));
-    await p.evaluate(() => { S.rev.y011.due = iso(new Date()); save(); });
+    await p.evaluate(() => { S.rev.y011.due = iso(new Date()); delete (S.dayset || {})[iso(new Date())]; save(); }); /* a review due when the day's set is chosen comes first in Coding */
     await hash(p, '#/today', 600);
     ok(/Review ·/.test(await all(p, '.plan')), 'due review not in the coding track on Today');
     ok(/Review \(1 due\)/.test(await (async () => { await hash(p, '#/practice/review', 500); return text(p, '.tabs'); })()), 'practice tab has no due count');

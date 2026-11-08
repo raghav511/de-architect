@@ -20,7 +20,7 @@ const BASE = process.argv[2] || 'http://localhost:8811/';
     /* 2. the set is kept for the day: finishing an item adds nothing, and the same ids come back */
     const ids = items.map(x => x.id).join();
     const u = items.find(x => x.unit); if (u) { S.done[u.unit.uid] = t; schedFlush(); }
-    if (daySet(t).map(x => x.id).join() !== ids) out.push('the set changed after finishing an item');
+    const after = daySet(t).map(x => x.id).join(); if (after !== ids) out.push('the set changed after finishing an item: ' + after.replace(ids, '…'));
     if (u) { delete S.done[u.unit.uid]; schedFlush(); }
     /* 3. carry-over: at most one carried item per section a day, the oldest first; the rest wait */
     S.live = S.live || {}; S.live[y] = { kind: 'one', qs: [{ q: 'x' }], ans: {}, i: 0 };

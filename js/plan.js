@@ -21,14 +21,14 @@ function dayName(k) { const d = new Date(k + 'T00:00:00'); return DN[(d.getDay()
 function shortDate(k) { const d = new Date(k + 'T00:00:00'); return DN[(d.getDay() + 6) % 7].slice(0, 3) + ' ' + d.getDate() + ' ' + d.toLocaleString('en', { month: 'short' }); }
 function weekOf(k) { const s = new Date(S.start + 'T00:00:00'), d = new Date(k + 'T00:00:00'); return Math.max(1, Math.floor(Math.round((d - s) / 864e5) / 7) + 1); }
 /* F9: no daily limit. The scheduler still lays steps on dates, but only as a forecast for Path and module dates, at your pace:
-   the minutes of steps you finished over the last 14 days, per day (30 to 240, 60 until there is a week of history) */
+   the minutes of steps you finished over the last 14 days, per day (30 to 240; 60 on weekdays and 120 at weekends until there are 5 finished steps) */
 let PACE = null, PACE_KEY = '';
 function capOf(d) {
   const key = iso(new Date()) + '|' + Object.keys(S.doneAt || {}).length;
   if (PACE_KEY !== key) { PACE_KEY = key; const since = Date.now() - 14 * 864e5, mins = {}; (typeof modUnits === 'function' && DATA.sprints ? [].concat(...MODS.map(m => DATA.sprints[m] ? modUnits(m) : [])) : []).forEach(u => { mins[u.uid] = u.mins; });
     const done = Object.entries(S.doneAt || {}).filter(([, t]) => t >= since), sum = done.reduce((a, [id]) => a + (mins[id] || 0), 0);
-    PACE = done.length >= 5 ? Math.max(30, Math.min(240, Math.round(sum / 14))) : 60; }
-  return PACE;
+    PACE = done.length >= 5 ? Math.max(30, Math.min(240, Math.round(sum / 14))) : 0; }
+  return PACE || (d.getDay() === 0 || d.getDay() === 6 ? 120 : 60); /* until there is history: the old defaults, 60 on weekdays and 120 at weekends */
 }
 
 /* ---------- module files ---------- */
@@ -326,7 +326,7 @@ function vToday(off) {
     el('div', { class: 'row planhead wrap' }, [ring, el('div', { class: 'grow stack', style: { gap: '0' } }, [el('div', { class: 'row', style: { gap: '8px' } }, [el('h2', { text: off === 0 ? 'Today' : pre ? 'Before your plan starts' : dayName(k) })]), pre ? null : el('span', { class: 'muted', style: { fontSize: '14px' }, text: all.xpd + ' of ' + all.xp + ' XP · about ' + fmt(all.m) + ' (' + fmt(all.md) + ' done)' })]),
       pre ? null : el('div', { class: 'row wrap daysum', role: 'tablist', 'aria-label': 'This day in parts' }, PARTS.map(([id, n, xs]) => {
         const z = sum(xs), dn = xs.every(x => x.done);
-        return el('button', { class: 'dsum' + (dn ? ' done' : ''), role: 'tab', id: 'tab-' + id, 'aria-selected': String(id === tabNow), 'aria-controls': id, 'aria-label': n + ': ' + z.xpd + ' of ' + z.xp + ' XP, ' + z.m + ' minutes' + (dn ? ', finished' : ''), onclick: () => { todayTab = id; document.querySelectorAll('.plan .dsum').forEach(b => b.setAttribute('aria-selected', String(b.id === 'tab-' + id))); PARTS.forEach(([g]) => { const s = document.getElementById(g); if (s) s.hidden = g !== id; }); } }, [dn ? svg(I.check, 14) : null, el('b', { text: n }), el('span', { text: z.xpd + '/' + z.xp + ' XP · ' + z.m + ' min' })]); }))]),
+        return el('button', { class: 'dsum' + (dn ? ' done' : ''), role: 'tab', id: 'tab-' + id, 'aria-selected': String(id === tabNow), 'aria-controls': id, 'aria-label': n + ': ' + z.xpd + ' of ' + z.xp + ' XP, ' + z.m + ' minutes' + (dn ? ', finished' : ''), onclick: () => { todayTab = id; document.querySelectorAll('.plan .dsum').forEach(b => b.setAttribute('aria-selected', String(b.id === 'tab-' + id))); PARTS.forEach(([g]) => { const s = document.getElementById(g); if (s) s.hidden = g !== id; }); const s = document.getElementById(id); if (s) { const r = s.getBoundingClientRect(); if (r.top < 0 || r.top > innerHeight - 120) s.scrollIntoView({ block: 'start', behavior: 'smooth' }); } } }, [dn ? svg(I.check, 14) : null, el('b', { text: n }), el('span', { text: z.xpd + '/' + z.xp + ' XP · ' + z.m + ' min' })]); }))]),
     nav,
     pre ? el('p', { style: { margin: 0 }, text: 'Your plan starts ' + shortDate(S.start) + '.' }) : null,
     off > 0 && !pre ? el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'A preview: the set is chosen on the morning of the day, from what is still open then.' }) : null,
