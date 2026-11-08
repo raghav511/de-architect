@@ -411,6 +411,75 @@ What do you ask before agreeing to build a stream? Decide, then compare.
 
 "Real time" is not a requirement. A freshness target with a number, and a decision it serves, is. Streams cost more to build and to run, so an engineer who replaces "real time" with "under 30 seconds, revised for two minutes" has saved the customer money.
 
+@@steps
+STEP: design
+TITLE: Design it: partitions cap parallelism
+MIN: 10
+SIM: partitions, hotkey, dlq
+BODY: A short simulator challenge on this week's pipeline. It fails as given: find the cause, change the design and run it again until it passes. The other two are there for more practice.
+
+- **Partitions cap parallelism.** Consumers of a topic use at most as many partitions as it has. Adding consumers past that does nothing.
+- **A hot key.** One key's traffic lands on one partition, so one consumer falls behind while the others idle. Salting or a better key spreads it.
+- **One bad record.** Without a dead-letter queue, a poison message stalls the partition. With one, the stream continues and the record waits for a fix.
+---
+STEP: fix
+TITLE: Read and fix: the offset that replays a record
+MIN: 10
+SPEC: After processing a batch, the consumer commits, per partition, the offset to read next. Records may arrive out of order within the batch. After a restart, no processed record may be read again.
+CODE:
+```
+def offsets_to_commit(batch):
+    """batch: (partition, offset) pairs that were fully processed."""
+    out = {}
+    for p, off in batch:
+        if p not in out or off > out[p]:
+            out[p] = off
+    return out
+```
+FIX:
+```
+def offsets_to_commit(batch):
+    """batch: (partition, offset) pairs that were fully processed."""
+    out = {}
+    for p, off in batch:
+        out[p] = max(out.get(p, 0), off + 1)  # Kafka commits the NEXT offset to read
+    return out
+```
+BUG: 6
+TESTS: [["two partitions", "sorted(offsets_to_commit([(0, 5), (0, 6), (1, 2)]).items())", [[0, 7], [1, 3]]], ["out of order", "offsets_to_commit([(0, 9), (0, 3)])[0]", 10], ["the first record", "offsets_to_commit([(2, 0)])[2]", 1], ["empty batch", "offsets_to_commit([])", {}]]
+BODY: Kafka's committed offset is the position of the **next** record to read, not the last one read. Commit the last processed offset and every restart reads that record again: a duplicate in the sink, and a silent one unless the sink is idempotent. The line to look at is where the committed value is set.
+---
+STEP: platform
+TITLE: Run it on the platform: managed, Kubernetes and the bill
+MIN: 8
+BODY: **Where Kafka runs.** Most teams start managed: Confluent Cloud, Amazon MSK (provisioned or Serverless), Azure Event Hubs with its Kafka endpoint, or Aiven. You pay for throughput, partitions and storage, and you give up broker settings and some versions. Self-managed on Kubernetes usually means the Strimzi operator: brokers as stateful pods with persistent volumes, rack awareness mapped to zones, and rolling upgrades that move leaders one broker at a time.
+
+**What drives the bill.**
+- **Cross-zone traffic.** With replication factor 3 across three zones, every produced byte crosses zones twice, and consumers in another zone add more. On AWS that can cost more than the brokers. Fetch-from-follower (`client.rack`) lets consumers read from a replica in their own zone.
+- **Retention.** Bytes per day × days × replication factor. Tiered storage moves old segments to object storage, so brokers keep only recent data on disk.
+- **Partitions.** Managed offerings price or cap them; each partition also costs broker memory and recovery time.
+
+**Run it.** Alert on consumer lag in seconds (not messages), under-replicated partitions and offline partitions. Size for the peak hour, not the daily average.
+CHECK: {"q": "Your MSK bill doubled after consumers moved to another zone. What is the cheapest first fix?", "c": ["Add brokers so each one carries less traffic", "Set client.rack on the consumers so they fetch from a replica in their own zone", "Lower the replication factor to 1"], "a": 1, "why": "Cross-zone transfer is billed per byte. Fetching from a same-zone follower removes it without giving up durability. Fewer replicas trades away the safety the design needs."}
+---
+STEP: lead
+TITLE: Lead it: one Kafka or a Kafka per team
+MIN: 10
+Q: Three product teams each want their own Kafka cluster "so nobody else can break it". You own the data platform. What do you decide, and how do you get them to agree?
+A: Start from what they are afraid of: a noisy neighbour filling disks or starving their consumers, and changes they don't control. Those fears are fair, and separate clusters do remove them, at the cost of three times the operations, no shared tooling, and cross-cluster mirroring as soon as one team needs another's events.
+
+Offer a shared platform that removes the fears instead: per-team quotas (produce and fetch bytes per second) so one team cannot starve another, topic naming and ownership per team, ACLs so only the owner writes, a schema registry with compatibility checks, and self-service topic creation through a golden path (a request in Git, reviewed by a bot, not a ticket to the platform team). Publish an SLO for the platform and a cost report per team.
+
+Keep a written exception: a team with a hard isolation need (regulated data, a different region, or a very large workload) gets a dedicated cluster from the same templates. Agree it in a short design review with the three leads, run one team on it first, and review lag, incidents and cost after a month. You are deciding the default, not forbidding the exception.
+BODY: Answer out loud in two minutes first, then write the short version and compare with the model answer. Staff interviewers listen for the fear behind the request, the trade-off, a default with an exception, and how you would bring the teams along.
+---
+STEP: ai
+TITLE: With AI: lag triage with Claude Code
+MIN: 10
+BODY: **Where LLM tooling helps with Kafka.** Reading a lag graph and a rebalance log together and saying what changed; drafting a schema and its compatibility mode from sample events; writing the consumer config for a stated delivery guarantee and explaining each setting; reviewing a topic request against your naming and retention rules. **Where it does not:** it cannot see your cluster unless you give it read-only access (an MCP server on the admin API with a read-only key), and it will confidently suggest `auto.offset.reset=earliest` or more partitions without knowing your ordering needs. Check every config change against the chapter before applying it.
+TASK: In the in-app terminal or your own, give Claude Code this week's lab output (the consumer lag numbers and the rebalance lines you saw) and ask it, in one prompt, to (1) say whether the lag is from a slow consumer, a hot partition or rebalancing, (2) name the one metric that would confirm it, and (3) propose one config change with its risk. Paste your prompt and its answer below.
+RUBRIC: The prompt gives the evidence (numbers, log lines) and asks for a diagnosis, a confirming metric and one change with its risk. The answer is checked against the chapter: it names the right cause for the evidence, does not suggest a change that breaks ordering or delivery guarantees without saying so, and you note one thing you would verify before acting.
+
 @@quiz
 TYPE: mcq
 TAG: streaming

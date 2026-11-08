@@ -281,6 +281,7 @@ function route() {
     else if (r === 'live') vLive(p[1]);
     else if (r === 'warm') vWarm();
     else if (r === 'recall') vRecall();
+    else if (r === 'step') vStep(p[1], p[2]);
     else if (r === 'reels') vReels(p[1]);
     else if (r === 'playbook') vPlaybook();
     else if (r === 'coach') vCoach();
@@ -1064,6 +1065,7 @@ function mergeState(a, b) {
   by('live', (x, y) => !!x.done !== !!y.done ? (x.done ? x : y) : Object.keys(x.ans || {}).length !== Object.keys(y.ans || {}).length ? (Object.keys(x.ans || {}).length > Object.keys(y.ans || {}).length ? x : y) : when(x) > when(y) ? x : y);
   by('reels', (x, y) => when(x) > when(y) ? Object.assign({}, y, x) : Object.assign({}, x, y));
   by('recall', (x, y) => when(x) > when(y) ? x : y); /* daily recall: the newer rating of an item wins */
+  by('steps', (x, y) => when(x) > when(y) ? x : y); /* integrated week steps: the newer edit of a step wins */
   ['playbook', 'tabs', 'gitlab', 'rq', 'planned', 'metrics'].forEach(k => by(k, (x, y) => y));
   /* a manual tick is a time, an untick minus the time: the later one wins (QA fix 21) */
   by('xdone', (x, y) => { const o = Object.assign({}, x, y); for (const id in o) if (id in x && id in y) o[id] = Math.abs(+x[id] || 0) > Math.abs(+y[id] || 0) ? x[id] : y[id]; return o; });

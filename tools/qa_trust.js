@@ -490,6 +490,36 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
     ok(mixed[0] === 0 && mixed[1] === 4, 'a mixed round was counted as AI-scored: ' + mixed);
   });
 
+  await T('Q53', 'integrated week steps (F7, s05): five short steps in the Kafka week, done only by the work, a changed step goes back to not done, and With AI takes that week\'s Claude Code slot without dropping one', async p => {
+    await boot(p);
+    const u = await p.evaluate(() => { const us = modUnits('s05'), q = us.findIndex(x => x.kind === 'quiz'), st = us.filter(x => /:st\./.test(x.uid)); return { st: st.map(x => [x.uid, x.mins, x.isDone || (x.auto && x.auto())]), before: st.every(x => us.indexOf(x) < q) }; });
+    ok(u.st.length === 5 && u.st.every(x => x[1] <= 10 && !x[2]) && u.before, 'the five steps are not in the week before the quiz, short and not done: ' + JSON.stringify(u));
+    /* Read and fix: the given code fails, a fix that passes finishes the step */
+    await p.evaluate(() => { location.hash = '#/step/s05/fix'; }); await p.waitForSelector('#st_run', { timeout: 15000 });
+    await p.click('#st_run'); await p.waitForSelector('.lptest', { timeout: 90000 });
+    ok(await p.$('.lptest.bad') && !(await p.evaluate(() => stepAuto('s05', stepList('s05')[1]))), 'the code as given passed or finished the step');
+    await p.evaluate(() => { const t = document.querySelector('#st_code'); t.value = stepList('s05')[1].fixed; t.dispatchEvent(new Event('input')); });
+    await p.click('#st_run'); await p.waitForFunction(() => (S.steps['s05:st.fix'] || {}).fixed, null, { timeout: 60000 });
+    ok(await p.evaluate(() => schedFlush() || schedule().units.find(x => x.uid === 's05:st.fix').isDone), 'passing tests did not finish the step');
+    /* the platform check: a wrong pick leaves it open, the right one finishes it */
+    const ck = await p.evaluate(() => { const x = stepList('s05')[2]; stepPut(x.uid, { pick: (x.check.a + 1) % 3 }); const a = stepAuto('s05', x); stepPut(x.uid, { pick: x.check.a }); return [a, stepAuto('s05', x)]; });
+    ok(!ck[0] && ck[1], 'the platform check finished on a wrong answer, or not on the right one: ' + ck);
+    /* Lead it is ticked by you; editing its model answer sends it back to not done with the old tick archived */
+    await p.evaluate(() => { location.hash = '#/step/s05/lead'; }); await p.waitForSelector('#st_done'); await p.click('#st_done'); await p.waitForTimeout(400);
+    ok(await p.evaluate(() => !!S.done['s05:st.lead']), 'Done did not tick Lead it');
+    const back = await p.evaluate(() => { schedFlush(); schedule(); const s = DATA.sprints.s05; s.raw.steps = s.raw.steps.replace('You are deciding the default', 'You decide the default'); schedFlush(); reconcileContent(); schedFlush(); return [!!S.done['s05:st.lead'], !!(S.archive && S.archive.done && S.archive.done['s05:st.lead'])]; });
+    ok(!back[0] && back[1], 'a changed step stayed done or lost its old tick: ' + back);
+    /* With AI takes the next Claude Code slot (Wednesday or Saturday); every Claude Code step is still scheduled */
+    const sw = await p.evaluate(() => { S.settings.ai = true; applyAi(); schedFlush();
+      const sc = scheduleNow(), ai = sc.units.find(x => x.uid === 's05:st.ai'), cc = sc.units.filter(x => isCC(x.mid));
+      const d = ai && new Date(ai.day + 'T00:00:00'), others = cc.filter(x => x.day === (ai && ai.day)).length;
+      return { day: ai && ai.day, dow: d && d.getDay(), others, placed: cc.length > 0 && cc.every(x => x.day && (sc.byDay[x.day] || []).includes(x)) }; });
+    ok(sw.day && [3, 6].includes(sw.dow) && sw.placed, 'With AI is not in a Claude Code slot, or a Claude Code step was dropped: ' + JSON.stringify(sw));
+    /* sync keeps the newer work on each step */
+    const mg = await p.evaluate(() => mergeState({ steps: { a: { code: 'old', at: 1 }, b: { at: 3 } } }, { steps: { a: { code: 'new', at: 5 } } }).steps);
+    ok(mg.a.code === 'new' && mg.b, 'merge lost step work: ' + JSON.stringify(mg));
+  });
+
   await browser.close();
   for (const r of results) console.log(r[0].padEnd(5), r[1], r[2], r[3] ? '\n      ' + r[3] : '');
   console.log(results.filter(r => r[0] === 'PASS').length + ' passed, ' + results.filter(r => r[0] === 'FAIL').length + ' failed');

@@ -169,6 +169,13 @@ async function run(engine) {
     ok(/^2 of \d/im.test(await txt(p)), 'the next recall item did not appear: ' + (await txt(p)).slice(0, 120));
   });
 
+  await S('Week steps: the Kafka week shows five short steps, and the platform check finishes one', async p => {
+    await boot(p, '#/step/s05/platform'); await p.waitForSelector('[role=tab]', { timeout: 15000 });
+    ok((await p.$$('[role=tab]')).length === 5, 'the Kafka week does not show five steps');
+    const a = await p.evaluate(() => stepList('s05')[2].check.a); await p.click('.lpchoice .lpopt >> nth=' + a).catch(async () => { await p.evaluate(a => stepPut('s05:st.platform', { pick: a }), a); });
+    await p.waitForTimeout(400); ok(await p.evaluate(() => { schedFlush(); return schedule().units.find(x => x.uid === 's05:st.platform').isDone; }), 'answering the check did not finish the step');
+  });
+
   await S('Profile: settings save, and Update opens the version dialog', async p => {
     await boot(p, '#/profile'); await p.click('#pt_look'); await p.fill('#st_name', 'Sam'); await p.dispatchEvent('#st_name', 'change'); await p.waitForTimeout(300);
     ok(await p.evaluate(() => S.settings.name === 'Sam'), 'name not saved');

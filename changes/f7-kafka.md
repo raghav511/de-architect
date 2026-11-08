@@ -1,0 +1,3 @@
+# F7 pilot: integrated week steps in Kafka (s05)
+- The Kafka week now has five short steps of up to 10 minutes before its quiz: Design it (a simulator challenge), Read and fix (find the offset bug and make the real tests pass), Run it on the platform (managed Kafka, Kubernetes and what drives the bill, with one check), Lead it (one Kafka or a Kafka per team, with a model answer) and With AI (where LLM tools help with Kafka, plus a Claude Code task on consumer lag that takes that week's Claude Code slot).
+- Each step finishes from the work itself (a passed challenge, passing tests, the right check, a good grade) or your own tick; nothing is ticked for you, and an edited step comes back as Updated.
