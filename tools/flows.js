@@ -1,12 +1,13 @@
 /* Data Architect user-journey tests (QA scenarios). node tools/flows.js [baseUrl] [filter]
    Each scenario runs in a fresh browser context and checks what a user would see. */
 const { chromium } = require(process.env.PW || 'playwright');
+const { blockExternal } = require('./testnet');
 const BASE = (process.argv[2] && /^http/.test(process.argv[2])) ? process.argv[2] : 'http://localhost:8811/';
 const FILTER = process.argv.find(a => !/^http/.test(a) && a !== process.argv[0] && a !== process.argv[1]) || '';
 const results = [];
 let browser;
 async function ctx(opt) {
-  const c = await browser.newContext(Object.assign({ viewport: { width: 1440, height: 900 }, acceptDownloads: true, bypassCSP: true }, opt || {})); /* stub hosts (https://sync.test) are outside the app's CSP */ await c.route('http://127.0.0.1:8765/**', r => r.abort()); /* never reach a real grader installed on this Mac */
+  const c = await browser.newContext(Object.assign({ viewport: { width: 1440, height: 900 }, acceptDownloads: true, bypassCSP: true }, opt || {})); /* stub hosts (https://sync.test) are outside the app's CSP */ await blockExternal(c); await c.route('http://127.0.0.1:8765/**', r => r.abort()); /* never reach a real grader installed on this Mac */
   const p = await c.newPage(); p.errs = [];
   p.on('pageerror', e => p.errs.push(e.message));
   p.on('dialog', d => { p.errs.push('native dialog: ' + d.message()); d.dismiss(); });
