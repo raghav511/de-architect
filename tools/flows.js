@@ -851,6 +851,26 @@ async function T(name, fn, opt) {
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'sideways scroll on a phone');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
+  await T('reels player (F3–F6): the same dark player frame from the first frame with a loading state, Instagram-style layout (round play button, title and caption bottom-left, icon rail), every speed from 0.25x to 2x', async (p, c) => {
+    await c.route('**/data/reels.json*', async r => { await new Promise(x => setTimeout(x, 1500)); r.continue(); }); /* slow download so the loading state shows */
+    await go(p, '#/today', 900); await p.evaluate(() => { location.hash = '#/reels'; }); await p.waitForTimeout(300);
+    ok(await p.evaluate(() => { const v = document.querySelector('.reelv'); return !!(v && v.querySelector('.rspin') && /Getting your reels ready/.test(v.textContent) && v.querySelector('.rtitle')); }), 'no loading state in the player frame (F5, F6)');
+    ok(!(await p.evaluate(() => /Loading reels/.test(document.body.innerText))), 'the bare Loading reels line is still shown');
+    await p.waitForSelector('.rslide .rstart', { timeout: 30000 });
+    ok(await p.evaluate(() => document.querySelectorAll('.reelv').length === 1 && !document.querySelector('.rspin')), 'the loading frame stayed behind the player');
+    const lay = await p.evaluate(() => { const s = document.querySelector('.rslide .rstart').closest('.rslide'), r = k => s.querySelector(k).getBoundingClientRect(), play = r('.rplayc'), info = r('.rinfo'), rail = r('.rrail'), lv = s.querySelector('.rlevel');
+      return { round: getComputedStyle(s.querySelector('.rplayc')).borderRadius === '50%' && play.width >= 64, infoLow: info.bottom > innerHeight * 0.75 && info.left < 30, railRight: rail.right > innerWidth - 20 && [...s.querySelectorAll('.rrail button')].every(b => b.getBoundingClientRect().height >= 44), badge: !lv || lv.getBoundingClientRect().width < innerWidth / 2, wide: document.documentElement.scrollWidth <= innerWidth }; });
+    ok(lay.round && lay.infoLow && lay.railRight && lay.badge && lay.wide, 'layout is not Instagram-style: ' + JSON.stringify(lay));
+    await p.click('.rslide .rstart'); await p.waitForTimeout(600);
+    await p.click('.rslide.playing .rrail [aria-label^="Speed"]'); await p.waitForSelector('.rspeed');
+    ok(await p.evaluate(() => [...document.querySelectorAll('.rspeed .rspeeds button')].map(b => b.textContent).join(' ') === '0.25× 0.5× 0.75× Normal 1.25× 1.5× 1.75× 2×'), 'speed choices are not 0.25x to 2x (F4)');
+    await p.click('.rspeed button:has-text("0.5×")'); await p.waitForTimeout(400);
+    ok(await p.evaluate(() => S.settings.reelSpeed === 0.5 && /0\.5×/.test(document.querySelector('.rslide.playing .rrail [aria-label^="Speed"]').textContent)), 'picking 0.5x did not stick');
+    await p.evaluate(() => { S.settings.reelSpeed = 1; save(); });
+    await p.mouse.click(195, 380); await p.waitForTimeout(400); /* the middle pauses */
+    ok(await p.evaluate(() => !document.querySelector('.rslide.playing') && !!document.querySelector('.rtap .rstart .rplayc')), 'pausing shows no play button');
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
   await T('reels: Shorts-style feed, shuffle by default with My week and filters, teaching-only reels, four-level Kafka series, scenes animate, one voice at a time, quick check schedules a review, heart saves to My playbook', async p => {
     await go(p, '#/today', 1500); await p.evaluate(() => { S.settings.reelVoice = false; delete S.settings.reelMode; S.reels = {}; S.playbook = {}; save(); });
     ok(await p.evaluate(() => [...document.querySelectorAll('.tabbar a')].some(a => a.getAttribute('href') === '#/reels')), 'no Reels tab');
