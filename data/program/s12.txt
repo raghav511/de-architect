@@ -137,6 +137,78 @@ If your scores are even across rounds, redo these, timed, from a blank file:
 | Trapping rain water | Sprint 10 | 12 minutes |
 | Slowly changing dimension, Type 2, in PySpark | Sprint 4 | 18 minutes |
 
+@@steps
+STEP: design
+TITLE: Design it: defend your platform to a review board
+MIN: 10
+DESIGN: yes
+BODY: This week's design problem is your own platform, presented to an architecture review board: three decisions defended, and an answer to "what breaks at 10 times the load?". Open the design problem, sketch the C4 context and container diagrams, write the three decisions as one-paragraph records (the decision, the options you rejected, the cost), and list the three risks at 10x. Tick the step when all three are written.
+
+- **Lead with the problem**, not the tools: who uses the platform and what it guarantees.
+- **One rejected option per decision**, with why. A board trusts a choice it can see you compared.
+- **Risks with numbers**: partitions, storage per day, cost per month at 10x, and the first thing to fail.
+---
+STEP: fix
+TITLE: Read and fix: the agent's action runs before anyone approved it
+MIN: 10
+SPEC: The capstone's on-call agent only proposes actions; a person approves them. The executor runs a proposal only when its status is `approved` **and** its action is in the allowed list. Return the ids to execute, in the order given. Pending and rejected proposals never run.
+CODE:
+```
+def to_execute(proposals, allowed):
+    """proposals: dicts with id, action and status ('pending', 'approved' or 'rejected')."""
+    out = []
+    for p in proposals:
+        if p['status'] != 'rejected' and p['action'] in allowed:
+            out.append(p['id'])
+    return out
+```
+FIX:
+```
+def to_execute(proposals, allowed):
+    """proposals: dicts with id, action and status ('pending', 'approved' or 'rejected')."""
+    out = []
+    for p in proposals:
+        if p['status'] == 'approved' and p['action'] in allowed:  # only what a person approved
+            out.append(p['id'])
+    return out
+```
+BUG: 5
+TESTS: [["a pending proposal does not run", "to_execute([{'id': 1, 'action': 'rerun', 'status': 'approved'}, {'id': 2, 'action': 'backfill', 'status': 'pending'}, {'id': 3, 'action': 'rerun', 'status': 'rejected'}], ['rerun', 'backfill'])", [1]], ["approved actions run in order", "to_execute([{'id': 1, 'action': 'rerun', 'status': 'approved'}, {'id': 2, 'action': 'backfill', 'status': 'approved'}], ['rerun', 'backfill'])", [1, 2]], ["an action outside the list never runs", "to_execute([{'id': 5, 'action': 'drop_table', 'status': 'approved'}], ['rerun'])", []], ["nothing proposed", "to_execute([], ['rerun'])", []]]
+BODY: `!= 'rejected'` reads like "unless someone said no", so a proposal nobody has looked at yet runs as if it had been approved. The demo still works, because in a demo you approve quickly; in production the agent backfills a range at 3 a.m. while the approver is asleep. An approval gate must allow only the explicit yes, never everything except the explicit no. Catch it with a test for every status, including pending, and by logging who approved each executed action, so an action without an approver shows up at once.
+---
+STEP: platform
+TITLE: Run it on the platform: a demo that is up when it matters
+MIN: 8
+BODY: **Where the capstone runs for interviews.** A small always-available surface is enough: a Databricks App or a Cloud Run or Fly.io service for the approval page, a serverless or scheduled job for the pipeline, object storage for the tables, and a free or low tier of the warehouse. Keep the code in the public repository and the secrets in the platform's secret store, never in the repository.
+
+**What drives the bill.**
+- **Idle compute.** A cluster or warehouse left running is the whole bill. Use scale to zero, auto-stop after minutes of idle time, and a schedule that starts things an hour before an interview.
+- **Model calls.** The agent's proposals cost tokens per incident; cap calls per day and cache evidence.
+- **Forgotten resources.** Test buckets, old clusters and public IPs keep billing after the project ends. Tag everything with the project name and review the bill weekly.
+
+**Run it.** Set a budget alert at 50% and 90% of your monthly limit, and an uptime check on the demo URL that tells you before an interviewer does.
+CHECK: {"q": "Your interviews are next week and the demo's cluster costs $40 a day while idle. What do you do?", "c": ["Keep it running for the whole week so the demo stays warm", "Let it scale to zero and start it before each interview", "Delete it and show screenshots during the interviews"], "a": 1, "why": "Scale to zero (or a start schedule) keeps a live demo for the interview without paying for idle days. A recording is the backup, not the plan."}
+---
+STEP: lead
+TITLE: Lead it: build or buy, in front of the board
+MIN: 10
+Q: A review board member says your platform should have been bought from a vendor, and that nobody will be able to maintain it after you leave. How do you answer, and what do you change?
+A: Start by agreeing with the fear, because it is real: a platform only one person understands becomes a liability the day that person leaves, and the board is protecting the company from it.
+
+Then show the decision was made, not drifted into. For each layer, say what is bought and what is built: storage, the warehouse, orchestration and the queue are managed services or open standards (Iceberg, Airflow, Kafka-compatible), so they are not mine to maintain. What is built is the thin part that carries our business rules and the approval flow, a few thousand lines with tests and records of each decision.
+
+Offer a default and an exception. The default is buy or adopt the standard for anything commodity. The exception is the part that encodes how we work, where the vendor options were compared and rejected in a written record with cost.
+
+Then reduce the risk they named: runbooks for the five most likely incidents, a second owner who has run each one, the platform's golden path documented so another team can deploy it, and a quarterly review of the build-or-buy records with the board. Invite the member to the first handover session.
+BODY: Answer out loud in two minutes first, then write the short version and compare with the model answer. Staff interviewers listen for the fear behind the request, the trade-off, a default with an exception, and how you would bring the teams along.
+---
+STEP: ai
+TITLE: With AI: an interviewer's deep dive on your capstone
+MIN: 10
+BODY: **Where LLM tooling helps in the last weeks.** Playing a skeptical interviewer who reads your README and asks follow-ups; timing your answers; spotting the claim in your resume that the repository does not back up; turning a long answer into a two-minute one. **Where it misleads:** it praises vague answers unless told to be strict, invents details about a company's loop that you should confirm with the recruiter, and scores generously. Ask it to quote your weakest sentence back to you; that is more useful than its score.
+TASK: Give Claude Code your capstone README, the agent's evaluation table and one design record, and ask it, in one prompt, to (1) act as a staff interviewer and ask five follow-up questions about your decisions and failures, one at a time, waiting for your answer, (2) after the fifth, score each answer 1 to 4 against the rubric in 10.1, and (3) quote your weakest sentence and say what a stronger answer would add. Paste your prompt and its final review below.
+RUBRIC: The prompt gives the real material (README, evaluation table, one decision record) and asks for one question at a time, scores against a stated rubric and a quoted weakest sentence. The questions probe trade-offs, failures and scale, not definitions. You record one answer you would now give differently and check one fact it stated about a company with the recruiter or the chapter before relying on it.
+
 @@quiz
 TYPE: mcq
 TAG: sql

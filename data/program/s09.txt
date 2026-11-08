@@ -271,6 +271,78 @@ What do you do in the next ten minutes? Decide, then compare.
 
 A vague complaint becomes a service-level objective with a report. The conversation changes from blame to a number both sides can watch.
 
+@@steps
+STEP: design
+TITLE: Design it: survive a database failover
+MIN: 10
+SIM: failover, zone, region
+BODY: A short simulator challenge on this week's reliability ideas. It fails as given: find the cause, change the design and run it again until it passes. The other two are there for more practice.
+
+- **A database failover.** The primary crashes and stays down. A hot standby that takes over in seconds is your recovery time objective (RTO), made concrete.
+- **A lost zone.** A zone takes half of every tier's replicas with it. N+1 is not enough when one failure removes half the capacity: run each tier under 50% load or let it scale.
+- **A lost region.** The replica is only as fresh as replication, which is your recovery point objective (RPO). Keep the link seconds behind, or promise a larger RPO in writing.
+---
+STEP: fix
+TITLE: Read and fix: the anomaly check that hides the anomaly
+MIN: 10
+SPEC: A volume check runs after each daily load. `counts` holds the daily row counts, oldest first; the last one is today's. Flag today when it is more than `k` standard deviations away from the mean of the **previous seven days** (today must not be part of its own baseline).
+CODE:
+```
+def is_anomaly(counts, k=3.0):
+    """counts: daily row counts, oldest first; the last one is today."""
+    hist = counts[-7:]
+    mean = sum(hist) / len(hist)
+    sd = (sum((x - mean) ** 2 for x in hist) / len(hist)) ** 0.5
+    today = counts[-1]
+    return abs(today - mean) > k * sd
+```
+FIX:
+```
+def is_anomaly(counts, k=3.0):
+    """counts: daily row counts, oldest first; the last one is today."""
+    hist = counts[-8:-1]  # the seven days before today, not today itself
+    mean = sum(hist) / len(hist)
+    sd = (sum((x - mean) ** 2 for x in hist) / len(hist)) ** 0.5
+    today = counts[-1]
+    return abs(today - mean) > k * sd
+```
+BUG: 3
+TESTS: [["a 40% drop is flagged", "is_anomaly([100, 102, 98, 101, 99, 100, 103, 60])", true], ["a doubled day is flagged", "is_anomaly([100, 102, 98, 101, 99, 100, 103, 200])", true], ["a normal day passes", "is_anomaly([100, 102, 98, 101, 99, 100, 103, 101])", false], ["a flat history and the same count", "is_anomaly([50, 50, 50, 50, 50, 50, 50, 50])", false]]
+BODY: `counts[-7:]` takes the last seven values, and the last one is today. The bad day joins its own baseline: it drags the mean towards itself and widens the standard deviation, so a 40% drop or a doubled day looks normal. The check stays green on exactly the days it exists for. This is how section 9.1's missing city went unnoticed for a week. Catch it by testing the check itself with a planted bad day, as here, and by comparing the same weekday in past weeks so Mondays are not judged against Sundays.
+---
+STEP: platform
+TITLE: Run it on the platform: data quality checks and their bill
+MIN: 8
+BODY: **Where the checks run.** Most teams start with tests next to the transformations: dbt tests, or Great Expectations and Soda Core tasks in Airflow, all running as queries in the warehouse. Observability services (Monte Carlo, Bigeye, Metaplane, Soda Cloud, Elementary) add anomaly detection on freshness, volume and schema from warehouse metadata, plus lineage and alert routing, priced per table or per monitored asset. Self-run lineage means OpenLineage events from Airflow and Spark into Marquez or OpenMetadata, usually on Kubernetes with a Postgres behind it.
+
+**What drives the bill.**
+- **Every check is a query.** A null-rate check that scans the full table hourly costs more than the job it guards. Check only the partition just loaded, and read row counts and freshness from load metadata or the table format's statistics instead of scanning.
+- **Per-table pricing.** Monitor the tables people use (the marts and their direct inputs), not every staging table.
+- **Alert noise.** It costs people, not credits: an alert ignored daily trains everyone to ignore the real one.
+
+**Run it.** Alert on a freshness SLO breach for each mart and on a failed contract check at ingestion, each routed to the owning team with the lineage of what it affects.
+CHECK: {"q": "Your data quality checks now cost more warehouse credits than the pipelines they guard. What is the best first fix?", "c": ["Run the same full-table checks once a day, overnight, instead", "Check only each newly loaded partition, using load metadata", "Turn the checks off for every table except the marts"], "a": 1, "why": "Scoping each check to the data just written keeps every guarantee at a fraction of the cost. Running less often delays detection; switching checks off loses them."}
+---
+STEP: lead
+TITLE: Lead it: one data quality standard across teams
+MIN: 10
+Q: After a revenue report was wrong for a week, the CTO asks you for one data quality standard across eight teams. Two product teams say data contracts will slow their releases. What do you propose, and how do you get it adopted?
+A: Start with what each side fears. The CTO fears another silent week of wrong numbers; the product teams fear a review gate on every schema change and a platform team in their release path. Both are fair.
+
+Propose a small default rather than a framework: every table that feeds a dashboard or another team has an owner, a contract for its schema and meaning, and four automatic checks (freshness, volume, schema, key uniqueness) that run where the data is written. The producer's CI checks the contract, so a breaking change fails their own build in seconds instead of reaching a meeting; additive changes pass without review. Breaking changes need a new major version and notice, as in 9.3.
+
+Write the exception down: internal tables nobody else reads need only an owner. Make it cheap to comply: a template repository, the checks generated from the contract, and one Slack channel per contract.
+
+Bring people along by starting with the two tables behind last month's incident, with the teams that own them. Publish a monthly scorecard of incidents caught before a dashboard, and review the standard with the leads after a quarter.
+BODY: Answer out loud in two minutes first, then write the short version and compare with the model answer. Staff interviewers listen for the fear behind the request, the trade-off, a default with an exception, and how you would bring the teams along.
+---
+STEP: ai
+TITLE: With AI: triage a failed load with Claude Code
+MIN: 10
+BODY: **Where LLM tooling helps with reliability.** Reading a failed dbt test, the job log and the lineage together and saying which upstream change most likely caused it; drafting the incident message and the postmortem from your notes; writing a data contract and its checks from a sample of rows. **Where it misleads:** it will name a confident root cause the evidence does not support, and it may "fix" a failing test by loosening it or by deleting quarantined rows. It also cannot see your warehouse unless you give it read-only access. Every fix it proposes is checked against the evidence and the contract before it runs.
+TASK: Give Claude Code this week's incident evidence from the build or the incident lab (the failing test output, the row counts for the last eight days and the lineage of the affected table) and ask it, in one prompt, to (1) say which of the five failure dimensions in 9.1 this is, (2) name the most likely upstream cause and the one query that would confirm it, and (3) draft the two-line message to the affected teams. Paste your prompt and its answer below.
+RUBRIC: The prompt gives the evidence (test output, counts, lineage) and asks for a classification, a confirming query and a message. The answer names a dimension that fits the evidence, proposes a query that would actually confirm or rule out the cause, does not loosen or delete a check to make it pass, and the message says what is wrong, what is affected and when the next update comes. You note one thing you would verify before acting.
+
 @@quiz
 TYPE: mcq
 TAG: cloud
