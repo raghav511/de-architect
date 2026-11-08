@@ -176,14 +176,15 @@ async function T(name, fn, opt) {
     await profile(p, 'plan');
     await setField(p, '#st_wd', '5'); await setField(p, '#st_we', '150'); await setField(p, '#st_time', '06:30');
     await p.click('#pt_sync'); await setField(p, '#st_sync', 'https://script.google.com/macros/s/abc/exec');
-    await p.click('#pt_ai'); await setField(p, '#st_key', 'sk-ant-test');
+    await p.click('#pt_ai'); await p.selectOption('#st_coach', 'hints'); await p.waitForTimeout(300); /* no key field since #94: the AI tab's own choice is saved instead */
     await p.click('[data-mode=dark]'); await p.waitForTimeout(400);
     const s = await state(p); ok(s.settings.capWd === 60, 'invalid weekday minutes should fall back to 60, got ' + s.settings.capWd);
     ok(s.settings.capWe === 150 && s.settings.studyTime === '06:30', 'weekend/time not saved');
+    ok(s.settings.coachVia === 'hints' && !('aiKey' in s.settings), 'AI tab choice not saved, or a key was stored: ' + JSON.stringify([s.settings.coachVia, 'aiKey' in s.settings]));
     ok(await p.evaluate(() => document.documentElement.dataset.theme === 'dark'), 'dark theme not applied');
     await p.reload(); await p.waitForTimeout(700);
     ok(await p.evaluate(() => document.documentElement.dataset.theme === 'dark'), 'theme lost after reload');
-    ok((await p.inputValue('#st_sync')).includes('abc') && (await p.inputValue('#st_key')) === 'sk-ant-test', 'settings not shown on reopen');
+    ok((await p.inputValue('#st_sync')).includes('abc') && (await p.inputValue('#st_coach')) === 'hints', 'settings not shown on reopen');
   });
 
   await T('profile: avatar opens it; sync, update and mode are one tap without scrolling; tabs switch in place', async p => {
