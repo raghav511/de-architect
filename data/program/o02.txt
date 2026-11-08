@@ -1,0 +1,331 @@
+@@meta
+id: o02
+n: 2
+title: Golden paths and self-serve templates: paved roads that teams choose
+goal: Design the paved roads that let teams ship data pipelines and data products without waiting for a platform team: pick which journeys to pave, build templates with safe defaults, keep them alive as they drift, put guardrails in CI instead of review gates, offer them through a developer portal, and measure whether teams actually choose them.
+hours: 5
+
+@@tickets
+O201 | learn | 1 | Chapter part 1: what a golden path is, which journeys to pave, the anatomy of a template, keeping templates alive | You can name the parts of a data product template and say how its users get upgrades. | chapter:0-3
+O202 | learn | 1 | Chapter part 2: the developer portal, guardrails not gates, measuring a path, failure modes, the architect's lens | You can list three guardrails to put in CI, three numbers that show a path works, and two ways paths fail. | chapter:4-8
+O203 | build | 1 | Exercises 1–2: render a template, report template drift | Both pass in the editor: a template rendered with checked parameters, and a drift report that says how far behind each repository is. | py:1-2
+O204 | build | 0.75 | Exercises 3–4: guardrails with waivers, and path metrics | Both pass: policy checks that honour waivers until they expire, and adoption and lead-time numbers for golden and custom paths. | py:3-4
+O205 | practice | 0.5 | Sketch the golden path for one journey, then the customer drill | A one-page sketch of one journey (steps, template, defaults, guardrails, the number you would track), and the drill answered out loud. | practice
+O206 | test | 0.5 | Quiz O2 | 80% or better. | quiz
+O207 | talk | 0.75 | Interview set O2 | 5 of 7 answered out loud and ticked. | interview
+
+@@readings
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
+- **Reading note: How we use golden paths.** A golden path is the opinionated, supported way to build something, with a tutorial and templates; teams may leave it, but then they own what they build. The point is to remove decisions most teams should not have to make. [ⓘ](https://engineering.atspotify.com/2020/08/how-we-use-golden-paths-to-solve-fragmentation-in-our-software-ecosystem/)
+- **Reading note: Backstage software templates.** A developer portal's scaffolder asks a few questions, creates a repository from a template, registers the result in the software catalog, and can open the first pull request. Templates are code, versioned and reviewed. [ⓘ](https://backstage.io/docs/features/software-templates/)
+- **Reading note: Platform engineering and internal developer platforms.** A platform team treats its platform as a product for internal users: it researches their journeys, builds self-service with guardrails, and measures adoption and satisfaction rather than mandating use. [ⓘ](https://platformengineering.org/blog/what-is-platform-engineering)
+- **Reading note: Measuring delivery performance.** Lead time for changes, deployment frequency, change failure rate and time to restore are the standard four measures of delivery; they apply to data pipelines as much as to services, and a good golden path should move all four. [ⓘ](https://dora.dev/guides/dora-metrics-four-keys/)
+
+@@chapter
+## O2.1 What a golden path is
+
+Every data team keeps solving the same problems: how to start a new pipeline, where to put the contract, how to test it, how to deploy it, how to get alerts. Left alone, 30 teams solve them 30 ways. Each way works, until someone else has to run it.
+
+A **golden path** (also called a paved road) is the opinionated, supported way to do a common job, end to end. It bundles the decisions most teams should not have to make: the layout, the tools, the tests, the deployment, the monitoring, the ownership metadata.
+
+Three properties make it golden:
+
+1. **It is the easiest way.** A team gets a working, production-ready result in an hour, not a month.
+2. **It is supported.** The platform team owns the template, fixes it, upgrades it and answers questions about it.
+3. **It is optional.** Teams may leave the path for a good reason, but off the path they own what they build. Paths win by being better, not by being mandatory.
+
+In O1 the self-serve platform was what makes domain ownership affordable. Golden paths are how that platform is used day to day.
+
+## O2.2 Which journeys to pave
+
+Pave the journeys that are frequent and painful. List what teams actually do, how often, and how long it takes today:
+
+| Journey | How often | Time today | Pave first? |
+|---|---|---|---|
+| Publish a new data product (batch) | 20 a quarter | 6 weeks | Yes |
+| Add a new source by CDC | 10 a quarter | 3 weeks | Yes |
+| Create a streaming job | 4 a quarter | 8 weeks | Later |
+| Request access to a dataset | 300 a quarter | 4 days | Yes (self-service with approval) |
+| Build a one-off ML feature table | 2 a quarter | 2 weeks | No |
+
+Start with one or two journeys, done well, rather than ten done badly. Talk to the teams that will use them: shadow two of them doing the journey the hard way and write down every wait, every question, every copy-paste. That list is the backlog for the path.
+
+## O2.3 Anatomy of a template
+
+A template for a new data product creates a working repository in one step. A good one contains:
+
+| Part | What it gives |
+|---|---|
+| Layout | A standard repository structure every engineer recognises |
+| Contract | `contract.yaml` with owner, grain, schema and SLOs, pre-filled from the questions asked |
+| Transformation project | A dbt or Spark project with one example model that runs |
+| Tests | Contract tests, data quality tests and a unit test example |
+| CI | Lint, tests, contract checks and policy checks on every pull request |
+| Deployment | The orchestrator job (schedule, retries, alerts) defined as code |
+| Observability | Freshness and volume monitors wired to the owner's channel |
+| Catalog | Registration of the product, its owner and lineage on first deploy |
+| Docs | A README that explains how to change, run and debug it |
+
+The scaffolder asks only what it cannot infer: the product name, the domain, the owning team, the schedule. Names are checked (snake_case, unique in the domain) before anything is created. Everything else has a safe default, such as a dead-letter table, schema checks and retries, because the defaults are what most teams will keep.
+
+## O2.4 Keeping templates alive
+
+A template is copied once and then drifts. A year later, 80 repositories were made from six versions of it, and the security fix you made last month reached none of them.
+
+Treat templates as products with versions:
+
+- **Semantic versions.** Patch for fixes, minor for new optional pieces, major for changes users must act on.
+- **Record the version** each repository was created from, in a file the platform can read.
+- **Automated upgrade pull requests.** A bot proposes the change in every repository, with the diff and release notes; owners review and merge. For shared pieces (CI steps, deployment), prefer libraries or shared workflows that update in one place over copied files.
+- **A drift report.** For each repository: how many versions behind, which files differ from the template. Chase the major-behind first.
+- **Deprecate old versions** with a date, like any product.
+
+The rule of thumb: copy as little as possible into each repository. Every copied file is a file you will have to upgrade 80 times.
+
+## O2.5 The developer portal
+
+Golden paths need a front door. A **developer portal** (Backstage is the common open-source choice) brings together:
+
+- **A catalog** of everything: services, pipelines, data products, owners, and how they connect.
+- **Templates** that create new components through a short form.
+- **Docs** next to the components they describe.
+- **Scorecards** that show each component against the standards: has an owner, has a contract, tests pass, on a supported template version, SLOs met.
+
+For data, the portal and the data catalog should not compete: either one links to the other, or the portal shows data products from the catalog. One place to start beats two half-complete ones.
+
+## O2.6 Guardrails, not gates
+
+A **gate** is a person who must approve: a review board, a ticket to the platform team. Gates make teams wait and teach them to route around you. A **guardrail** is an automatic check that stops a mistake and explains how to fix it.
+
+Good guardrails for data:
+
+- The contract exists and the data matches it.
+- Personal data columns are tagged and masked.
+- Every product has an owner and an on-call channel.
+- Tests exist and pass; quality checks run in production.
+- Costs stay within the team's quota, or the job is flagged.
+
+Every guardrail needs an **escape hatch**: a waiver with a reason, an owner and an expiry date, recorded where the check can read it. A waiver that never expires is a hole; one that expires turns a shortcut into a dated decision someone must revisit.
+
+## O2.7 Measuring a golden path
+
+You cannot claim a path works because it exists. Measure it like a product:
+
+- **Adoption:** share of new pipelines or products created on the path.
+- **Time to first production run** on the path compared with off it.
+- **Lead time for changes** and **change failure rate** for repositories on the path.
+- **Support load:** tickets and questions per project.
+- **Satisfaction:** a short survey each quarter; ask what made people leave the path.
+- **Drift:** share of repositories on a supported template version.
+
+If adoption is low, ask why before mandating anything. The usual answers are that the path does not cover a real need, or that it is slower than the old way.
+
+## O2.8 Failure modes
+
+| Failure | What it looks like | Prevention |
+|---|---|---|
+| Golden cage | The path is mandatory and cannot bend; teams fight it | Keep it optional with escape hatches; earn adoption |
+| Too many paths | Ten templates, none maintained | One or two journeys, done well |
+| Stale templates | Repositories stuck on old versions with known bugs | Versions, upgrade bots, drift reports, shared libraries |
+| Built without users | A beautiful template nobody asked for | Shadow real teams first; measure adoption |
+| Gates disguised as paths | The template still ends in a ticket to the platform team | Self-service with automatic guardrails |
+| Defaults nobody understands | Teams cannot debug what the template generated | Docs, examples and a clear "how it works" |
+
+## O2.9 Architect's lens: golden paths and self-serve templates
+
+The questions an architect is asked about golden paths: what to pave, how to keep it alive, and how to know it works.
+
+| Question | Short answer for golden paths |
+|---|---|
+| **What problem does it solve?** | Fragmentation and slow starts: every team solves the same setup problems differently, new pipelines take weeks, and the platform team becomes a ticket queue. A golden path makes the right way the fastest way for common journeys. |
+| **Why it over the alternatives?** | Against tickets to a platform team: self-service scales and removes waiting. Against a written standards document: a template produces a working, compliant result instead of asking teams to read and follow rules. Against a mandatory framework: an optional path keeps teams able to handle real exceptions. |
+| **When not to use it?** | Journeys that happen once or twice a year; teams too few to justify the upkeep; areas still changing so fast that a template would be out of date in a month (write a guide first, pave later). |
+| **Who owns and pays for it?** | The platform team owns the templates, the scaffolder, shared CI and the upgrade process as products, with a roadmap and support. Teams own what they create from a template, including keeping it upgraded. |
+| **Where does it sit?** | In the developer portal and the platform: templates and the scaffolder create repositories; shared workflows, policy checks and monitors run in CI and production; the catalog registers the result. |
+| **How does it fail and scale?** | It scales with reuse: shared libraries and workflows update everyone at once, copied files do not. It fails as a golden cage, template drift, too many paths, paths built without users, and gates disguised as self-service. |
+| **When do you move off it?** | When a journey disappears or changes completely, retire the path with a notice; when a managed service covers the journey better, make the path a thin wrapper around it. |
+
+### Under the hood
+
+**1. What goes into a template for a new data product, and what stays out of it?**
+<details><summary>Model answer</summary>
+
+In: a standard layout, a pre-filled contract (owner, grain, schema, SLOs), a transformation project with one working example, contract and quality tests, the orchestrator job as code with retries and alerts, freshness and volume monitors, catalog registration and a README. Out of the copied files: anything that should change for everyone at once, such as CI steps, deployment logic and policy checks; those come from shared workflows or libraries the template references by version. The less is copied, the less drifts.
+
+</details>
+
+**2. How do you get a fix to 80 repositories created from old template versions?**
+<details><summary>Model answer</summary>
+
+Know where every repository stands: each records the template version it came from, and a drift report compares it with the latest. Ship the fix as a new template version with release notes, and let a bot open an upgrade pull request in every affected repository, with the diff and tests running in CI. Owners merge; the report tracks who has not, starting with those a major version behind. For the future, move the fixed part into a shared workflow or library so the next fix reaches everyone without 80 pull requests.
+
+</details>
+
+**3. What makes a guardrail better than a review gate, and how do exceptions work?**
+<details><summary>Model answer</summary>
+
+A guardrail is an automatic check that runs on every change, fails fast with a message that says how to fix it, and needs no human to wait for, so it scales and is applied the same way to everyone. A gate is a person or board that must approve, which adds waiting and inconsistency. Exceptions go through a waiver recorded next to the code: the policy it skips, the reason, the owner and an expiry date. The check reads the waiver and passes until it expires, then fails again, so every exception is a dated decision rather than a permanent hole.
+
+</details>
+
+**4. Which defaults would you put in a pipeline template, and why do defaults matter so much?**
+<details><summary>Model answer</summary>
+
+Most teams keep the defaults, so defaults decide how most pipelines behave in production. Good ones: retries with backoff, idempotent writes (overwrite a partition or MERGE by key), a dead-letter table for bad records, schema checks against the contract, freshness and volume alerts to the owner, cost tags, and sensible resources. The simulator shows what missing defaults cost: the [dead-letter challenge](#/sim/sc/dlq) stalls on one bad record and the [schema challenge](#/sim/sc/schema) breaks readers, failures a template prevents by shipping a DLQ and a registry check from day one.
+
+</details>
+
+**5. How do you know a golden path is working, and what do you do if adoption is low?**
+<details><summary>Model answer</summary>
+
+Measure adoption (share of new projects on the path), time to first production run on and off the path, lead time and change failure rate for repositories on it, support tickets per project, satisfaction, and the share of repositories on a supported template version. If adoption is low, find out why before mandating: interview teams who left the path. Usually the path misses a real need or is slower than the old way; fix that, and adoption follows.
+
+</details>
+
+**6. A director wants every team to use the golden path by next quarter. What do you say?**
+<details><summary>Model answer</summary>
+
+Agree with the goal, not the mandate. A mandate turns a path into a cage: teams with real exceptions will work around it, and the platform team loses the signal that tells it what to fix. Instead: set an adoption target for new projects, make the path the default in the portal, measure why teams leave it and fix those reasons, require the guardrails (owner, contract, masking) for everyone on or off the path, and make the old ways more expensive by retiring their support with a date.
+
+</details>
+
+@@lab
+## In the app: templates, drift and guardrails in the browser (1.75 hours)
+
+Four exercises run real tests in your browser:
+
+1. **Render a template.** Check the parameters (required, pattern, defaults), fill every `{{placeholder}}` in file names and contents, and refuse to render when anything is missing or invalid.
+2. **Template drift.** For each repository, say how many versions behind the latest template it is, and which files are missing or changed.
+3. **Guardrails with waivers.** Run policy checks on a project and honour waivers until their expiry date.
+4. **Is the path working?** From project records, compute adoption and median time to first production run on and off the golden path.
+
+## Going further (optional, 45 minutes)
+
+Write the template parameters and defaults for one journey from your own work, then answer this module's design problem in the design studio.
+
+@@practice
+## Sketch one golden path (20 minutes)
+
+Pick one journey your teams repeat (a new batch product, a new CDC source, an access request). Write: the steps today and how long each takes; the template and what it creates; the defaults; the guardrails in CI; the escape hatch; and the one number you would track to know it worked.
+
+## Customer drill: "nobody uses our templates" (10 minutes)
+
+A platform lead says: "We built templates for pipelines six months ago. Only 15% of new pipelines use them. Leadership wants to make them mandatory." Answer out loud in three minutes: what do you find out first, and what do you do?
+
+<details><summary>A strong answer</summary>
+
+First find out why: interview teams who did not use the templates and look at what they built instead. Typical reasons are that the template does not cover their case (streaming, a source type), that it is slower than copying an old repository, or that what it generates is hard to debug. Fix the top two reasons, make the template the default in the portal, and measure time to first production run on and off the path. Mandate only the guardrails (owner, contract, masking, tests), which apply to everyone; keep the path itself optional and earn adoption with speed. Report adoption monthly.
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: arch
+Q: What makes a golden path golden?
+A) It is mandatory for every team across the company
+B) It is the easiest supported way, and teams may leave it
+C) It is written up as a standards document that teams must read
+D) It is the newest tool the platform team could possibly find
+ANS: B
+WHY: A golden path wins by being the fastest supported way; leaving it is allowed, with ownership of what you build.
+---
+TYPE: mcq
+TAG: arch
+Q: Which journey should usually be paved first?
+A) One that happens twice a year and takes two weeks each time
+B) One that happens 20 times a quarter and takes six weeks
+C) One that only the platform team itself ever performs today
+D) One that is changing every month as the tools keep moving
+ANS: B
+WHY: Pave journeys that are frequent and painful; rare or fast-changing ones are better served by a guide.
+---
+TYPE: mcq
+TAG: arch
+Q: A security fix must reach 80 repositories made from old template versions. What scales best from now on?
+A) Email every team the fix and ask them to copy it by hand
+B) Keep shared CI steps in a versioned shared workflow
+C) Make every team rebuild its repository from scratch
+D) Freeze the template so that it never changes again
+ANS: B
+WHY: Shared workflows and libraries update everyone in one place; copied files must be upgraded one repository at a time.
+---
+TYPE: mcq
+TAG: arch
+Q: What is the difference between a guardrail and a gate?
+A) A guardrail is a person who checks; a gate is a script
+B) A guardrail is an automatic check; a gate waits on a person
+C) Gates are faster than guardrails for most of the teams
+D) There is no real difference in how they behave in practice
+ANS: B
+WHY: Guardrails run on every change and explain the fix; gates add waiting and depend on who reviews.
+---
+TYPE: mcq
+TAG: arch
+Q: A guardrail must allow exceptions. Which design is best?
+A) A permanent allow list that the platform team keeps in a wiki
+B) A waiver by the code with a reason, an owner and an expiry
+C) Turning the guardrail off for any team that asks the platform team
+D) A monthly meeting where exceptions are approved by a board
+ANS: B
+WHY: A dated waiver the check can read makes every exception a decision someone must revisit.
+---
+TYPE: mcq
+TAG: arch
+Q: Only 15% of new pipelines use the template. What should come first?
+A) Make the template mandatory for all new pipelines right away
+B) Ask the teams who skipped it why, and fix the top reasons
+C) Build more templates so that more teams are likely to find one
+D) Remove the old ways of building pipelines without notice
+ANS: B
+WHY: Low adoption is a signal about the path; fix what makes teams leave before mandating anything.
+---
+TYPE: fill
+TAG: arch
+Q: A golden path that is mandatory and cannot bend for real exceptions is sometimes called a golden ____.
+ANS: cage
+WHY: The opposite of a paved road: teams fight it or work around it.
+---
+TYPE: fill
+TAG: arch
+Q: The open-source developer portal with a software catalog, templates and docs that many companies use is called ____.
+ANS: Backstage
+WHY: Created at Spotify and now a CNCF project.
+---
+TYPE: short
+TAG: arch
+Q: List what a template for a new data product should create.
+MODEL: A standard layout; a pre-filled contract (owner, grain, schema, SLOs); a transformation project with a working example; contract, quality and unit tests; CI that runs tests and policy checks; the orchestrator job as code with retries and alerts; freshness and volume monitors to the owner; catalog registration; and a README. Shared pieces such as CI and policy checks should come from versioned shared workflows rather than copied files.
+---
+TYPE: short
+TAG: arch
+Q: How do you measure whether a golden path works?
+MODEL: Adoption (share of new projects on the path); time to first production run on and off the path; lead time and change failure rate for repositories on the path; support tickets per project; satisfaction from a short survey; and the share of repositories on a supported template version. Low adoption is investigated before anything is mandated.
+
+@@interview
+Q: What is a golden path, and how would you build one for data pipelines?
+TAG: arch
+A: A golden path is the opinionated, supported, fastest way to do a common job end to end, which teams may leave if they own the result. For data pipelines I would start by measuring the journeys: how often teams start a new pipeline, how long it takes, where they wait. I would shadow two teams, then build one template: standard layout, a pre-filled contract, a dbt or Spark project with a working example, tests, CI with contract and policy checks from a shared workflow, the orchestrator job as code with retries and alerts, monitors, and catalog registration. I would offer it through the developer portal and measure adoption and time to first production run.
+---
+Q: How do you stop templates from drifting once 100 repositories have been created from them?
+TAG: arch
+A: Copy as little as possible: CI, deployment and policy checks come from versioned shared workflows and libraries that update everyone at once. Version the template, record the version in each repository, and publish a drift report of how far behind each one is and which files differ. Ship fixes as new versions with release notes and let a bot open upgrade pull requests that run tests in CI. Chase major-behind repositories first, and deprecate old versions with a date.
+---
+Q: Our platform team is a ticket queue. How would you turn it into self-service?
+TAG: arch
+A: Count the tickets by type; most are repetitive (new pipeline, new source, access, environment). Pick the top one or two and turn each into a self-service flow: a form in the developer portal, a template or automation behind it, and automatic guardrails instead of manual review, with waivers for exceptions. Keep humans for genuinely new problems. Measure lead time per request type before and after, and the share of requests handled without a person.
+---
+Q: When would you make a golden path mandatory?
+TAG: arch
+A: Almost never the path itself; I make the guardrails mandatory. Owner, contract, personal data masking, tests and cost tags apply to everyone on or off the path, enforced by checks in CI and production. The path stays optional so teams with real exceptions are not blocked, and their reasons for leaving tell the platform team what to improve. I raise adoption by making the path the fastest way and by retiring support for old ways with a date.
+---
+Q: What defaults would you put in a pipeline template?
+TAG: arch
+A: Retries with backoff; idempotent writes (overwrite a partition or MERGE by key) so reruns are safe; a dead-letter table for bad records; schema checks against the contract; freshness and volume alerts to the owning team; cost tags; and sensible resource sizes. Defaults matter because most teams keep them, so they decide how most pipelines behave in production.
+---
+Q: How would you measure the impact of a developer platform for data?
+TAG: arch
+A: Adoption of the paths for new work; time from idea to first production run; lead time for changes, change failure rate and time to restore for pipelines on the paths versus off; support tickets per project; the share of repositories on supported template versions; guardrail failures caught before production; and a quarterly satisfaction survey. I would show the trend against a baseline taken before the paths existed.
+---
+Q: Tell me about a time you built something other engineers used. How did you get them to adopt it?
+TAG: behavioral
+A: Answer with your own STAR story. A strong shape: a repeated pain you measured (weeks to start a pipeline, incidents from inconsistent setups); you watched users do it the hard way; you built the smallest useful version with them; you made it the easiest option rather than a mandate; and you measured adoption and time saved. Close with a number and what you would change.

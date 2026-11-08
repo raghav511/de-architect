@@ -123,5 +123,10 @@
   "title": "Move a central data team to domain-owned data products",
   "prompt": "A marketplace has 600 engineers, 14 product domains and one central data team of 45 that owns 3,000 warehouse tables. The team's backlog is five months; 40% of incidents come from upstream schema changes nobody announced; three dashboards show three different numbers for active sellers. Leadership wants domains to own their data within 18 months, at no more than 10% higher data spend.",
   "deliverable": "A two-page plan: which domains move first and why, what the self-serve platform must offer before they do (with the order you build it), the contract and SLO each product must have, the five global governance rules enforced in code, which products stay central, how you dual-run and retire the old tables, the metrics you report each quarter, and two risks with what you will do about them."
+ },
+ "o02": {
+  "title": "A golden path for new data products",
+  "prompt": "A company of 300 engineers has 25 domain teams publishing data products. Starting a new batch product takes six weeks: teams copy an old repository, ask the platform team for a warehouse schema, an Airflow connection, access roles and alerts by ticket, and half of them skip tests. Design the golden path that gets a new product to its first production run in one day.",
+  "deliverable": "A two-page design: the journey today versus with the path, the scaffolder's questions, what the template creates and which parts come from shared workflows, the defaults, the guardrails in CI with the waiver rule, how templates are versioned and upgraded, how it appears in the developer portal, the four numbers you will track, and two risks."
  }
 }
