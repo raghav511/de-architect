@@ -1182,8 +1182,10 @@ async function T(name, fn, opt) {
 
   await T('platform and leadership: placed in order, Scala exercises tick the step, practice lists them', async p => {
     await go(p, '#/today');
-    const pos = await p.evaluate(() => [MODS.indexOf('j01') - MODS.indexOf('s07'), MODS.indexOf('r01') - MODS.indexOf('s10'), MODS.indexOf('d01') - MODS.indexOf('a04')]);
-    ok(pos[0] === 1 && pos[1] === 1 && pos[2] === 1, 'Platform 1 should follow DE 7, Leadership 1 DE 10, Systems 1 the AI data stack module after DE 4: ' + pos);
+    /* the Org modules (o01, o02, o03, … as they land) sit in order between DE 10 and Leadership 1; AI 6 follows AI 5 */
+    const pos = await p.evaluate(() => { const org = MODS.filter(m => /^o\d\d$/.test(m)), i = m => MODS.indexOf(m);
+      return { j01: i('j01') - i('s07'), d01: i('d01') - i('a04'), a06: i('a06') - i('a05'), between: MODS.slice(i('s10') + 1, i('r01')).join(' '), org: org.slice().sort().join(' '), orgs: org.length }; });
+    ok(pos.j01 === 1 && pos.d01 === 1 && pos.a06 === 1 && pos.orgs >= 1 && pos.between === pos.org, 'Platform 1 should follow DE 7, Systems 1 the AI data stack module after DE 4, AI 6 follow AI 5, and only the Org modules, in order, sit between DE 10 and Leadership 1: ' + JSON.stringify(pos));
     const sols = await p.evaluate(() => DATA.spark.filter(x => x.m === 'j01').map(x => [x.id, x.sol]));
     ok(sols.length === 3, 'expected 3 Scala exercises');
     for (const [id, sol] of sols) {
