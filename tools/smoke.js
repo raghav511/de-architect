@@ -36,6 +36,13 @@ async function run(engine) {
   const nav = async (p, h, w) => { await p.evaluate(x => { location.hash = x; }, h); await p.waitForTimeout(w || 700); };
   const txt = (p, s) => p.$eval(s || '#page', e => e.innerText).catch(() => '');
   const toast = p => p.$$eval('.toast', t => t.map(x => x.innerText).join(' | ')).catch(() => '');
+  /* a Python check that times out says why: still loading, offline, or the CDN slow or unreachable (a network problem, not an app bug) */
+  const PYODIDE = (/const PYODIDE = '([^']+)'/.exec(require('fs').readFileSync(require('path').join(__dirname, '../js/worker.js'), 'utf8')) || [])[1];
+  const pyWhy = async p => {
+    const st = await p.evaluate(() => ({ s: typeof Py !== 'undefined' ? Py.state : '?', on: navigator.onLine })).catch(() => ({}));
+    const t = Date.now(); let cdn; try { const r = await fetch(PYODIDE + 'pyodide-lock.json', { signal: AbortSignal.timeout(10000) }); cdn = r.status + ' in ' + (Date.now() - t) + ' ms'; } catch (e) { cdn = 'unreachable'; }
+    return ' [Python ' + st.s + ', browser online ' + st.on + ', CDN ' + cdn + (cdn === 'unreachable' || st.on === false || Date.now() - t > 3000 ? ': network problem, not an app bug' : '') + ']';
+  };
 
   await S('Today: ticking Up next is kept after a reload, and the Coding tab shows the coding track', async p => {
     await boot(p);
@@ -78,7 +85,7 @@ async function run(engine) {
     await boot(p, '#/py/y011'); await p.waitForTimeout(800);
     await p.locator('button', { hasText: /^Run/ }).first().click();
     let t = ''; for (let i = 0; i < 90 && !/passed|failed|Error|Traceback|✓|✗/.test(t); i++) { await p.waitForTimeout(1000); t = await p.$eval('.out, .output, #page', e => e.innerText).catch(() => ''); }
-    ok(/passed|failed|Error|Traceback|✓|✗/.test(t) && !/Could not start Python/.test(t), 'no output after 90 s: ' + t.slice(-160));
+    if (!(/passed|failed|Error|Traceback|✓|✗/.test(t) && !/Could not start Python/.test(t))) ok(false, 'no output after 90 s: ' + t.slice(-160) + await pyWhy(p));
   });
 
   await S('Quiz: answer every question, submit, and see a score', async p => {
@@ -109,7 +116,7 @@ async function run(engine) {
   await S('Interview loop: read the code, tap the bug line, fix it and the real Python tests pass; a STAR story saves; a modelling case compares', async p => {
     await boot(p, '#/loop/cc/cc12'); await p.waitForSelector('.lplines', { timeout: 20000 }); await p.click('.lpopt >> nth=1'); await p.click('.lpln[data-line="2"]');
     await p.fill('.lpfix', 'def page(rows, page_no, size):\n    start = (page_no - 1) * size\n    return rows[start:start + size]'); await p.click('button:has-text("Run the tests")');
-    await p.waitForSelector('.badge:has-text("Tests pass")', { timeout: 90000 });
+    await p.waitForSelector('.badge:has-text("Tests pass")', { timeout: 90000 }).catch(async e => ok(false, 'tests did not pass in 90 s' + await pyWhy(p)));
     await boot(p, '#/loop/r5/stories'); await p.click('button:has-text("+ New story")'); await p.fill('.lptitle', 'Smoke story'); await p.click('button:has-text("All stories")');
     ok(/Smoke story/.test(await txt(p, '.lpstory')), 'story not listed');
     await boot(p, '#/loop/r8/cases'); await p.waitForSelector('.lpcase', { timeout: 20000 }); await p.fill('#page .lpf textarea >> nth=1', 'One row per trip request'); await p.click('button:has-text("Compare with the model answer")');
