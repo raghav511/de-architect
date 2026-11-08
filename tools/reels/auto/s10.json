@@ -8360,5 +8360,1518 @@
     "part": "2 of 2"
    }
   ]
+ },
+ "10.6 Seventeen designs": {
+  "hash": "a60d82e54972",
+  "sec": "10.6",
+  "reels": [
+   {
+    "title": "Fast guess, final count",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Why does a news channel call an election at nine at night, yet the official result takes days?",
+      "show": {
+       "t": "big",
+       "kicker": "Think of an election",
+       "text": "Fast guess vs final count",
+       "sub": "Two numbers, two jobs"
+      }
+     },
+     {
+      "say": "The channel counts a sample of ballots. That is quick, but it can be wrong. The election office counts every single ballot, slowly, and its number is final.",
+      "show": {
+       "t": "scene",
+       "title": "Sample vs *every* ballot",
+       "nodes": [
+        {
+         "id": "b",
+         "label": "Ballots",
+         "sub": "all votes",
+         "x": 50,
+         "y": 15,
+         "tone": "grey"
+        },
+        {
+         "id": "tv",
+         "label": "TV sample",
+         "sub": "quick, can be wrong",
+         "x": 25,
+         "y": 55,
+         "tone": "amber"
+        },
+        {
+         "id": "off",
+         "label": "Election office",
+         "sub": "slow, final",
+         "x": 75,
+         "y": 55,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "b",
+         "tv"
+        ],
+        [
+         "b",
+         "off"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "b"
+        },
+        {
+         "at": 0.3,
+         "show": "tv",
+         "packet": [
+          "b",
+          "tv"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.6,
+         "show": "off",
+         "packet": [
+          "b",
+          "off"
+         ],
+         "n": 5
+        }
+       ]
+      }
+     },
+     {
+      "say": "Data systems split the job the same way. A stream gives a dashboard number within seconds. A nightly batch recounts everything, including late arrivals.",
+      "show": {
+       "t": "scene",
+       "title": "Stream and *batch*",
+       "nodes": [
+        {
+         "id": "ev",
+         "label": "Events",
+         "sub": "clicks, orders",
+         "x": 50,
+         "y": 12,
+         "tone": "grey"
+        },
+        {
+         "id": "st",
+         "label": "Stream",
+         "sub": "seconds",
+         "x": 25,
+         "y": 50,
+         "tone": "amber"
+        },
+        {
+         "id": "ba",
+         "label": "Nightly batch",
+         "sub": "recount all",
+         "x": 75,
+         "y": 50,
+         "tone": "teal"
+        },
+        {
+         "id": "da",
+         "label": "Dashboard",
+         "sub": "early number",
+         "x": 25,
+         "y": 85,
+         "tone": "blue"
+        },
+        {
+         "id": "fi",
+         "label": "Final table",
+         "sub": "late data in",
+         "x": 75,
+         "y": 85,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "ev",
+         "st"
+        ],
+        [
+         "ev",
+         "ba"
+        ],
+        [
+         "st",
+         "da"
+        ],
+        [
+         "ba",
+         "fi"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "ev",
+          "st"
+         ],
+         "packet": [
+          "ev",
+          "st"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": "da"
+        },
+        {
+         "at": 0.6,
+         "show": "ba",
+         "packet": [
+          "ev",
+          "ba"
+         ]
+        },
+        {
+         "at": 0.85,
+         "show": "fi"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Use the fast number to watch. Use the final number to bill. When they disagree, the final one wins.",
+      "show": {
+       "t": "points",
+       "title": "Rule of thumb",
+       "items": [
+        "Fast number: watch trends",
+        "Final number: bill and report",
+        "If they differ, final wins"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A dashboard shows 1,000 orders at noon but the nightly batch says 1,040. What most likely happened?",
+     "opts": [
+      "Late events arrived after the stream had already counted",
+      "The batch job double counted orders by mistake",
+      "The dashboard is always the more accurate number",
+      "Someone changed the order data after midnight"
+     ],
+     "ans": 0,
+     "why": "Streams report what has arrived so far. Late events show up only when the batch recounts, so the batch is the final number."
+    },
+    "work": [
+     "List which of your dashboards show early numbers and which show final ones.",
+     "Label each metric as estimate or final so readers know which to trust.",
+     "Pick one number that drives money and make sure it comes from the final recount."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Erasing one name from a giant library",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "A customer says, erase everything you know about me. Your company has a petabyte of files. Where do you even start?",
+      "show": {
+       "t": "big",
+       "kicker": "The right to be forgotten",
+       "text": "Erase one person everywhere",
+       "sub": "Within 30 days"
+      }
+     },
+     {
+      "say": "Picture a giant library where her name is written on pages inside millions of books. Searching every book for every request would take forever.",
+      "show": {
+       "t": "scene",
+       "title": "Her name is on *millions* of pages",
+       "nodes": [
+        {
+         "id": "lib",
+         "label": "Library",
+         "sub": "millions of books",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "p1",
+         "label": "Book A",
+         "sub": "her name inside",
+         "x": 25,
+         "y": 55,
+         "tone": "amber"
+        },
+        {
+         "id": "p2",
+         "label": "Book B",
+         "sub": "her name inside",
+         "x": 75,
+         "y": 55,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "lib",
+         "p1"
+        ],
+        [
+         "lib",
+         "p2"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "lib"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "p1",
+          "p2"
+         ]
+        },
+        {
+         "at": 0.7,
+         "chip": {
+          "text": "One search per request is too slow",
+          "tone": "red",
+          "icon": "clock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So the librarian keeps a list of names to erase. Once a week, a team goes through the shelves once and rewrites only the pages that mention anyone on the list.",
+      "show": {
+       "t": "scene",
+       "title": "One *weekly* pass",
+       "nodes": [
+        {
+         "id": "li",
+         "label": "Erase list",
+         "sub": "names to remove",
+         "x": 50,
+         "y": 15,
+         "tone": "plum"
+        },
+        {
+         "id": "te",
+         "label": "Weekly team",
+         "sub": "one pass",
+         "x": 50,
+         "y": 50,
+         "tone": "teal"
+        },
+        {
+         "id": "sh",
+         "label": "Shelves",
+         "sub": "pages rewritten",
+         "x": 50,
+         "y": 85,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "li",
+         "te"
+        ],
+        [
+         "te",
+         "sh"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "li"
+        },
+        {
+         "at": 0.4,
+         "show": "te",
+         "packet": [
+          "li",
+          "te"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "sh",
+         "packet": [
+          "te",
+          "sh"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "say": "Old copies in the archive room must be thrown away too. Otherwise her name still exists, and the law gives you only thirty days.",
+      "show": {
+       "t": "points",
+       "title": "Don't forget the archive",
+       "items": [
+        "Old copies hold her name",
+        "Throw them out too",
+        "Deadline: thirty days"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why batch many deletion requests into one weekly pass?",
+     "opts": [
+      "Each pass rewrites many files, so doing it once saves work",
+      "The law requires deletions to happen only on weekends",
+      "Batching makes the erased data recoverable later on",
+      "A single request cannot be found without other requests"
+     ],
+     "ans": 0,
+     "why": "Rewriting files is costly. One weekly pass handles every request together and still meets the 30 day deadline."
+    },
+    "work": [
+     "Write down every place a person's data can live.",
+     "Keep one list of deletion requests with dates.",
+     "Check that the weekly pass finishes well inside thirty days."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Remembering impressions for a click",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Fifty billion ad impressions a day. How much memory does it take to wait for a click?",
+      "show": {
+       "t": "big",
+       "kicker": "Ads attribution",
+       "text": "50 billion a day",
+       "sub": "How much state?"
+      }
+     },
+     {
+      "say": "Fifty billion a day is about six hundred thousand a second. A click can arrive hours after its impression, so the stream job must remember each impression for a day.",
+      "show": {
+       "t": "scene",
+       "title": "Join click to *impression*",
+       "nodes": [
+        {
+         "id": "im",
+         "label": "Impressions",
+         "sub": "600k per second",
+         "x": 25,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "cl",
+         "label": "Clicks",
+         "sub": "500M per day",
+         "x": 75,
+         "y": 15,
+         "tone": "amber"
+        },
+        {
+         "id": "jb",
+         "label": "Join job",
+         "sub": "holds one day",
+         "x": 50,
+         "y": 60,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "im",
+         "jb"
+        ],
+        [
+         "cl",
+         "jb"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "im",
+         "packet": [
+          "im",
+          "jb"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.5,
+         "show": "cl",
+         "packet": [
+          "cl",
+          "jb"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "show": "jb"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Say each one takes one hundred bytes. Six hundred thousand times eighty-six thousand seconds times one hundred bytes is about five terabytes of state.",
+      "show": {
+       "t": "scene",
+       "title": "State size: *5 TB*",
+       "nodes": [
+        {
+         "id": "jb",
+         "label": "Join state",
+         "sub": "one day kept",
+         "x": 50,
+         "y": 40,
+         "tone": "red"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "jb"
+        },
+        {
+         "at": 0.5,
+         "count": {
+          "key": "tb",
+          "label": "State at 100 bytes each",
+          "to": 5,
+          "unit": "TB",
+          "tone": "red"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Shrink each record to a twenty byte key and it drops to about one terabyte. Or skip the stream join, and join in batch, where disk is cheap.",
+      "show": {
+       "t": "scene",
+       "title": "Shrink it or *move* it",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Full record",
+         "sub": "100 bytes",
+         "x": 50,
+         "y": 30,
+         "tone": "red"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "a"
+        },
+        {
+         "at": 0.4,
+         "race": {
+          "items": [
+           [
+            "100 byte record",
+            5,
+            "red"
+           ],
+           [
+            "20 byte key",
+            1,
+            "teal"
+           ]
+          ],
+          "unit": "TB"
+         }
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Or join in batch",
+          "tone": "teal",
+          "icon": "disk"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does the click-to-impression stream join need so much state?",
+     "opts": [
+      "Every impression must wait in memory in case a click arrives",
+      "Each click needs to be copied to every partition twice",
+      "The join stores all conversions from the past seven days",
+      "Kafka keeps a full copy of each record inside the job"
+     ],
+     "ans": 0,
+     "why": "Impressions come first and clicks later, so every impression is held for the window. Volume times window times size gives the state."
+    },
+    "work": [
+     "Estimate state as rate times window times bytes per record before building any join.",
+     "Store only the fields attribution needs.",
+     "Compare a batch join against the stream join for cost."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "The weekly delete pipeline",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How do you delete one person from a petabyte lake without rewriting the whole lake?",
+      "show": {
+       "t": "big",
+       "kicker": "GDPR on Iceberg or Delta",
+       "text": "Delete without rewriting it all",
+       "sub": "Petabyte lake"
+      }
+     },
+     {
+      "say": "First, every request goes into a deletion log, keyed by user id. Every table keeps the user id in each row, so we can find the rows.",
+      "show": {
+       "t": "scene",
+       "title": "The *deletion log*",
+       "nodes": [
+        {
+         "id": "rq",
+         "label": "Requests",
+         "sub": "user ids",
+         "x": 25,
+         "y": 20,
+         "tone": "amber"
+        },
+        {
+         "id": "lg",
+         "label": "Deletion log",
+         "sub": "keyed by user id",
+         "x": 75,
+         "y": 20,
+         "tone": "plum"
+        },
+        {
+         "id": "tb",
+         "label": "Tables",
+         "sub": "user id in every row",
+         "x": 50,
+         "y": 65,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "rq",
+         "lg"
+        ],
+        [
+         "lg",
+         "tb"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "rq",
+         "packet": [
+          "rq",
+          "lg"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.4,
+         "show": "lg"
+        },
+        {
+         "at": 0.7,
+         "show": "tb"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Once a week, one job deletes all the logged ids together. In merge on read mode, this only marks rows as deleted. It is fast, but the bytes are still on disk.",
+      "show": {
+       "t": "scene",
+       "title": "Mark the rows *deleted*",
+       "nodes": [
+        {
+         "id": "jb",
+         "label": "Weekly delete",
+         "sub": "all ids at once",
+         "x": 50,
+         "y": 18,
+         "tone": "teal"
+        },
+        {
+         "id": "dv",
+         "label": "Deletion vectors",
+         "sub": "rows marked",
+         "x": 50,
+         "y": 55,
+         "tone": "amber"
+        },
+        {
+         "id": "fl",
+         "label": "Data files",
+         "sub": "bytes still there",
+         "x": 50,
+         "y": 88,
+         "tone": "grey",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "jb",
+         "dv"
+        ],
+        [
+         "dv",
+         "fl"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "jb"
+        },
+        {
+         "at": 0.4,
+         "show": "dv",
+         "packet": [
+          "jb",
+          "dv"
+         ]
+        },
+        {
+         "at": 0.7,
+         "show": "fl",
+         "chip": {
+          "text": "Still on disk",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Then compaction rewrites the affected files without those rows, and snapshot expiry removes the old files. Rewriting one percent of a petabyte is ten terabytes of reads and writes a week.",
+      "show": {
+       "t": "scene",
+       "title": "Rewrite, then *expire*",
+       "nodes": [
+        {
+         "id": "cp",
+         "label": "Compaction",
+         "sub": "rewrite files",
+         "x": 50,
+         "y": 20,
+         "tone": "teal"
+        },
+        {
+         "id": "ex",
+         "label": "Snapshot expiry",
+         "sub": "drop old files",
+         "x": 50,
+         "y": 60,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "cp",
+         "ex"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "cp"
+        },
+        {
+         "at": 0.4,
+         "show": "ex",
+         "packet": [
+          "cp",
+          "ex"
+         ]
+        },
+        {
+         "at": 0.7,
+         "count": {
+          "key": "tb",
+          "label": "Weekly rewrite of 1 percent",
+          "to": 10,
+          "unit": "TB",
+          "tone": "amber"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "After a merge on read delete runs, why is the person's data not yet gone?",
+     "opts": [
+      "Rows are only marked, so files and old snapshots still hold them",
+      "The delete skips rows older than seven days by design",
+      "Compaction runs first and restores the marked rows again",
+      "The deletion log keeps the table from being queried"
+     ],
+     "ans": 0,
+     "why": "Deletion vectors hide rows from queries. Only compaction and snapshot expiry remove the bytes."
+    },
+    "work": [
+     "Run delete, compaction and snapshot expiry as one scheduled workflow.",
+     "Estimate the weekly rewrite cost from the share of files affected.",
+     "Confirm user id is a column in every table that holds personal data."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Is the delete really a delete?",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "You ran the delete. The query returns nothing. Is the person really gone?",
+      "show": {
+       "t": "big",
+       "kicker": "A common interview probe",
+       "text": "Hidden is not deleted",
+       "sub": "Where do the bytes live?"
+      }
+     },
+     {
+      "say": "Not yet. A delete marker hides the row from queries, but the original file still holds it. Compaction must rewrite that file.",
+      "show": {
+       "t": "scene",
+       "title": "The file still *holds* it",
+       "nodes": [
+        {
+         "id": "q",
+         "label": "Query",
+         "sub": "sees no rows",
+         "x": 50,
+         "y": 15,
+         "tone": "teal"
+        },
+        {
+         "id": "mk",
+         "label": "Delete marker",
+         "sub": "hides the row",
+         "x": 50,
+         "y": 50,
+         "tone": "amber"
+        },
+        {
+         "id": "fl",
+         "label": "Data file",
+         "sub": "row still inside",
+         "x": 50,
+         "y": 85,
+         "tone": "red",
+         "kind": "disk"
+        }
+       ],
+       "edges": [
+        [
+         "q",
+         "mk"
+        ],
+        [
+         "mk",
+         "fl"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "q"
+        },
+        {
+         "at": 0.4,
+         "show": "mk"
+        },
+        {
+         "at": 0.7,
+         "show": "fl",
+         "glow": "fl"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Even then, table snapshots keep old versions for time travel. Until snapshot expiry runs, anyone can query last week's table and see the person.",
+      "show": {
+       "t": "scene",
+       "title": "Time travel *remembers*",
+       "nodes": [
+        {
+         "id": "s1",
+         "label": "Snapshot last week",
+         "sub": "person present",
+         "x": 25,
+         "y": 30,
+         "tone": "red"
+        },
+        {
+         "id": "s2",
+         "label": "Snapshot today",
+         "sub": "person removed",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "ex",
+         "label": "Snapshot expiry",
+         "sub": "drops old versions",
+         "x": 50,
+         "y": 75,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "ex",
+         "s1"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "s1",
+          "s2"
+         ]
+        },
+        {
+         "at": 0.5,
+         "glow": "s1"
+        },
+        {
+         "at": 0.8,
+         "show": "ex",
+         "packet": [
+          "ex",
+          "s1"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "say": "Check the other copies too. Kafka topics expire after seven days. Backups, caches and exports need to follow the same deletion log. Keep proof, because auditors will ask.",
+      "show": {
+       "t": "points",
+       "title": "Other copies",
+       "items": [
+        "Kafka expires in 7 days",
+        "Backups follow the same log",
+        "Caches and exports too",
+        "Keep proof for auditors"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Compaction finished, but last week's snapshot is still queryable. What is the risk?",
+     "opts": [
+      "Time travel can still read the person's old rows",
+      "The compacted files will be rewritten back again",
+      "Queries on today's table will return the person",
+      "The deletion log entry will be removed too early"
+     ],
+     "ans": 0,
+     "why": "Old snapshots point at old files. Until snapshot expiry removes them, the data is still readable and the deletion is not complete."
+    },
+    "work": [
+     "Test deletion end to end: after expiry, try to read the user through time travel.",
+     "Set snapshot retention shorter than the legal deadline.",
+     "Add backups and exports to the deletion runbook."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Fail open or fail closed",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "A card payment waits on your fraud model. The model is slow today. Do you block the payment or let it through?",
+      "show": {
+       "t": "big",
+       "kicker": "Real-time fraud",
+       "text": "Slow model, live payment",
+       "sub": "Block or allow?"
+      }
+     },
+     {
+      "say": "The payment has a budget, say one hundred milliseconds. Scoring reads precomputed features, like swipes in the last ten minutes, from a fast store that a stream job keeps fresh.",
+      "show": {
+       "t": "scene",
+       "title": "100 ms *budget*",
+       "nodes": [
+        {
+         "id": "pay",
+         "label": "Payment",
+         "sub": "waits for answer",
+         "x": 50,
+         "y": 12,
+         "tone": "blue"
+        },
+        {
+         "id": "sc",
+         "label": "Scoring service",
+         "sub": "model plus rules",
+         "x": 50,
+         "y": 45,
+         "tone": "teal"
+        },
+        {
+         "id": "fs",
+         "label": "Feature store",
+         "sub": "swipes in 10 min",
+         "x": 25,
+         "y": 80,
+         "tone": "amber"
+        },
+        {
+         "id": "sp",
+         "label": "Stream job",
+         "sub": "keeps it fresh",
+         "x": 75,
+         "y": 80,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "pay",
+         "sc"
+        ],
+        [
+         "sc",
+         "fs"
+        ],
+        [
+         "sp",
+         "fs"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "pay",
+          "sc"
+         ],
+         "packet": [
+          "pay",
+          "sc"
+         ]
+        },
+        {
+         "at": 0.4,
+         "show": "fs",
+         "packet": [
+          "sc",
+          "fs"
+         ]
+        },
+        {
+         "at": 0.7,
+         "show": "sp",
+         "packet": [
+          "sp",
+          "fs"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "say": "If scoring times out, a fallback rule decides. Fail open lets it through and risks fraud. Fail closed blocks it and annoys honest customers. Choose by amount and risk.",
+      "show": {
+       "t": "scene",
+       "title": "On timeout: *open* or closed",
+       "nodes": [
+        {
+         "id": "to",
+         "label": "Timeout",
+         "sub": "no score",
+         "x": 50,
+         "y": 15,
+         "tone": "red"
+        },
+        {
+         "id": "op",
+         "label": "Fail open",
+         "sub": "allow, risk fraud",
+         "x": 25,
+         "y": 65,
+         "tone": "amber"
+        },
+        {
+         "id": "cl",
+         "label": "Fail closed",
+         "sub": "block, annoy users",
+         "x": 75,
+         "y": 65,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "to",
+         "op"
+        ],
+        [
+         "to",
+         "cl"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "to"
+        },
+        {
+         "at": 0.5,
+         "show": [
+          "op",
+          "cl"
+         ]
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Decide by amount and risk",
+          "tone": "teal",
+          "icon": "scale"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Chargebacks arrive weeks later, so labels for training are late. Log every decision and feature to the lake so you can learn from them.",
+      "show": {
+       "t": "points",
+       "title": "The feedback loop",
+       "items": [
+        "Chargebacks arrive weeks later",
+        "Log decisions and features",
+        "Train later on joined labels"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "The scoring service times out on a small payment. What should the design have ready?",
+     "opts": [
+      "A fallback rule that decides within the latency budget",
+      "A retry loop that keeps waiting until the model answers",
+      "A queue that holds the payment until the next morning",
+      "A rule that always blocks any payment that is slow"
+     ],
+     "ans": 0,
+     "why": "Payments must not wait. A defined fallback decides inside the budget, and open or closed is chosen by risk."
+    },
+    "work": [
+     "Set a timeout and an explicit fallback for each payment amount band.",
+     "Split features into those that need streaming freshness and those that can be batch.",
+     "Log the features used for every decision so later training matches what the model saw."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Why bill from the slower pipeline",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Why would a company bill advertisers from a slower pipeline than the one on its dashboard?",
+      "show": {
+       "t": "big",
+       "kicker": "Ads at billions a day",
+       "text": "Stream to watch, batch to bill",
+       "sub": "Freshness vs finality"
+      }
+     },
+     {
+      "say": "Conversions can arrive seven days after a click. A stream has already moved on, so its numbers are early guesses.",
+      "show": {
+       "t": "scene",
+       "title": "Conversions arrive *late*",
+       "nodes": [
+        {
+         "id": "ck",
+         "label": "Click",
+         "sub": "day 0",
+         "x": 25,
+         "y": 20,
+         "tone": "amber"
+        },
+        {
+         "id": "cv",
+         "label": "Conversion",
+         "sub": "up to day 7",
+         "x": 75,
+         "y": 20,
+         "tone": "plum"
+        },
+        {
+         "id": "st",
+         "label": "Stream number",
+         "sub": "early guess",
+         "x": 50,
+         "y": 70,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "ck",
+         "st"
+        ],
+        [
+         "cv",
+         "st"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "ck",
+         "packet": [
+          "ck",
+          "st"
+         ]
+        },
+        {
+         "at": 0.5,
+         "show": "st"
+        },
+        {
+         "at": 0.8,
+         "show": "cv",
+         "chip": {
+          "text": "Arrives too late for the stream",
+          "tone": "red",
+          "icon": "clock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A daily batch looks back seven days, recomputes last-click attribution, and restates the affected days. Billing uses these numbers because money needs the final answer.",
+      "show": {
+       "t": "scene",
+       "title": "Batch *restates* seven days",
+       "nodes": [
+        {
+         "id": "lk",
+         "label": "7 day lookback",
+         "sub": "clicks plus conversions",
+         "x": 50,
+         "y": 15,
+         "tone": "teal"
+        },
+        {
+         "id": "at",
+         "label": "Last-click attribution",
+         "sub": "daily batch",
+         "x": 50,
+         "y": 50,
+         "tone": "plum"
+        },
+        {
+         "id": "bi",
+         "label": "Billing",
+         "sub": "final numbers",
+         "x": 50,
+         "y": 85,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "lk",
+         "at"
+        ],
+        [
+         "at",
+         "bi"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "lk"
+        },
+        {
+         "at": 0.4,
+         "show": "at",
+         "packet": [
+          "lk",
+          "at"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.8,
+         "show": "bi",
+         "packet": [
+          "at",
+          "bi"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "say": "The cost is two pipelines to run, and dashboard numbers that later shift. The trade is worth it when spend errors reach invoices. If nobody bills from it, run only the stream.",
+      "show": {
+       "t": "points",
+       "title": "The trade-off",
+       "items": [
+        "Cost: two pipelines to run",
+        "Dashboards shift after restatement",
+        "Worth it when invoices depend on it",
+        "No billing? Stream alone may do"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does billing use the batch numbers and not the stream's?",
+     "opts": [
+      "Batch sees late conversions and restates days to final values",
+      "Batch is cheaper per record, so invoices cost less to make",
+      "The stream cannot read the impressions topic in Kafka",
+      "Advertisers prefer numbers computed once a day anyway"
+     ],
+     "ans": 0,
+     "why": "Conversions arrive up to seven days late. Only a lookback batch can include them, so only it gives final numbers."
+    },
+    "work": [
+     "Name which metrics are estimates and which are final, and who may bill from each.",
+     "Publish a restatement window so finance knows when numbers settle.",
+     "Reconcile stream totals against batch totals daily and alert on drift."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Compute per-user once, not per experiment",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Two thousand experiments run at once. Why does joining raw events for each one break your cluster?",
+      "show": {
+       "t": "big",
+       "kicker": "Experimentation platform",
+       "text": "2,000 experiments at once",
+       "sub": "Billions of events a day"
+      }
+     },
+     {
+      "say": "Each join scans billions of exposure and metric events. Two thousand experiments means scanning the same events two thousand times.",
+      "show": {
+       "t": "scene",
+       "title": "Same events, *scanned* 2,000 times",
+       "nodes": [
+        {
+         "id": "ev",
+         "label": "Raw events",
+         "sub": "billions a day",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "e1",
+         "label": "Experiment 1",
+         "sub": "full join",
+         "x": 20,
+         "y": 65,
+         "tone": "red"
+        },
+        {
+         "id": "e2",
+         "label": "Experiment 2",
+         "sub": "full join",
+         "x": 50,
+         "y": 65,
+         "tone": "red"
+        },
+        {
+         "id": "e3",
+         "label": "Experiment N",
+         "sub": "full join",
+         "x": 80,
+         "y": 65,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "ev",
+         "e1"
+        ],
+        [
+         "ev",
+         "e2"
+        ],
+        [
+         "ev",
+         "e3"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "ev"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "e1",
+          "e2",
+          "e3"
+         ],
+         "packet": [
+          "ev",
+          "e2"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Cost grows with every test",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Instead, build a per-user metric table once a day, then every experiment joins its small exposure list to it. The cost no longer grows with raw events per experiment.",
+      "show": {
+       "t": "scene",
+       "title": "Build the *user table* once",
+       "nodes": [
+        {
+         "id": "ev",
+         "label": "Raw events",
+         "sub": "scanned once",
+         "x": 50,
+         "y": 12,
+         "tone": "blue"
+        },
+        {
+         "id": "ut",
+         "label": "Per-user metrics",
+         "sub": "one row per user",
+         "x": 50,
+         "y": 45,
+         "tone": "teal"
+        },
+        {
+         "id": "ex",
+         "label": "Experiments",
+         "sub": "small joins",
+         "x": 50,
+         "y": 80,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "ev",
+         "ut"
+        ],
+        [
+         "ut",
+         "ex"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "ev"
+        },
+        {
+         "at": 0.4,
+         "show": "ut",
+         "packet": [
+          "ev",
+          "ut"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.8,
+         "show": "ex",
+         "packet": [
+          "ut",
+          "ex"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Assignment is a hash of user and experiment id, so no lookup is needed. Check sample ratio mismatch first, because a skewed split makes every result suspect.",
+      "show": {
+       "t": "points",
+       "title": "Guard the results",
+       "items": [
+        "Assign by hashing user and experiment",
+        "Log exposure when the change is seen",
+        "Check sample ratio mismatch first",
+        "Track guardrail metrics on every test"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What is the main reason to precompute a per-user metric table?",
+     "opts": [
+      "Raw events are scanned once, not once for every experiment",
+      "It removes the need to log exposures for each user",
+      "It lets each user be placed in only a single experiment",
+      "Per-user totals make confidence intervals unnecessary"
+     ],
+     "ans": 0,
+     "why": "Scanning raw events is the expensive step. Doing it once and reusing the result keeps cost flat as experiments grow."
+    },
+    "work": [
+     "Build shared per-user metric tables and have every experiment reuse them.",
+     "Add a sample ratio mismatch check as the first step of every result.",
+     "Set guardrail metrics that every test must report."
+    ],
+    "part": "2 of 2"
+   }
+  ]
  }
 }

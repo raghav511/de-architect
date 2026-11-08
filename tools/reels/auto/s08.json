@@ -689,140 +689,593 @@
   ]
  },
  "8.3 The Databricks platform": {
-  "hash": "28480c2fb1b3",
+  "hash": "e5ed6d65ac07",
   "sec": "8.3",
   "reels": [
    {
-    "title": "Databricks as a rented kitchen",
+    "title": "Minibus or hired car",
     "level": "New to it",
     "beats": [
      {
-      "say": "What if renting a kitchen cost money every minute, even when nobody was cooking?",
-      "show": {
-       "t": "big",
-       "text": "Paying by the minute",
-       "sub": "Even when nobody is cooking"
-      }
-     },
-     {
-      "say": "Databricks works like that. A cluster is a rented kitchen. A shared kitchen stays open all day for people to experiment. A job kitchen opens for one order, then closes, and costs less. So scheduled work should use the job kitchen.",
+      "say": "Why would the same overnight job cost less on a computer that lives for only twenty minutes?",
       "show": {
        "t": "scene",
-       "title": "Two kinds of *kitchen*",
+       "title": "Same job, *cheaper* bill",
        "nodes": [
         {
-         "id": "a",
-         "label": "Shared kitchen",
-         "sub": "open all day",
-         "x": 28,
+         "id": "job",
+         "label": "Nightly job",
+         "sub": "runs at 2am",
+         "x": 50,
          "y": 30,
-         "tone": "amber"
+         "tone": "blue"
         },
         {
-         "id": "j",
-         "label": "Job kitchen",
-         "sub": "one order, then closed",
-         "x": 72,
-         "y": 30,
-         "tone": "teal"
+         "id": "bill",
+         "label": "Smaller bill",
+         "sub": "why?",
+         "x": 50,
+         "y": 65,
+         "tone": "amber"
         }
        ],
-       "edges": [],
+       "edges": [
+        [
+         "job",
+         "bill"
+        ]
+       ],
        "steps": [
         {
          "at": 0.1,
-         "show": "a"
+         "show": "job"
         },
         {
-         "at": 0.45,
-         "show": "j"
+         "at": 0.5,
+         "show": "bill"
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "job",
+          "bill"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Think of transport. An all-purpose cluster is a shared minibus. It stays parked with the engine running, so analysts can hop on any time to use notebooks. That is handy, but you pay while it sits idle.",
+      "show": {
+       "t": "scene",
+       "title": "The shared *minibus*",
+       "nodes": [
+        {
+         "id": "bus",
+         "label": "All-purpose cluster",
+         "sub": "shared, long-lived",
+         "x": 50,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "a1",
+         "label": "Analyst A",
+         "sub": "notebook",
+         "x": 25,
+         "y": 65,
+         "tone": "blue"
+        },
+        {
+         "id": "a2",
+         "label": "Analyst B",
+         "sub": "notebook",
+         "x": 75,
+         "y": 65,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "a1",
+         "bus"
+        ],
+        [
+         "a2",
+         "bus"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "bus"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "a1",
+          "a2"
+         ]
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "a1",
+          "bus"
+         ],
+         "n": 2
         },
         {
          "at": 0.8,
          "chip": {
-          "text": "Scheduled work: job kitchen",
-          "tone": "teal",
-          "icon": "check"
+          "text": "Pay even when idle",
+          "tone": "amber",
+          "icon": "clock"
          }
         }
        ]
       }
      },
      {
-      "say": "Auto Loader is the delivery door. It remembers which boxes already arrived, so nothing is cooked twice. Unity Catalog is head office. One rulebook says who may open which cupboard, in every kitchen.",
+      "say": "A job cluster is a hired car for one trip. It appears when the scheduled job starts, drives the route, and disappears. It also has a lower rate per hour.",
       "show": {
        "t": "scene",
-       "title": "Door and *rulebook*",
+       "title": "The hired *car*",
        "nodes": [
         {
-         "id": "d",
-         "label": "Auto Loader",
-         "sub": "remembers boxes",
+         "id": "sched",
+         "label": "Schedule",
+         "sub": "2am trigger",
+         "x": 50,
+         "y": 15,
+         "tone": "grey"
+        },
+        {
+         "id": "car",
+         "label": "Job cluster",
+         "sub": "one run only",
+         "x": 50,
+         "y": 45,
+         "tone": "teal"
+        },
+        {
+         "id": "gone",
+         "label": "Terminated",
+         "sub": "billing stops",
+         "x": 50,
+         "y": 78,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "sched",
+         "car"
+        ],
+        [
+         "car",
+         "gone"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "sched"
+        },
+        {
+         "at": 0.35,
+         "show": "car",
+         "packet": [
+          "sched",
+          "car"
+         ]
+        },
+        {
+         "at": 0.7,
+         "show": "gone",
+         "packet": [
+          "car",
+          "gone"
+         ]
+        },
+        {
+         "at": 0.9,
+         "chip": {
+          "text": "Lower rate",
+          "tone": "teal",
+          "icon": "tag"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So the rule is simple. Exploring by hand, use the minibus. Scheduled work, hire the car. You stop paying the moment the trip ends.",
+      "show": {
+       "t": "points",
+       "title": "The *rule*",
+       "items": [
+        "Exploring by hand: all-purpose cluster",
+        "Scheduled work: job cluster",
+        "Trip over, billing over"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A nightly ETL job runs for about 25 minutes. Where should it run?",
+     "opts": [
+      "On a job cluster created for the run and ended after it",
+      "On the shared all-purpose cluster so it is already warm",
+      "On a SQL warehouse because the job is on a schedule",
+      "On a larger all-purpose cluster that stays up all night"
+     ],
+     "ans": 0,
+     "why": "Scheduled work belongs on job clusters. They exist only for the run and are billed at a lower rate, so you pay nothing while idle."
+    },
+    "work": [
+     "List your scheduled jobs and check which still run on all-purpose clusters.",
+     "Move one nightly job to a job cluster and compare the next bill."
+    ]
+   },
+   {
+    "title": "Two lines on every bill",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "A two hour job produced a bill with two separate lines. What are they?",
+      "show": {
+       "t": "big",
+       "text": "2 hours, 2 bills",
+       "sub": "Who is charging you?"
+      }
+     },
+     {
+      "say": "Databricks charges in DBUs, a unit of processing capability per hour. Bigger machines burn more DBUs, and the type of workload sets the price of each one.",
+      "show": {
+       "t": "scene",
+       "title": "What is a *DBU*",
+       "nodes": [
+        {
+         "id": "inst",
+         "label": "Instance type",
+         "sub": "bigger burns more",
          "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "kind",
+         "label": "Workload kind",
+         "sub": "sets the rate",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "dbu",
+         "label": "DBU charge",
+         "sub": "per hour",
+         "x": 50,
+         "y": 70,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "inst",
+         "dbu"
+        ],
+        [
+         "kind",
+         "dbu"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "inst"
+        },
+        {
+         "at": 0.5,
+         "show": "kind"
+        },
+        {
+         "at": 0.7,
+         "show": "dbu",
+         "packet": [
+          "inst",
+          "dbu"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Say a cluster burns ten DBUs an hour for two hours. That is twenty DBUs. At an example rate of fifteen cents each, Databricks bills three dollars.",
+      "show": {
+       "t": "scene",
+       "title": "DBUs times *rate*",
+       "nodes": [
+        {
+         "id": "u",
+         "label": "10 DBU per hour",
+         "sub": "for 2 hours",
+         "x": 50,
          "y": 25,
          "tone": "blue"
         },
         {
-         "id": "k",
-         "label": "Kitchen",
-         "sub": "your tables",
+         "id": "r",
+         "label": "20 DBU x 0.15",
+         "sub": "example rate",
+         "x": 50,
+         "y": 65,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "u",
+         "r"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "u"
+        },
+        {
+         "at": 0.5,
+         "show": "r",
+         "packet": [
+          "u",
+          "r"
+         ]
+        },
+        {
+         "at": 0.8,
+         "count": {
+          "key": "db",
+          "label": "Databricks bill",
+          "to": 3,
+          "unit": "dollars",
+          "tone": "teal"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Your cloud provider bills the virtual machines separately. Say five dollars an hour, so ten dollars. The total is thirteen dollars.",
+      "show": {
+       "t": "bars",
+       "title": "Total *cost*",
+       "unit": "dollars",
+       "items": [
+        [
+         "Databricks DBUs",
+         3,
+         ""
+        ],
+        [
+         "Cloud VMs",
+         10,
+         ""
+        ],
+        [
+         "Total",
+         13,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "To control it, use cluster policies, auto termination, autoscaling, job clusters, and the billing system tables to see who spent what.",
+      "show": {
+       "t": "points",
+       "title": "Cost *levers*",
+       "items": [
+        "Cluster policies cap size",
+        "Auto termination ends idle",
+        "Autoscaling follows load",
+        "Job clusters, billing system tables"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What makes up the cost of a Databricks job?",
+     "opts": [
+      "DBUs times the DBU rate, plus the cloud charge for the VMs",
+      "DBUs times the DBU rate, with VMs included in that rate",
+      "The cloud charge for the VMs, with DBUs only for SQL",
+      "A flat fee per cluster, regardless of its run time"
+     ],
+     "ans": 0,
+     "why": "Two bills arrive: Databricks charges DBUs at a rate set by compute type, and the cloud provider separately charges for the virtual machines."
+    },
+    "work": [
+     "Query the billing system tables and rank clusters by DBUs last month.",
+     "Write a cluster policy with a maximum size and an auto termination time."
+    ],
+    "part": "1 of 3"
+   },
+   {
+    "title": "Auto Loader loads each file once",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "A bucket receives thousands of new JSON files an hour. How do you load only the new ones, and never load one twice?",
+      "show": {
+       "t": "scene",
+       "title": "Thousands of *files*",
+       "nodes": [
+        {
+         "id": "bucket",
+         "label": "Cloud bucket",
+         "sub": "new JSON files",
+         "x": 50,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "q",
+         "label": "Only new ones?",
+         "sub": "never twice",
+         "x": 50,
+         "y": 68,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "bucket",
+         "q"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "bucket"
+        },
+        {
+         "at": 0.5,
+         "show": "q",
+         "packet": [
+          "bucket",
+          "q"
+         ],
+         "n": 4
+        }
+       ]
+      }
+     },
+     {
+      "say": "Auto Loader watches the folder and records every file it has processed. On each run it picks up only files not yet recorded, so a restart does not duplicate data.",
+      "show": {
+       "t": "code",
+       "title": "Incremental read",
+       "text": "spark.readStream.format(\"cloudFiles\")\n  .option(\"cloudFiles.format\", \"json\")\n  .option(\"cloudFiles.schemaLocation\", path)\n  .load(\"s3://meridian/raw/trip_events/\")"
+      }
+     },
+     {
+      "say": "It also infers the schema from the files and stores it at the schema location you give it. When new fields appear, it can evolve the schema instead of crashing.",
+      "show": {
+       "t": "scene",
+       "title": "Schema that *evolves*",
+       "nodes": [
+        {
+         "id": "files",
+         "label": "New files",
+         "sub": "extra field",
+         "x": 25,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "schema",
+         "label": "Schema location",
+         "sub": "stored schema",
          "x": 75,
-         "y": 25,
+         "y": 35,
          "tone": "teal"
         },
         {
-         "id": "u",
-         "label": "Unity Catalog",
-         "sub": "one rulebook",
+         "id": "tbl",
+         "label": "Bronze table",
+         "sub": "adds column",
          "x": 50,
-         "y": 60,
+         "y": 72,
          "tone": "plum"
         }
        ],
        "edges": [
         [
-         "d",
-         "k"
+         "files",
+         "schema"
         ],
         [
-         "u",
-         "k"
+         "schema",
+         "tbl"
         ]
        ],
        "steps": [
         {
-         "at": 0.1,
-         "show": [
-          "d",
-          "k"
+         "at": 0.2,
+         "show": "files"
+        },
+        {
+         "at": 0.45,
+         "show": "schema",
+         "packet": [
+          "files",
+          "schema"
          ]
         },
         {
-         "at": 0.3,
+         "at": 0.7,
+         "show": "tbl",
          "packet": [
-          "d",
-          "k"
-         ],
-         "n": 3
+          "schema",
+          "tbl"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "say": "Values that do not fit, like text in a number column, go to a rescued data column. Nothing is silently lost, and you can inspect it later.",
+      "show": {
+       "t": "scene",
+       "title": "The *rescued* column",
+       "nodes": [
+        {
+         "id": "bad",
+         "label": "Bad value",
+         "sub": "text in a number",
+         "x": 25,
+         "y": 40,
+         "tone": "red"
         },
         {
-         "at": 0.6,
-         "show": "u"
+         "id": "rescued",
+         "label": "Rescued data",
+         "sub": "kept for review",
+         "x": 75,
+         "y": 40,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "bad",
+         "rescued"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "bad"
         },
         {
-         "at": 0.75,
+         "at": 0.5,
+         "show": "rescued",
          "packet": [
-          "u",
-          "k"
+          "bad",
+          "rescued"
          ],
-         "n": 1
+         "n": 2
         },
         {
-         "at": 0.9,
+         "at": 0.8,
          "chip": {
-          "text": "New files only, one set of rules",
-          "tone": "blue",
-          "icon": "check"
+          "text": "Nothing silently lost",
+          "tone": "teal",
+          "icon": "shield"
          }
         }
        ]
@@ -830,395 +1283,513 @@
      }
     ],
     "check": {
-     "q": "In the kitchen analogy, which fits a nightly scheduled job best?",
+     "q": "A new file arrives with a text value in a column typed as a number. What does Auto Loader do?",
      "opts": [
-      "The shared kitchen that stays open all day",
-      "A job kitchen that opens for the run and then closes",
-      "Leaving every kitchen on in case it is needed"
+      "Puts the value in the rescued data column and keeps loading",
+      "Drops the whole file and keeps no record of the problem",
+      "Stops the stream until someone fixes the schema by hand",
+      "Converts the text to zero so the column type stays valid"
      ],
-     "ans": 1,
-     "why": "A job cluster exists for one run and is terminated afterwards, at a lower rate, so you stop paying when the work ends."
+     "ans": 0,
+     "why": "Data that does not fit the schema goes to the rescued data column, so the load continues and the odd value can be inspected later."
     },
     "work": [
-     "List which scheduled jobs still run on shared interactive clusters.",
-     "Ask who decides who can read each table today."
-    ]
+     "Check that every Auto Loader stream has its own schema location.",
+     "Add a daily check that counts non-empty rescued data rows."
+    ],
+    "part": "2 of 3"
    },
    {
-    "title": "Compute and the two-part bill",
+    "title": "Declare tables, skip the plumbing",
     "level": "How it works",
     "beats": [
      {
-      "say": "Why does the same job cost far less on one kind of cluster than another?",
+      "say": "What if you wrote only the query for each table, and the platform handled order, retries and servers?",
       "show": {
        "t": "big",
-       "text": "Same job, different bill",
-       "sub": "Which cluster did it run on?"
+       "text": "Just the query",
+       "sub": "The platform does the plumbing"
       }
      },
      {
-      "say": "An all-purpose cluster is shared and long-lived, built for notebooks. A job cluster is created for one run, then terminated, at a lower rate. Scheduled work belongs there.",
+      "say": "That is declarative pipelines, long called Delta Live Tables. You declare each table as a query. The platform reads them, works out which depends on which, and runs them in order, processing only new data.",
       "show": {
        "t": "scene",
-       "title": "*Job* cluster for schedules",
+       "title": "Dependencies *inferred*",
        "nodes": [
         {
-         "id": "ap",
-         "label": "All-purpose",
-         "sub": "interactive, long-lived",
-         "x": 28,
-         "y": 30,
+         "id": "b",
+         "label": "Bronze",
+         "sub": "raw events",
+         "x": 50,
+         "y": 15,
+         "tone": "plum"
+        },
+        {
+         "id": "s",
+         "label": "Silver",
+         "sub": "cleaned",
+         "x": 50,
+         "y": 45,
+         "tone": "grey"
+        },
+        {
+         "id": "g",
+         "label": "Gold",
+         "sub": "daily trips",
+         "x": 50,
+         "y": 75,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "b",
+         "s"
+        ],
+        [
+         "s",
+         "g"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "b"
+        },
+        {
+         "at": 0.45,
+         "show": "s",
+         "packet": [
+          "b",
+          "s"
+         ]
+        },
+        {
+         "at": 0.7,
+         "show": "g",
+         "packet": [
+          "s",
+          "g"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "say": "You attach expectations, which are data quality rules. A rule can warn and keep the row, drop the bad rows, or fail the whole update. Pick by how costly bad data is.",
+      "show": {
+       "t": "scene",
+       "title": "Three *expectation* modes",
+       "nodes": [
+        {
+         "id": "rule",
+         "label": "Expectation",
+         "sub": "fare is positive",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "warn",
+         "label": "Warn",
+         "sub": "keep row",
+         "x": 20,
+         "y": 65,
          "tone": "amber"
         },
         {
-         "id": "jc",
-         "label": "Job cluster",
-         "sub": "one run, lower rate",
-         "x": 72,
-         "y": 30,
-         "tone": "teal"
+         "id": "drop",
+         "label": "Drop",
+         "sub": "remove rows",
+         "x": 50,
+         "y": 65,
+         "tone": "grey"
+        },
+        {
+         "id": "fail",
+         "label": "Fail",
+         "sub": "stop update",
+         "x": 80,
+         "y": 65,
+         "tone": "red"
         }
        ],
-       "edges": [],
+       "edges": [
+        [
+         "rule",
+         "warn"
+        ],
+        [
+         "rule",
+         "drop"
+        ],
+        [
+         "rule",
+         "fail"
+        ]
+       ],
        "steps": [
         {
          "at": 0.1,
-         "show": "ap"
+         "show": "rule"
         },
         {
          "at": 0.4,
-         "show": "jc"
-        },
-        {
-         "at": 0.4,
-         "glow": "jc"
+         "show": [
+          "warn",
+          "drop",
+          "fail"
+         ]
         },
         {
          "at": 0.8,
          "chip": {
-          "text": "Scheduled work goes here",
+          "text": "Choose by cost of bad data",
+          "tone": "teal",
+          "icon": "scale"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "It can also apply a change feed as a Type 1 or Type 2 dimension in one statement. That replaces the hand written merge, which is easy to get subtly wrong.",
+      "show": {
+       "t": "scene",
+       "title": "Change feed in *one* statement",
+       "nodes": [
+        {
+         "id": "feed",
+         "label": "Change feed",
+         "sub": "inserts, updates",
+         "x": 25,
+         "y": 40,
+         "tone": "blue"
+        },
+        {
+         "id": "dim",
+         "label": "Dimension",
+         "sub": "Type 1 or Type 2",
+         "x": 75,
+         "y": 40,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "feed",
+         "dim"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "feed"
+        },
+        {
+         "at": 0.5,
+         "show": "dim",
+         "packet": [
+          "feed",
+          "dim"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "No hand-written merge",
           "tone": "teal",
           "icon": "check"
          }
         }
        ]
       }
-     },
-     {
-      "say": "The bill has two parts. Databricks charges in DBUs, a unit of processing per hour. Multiply DBUs used by the rate for that compute type. Say ten DBUs at fifteen cents is a dollar fifty an hour. Then add the cloud provider's charge for the virtual machines.",
-      "show": {
-       "t": "bars",
-       "title": "One hour of a job",
-       "unit": "dollars",
-       "items": [
-        [
-         "DBUs: 10 x 0.15",
-         1.5,
-         "Databricks"
-        ],
-        [
-         "Virtual machines",
-         2,
-         "illustrative, cloud provider"
-        ]
-       ]
-      }
-     },
-     {
-      "say": "Cap it with cluster policies, auto-termination, autoscaling, and the billing system tables.",
-      "show": {
-       "t": "points",
-       "title": "Cost controls",
-       "items": [
-        "Cluster policies",
-        "Auto-termination",
-        "Autoscaling",
-        "Billing system tables"
-       ]
-      }
      }
     ],
     "check": {
-     "q": "What is the total cost of a Databricks job?",
+     "q": "You want bad rows removed but the pipeline kept running. What do you set on the expectation?",
      "opts": [
-      "DBUs times the DBU rate only",
-      "DBUs times the DBU rate, plus the cloud provider's virtual machine charge",
-      "The virtual machine charge only"
-     ],
-     "ans": 1,
-     "why": "You pay Databricks for DBUs at the rate for that compute type, and separately pay the cloud for the machines."
-    },
-    "work": [
-     "Query the billing system tables for last month's cost by cluster type.",
-     "Add auto-termination to every interactive cluster policy."
-    ],
-    "part": "1 of 2"
-   },
-   {
-    "title": "Auto Loader and declarative pipelines",
-    "level": "How it works",
-    "beats": [
-     {
-      "say": "How do you load only the new files from a bucket holding millions, without rescanning everything?",
-      "show": {
-       "t": "big",
-       "text": "Millions of files",
-       "sub": "Only some are new"
-      }
-     },
-     {
-      "say": "Auto Loader tracks which files it has already seen, so each run picks up only new ones. It infers the schema and evolves it when columns appear. Data that does not fit goes to a rescued data column instead of being lost.",
-      "show": {
-       "t": "scene",
-       "title": "*Auto Loader* remembers",
-       "nodes": [
-        {
-         "id": "s",
-         "label": "Cloud storage",
-         "sub": "raw files",
-         "x": 20,
-         "y": 30,
-         "tone": "grey",
-         "kind": "disk"
-        },
-        {
-         "id": "al",
-         "label": "Auto Loader",
-         "sub": "seen files tracked",
-         "x": 55,
-         "y": 30,
-         "tone": "blue"
-        },
-        {
-         "id": "b",
-         "label": "Bronze",
-         "sub": "plus rescued data",
-         "x": 85,
-         "y": 30,
-         "tone": "teal"
-        }
-       ],
-       "edges": [
-        [
-         "s",
-         "al"
-        ],
-        [
-         "al",
-         "b"
-        ]
-       ],
-       "steps": [
-        {
-         "at": 0.1,
-         "show": [
-          "s",
-          "al",
-          "b"
-         ]
-        },
-        {
-         "at": 0.4,
-         "packet": [
-          "s",
-          "al"
-         ],
-         "n": 3
-        },
-        {
-         "at": 0.7,
-         "packet": [
-          "al",
-          "b"
-         ],
-         "n": 3
-        },
-        {
-         "at": 0.9,
-         "chip": {
-          "text": "New files only",
-          "tone": "blue",
-          "icon": "check"
-         }
-        }
-       ]
-      }
-     },
-     {
-      "say": "On top, declarative pipelines let you write each table as a query. The platform works out dependencies, incremental processing, and retries. Expectations are quality rules that warn, drop bad rows, or fail the update.",
-      "show": {
-       "t": "flow",
-       "title": "Declare, don't orchestrate",
-       "steps": [
-        {
-         "label": "Bronze query"
-        },
-        {
-         "label": "Silver query"
-        },
-        {
-         "label": "Expectations"
-        },
-        {
-         "label": "Gold query"
-        }
-       ]
-      }
-     },
-     {
-      "say": "It was long called Delta Live Tables. It can also apply a change feed as Type 1 or Type 2 history in one statement.",
-      "show": {
-       "t": "big",
-       "text": "One statement",
-       "sub": "Type 1 or Type 2 from a change feed"
-      }
-     }
-    ],
-    "check": {
-     "q": "An expectation in a declarative pipeline is what?",
-     "opts": [
-      "A data quality rule that can warn, drop rows or fail the update",
-      "A cluster size setting",
-      "A schema location for Auto Loader"
+      "Drop the rows that fail and let the update continue",
+      "Warn only, which removes the rows and keeps running",
+      "Fail the update, which deletes bad rows and restarts",
+      "Nothing, because the platform cleans bad rows itself"
      ],
      "ans": 0,
-     "why": "Expectations are quality rules attached to tables, and you choose how strictly the pipeline reacts to violations."
+     "why": "Expectations can warn and keep rows, drop failing rows and continue, or fail the update. Only the drop mode removes bad rows and carries on."
     },
     "work": [
-     "Pick one hand-written merge and note how a change-feed statement would replace it.",
-     "Decide, per table, whether bad rows should warn, drop or fail."
+     "Pick one hand-written merge and test replacing it with the built-in change feed statement.",
+     "Add a drop expectation on a key column and track how many rows it removes."
     ],
-    "part": "2 of 2"
+    "part": "3 of 3"
    },
    {
     "title": "Photon is not liquid clustering",
     "level": "Inside and caveats",
     "beats": [
      {
-      "say": "Is Photon the same thing as liquid clustering? Interviewers love this trap.",
+      "say": "Photon or liquid clustering: which makes queries faster? Why is that a trick question?",
       "show": {
        "t": "big",
        "text": "Photon vs liquid clustering",
-       "sub": "Same thing?"
+       "sub": "Different things entirely"
       }
      },
      {
-      "say": "No. Photon is about how a query runs. It is a vectorised engine written in C plus plus that replaces parts of Spark's Java engine for SQL and DataFrame work. Liquid clustering is about how data is laid out in storage.",
+      "say": "Photon is an execution engine. It is vectorised, written in C plus plus, and replaces parts of Spark's Java engine for SQL and DataFrame work. It runs the same reading and computing faster.",
       "show": {
        "t": "scene",
-       "title": "*Execution* vs *layout*",
+       "title": "Photon: how queries *execute*",
        "nodes": [
         {
-         "id": "p",
-         "label": "Photon",
-         "sub": "how queries execute",
-         "x": 28,
-         "y": 30,
+         "id": "q",
+         "label": "SQL or DataFrame",
+         "sub": "your query",
+         "x": 50,
+         "y": 15,
          "tone": "blue"
         },
         {
-         "id": "l",
-         "label": "Liquid clustering",
-         "sub": "how data is laid out",
-         "x": 72,
-         "y": 30,
-         "tone": "plum"
+         "id": "jvm",
+         "label": "Spark JVM engine",
+         "sub": "parts replaced",
+         "x": 25,
+         "y": 65,
+         "tone": "grey"
+        },
+        {
+         "id": "ph",
+         "label": "Photon",
+         "sub": "C++, vectorised",
+         "x": 75,
+         "y": 65,
+         "tone": "teal"
         }
        ],
-       "edges": [],
+       "edges": [
+        [
+         "q",
+         "jvm"
+        ],
+        [
+         "q",
+         "ph"
+        ]
+       ],
        "steps": [
         {
-         "at": 0.1,
-         "show": "p"
+         "at": 0.2,
+         "show": "q"
+        },
+        {
+         "at": 0.4,
+         "show": "jvm",
+         "dim": "jvm"
+        },
+        {
+         "at": 0.6,
+         "show": "ph",
+         "glow": "ph",
+         "packet": [
+          "q",
+          "ph"
+         ],
+         "n": 3
+        }
+       ]
+      }
+     },
+     {
+      "say": "Liquid clustering is about layout. It organises data files by chosen columns, so a query can skip files it does not need. It reduces how much gets read at all.",
+      "show": {
+       "t": "scene",
+       "title": "Clustering: how data is *laid out*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Table files",
+         "sub": "organised by key",
+         "x": 50,
+         "y": 20,
+         "tone": "plum"
+        },
+        {
+         "id": "skip",
+         "label": "Skipped files",
+         "sub": "never read",
+         "x": 25,
+         "y": 68,
+         "tone": "grey"
+        },
+        {
+         "id": "read",
+         "label": "Files read",
+         "sub": "only matches",
+         "x": 75,
+         "y": 68,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "skip"
+        ],
+        [
+         "t",
+         "read"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "t"
         },
         {
          "at": 0.5,
-         "show": "l"
+         "show": "skip",
+         "dim": "skip"
         },
         {
-         "at": 0.85,
+         "at": 0.7,
+         "show": "read",
+         "glow": "read"
+        }
+       ]
+      }
+     },
+     {
+      "say": "So they are different layers, and they stack. One speeds up the work, the other shrinks the work. Saying one replaces the other is the mistake interviewers listen for.",
+      "show": {
+       "t": "points",
+       "title": "Different *layers*",
+       "items": [
+        "Photon: execution engine",
+        "Liquid clustering: data layout",
+        "They stack, not substitute"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "How do Photon and liquid clustering relate?",
+     "opts": [
+      "Photon speeds query execution, clustering shrinks the data read",
+      "Both organise files, but Photon does it at query time",
+      "Clustering replaces Photon for tables with a chosen key",
+      "Photon is a layout setting that clustering later extends"
+     ],
+     "ans": 0,
+     "why": "Photon is a vectorised engine for how queries run. Liquid clustering lays data out so queries read fewer files. They work at different layers."
+    },
+    "work": [
+     "Run one slow query with and without Photon, and note the time.",
+     "Pick a table filtered on one column and test clustering by that column."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "One catalog, no bypass",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Five workspaces, five sets of table permissions. How do you make one rule apply everywhere?",
+      "show": {
+       "t": "big",
+       "text": "5 workspaces, 1 rule",
+       "sub": "How?"
+      }
+     },
+     {
+      "say": "Unity Catalog is one catalog across all workspaces. Tables get a three level name: catalog, schema, table. It holds permissions, row filters, column masks, lineage captured from queries, and storage credentials.",
+      "show": {
+       "t": "scene",
+       "title": "One *catalog* for all",
+       "nodes": [
+        {
+         "id": "uc",
+         "label": "Unity Catalog",
+         "sub": "catalog.schema.table",
+         "x": 50,
+         "y": 15,
+         "tone": "teal"
+        },
+        {
+         "id": "w1",
+         "label": "Workspace 1",
+         "sub": "",
+         "x": 20,
+         "y": 68,
+         "tone": "blue"
+        },
+        {
+         "id": "w2",
+         "label": "Workspace 2",
+         "sub": "",
+         "x": 50,
+         "y": 68,
+         "tone": "blue"
+        },
+        {
+         "id": "w3",
+         "label": "Workspace 3",
+         "sub": "",
+         "x": 80,
+         "y": 68,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "uc",
+         "w1"
+        ],
+        [
+         "uc",
+         "w2"
+        ],
+        [
+         "uc",
+         "w3"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "uc"
+        },
+        {
+         "at": 0.5,
+         "show": [
+          "w1",
+          "w2",
+          "w3"
+         ]
+        },
+        {
+         "at": 0.8,
          "chip": {
-          "text": "Different layers, can combine",
-          "tone": "amber",
-          "icon": "check"
+          "text": "Permissions, masks, lineage",
+          "tone": "teal",
+          "icon": "lock"
          }
         }
        ]
       }
      },
      {
-      "say": "One makes the engine faster at processing rows. The other organises files so queries read less. They stack.",
-      "show": {
-       "t": "points",
-       "title": "Two separate levers",
-       "items": [
-        "Photon: faster execution",
-        "Liquid clustering: better layout",
-        "Use either, or both"
-       ]
-      }
-     },
-     {
-      "say": "Know the compute split too. SQL warehouses serve BI queries, and serverless ones start in seconds, so dashboards do not wait for a cluster to boot.",
-      "show": {
-       "t": "big",
-       "text": "Serverless SQL warehouse",
-       "sub": "Starts in seconds"
-      }
-     }
-    ],
-    "check": {
-     "q": "Which statement is correct?",
-     "opts": [
-      "Photon and liquid clustering both control file layout",
-      "Photon changes how queries execute; liquid clustering changes how data is laid out",
-      "Liquid clustering is a C plus plus engine replacing Spark's JVM engine"
-     ],
-     "ans": 1,
-     "why": "Photon is a vectorised execution engine. Liquid clustering is a data layout technique. They solve different problems."
-    },
-    "work": [
-     "Practise explaining execution versus layout in two sentences.",
-     "Check whether your BI queries use serverless SQL warehouses."
-    ],
-    "part": "1 of 2"
-   },
-   {
-    "title": "Moving to Unity Catalog safely",
-    "level": "Inside and caveats",
-    "beats": [
-     {
-      "say": "Your company has tables in old workspaces. How do you move them under Unity Catalog without breaking anyone?",
-      "show": {
-       "t": "big",
-       "text": "Old workspaces, new catalog",
-       "sub": "Without breaking users"
-      }
-     },
-     {
-      "say": "Unity Catalog is one catalog across all workspaces, with names like catalog dot schema dot table. It holds permissions, row filters, column masks, automatic lineage, and storage credentials.",
-      "show": {
-       "t": "points",
-       "title": "What Unity Catalog holds",
-       "items": [
-        "Permissions",
-        "Row filters and column masks",
-        "Automatic lineage",
-        "External storage credentials"
-       ]
-      }
-     },
-     {
-      "say": "Migration has four steps. Create a metastore. Map storage through external locations. Migrate tables from the old per-workspace metastore. Then replace direct storage access with grants.",
+      "say": "Migrating an existing project has four moves. Create a metastore. Map storage through external locations. Migrate tables from the old per workspace metastore. Then replace direct storage access with grants.",
       "show": {
        "t": "flow",
-       "title": "Migration path",
+       "title": "Migration *steps*",
        "steps": [
         {
          "label": "Create metastore"
         },
         {
-         "label": "External locations"
+         "label": "Map external locations"
         },
         {
          "label": "Migrate tables"
@@ -1230,75 +1801,67 @@
       }
      },
      {
-      "say": "The gotcha is the last step. If jobs still read the bucket directly, they bypass every rule you just wrote.",
+      "say": "That last step is the gotcha. If jobs still read the bucket directly with their own keys, they bypass every rule you just wrote.",
       "show": {
        "t": "scene",
-       "title": "Direct access *bypasses* rules",
+       "title": "The *bypass* gotcha",
        "nodes": [
         {
-         "id": "j",
+         "id": "job",
          "label": "Old job",
-         "sub": "reads bucket",
-         "x": 22,
+         "sub": "own storage keys",
+         "x": 25,
          "y": 30,
          "tone": "red"
         },
         {
-         "id": "b",
+         "id": "bk",
          "label": "Bucket",
-         "sub": "raw storage",
-         "x": 78,
-         "y": 30,
-         "tone": "grey",
-         "kind": "disk"
+         "sub": "raw files",
+         "x": 50,
+         "y": 72,
+         "tone": "grey"
         },
         {
-         "id": "u",
+         "id": "uc",
          "label": "Unity Catalog",
-         "sub": "rules skipped",
-         "x": 50,
-         "y": 65,
-         "tone": "plum"
+         "sub": "rules",
+         "x": 78,
+         "y": 30,
+         "tone": "teal"
         }
        ],
        "edges": [
         [
-         "j",
-         "b"
+         "job",
+         "bk"
         ],
         [
-         "u",
-         "b"
+         "uc",
+         "bk"
         ]
        ],
        "steps": [
         {
-         "at": 0.1,
+         "at": 0.2,
          "show": [
-          "j",
-          "b"
+          "job",
+          "uc",
+          "bk"
          ]
         },
         {
-         "at": 0.4,
+         "at": 0.5,
          "packet": [
-          "j",
-          "b"
+          "job",
+          "bk"
          ],
-         "n": 2
+         "n": 3
         },
         {
-         "at": 0.7,
-         "show": "u"
-        },
-        {
-         "at": 0.7,
-         "dim": "u"
-        },
-        {
-         "at": 0.9,
+         "at": 0.8,
          "chip": {
-          "text": "Grants only work if access goes through them",
+          "text": "Rules skipped",
           "tone": "red",
           "icon": "alert"
          }
@@ -1308,161 +1871,439 @@
      }
     ],
     "check": {
-     "q": "Why must direct storage access be replaced with grants?",
+     "q": "After migrating tables to Unity Catalog, what is the biggest remaining risk?",
      "opts": [
-      "Grants make queries run faster",
-      "Direct readers bypass the permissions, filters and masks",
-      "Unity Catalog cannot see external storage"
+      "Jobs still reading storage directly, which bypasses the grants",
+      "Table names now having three levels, which breaks old queries",
+      "Lineage being lost because it is only captured by hand",
+      "Row filters applying only inside a single workspace"
      ],
-     "ans": 1,
-     "why": "Governance only holds if all access goes through the catalog. A job reading the bucket directly ignores the rules."
+     "ans": 0,
+     "why": "Grants only protect access that goes through Unity Catalog. Direct storage access with old keys skips them, so it must be replaced."
     },
     "work": [
-     "Inventory jobs that use storage paths or keys directly.",
-     "Plan external locations before migrating any tables."
+     "Search your jobs for hard-coded bucket paths and storage keys.",
+     "Map each storage path to an external location before migrating tables."
     ],
     "part": "2 of 2"
    },
    {
-    "title": "Cost, control and deployment trade-offs",
+    "title": "Matching compute to workload",
     "level": "Architect",
     "beats": [
      {
-      "say": "How do you stop a Databricks bill from quietly doubling?",
-      "show": {
-       "t": "big",
-       "text": "Quiet cost growth",
-       "sub": "Where does it come from?"
-      }
-     },
-     {
-      "say": "You pay twice: DBUs times the rate, plus the cloud's virtual machine charge. An always-on all-purpose cluster running scheduled jobs wastes both. Enforce job clusters and auto-termination with cluster policies, and watch spend in billing system tables.",
+      "say": "Three workloads: a nightly pipeline, a dashboard, and analysts exploring. Do they share one cluster?",
       "show": {
        "t": "scene",
-       "title": "Guardrails on *spend*",
+       "title": "Three *workloads*",
        "nodes": [
         {
-         "id": "pol",
-         "label": "Cluster policy",
-         "sub": "job clusters, auto-terminate",
-         "x": 25,
-         "y": 28,
-         "tone": "plum"
+         "id": "p",
+         "label": "Nightly pipeline",
+         "sub": "scheduled",
+         "x": 20,
+         "y": 40,
+         "tone": "blue"
         },
         {
-         "id": "cl",
-         "label": "Clusters",
-         "sub": "DBUs plus VMs",
-         "x": 75,
-         "y": 28,
+         "id": "d",
+         "label": "Dashboard",
+         "sub": "BI queries",
+         "x": 50,
+         "y": 40,
          "tone": "amber"
         },
         {
-         "id": "bill",
-         "label": "Billing tables",
-         "sub": "watch spend",
+         "id": "a",
+         "label": "Exploration",
+         "sub": "notebooks",
+         "x": 80,
+         "y": 40,
+         "tone": "plum"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "p"
+        },
+        {
+         "at": 0.5,
+         "show": "d"
+        },
+        {
+         "at": 0.8,
+         "show": "a"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Not if you care about cost. Scheduled work goes on job clusters, created per run, cheaper per hour, gone afterward. That alone removes idle spend.",
+      "show": {
+       "t": "scene",
+       "title": "Pipelines: *job* clusters",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Nightly pipeline",
+         "sub": "",
          "x": 50,
-         "y": 62,
+         "y": 20,
          "tone": "blue"
+        },
+        {
+         "id": "j",
+         "label": "Job cluster",
+         "sub": "per run, lower rate",
+         "x": 50,
+         "y": 65,
+         "tone": "teal"
         }
        ],
        "edges": [
         [
-         "pol",
-         "cl"
-        ],
-        [
-         "cl",
-         "bill"
+         "p",
+         "j"
         ]
        ],
        "steps": [
         {
-         "at": 0.1,
-         "show": [
-          "pol",
-          "cl"
+         "at": 0.2,
+         "show": "p"
+        },
+        {
+         "at": 0.5,
+         "show": "j",
+         "packet": [
+          "p",
+          "j"
          ]
         },
         {
-         "at": 0.4,
-         "packet": [
-          "pol",
-          "cl"
-         ],
-         "n": 2
-        },
-        {
-         "at": 0.65,
-         "show": "bill"
-        },
-        {
-         "at": 0.75,
-         "packet": [
-          "cl",
-          "bill"
-         ],
-         "n": 2
-        },
-        {
-         "at": 0.9,
+         "at": 0.8,
          "chip": {
-          "text": "Prevent first, then measure",
+          "text": "No idle spend",
           "tone": "teal",
-          "icon": "check"
+          "icon": "coin"
          }
         }
        ]
       }
      },
      {
-      "say": "Treat jobs and pipelines as code. Define them in files and deploy through CI with asset bundles, the same discipline as Terraform. Then nobody edits production by hand.",
+      "say": "Dashboards go on SQL warehouses. Serverless starts in seconds, so you avoid keeping a warehouse warm all day, but you give up some control over the machines.",
       "show": {
-       "t": "flow",
-       "title": "Deployment",
+       "t": "scene",
+       "title": "Dashboards: *SQL* warehouse",
+       "nodes": [
+        {
+         "id": "d",
+         "label": "Dashboard",
+         "sub": "BI queries",
+         "x": 50,
+         "y": 20,
+         "tone": "amber"
+        },
+        {
+         "id": "w",
+         "label": "Serverless warehouse",
+         "sub": "starts in seconds",
+         "x": 50,
+         "y": 65,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "d",
+         "w"
+        ]
+       ],
        "steps": [
         {
-         "label": "Files in git"
+         "at": 0.2,
+         "show": "d"
         },
         {
-         "label": "CI"
+         "at": 0.5,
+         "show": "w",
+         "packet": [
+          "d",
+          "w"
+         ]
         },
         {
-         "label": "Asset bundle deploy"
-        },
-        {
-         "label": "Production"
+         "at": 0.8,
+         "chip": {
+          "text": "Speed over control",
+          "tone": "amber",
+          "icon": "bolt"
+         }
         }
        ]
       }
      },
      {
-      "say": "Choose declarative pipelines when you want less plumbing. Choose hand-written Spark when you need control over every step. The trade is convenience against control.",
+      "say": "Exploration is the only case for all-purpose clusters. Fence them with cluster policies, auto termination and autoscaling, and watch the billing system tables for the leaks.",
       "show": {
        "t": "points",
-       "title": "The trade",
+       "title": "Fence the *shared* cluster",
        "items": [
-        "Declarative: less plumbing, platform decides",
-        "Hand-written: full control, more to maintain"
+        "Cluster policies cap size",
+        "Auto termination ends idle",
+        "Autoscaling follows load",
+        "Billing tables show leaks"
        ]
       }
      }
     ],
     "check": {
-     "q": "What best reduces waste from scheduled work on a shared cluster?",
+     "q": "Which compute choice best cuts idle spend for a scheduled pipeline?",
      "opts": [
-      "Buy a larger shared cluster",
-      "Run it on job clusters, enforced through cluster policies",
-      "Turn off auto-termination to avoid restarts"
+      "A job cluster created for each run and ended after it",
+      "A large all-purpose cluster kept running between runs",
+      "A serverless SQL warehouse kept warm all day for the job",
+      "An all-purpose cluster shared with the analyst team"
      ],
-     "ans": 1,
-     "why": "Job clusters exist only for the run and cost less per DBU. Policies make that the default rather than a habit."
+     "ans": 0,
+     "why": "Job clusters exist only for the run and cost less per hour, so there is no idle time to pay for. Shared clusters keep billing between runs."
     },
     "work": [
-     "Write a cluster policy that requires auto-termination.",
-     "Move one job definition into an asset bundle deployed from CI.",
-     "Compare one pipeline built both declaratively and by hand for effort and control."
-    ]
+     "Write a short rule mapping each workload type to a compute type.",
+     "Review billing system tables monthly for all-purpose clusters running pipelines."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Apps and agents beside the data",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "An agent needs a place for approvals, a screen for humans, and a first evaluation. Do you build three separate systems?",
+      "show": {
+       "t": "scene",
+       "title": "Three *needs*",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "State store",
+         "sub": "approvals",
+         "x": 20,
+         "y": 40,
+         "tone": "plum"
+        },
+        {
+         "id": "u",
+         "label": "Human screen",
+         "sub": "review",
+         "x": 50,
+         "y": 40,
+         "tone": "amber"
+        },
+        {
+         "id": "e",
+         "label": "Evaluation",
+         "sub": "first version",
+         "x": 80,
+         "y": 40,
+         "tone": "blue"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "s"
+        },
+        {
+         "at": 0.5,
+         "show": "u"
+        },
+        {
+         "at": 0.8,
+         "show": "e"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Lakebase is managed Postgres inside the platform, with storage separate from compute. Lakehouse tables can sync into it, so an app gets fast lookups without you running a database.",
+      "show": {
+       "t": "scene",
+       "title": "*Lakebase* for state",
+       "nodes": [
+        {
+         "id": "lt",
+         "label": "Lakehouse tables",
+         "sub": "synced",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "lb",
+         "label": "Lakebase",
+         "sub": "managed Postgres",
+         "x": 75,
+         "y": 30,
+         "tone": "plum"
+        },
+        {
+         "id": "app",
+         "label": "App or agent",
+         "sub": "fast lookups",
+         "x": 50,
+         "y": 72,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "lt",
+         "lb"
+        ],
+        [
+         "lb",
+         "app"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "lt"
+        },
+        {
+         "at": 0.45,
+         "show": "lb",
+         "packet": [
+          "lt",
+          "lb"
+         ]
+        },
+        {
+         "at": 0.7,
+         "show": "app",
+         "packet": [
+          "lb",
+          "app"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "say": "Databricks Apps hosts a Python or Node web app on serverless compute, signed in with workspace identities and governed by Unity Catalog permissions. Good for an approval screen.",
+      "show": {
+       "t": "scene",
+       "title": "*Apps* hosts the screen",
+       "nodes": [
+        {
+         "id": "user",
+         "label": "Reviewer",
+         "sub": "workspace login",
+         "x": 25,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "app",
+         "label": "Databricks App",
+         "sub": "serverless",
+         "x": 75,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "uc",
+         "label": "Unity Catalog",
+         "sub": "permissions",
+         "x": 50,
+         "y": 75,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "user",
+         "app"
+        ],
+        [
+         "app",
+         "uc"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "user"
+        },
+        {
+         "at": 0.45,
+         "show": "app",
+         "packet": [
+          "user",
+          "app"
+         ]
+        },
+        {
+         "at": 0.7,
+         "show": "uc",
+         "packet": [
+          "app",
+          "uc"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "say": "Agent Bricks builds a first agent from a description and your data, with an evaluation generated. Then you decide whether to hand build it.",
+      "show": {
+       "t": "flow",
+       "title": "*Agent Bricks* first",
+       "steps": [
+        {
+         "label": "Describe task and data"
+        },
+        {
+         "label": "Agent plus generated evaluation"
+        },
+        {
+         "label": "Tune against evaluation"
+        },
+        {
+         "label": "Keep it, or hand build"
+        }
+       ]
+      }
+     },
+     {
+      "say": "The trade-off: these names and details change fast, and you lean harder on one vendor. Check current documentation first.",
+      "show": {
+       "t": "big",
+       "text": "Check the docs",
+       "sub": "Fast-moving, tighter vendor coupling"
+      }
+     }
+    ],
+    "check": {
+     "q": "What is the main reason to try Agent Bricks before building an agent by hand?",
+     "opts": [
+      "You get a first agent with an evaluation from day one",
+      "It removes the need for any evaluation of the agent later",
+      "It guarantees the agent beats a hand built framework one",
+      "It stores approvals and serves the screen for the agent"
+     ],
+     "ans": 0,
+     "why": "Agent Bricks gives a quick first version with a generated evaluation, so you can judge quality before deciding to hand build with the agent framework."
+    },
+    "work": [
+     "Sketch which parts of one agent need state, a screen and an evaluation.",
+     "Record the product versions you tested, since details change quickly."
+    ],
+    "part": "2 of 2"
    }
   ]
  },
