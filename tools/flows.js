@@ -861,7 +861,9 @@ async function T(name, fn, opt) {
     await p.click('.rslide .rstart'); await p.waitForTimeout(2500);
     ok(await p.evaluate(() => document.querySelectorAll('.rslide.playing').length === 1 && document.querySelectorAll('.rslide .fxnode.on').length > 0), 'scene did not animate or more than one reel plays');
     const w = await p.evaluate(() => innerWidth); for (let n = 0; n < 3; n++) { await p.mouse.click(w - 30, 420); await p.waitForTimeout(300); }
-    await p.waitForSelector('.ropt'); await p.click('.ropt >> nth=2');
+    await p.waitForSelector('.ropt'); /* options are shuffled on every showing: pick one that is wrong, not the third */
+    const wrong = await p.evaluate(async () => { const r = (await reelsFor('s05')).find(x => x.id === 's05-52-1'); return [...document.querySelectorAll('.ropt')].findIndex(b => +b.dataset.i !== r.check.ans); });
+    await p.click('.ropt >> nth=' + wrong);
     ok(await p.evaluate(() => { const x = S.reels['s05-52-1']; return !!(x && x.ok === false && x.due > iso(new Date())); }), 'a missed check does not schedule a review');
     await p.evaluate(() => { const s = [...document.querySelectorAll('.rslide')].find(x => x.querySelector('.ropt')); s.querySelector('.rheart').click(); });
     ok(await p.evaluate(() => !!S.playbook['s05-52-1']), 'heart did not save to My playbook');

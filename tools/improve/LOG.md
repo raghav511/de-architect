@@ -11,3 +11,4 @@
 - 2026-11-07 · 1.32.0 (code, shipped with the Kafka lens) and 1.33.1 (notes) · user request: reuse the exam app's client ID without sharing data · Q30–Q32 (Q30 found the update step deleting the exam app's caches) · 32/32 trust (Q23 flaky once, queued)
 - 2026-11-07 · dbt (4.10) and dimensional modelling (M1.8) lenses · lens test extended (cards, internals counts, interview sets, M1.8 scheduled) · pass
 - 2026-11-07 · 1.35.2 · Iceberg architect's lens · new flows lens journey (7 rows, 6 internals, interview and quiz sets, 4-level reels, 8.5 link) · pass
+- 2026-11-07 · release train · reels page error (backlog 1): broken pictures in neighbouring reels; engine fallback, build.py checks, reelPlayable · Q41 (fails without the fix), reels journey de-flaked · 40/40 trust (now 41 with F1's Q40), smoke Reels 3/3, reels journey 7 of the last 7
