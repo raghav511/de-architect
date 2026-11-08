@@ -8,7 +8,7 @@
    controls without an accessible name. Destructive controls (Reset, Delete, Sign out…) are skipped and logged.
    Regression checks for fixed bugs run at the end (REGRESS). Results: tools/crawl/<engine>-<state>.json; --report
    (or a run of all four) writes tools/crawl/REPORT.md. Exit 1 on any issue.
-   Never reaches the real grader (127.0.0.1:8765), api.anthropic.com (stubbed) or a real sync URL (https://sync.test stub). */
+   Never reaches the real grader (127.0.0.1:8765), api.anthropic.com (aborted; the app no longer calls it) or a real sync URL (https://sync.test stub). */
 const fs = require('fs'), path = require('path');
 const pw = require(process.env.PW || 'playwright');
 const args = process.argv.slice(2);

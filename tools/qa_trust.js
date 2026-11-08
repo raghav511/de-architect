@@ -75,14 +75,14 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
     ok(/"done"/.test(t), 'backup lost the progress');
   });
 
-  await T('Q05', 'restoring a backup keeps this device\'s API key and sync URL', async p => {
+  await T('Q05', 'restoring a backup keeps this device\'s sync URL, and an API key inside an old backup is dropped', async p => {
     await boot(p, '#/progress');
-    await p.evaluate(() => { S.settings.aiKey = 'sk-ant-mine'; S.settings.syncUrl = 'https://sync.test/exec?k=mine'; save(); });
-    const f = '/tmp/qa_backup.json'; require('fs').writeFileSync(f, JSON.stringify({ start: '2026-10-19', done: { 's00:S001': '2026-10-20' }, solved: {}, settings: { aiKey: '', syncUrl: 'https://other/exec?k=old', theme: 'dark' } }));
+    await p.evaluate(() => { S.settings.syncUrl = 'https://sync.test/exec?k=mine'; save(); });
+    const f = '/tmp/qa_backup.json'; require('fs').writeFileSync(f, JSON.stringify({ start: '2026-10-19', done: { 's00:S001': '2026-10-20' }, solved: {}, settings: { aiKey: 'sk-ant-old-backup', syncUrl: 'https://other/exec?k=old', theme: 'dark' } }));
     await p.evaluate(() => { const i = document.createElement('input'); i.type = 'file'; i.id = 'qaimp'; i.onchange = importProgress; document.body.appendChild(i); });
     await p.setInputFiles('#qaimp', f); await p.waitForTimeout(500);
-    const s = await p.evaluate(() => [S.settings.aiKey, S.settings.syncUrl, !!S.done['s00:S001']]);
-    ok(s[0] === 'sk-ant-mine' && /k=mine/.test(s[1]) && s[2], 'restore replaced this device\'s secrets: ' + JSON.stringify(s.slice(0, 2)));
+    const s = await p.evaluate(() => ['aiKey' in S.settings, S.settings.syncUrl, !!S.done['s00:S001'], /sk-ant/.test(localStorage.getItem('keystone:v1'))]);
+    ok(s[0] === false && !s[3] && /k=mine/.test(s[1]) && s[2], 'restore replaced this device\'s sync URL or kept a key: ' + JSON.stringify(s));
   });
 
   await T('Q06', 'scraped interview text cannot run code in the app (company questions page)', async (p, c) => {
@@ -424,6 +424,22 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
     await p.keyboard.press('ArrowRight'); await p.waitForTimeout(400); await p.keyboard.press('ArrowDown'); await p.waitForTimeout(1500); await p.keyboard.press('ArrowUp'); await p.waitForTimeout(1200);
     ok(await p.evaluate(() => window.__spoke.length >= 2), 'the reels next to broken pictures did not play');
   });
+  /* security (2026-11-08): the browser never stores or uses an API key; AI runs only through Claude Code on the Mac */
+  await T('Q42', 'a key left by an older version is deleted on load, Profile has no key field, and the page cannot call api.anthropic.com', async (p, c) => {
+    await c.route('https://api.anthropic.com/**', r => r.abort()); /* belt and braces: never reach the real service */
+    await boot(p);
+    await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('keystone:v1') || '{}'); s.settings = Object.assign(s.settings || {}, { aiKey: 'sk-ant-left-behind', aiModel: 'claude-haiku-5-5', coachVia: 'key' }); clearTimeout(saveT); saveT = null; localStorage.setItem('keystone:v1', JSON.stringify(s)); });
+    await p.reload(); await p.waitForSelector('h1', { timeout: 30000 }); await p.waitForTimeout(500);
+    const r = await p.evaluate(() => [/sk-ant|aiKey/.test(localStorage.getItem('keystone:v1')), 'aiKey' in S.settings, S.settings.coachVia, document.querySelector('meta[http-equiv="Content-Security-Policy"]').content]);
+    ok(!r[0] && !r[1], 'the stored key survived loading the app: ' + JSON.stringify(r.slice(0, 2)));
+    ok(r[2] === 'mac', 'the coach still points at an API key: ' + r[2]);
+    ok(!/anthropic/.test(r[3]), 'the CSP still allows an AI service: ' + (r[3].match(/connect-src[^;]*/) || [''])[0]);
+    await p.evaluate(() => { location.hash = '#/profile'; }); await p.waitForTimeout(500); await p.click('button[role=tab]:has-text("AI")'); await p.waitForTimeout(300);
+    const ui = await p.evaluate(() => [!!document.querySelector('#st_key, #st_model, input[type=password]'), [...document.querySelectorAll('#st_coach option')].map(o => o.value).join(), document.querySelector('#page').innerText]);
+    ok(!ui[0] && ui[1] === 'mac,hints' && /No API key is stored/.test(ui[2]) && !/other pages of the same account/.test(ui[2]), 'Profile › AI still offers a key: ' + JSON.stringify(ui.slice(0, 2)));
+    const blocked = await p.evaluate(async () => { let b = false; document.addEventListener('securitypolicyviolation', e => { if (/anthropic/.test(e.blockedURI)) b = true; }); try { await fetch('https://api.anthropic.com/v1/messages', { method: 'POST' }); } catch (e) { } await new Promise(r => setTimeout(r, 300)); return b; });
+    ok(blocked, 'a request to api.anthropic.com was not blocked by the page');
+  }, { bypassCSP: false });
 
   await T('Q51', 'daily recall: a seen interview answer comes back the next day, is answered before the model answer shows, and easy, hard or missed set the next gap (1, 3, 7, 21 days)', async p => {
     await boot(p);

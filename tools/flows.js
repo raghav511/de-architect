@@ -781,9 +781,10 @@ async function T(name, fn, opt) {
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
   await T('live mock: Today links it; five questions from this week (concept, under the hood, lens, staff slot, recall); AI follow-up and rubric scores; weak answers open the next mock; self-marking with AI off', async p => {
-    await p.route('https://api.anthropic.com/**', r => { const H = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST, OPTIONS' }; if (r.request().method() === 'OPTIONS') return r.fulfill({ status: 204, headers: H }); const b = r.request().postData() || ''; const fu = /ONE follow-up/.test(b); r.fulfill({ headers: H, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: fu ? '{"followup":"What changes at 100 times the data?"}' : '{"scores":{"correct":2,"depth":2,"trade":2,"clear":3},"rejected":true,"limits":false,"operate":false,"feedback":"Say what you rejected.","better":"A stronger answer."}' }] }) }); });
+    await p.route('https://api.anthropic.com/**', r => r.abort()); /* the app never calls an AI service from the browser */
     p.setDefaultTimeout(8000); p.on('pageerror', e => console.log('PAGEERR', e.message));
-    await go(p, '#/today', 1200); await p.evaluate(() => { S.settings.ai = true; S.settings.aiKey = 'test-key'; S.live = {}; save(); }); await go(p, '#/today', 900);
+    await go(p, '#/today', 1200); await p.evaluate(() => { S.settings.ai = true; S.live = {}; save(); /* the interviewer through the Mac route, stubbed in the page */
+      window.macCall = async (kind, pl) => ({ text: /ONE follow-up/.test((pl && pl.question) || '') ? '{"followup":"What changes at 100 times the data?"}' : '{"scores":{"correct":2,"depth":2,"trade":2,"clear":3},"rejected":true,"limits":false,"operate":false,"feedback":"Say what you rejected.","better":"A stronger answer."}' }); }); await go(p, '#/today', 900);
     ok(await p.evaluate(() => [...document.querySelectorAll('#grp-interview a')].some(a => /#\/live\//.test(a.getAttribute('href')))), 'Today has no live mock row');
     await go(p, '#/live', 1500); await p.waitForSelector('.lslots li');
     const labels = await p.$$eval('.lslots li b', b => b.map(x => x.textContent)); const we = await p.evaluate(() => liveWeekend(iso(new Date())));
@@ -1241,15 +1242,14 @@ async function T(name, fn, opt) {
     await go(p, '#/today', 1000);
     const r = await p.evaluate(async () => {
       const calls = []; window.macCall = async () => { calls.push('mac'); return { text: 'from mac' }; };
-      const f = window.fetch; window.fetch = (u, o) => { if (/api\.anthropic/.test(u)) { calls.push('key'); return Promise.resolve(new Response(JSON.stringify({ content: [{ text: 'from key' }] }))); } return f(u, o); };
+      const f = window.fetch; window.fetch = (u, o) => { if (/api\.anthropic/.test(u)) calls.push('api'); return f(u, o); };
       const ask = async () => { const b = document.createElement('div'); await askCoach('q', { title: 't' }, b); return b.innerText; };
-      S.settings.aiKey = 'sk-test';
       S.settings.coachVia = 'mac'; const a = await ask();
-      S.settings.coachVia = 'key'; const b = await ask();
+      S.settings.coachVia = 'key'; const b = await ask(); /* an old device's "My API key" choice now means the Mac */
       S.settings.coachVia = 'hints'; const c = await ask();
-      window.fetch = f; S.settings.aiKey = ''; return { a, b, c, calls };
+      window.fetch = f; return { a, b, c, calls };
     });
-    ok(/from mac/.test(r.a) && /from key/.test(r.b) && !/from/.test(r.c) && r.calls.join() === 'mac,key', JSON.stringify(r));
+    ok(/from mac/.test(r.a) && /from mac/.test(r.b) && !/from/.test(r.c) && r.calls.join() === 'mac,mac', JSON.stringify(r));
   });
   await T('preferences: the grading model choice travels with the grading request', async p => {
     await go(p, '#/today', 1000);
@@ -1263,12 +1263,12 @@ async function T(name, fn, opt) {
     await c.route('https://sync.example/**', async r => { if (r.request().method() === 'POST') { posted = JSON.parse(r.request().postData()); return r.fulfill({ contentType: 'application/json', body: '{"ok":true}' }); }
       return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, data: { start: '2026-10-26', updated: 1, prefs: { at: Date.now() + 60000, capWd: 45, coachVia: 'key', gradeModel: 'sonnet', ai: true } } }) }); });
     await go(p, '#/today', 1000);
-    await p.evaluate(() => { S.settings.syncUrl = 'https://sync.example/exec?k=x'; S.settings.aiKey = 'sk-secret'; S.settings.theme = 'dark'; S.settings.capWd = 60; S.settings.prefsAt = 1; save(); });
+    await p.evaluate(() => { S.settings.syncUrl = 'https://sync.example/exec?k=x'; S.settings.theme = 'dark'; S.settings.capWd = 60; S.settings.prefsAt = 1; save(); });
     await p.evaluate(() => doSync()); await p.waitForTimeout(1500);
-    const st = await p.evaluate(() => [S.settings.capWd, S.settings.coachVia, S.settings.gradeModel, S.settings.aiKey, S.settings.theme, S.settings.syncUrl]);
-    ok(st[0] === 45 && st[1] === 'key' && st[2] === 'sonnet', 'remote preferences not applied: ' + JSON.stringify(st));
-    ok(st[3] === 'sk-secret' && st[4] === 'dark' && /sync\.example/.test(st[5]), 'device-only settings changed');
-    ok(posted && posted.data.prefs && posted.data.prefs.capWd === 45 && !JSON.stringify(posted).includes('sk-secret') && !('settings' in posted.data), 'upload leaked device settings or missed prefs');
+    const st = await p.evaluate(() => [S.settings.capWd, S.settings.coachVia, S.settings.gradeModel, 'aiKey' in S.settings, S.settings.theme, S.settings.syncUrl]);
+    ok(st[0] === 45 && st[1] === 'mac' && st[2] === 'sonnet', 'remote preferences not applied (an old "key" coach choice becomes the Mac): ' + JSON.stringify(st));
+    ok(st[3] === false && st[4] === 'dark' && /sync\.example/.test(st[5]), 'device-only settings changed');
+    ok(posted && posted.data.prefs && posted.data.prefs.capWd === 45 && !JSON.stringify(posted).includes('sync.example') && !('settings' in posted.data), 'upload leaked device settings or missed prefs');
   });
 
   /* ---- design simulator (#/sim) ---- */

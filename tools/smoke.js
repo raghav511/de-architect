@@ -2,7 +2,7 @@
    (a reel makes sound and moves on, code prints output, a quiz scores), on Chromium (Mac) and WebKit (iPhone).
    node tools/smoke.js [baseUrl] [filter] [--engine chromium|webkit]
    Run before every ship against the local server and after every ship against the live site (tools/improve/LOOP.md).
-   Stubs: the AI interviewer (api.anthropic.com) and the sync server (https://sync.test); never the real ones. */
+   Stubs: the AI interviewer (the page's macCall, the Mac route) and the sync server (https://sync.test); never the real ones. */
 const pw = require(process.env.PW || 'playwright');
 const args = process.argv.slice(2);
 const BASE = (args.find(a => /^http/.test(a)) || 'http://localhost:8811/').replace(/\/?$/, '/');
@@ -11,7 +11,8 @@ const ONLY = args.includes('--engine') ? [args[args.indexOf('--engine') + 1]] : 
 const results = [];
 function ok(c, m) { if (!c) throw new Error(m); }
 const H = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST, OPTIONS' };
-const AI = r => { if (r.request().method() === 'OPTIONS') return r.fulfill({ status: 204, headers: H }); const fu = /ONE follow-up/.test(r.request().postData() || ''); return r.fulfill({ headers: H, contentType: 'application/json', body: JSON.stringify({ content: [{ type: 'text', text: fu ? '{"followup":"What changes at 100 times the data?"}' : '{"scores":{"correct":3,"depth":3,"trade":2,"clear":3},"rejected":true,"limits":true,"operate":false,"feedback":"Name the limit.","better":"A stronger answer."}' }] }) }); };
+/* the AI interviewer, through the Mac route: the page's macCall is replaced, so neither the real grader nor any AI service is reached */
+const MAC = () => { window.macCall = async (kind, pl) => ({ text: /ONE follow-up/.test((pl && pl.question) || '') ? '{"followup":"What changes at 100 times the data?"}' : '{"scores":{"correct":3,"depth":3,"trade":2,"clear":3},"rejected":true,"limits":true,"operate":false,"feedback":"Name the limit.","better":"A stronger answer."}' }); };
 /* records every Audio the page creates and every line a device voice speaks, so "it made sound" can be checked */
 const SOUND = () => { window.__auds = []; const A = window.Audio; window.Audio = function (...a) { const x = new A(...a); window.__auds.push(x); return x; }; window.Audio.prototype = A.prototype;
   window.__spoke = []; const P = window.SpeechSynthesis && window.SpeechSynthesis.prototype; if (P && P.speak) { const sp = P.speak; P.speak = function (u) { window.__spoke.push(u.text); try { sp.call(this, u); } catch (e) { } setTimeout(() => { if (u.onend) u.onend(); }, 1500); }; } };
@@ -24,7 +25,7 @@ async function run(engine) {
     if (extra && extra.only && extra.only !== engine) return;
     /* Playwright's WebKit cannot route requests made under a service worker, so stubbed checks there run without it */
     const c = await browser.newContext(Object.assign({ bypassCSP: true }, opt, engine === 'webkit' && extra && extra.stub ? { serviceWorkers: 'block' } : {})); /* stub hosts are outside the app's CSP */ await c.route('http://127.0.0.1:8765/**', r => r.abort());
-    await c.route('https://api.anthropic.com/**', AI);
+    await c.route('https://api.anthropic.com/**', r => r.abort()); /* the app never calls an AI service from the browser */
     const p = await c.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => { errs.push('native dialog'); d.dismiss(); });
     await p.addInitScript(SOUND);
     const t0 = Date.now();
@@ -90,7 +91,7 @@ async function run(engine) {
   });
 
   await S('Live mock: questions, a typed answer, an AI follow-up and a score', async p => {
-    await boot(p); await p.evaluate(() => { S.settings.ai = true; S.settings.aiKey = 'test-key'; S.live = {}; save(); });
+    await boot(p); await p.evaluate(() => { S.settings.ai = true; S.live = {}; save(); }); await p.evaluate(MAC);
     await nav(p, '#/live', 1500); await p.waitForSelector('.lslots li');
     await p.click('#page button.pri:has-text("Start")'); await p.waitForSelector('#page textarea');
     await p.fill('#page textarea', 'A log with partitions keyed by trip, idempotent sink, checkpoints.'); await p.click('#page button:has-text("Done")');
