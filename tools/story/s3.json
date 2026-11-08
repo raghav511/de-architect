@@ -1,14 +1,14 @@
 {
  "season": 3,
  "title": "Real Time",
- "logline": "Tom wants everything real time, and Marcus learns that fast data is only worth having when it is also correct, affordable and still standing when a region goes dark.",
+ "logline": "Tomas wants everything real time, and Marcus learns that fast data is only worth having when it is also correct, affordable and still standing when a region goes dark.",
  "modules": [
   {
    "mid": "a04",
    "ep": "The Bot Speaks",
    "logline": "A text-to-SQL bot embarrasses the CEO, and Marcus learns that an answer is only as good as the meaning, permissions and scores behind it.",
    "scenes": [
-    "The board numbers finally match, and Tom is already back with a new ask: a chat bot that answers any question from the warehouse. Marcus sketches the pieces on a whiteboard. Where does the model end and the data begin?",
+    "The board numbers finally match, and Tomas is already back with a new ask: a chat bot that answers any question from the warehouse. Marcus sketches the pieces on a whiteboard. Where does the model end and the data begin?",
     "In Monday's leadership meeting, the CEO asks the bot for last week's Bengaluru revenue. It answers in four seconds, confidently, and double counts every split payment. The room goes quiet. How do you make generated SQL trustworthy?",
     "Marcus reads the bot's query log. It joined trips to payments on the wrong key because \"revenue\" means three things in three tables. Kofi says the definitions already exist in dbt. Can the bot read them?",
     "Lena notices the bot connects with a service account that can drop tables. Dev asks, flatly, who approved that. Marcus wants the bot to have tools, not passwords. What would an MCP server change?",
@@ -45,10 +45,10 @@
     "Tomorrow on Meridian: one order, two refunds, and the same balance read twice.",
     "Tomorrow on Meridian: for ninety seconds, Meridian has two primaries.",
     "Tomorrow on Meridian: a cache key expires and the database falls over.",
-    "Tomorrow on Meridian: Tom wants surge prices per zone, updated every ten seconds."
+    "Tomorrow on Meridian: Tomas wants surge prices per zone, updated every ten seconds."
    ],
    "boss": "Incident review: the split-brain wallet incident. Asha wants the full chain: replica lag, the isolation level, the failed leader election and the cache stampede that followed. Explain each layer as you would to an interviewer.",
-   "finale": "The postmortem ships with Dev's name beside Marcus's. Grace reads it over Friday coffee: \"Every data tool is a storage engine with opinions.\" On Monday, Tom arrives with a slide titled Surge Pricing, Live.",
+   "finale": "The postmortem ships with Dev's name beside Marcus's. Grace reads it over Friday coffee: \"Every data tool is a storage engine with opinions.\" On Monday, Tomas arrives with a slide titled Surge Pricing, Live.",
    "zoe": "Zoe asks: \"Why did the app say two numbers?\" Marcus says: \"We keep copies of the notebook, and one copy was a few seconds behind.\""
   },
   {
@@ -56,7 +56,7 @@
    "ep": "Surge",
    "logline": "Surge pricing moves onto Kafka and Spark streaming, and Marcus learns that data which never stops brings late events, duplicates and poison messages.",
    "scenes": [
-    "Tom wants surge multipliers per zone, recalculated every ten seconds from live trip requests. The batch job runs hourly. Marcus lists what changes when data never stops: late events, no natural end. Why is streaming harder than batch?",
+    "Tomas wants surge multipliers per zone, recalculated every ten seconds from live trip requests. The batch job runs hourly. Marcus lists what changes when data never stops: late events, no natural end. Why is streaming harder than batch?",
     "Dev draws the trip-request topic: 48 partitions, keyed by zone. Lena asks why one consumer lags while the others idle. The answer is inside Kafka. How does it actually store, order and hand out messages?",
     "In testing, a rider in Koramangala is charged surge twice for one request. The consumer crashed after writing but before committing its offset. At least once or exactly once: which guarantee does pricing really need?",
     "Marcus rebuilds the surge job in Spark Structured Streaming with ten-second windows. Then a phone that lost signal uploads requests from twenty minutes ago. Should a late event change a price already shown?",
@@ -152,7 +152,7 @@
    "ep": "Lift and Shift",
    "logline": "Meridian moves its platform to AWS while Mei watches the bill triple, and launch night ends with a region going dark.",
    "scenes": [
-    "Asha gives the team one quarter to move the platform to AWS. Tom asks whether streaming moves too. Marcus maps what changes and what stays the same: tables and jobs stay, storage, access and bills change. Where is the real risk?",
+    "Asha gives the team one quarter to move the platform to AWS. Tomas asks whether streaming moves too. Marcus maps what changes and what stays the same: tables and jobs stay, storage, access and bills change. Where is the real risk?",
     "Lena copies the lake to S3, and the first Spark job crawls, listing millions of tiny files. Dev asks about versioning and lifecycle rules. How does S3 really behave underneath the familiar paths?",
     "Reviewing permissions, Marcus finds the Airflow role can read every bucket, payments included, through a wildcard. Nobody remembers why. How do you give each job only the access it needs in IAM?",
     "Should the nightly batch run on EMR, Glue or containers on ECS, and who schedules it? Dev wants clusters he understands; Mei wants nothing running at 3 p.m. What decides the compute choice?",
@@ -165,7 +165,7 @@
     "Tomorrow on Meridian: Dev wants clusters, and Mei wants nothing running at 3 p.m.",
     "Tomorrow on Meridian: two staging setups, built by hand, behave differently.",
     "Tomorrow on Meridian: Mei posts the first full AWS bill, and it is triple.",
-    "Tomorrow on Meridian: season 4 begins, and Meridian is buying a company called Lumen."
+    "Tomorrow on Meridian: season 4 begins, and Meridian is buying a company called Brightcart."
    ],
    "boss": "Incident review: the bill triples and a role is too broad. Show Mei and Asha the cost breakdown, the fixes for transfer and idle compute, the narrowed IAM roles and the Terraform that keeps them narrow.",
    "finale": "Launch night: every pipeline runs on AWS and the dashboards are green. Grace texts: \"Test the failover before you need it.\" At 1:40 a.m. the pager fires. A whole region is dark, and surge has stopped.",

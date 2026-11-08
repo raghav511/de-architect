@@ -11,14 +11,14 @@
     "Marcus badges into Meridian's Bengaluru office on Monday. Asha hands him a laptop and one instruction: \"Before you change anything, tell me what you actually know.\" Where does a new architect start when everything looks broken?",
     "Dev walks him through the platform: cron scripts, a Hadoop cluster nobody touches, Airflow DAGs with no owners, two dashboards that disagree. \"Pick one to fix,\" Dev says. Marcus asks first what the platform is meant to become.",
     "In his first standup, Lena says nothing at all. Afterwards Marcus sees she has drawn the entire data flow in her notebook. What turns a pile of pipelines into a data foundation other teams can build on?",
-    "Asha asks whether engineers may use AI assistants on production code. Tom says yes, for everything. Dev says never. Marcus has until Thursday to propose two rules both of them can live with.",
+    "Asha asks whether engineers may use AI assistants on production code. Tomas says yes, for everything. Dev says never. Marcus has until Thursday to propose two rules both of them can live with.",
     "Asha wants a baseline: a short SQL and Python check for the whole data team, Marcus included. Dev bristles at being scored by the new hire. How do you measure people without making them defensive?",
     "Marcus spends the afternoon on setup: Docker, Python 3.11, Java 17 for Spark, a fresh repository called meridian-platform. At 6 p.m., before Java finishes installing, his first pager alert arrives. Which script failed?"
    ],
    "teasers": [
     "Dev opens the platform map, and it has four layers nobody admits owning.",
     "Lena has drawn the whole data flow, and nobody asked her to.",
-    "Tom wants AI on everything. Dev wants it banned. Marcus has until Thursday.",
+    "Tomas wants AI on everything. Dev wants it banned. Marcus has until Thursday.",
     "Asha wants the whole team scored, starting with the new staff architect.",
     "Marcus sets up his machine, and the pager fires before Java installs.",
     "Next week: a finance job that takes four hours because of one list."
@@ -37,14 +37,14 @@
     "Marcus swaps the list for a set, and the run drops to minutes. Lena, quietly, asks why a set is so much faster. Marcus realises he has to explain hashing without waving his hands.",
     "In the design review, Dev asks for a number: how will the job grow when Bengaluru trips double next quarter? Marcus stands up, picks a marker and starts writing Big-O on the whiteboard.",
     "The fare summary script builds counts with nested dicts and manual key checks. Lena's draft fix is forty lines long. Marcus suspects the standard library solved this years ago. Which tool in collections fits?",
-    "Finance sends a CSV where one city name contains a comma, and the parser splits it in two. Meanwhile Tom proposes rewriting every job in Scala. What should Marcus check before agreeing to that?"
+    "Finance sends a CSV where one city name contains a comma, and the parser splits it in two. Meanwhile Tomas proposes rewriting every job in Scala. What should Marcus check before agreeing to that?"
    ],
    "teasers": [
     "A million trips, one list of drivers, and a job that takes four hours.",
     "One line changes, the job finishes in minutes, and Lena wants to know why.",
     "Dev wants a number: what happens to the job when Bengaluru trips double?",
     "Lena's fix runs to forty lines. Marcus thinks one import replaces most of it.",
-    "A comma inside a city name breaks finance's export, and Tom wants Scala.",
+    "A comma inside a city name breaks finance's export, and Tomas wants Scala.",
     "Next week: the same pasted cleanup code turns up in nine finance scripts."
    ],
    "boss": "Weekend review: the reconciliation job's runtime history goes on screen. Dev asks Marcus to explain every slowdown by what each line costs, and to argue whether a Scala rewrite is needed at all.",
@@ -205,14 +205,14 @@
     "Parsing 200 large settlement files is pure CPU work. Marcus moves it to a process pool on the 8-core server. Lena asks why processes win exactly where threads lost.",
     "The code now mixes threads and processes in two different styles. Marcus wants one interface for both. Reviewing it, Dev asks how to swap one pool for the other in a single line.",
     "Marcus rewrites the payout calls with asyncio and gather, limited by a semaphore. One requests.get slips in and stalls every task at once. What blocks an event loop?",
-    "Running fast, the job hits the payment gateway's rate limit and gets throttled. Tom wants the dashboard step fixed next and already knows the cause. Has anyone measured where the time goes?"
+    "Running fast, the job hits the payment gateway's rate limit and gets throttled. Tomas wants the dashboard step fixed next and already knows the cause. Has anyone measured where the time goes?"
    ],
    "teasers": [
     "Threads speed up the calls, then slow down the parsing. Dev blames the GIL.",
     "Eight cores, 200 settlement files, and a process pool that finally uses them.",
     "Threads in one file, processes in another. Marcus wants one interface for both.",
     "One blocking call slips into the async code and stalls every payout.",
-    "The gateway starts throttling, and Tom is sure he knows the slow step.",
+    "The gateway starts throttling, and Tomas is sure he knows the slow step.",
     "Next week: an agent that watches month-end close overnight, on its own."
    ],
    "boss": "Weekend review: a dry run of month-end close. Marcus shows the profile before and after, explains threads, processes or asyncio for each step, and defends the token bucket that keeps the gateway happy.",
@@ -226,14 +226,14 @@
    "scenes": [
     "Asha approves an overnight agent to watch month-end close. It must run for hours, survive crashes and never redo a finished step. Dev asks what happens when it dies at 2 a.m. What lets it resume?",
     "The agent plans twelve steps, quietly skips two it cannot do, and reports success. Lena is the one who catches it. How do you build an agent that says \"I could not do this\"?",
-    "Tom proposes five agents: a planner, a checker, a fixer, a reporter and a manager to run them. Marcus is not convinced. When do multiple agents actually beat a single one?",
+    "Tomas proposes five agents: a planner, a checker, a fixer, a reporter and a manager to run them. Marcus is not convinced. When do multiple agents actually beat a single one?",
     "Marcus builds an MCP server for the lakehouse: list tables, describe a table, read-only SQL with a 200-row limit. Dev tries a DELETE through it, on purpose. What should the server do?",
     "Dev renames a column in the landing files on purpose. The on-call agent queries Bronze and Silver, finds the change, and sounds certain. Before trusting it, Marcus asks one thing: where is the evidence?",
     "The agent wants to rerun the revenue load, which cannot be undone. Lena asks whether it should just go ahead, since it is right. What must an autonomous agent do before anything irreversible?"
    ],
    "teasers": [
     "The agent skips two steps and reports success. Lena is the one who notices.",
-    "Tom wants five agents and a manager agent. Marcus wants one good one.",
+    "Tomas wants five agents and a manager agent. Marcus wants one good one.",
     "Dev tries a DELETE through Marcus's new MCP server, on purpose.",
     "Dev breaks a schema on purpose, and the agent sounds very sure of itself.",
     "The agent asks permission to rerun revenue, and the answer matters.",

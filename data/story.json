@@ -6,11 +6,11 @@
    "role": "Meridian's first staff data architect, the lead. Careful, curious, a little too willing to fix things himself."
   },
   {
-   "name": "Asha Iyer",
+   "name": "Asha Menon",
    "role": "CTO. Direct, high bar, fair: \"Show me the number, then the plan.\""
   },
   {
-   "name": "Dev Malhotra",
+   "name": "Dev Okafor",
    "role": "Data platform lead and on-call veteran. Sceptical of new tools until they earn it."
   },
   {
@@ -18,11 +18,11 @@
    "role": "Junior data engineer Marcus mentors. Quiet at first; leads on-call by season 4."
   },
   {
-   "name": "Mei Chen",
+   "name": "Mei Tan",
    "role": "FinOps lead. Reads every cloud bill line by line: \"Who pays for this?\""
   },
   {
-   "name": "Tom Reyes",
+   "name": "Tomas Ruiz",
    "role": "Head of Product. Wants everything real time, yesterday."
   },
   {
@@ -30,12 +30,12 @@
    "role": "Analytics lead and owner of the executive dashboard; rival, then partner."
   },
   {
-   "name": "Grace Okafor",
+   "name": "Grace Adeyemi",
    "role": "Retired principal engineer and Marcus's mentor; Friday coffees, one sentence of advice."
   },
   {
-   "name": "Victor Hale",
-   "role": "Lead architect at Lumen, the company Meridian buys in season 4; rival, then ally."
+   "name": "Viktor Hale",
+   "role": "Lead architect at Brightcart, the company Meridian buys in season 4; rival, then ally."
   },
   {
    "name": "Nadia and Zoe Bell",
@@ -56,14 +56,14 @@
       "Marcus badges into Meridian's Bengaluru office on Monday. Asha hands him a laptop and one instruction: \"Before you change anything, tell me what you actually know.\" Where does a new architect start when everything looks broken?",
       "Dev walks him through the platform: cron scripts, a Hadoop cluster nobody touches, Airflow DAGs with no owners, two dashboards that disagree. \"Pick one to fix,\" Dev says. Marcus asks first what the platform is meant to become.",
       "In his first standup, Lena says nothing at all. Afterwards Marcus sees she has drawn the entire data flow in her notebook. What turns a pile of pipelines into a data foundation other teams can build on?",
-      "Asha asks whether engineers may use AI assistants on production code. Tom says yes, for everything. Dev says never. Marcus has until Thursday to propose two rules both of them can live with.",
+      "Asha asks whether engineers may use AI assistants on production code. Tomas says yes, for everything. Dev says never. Marcus has until Thursday to propose two rules both of them can live with.",
       "Asha wants a baseline: a short SQL and Python check for the whole data team, Marcus included. Dev bristles at being scored by the new hire. How do you measure people without making them defensive?",
       "Marcus spends the afternoon on setup: Docker, Python 3.11, Java 17 for Spark, a fresh repository called meridian-platform. At 6 p.m., before Java finishes installing, his first pager alert arrives. Which script failed?"
      ],
      "teasers": [
       "Dev opens the platform map, and it has four layers nobody admits owning.",
       "Lena has drawn the whole data flow, and nobody asked her to.",
-      "Tom wants AI on everything. Dev wants it banned. Marcus has until Thursday.",
+      "Tomas wants AI on everything. Dev wants it banned. Marcus has until Thursday.",
       "Asha wants the whole team scored, starting with the new staff architect.",
       "Marcus sets up his machine, and the pager fires before Java installs.",
       "Next week: a finance job that takes four hours because of one list."
@@ -82,14 +82,14 @@
       "Marcus swaps the list for a set, and the run drops to minutes. Lena, quietly, asks why a set is so much faster. Marcus realises he has to explain hashing without waving his hands.",
       "In the design review, Dev asks for a number: how will the job grow when Bengaluru trips double next quarter? Marcus stands up, picks a marker and starts writing Big-O on the whiteboard.",
       "The fare summary script builds counts with nested dicts and manual key checks. Lena's draft fix is forty lines long. Marcus suspects the standard library solved this years ago. Which tool in collections fits?",
-      "Finance sends a CSV where one city name contains a comma, and the parser splits it in two. Meanwhile Tom proposes rewriting every job in Scala. What should Marcus check before agreeing to that?"
+      "Finance sends a CSV where one city name contains a comma, and the parser splits it in two. Meanwhile Tomas proposes rewriting every job in Scala. What should Marcus check before agreeing to that?"
      ],
      "teasers": [
       "A million trips, one list of drivers, and a job that takes four hours.",
       "One line changes, the job finishes in minutes, and Lena wants to know why.",
       "Dev wants a number: what happens to the job when Bengaluru trips double?",
       "Lena's fix runs to forty lines. Marcus thinks one import replaces most of it.",
-      "A comma inside a city name breaks finance's export, and Tom wants Scala.",
+      "A comma inside a city name breaks finance's export, and Tomas wants Scala.",
       "Next week: the same pasted cleanup code turns up in nine finance scripts."
      ],
      "boss": "Weekend review: the reconciliation job's runtime history goes on screen. Dev asks Marcus to explain every slowdown by what each line costs, and to argue whether a Scala rewrite is needed at all.",
@@ -250,14 +250,14 @@
       "Parsing 200 large settlement files is pure CPU work. Marcus moves it to a process pool on the 8-core server. Lena asks why processes win exactly where threads lost.",
       "The code now mixes threads and processes in two different styles. Marcus wants one interface for both. Reviewing it, Dev asks how to swap one pool for the other in a single line.",
       "Marcus rewrites the payout calls with asyncio and gather, limited by a semaphore. One requests.get slips in and stalls every task at once. What blocks an event loop?",
-      "Running fast, the job hits the payment gateway's rate limit and gets throttled. Tom wants the dashboard step fixed next and already knows the cause. Has anyone measured where the time goes?"
+      "Running fast, the job hits the payment gateway's rate limit and gets throttled. Tomas wants the dashboard step fixed next and already knows the cause. Has anyone measured where the time goes?"
      ],
      "teasers": [
       "Threads speed up the calls, then slow down the parsing. Dev blames the GIL.",
       "Eight cores, 200 settlement files, and a process pool that finally uses them.",
       "Threads in one file, processes in another. Marcus wants one interface for both.",
       "One blocking call slips into the async code and stalls every payout.",
-      "The gateway starts throttling, and Tom is sure he knows the slow step.",
+      "The gateway starts throttling, and Tomas is sure he knows the slow step.",
       "Next week: an agent that watches month-end close overnight, on its own."
      ],
      "boss": "Weekend review: a dry run of month-end close. Marcus shows the profile before and after, explains threads, processes or asyncio for each step, and defends the token bucket that keeps the gateway happy.",
@@ -271,14 +271,14 @@
      "scenes": [
       "Asha approves an overnight agent to watch month-end close. It must run for hours, survive crashes and never redo a finished step. Dev asks what happens when it dies at 2 a.m. What lets it resume?",
       "The agent plans twelve steps, quietly skips two it cannot do, and reports success. Lena is the one who catches it. How do you build an agent that says \"I could not do this\"?",
-      "Tom proposes five agents: a planner, a checker, a fixer, a reporter and a manager to run them. Marcus is not convinced. When do multiple agents actually beat a single one?",
+      "Tomas proposes five agents: a planner, a checker, a fixer, a reporter and a manager to run them. Marcus is not convinced. When do multiple agents actually beat a single one?",
       "Marcus builds an MCP server for the lakehouse: list tables, describe a table, read-only SQL with a 200-row limit. Dev tries a DELETE through it, on purpose. What should the server do?",
       "Dev renames a column in the landing files on purpose. The on-call agent queries Bronze and Silver, finds the change, and sounds certain. Before trusting it, Marcus asks one thing: where is the evidence?",
       "The agent wants to rerun the revenue load, which cannot be undone. Lena asks whether it should just go ahead, since it is right. What must an autonomous agent do before anything irreversible?"
      ],
      "teasers": [
       "The agent skips two steps and reports success. Lena is the one who notices.",
-      "Tom wants five agents and a manager agent. Marcus wants one good one.",
+      "Tomas wants five agents and a manager agent. Marcus wants one good one.",
       "Dev tries a DELETE through Marcus's new MCP server, on purpose.",
       "Dev breaks a schema on purpose, and the agent sounds very sure of itself.",
       "The agent asks permission to rerun revenue, and the answer matters.",
@@ -325,14 +325,14 @@
      "logline": "Marcus traces the gap in trip counts to the facts themselves: which event counts, how duplicates slip in, and why money is never edited in place.",
      "scenes": [
       "Kofi counts a trip when the app fires trip_completed. Finance counts it when the payment settles. Same trip, two events, sometimes on different days. Marcus writes the five W's on the whiteboard. Which event is the fact?",
-      "Tom wants to know how long trips take from request to payment. A transaction fact cannot answer it cheaply, and Dev suggests a daily snapshot. Marcus lists the four fact types. Which one tracks a lifecycle?",
+      "Tomas wants to know how long trips take from request to payment. A transaction fact cannot answer it cheaply, and Dev suggests a daily snapshot. Marcus lists the four fact types. Which one tracks a lifecycle?",
       "Saturday's trip_completed count is 6% higher than the number of trips drivers were paid for. Lena spots the cause first: the app retries on weak networks. How do you keep exactly one row per trip, every time?",
       "Finance edits fares in place when a refund lands, so last month's totals quietly change. Lena notices the unexplained 2% revenue gap is largest in months with many refunds. How should a correction be recorded?",
       "Kofi wants city name and rider tier copied onto every trip row so his dashboard stops joining. Finance worries the copies will drift. Marcus has to decide how wide the trip fact should be, and what that costs.",
       "The ninety-day retention query reads and shuffles ninety rows per rider and takes twenty minutes. Grace says, \"Store the shape of the question, not of the event.\" Could one row per rider per month answer it?"
      ],
      "teasers": [
-      "Tom asks a lifecycle question that a plain transaction fact cannot answer.",
+      "Tomas asks a lifecycle question that a plain transaction fact cannot answer.",
       "Saturday's trip count is 6% higher than the trips drivers were paid for.",
       "A refund rewrites last month's revenue, and Lena notices a pattern in the 2% gap.",
       "Kofi asks for city and tier on every trip row. Finance says no.",
@@ -420,7 +420,7 @@
      "ep": "Festival Load",
      "logline": "Festival week puts 80% of trips in Bengaluru, and Marcus learns to read a Spark job, find the skew and fix it without buying more machines.",
      "scenes": [
-      "Festival week starts, and the nightly enrichment job joining thirty days of trips to drivers and zones runs past breakfast. Tom asks why the morning dashboard is empty. Marcus opens the Spark UI. Where does the time go?",
+      "Festival week starts, and the nightly enrichment job joining thirty days of trips to drivers and zones runs past breakfast. Tomas asks why the morning dashboard is empty. Marcus opens the Spark UI. Where does the time go?",
       "Marcus reads the physical plan and sees the trip date filter applied after the join, not at the scan. Lena wrapped it in a Python UDF last month. What does Catalyst need before it can push a filter down?",
       "The join stage writes 400 GB of shuffle for a 120 GB input. Dev asks why joining two tables moves so much data across the network. Marcus has to explain, step by step, what a shuffle really does.",
       "The zones table has two hundred rows, yet Spark shuffles it alongside thirty days of trips. Drivers holds half a million rows. Lena suggests broadcasting both. Which join strategy fits each table, and why not both?",
@@ -449,18 +449,18 @@
       "A driver moves from Pune to Bengaluru. Overnight, all his Pune trips from last year move to Bengaluru on the dashboard, and the city leads notice. Which slowly changing dimension type keeps history where it happened?",
       "Kofi writes his first dbt model and asks Marcus to review it. They agree on staging, intermediate and marts folders, and Lena adds the tests. What should a dbt test catch before the board ever sees a number?",
       "Finance's total for last Tuesday keeps changing. Trips completed at 23:58 arrive two days late, and the incremental filter never sees them. Lena proposes a lookback window. How many days, and what does it cost?",
-      "Tom wants analysts to ask questions in plain English. The text-to-SQL bot answers confidently and wrongly, because completed still has two meanings. Grace says, \"Teach the definitions before the machine.\" What must the agent see, and with which role?"
+      "Tomas wants analysts to ask questions in plain English. The text-to-SQL bot answers confidently and wrongly, because completed still has two meanings. Grace says, \"Teach the definitions before the machine.\" What must the agent see, and with which role?"
      ],
      "teasers": [
       "Two thousand trips disappear from the star schema, and a NULL is to blame.",
       "A driver moves city, and a year of his trips moves with him.",
       "Kofi writes his first dbt model and asks Marcus to review it.",
       "Finance's Tuesday total changes again. Some trips arrive two days late.",
-      "Tom wants analysts to ask the warehouse questions in plain English.",
-      "Next season: Tom wants everything real time, and the SQL bot meets the CEO."
+      "Tomas wants analysts to ask the warehouse questions in plain English.",
+      "Next season: Tomas wants everything real time, and the SQL bot meets the CEO."
      ],
      "boss": "Weekend review: a backfill meant to catch late trips double-counted a week of Finance revenue. Marcus and Kofi must show the merge on the trip key, the lookback window and why a rerun should change nothing it should not.",
-     "finale": "At the board meeting, completed and settled trips appear side by side, defined once in dbt, and both teams' numbers match. Kofi presents with Marcus. Lena's 2% gap stays in her notebook. Tom smiles: \"Now make it real time.\"",
+     "finale": "At the board meeting, completed and settled trips appear side by side, defined once in dbt, and both teams' numbers match. Kofi presents with Marcus. Lena's 2% gap stays in her notebook. Tomas smiles: \"Now make it real time.\"",
      "zoe": "Zoe asks why grown-ups argued about counting. Marcus says, \"We used one word for two different things, so we gave each its own name, and now everyone agrees.\""
     }
    ]
@@ -468,14 +468,14 @@
   {
    "season": 3,
    "title": "Real Time",
-   "logline": "Tom wants everything real time, and Marcus learns that fast data is only worth having when it is also correct, affordable and still standing when a region goes dark.",
+   "logline": "Tomas wants everything real time, and Marcus learns that fast data is only worth having when it is also correct, affordable and still standing when a region goes dark.",
    "modules": [
     {
      "mid": "a04",
      "ep": "The Bot Speaks",
      "logline": "A text-to-SQL bot embarrasses the CEO, and Marcus learns that an answer is only as good as the meaning, permissions and scores behind it.",
      "scenes": [
-      "The board numbers finally match, and Tom is already back with a new ask: a chat bot that answers any question from the warehouse. Marcus sketches the pieces on a whiteboard. Where does the model end and the data begin?",
+      "The board numbers finally match, and Tomas is already back with a new ask: a chat bot that answers any question from the warehouse. Marcus sketches the pieces on a whiteboard. Where does the model end and the data begin?",
       "In Monday's leadership meeting, the CEO asks the bot for last week's Bengaluru revenue. It answers in four seconds, confidently, and double counts every split payment. The room goes quiet. How do you make generated SQL trustworthy?",
       "Marcus reads the bot's query log. It joined trips to payments on the wrong key because \"revenue\" means three things in three tables. Kofi says the definitions already exist in dbt. Can the bot read them?",
       "Lena notices the bot connects with a service account that can drop tables. Dev asks, flatly, who approved that. Marcus wants the bot to have tools, not passwords. What would an MCP server change?",
@@ -512,10 +512,10 @@
       "Tomorrow on Meridian: one order, two refunds, and the same balance read twice.",
       "Tomorrow on Meridian: for ninety seconds, Meridian has two primaries.",
       "Tomorrow on Meridian: a cache key expires and the database falls over.",
-      "Tomorrow on Meridian: Tom wants surge prices per zone, updated every ten seconds."
+      "Tomorrow on Meridian: Tomas wants surge prices per zone, updated every ten seconds."
      ],
      "boss": "Incident review: the split-brain wallet incident. Asha wants the full chain: replica lag, the isolation level, the failed leader election and the cache stampede that followed. Explain each layer as you would to an interviewer.",
-     "finale": "The postmortem ships with Dev's name beside Marcus's. Grace reads it over Friday coffee: \"Every data tool is a storage engine with opinions.\" On Monday, Tom arrives with a slide titled Surge Pricing, Live.",
+     "finale": "The postmortem ships with Dev's name beside Marcus's. Grace reads it over Friday coffee: \"Every data tool is a storage engine with opinions.\" On Monday, Tomas arrives with a slide titled Surge Pricing, Live.",
      "zoe": "Zoe asks: \"Why did the app say two numbers?\" Marcus says: \"We keep copies of the notebook, and one copy was a few seconds behind.\""
     },
     {
@@ -523,7 +523,7 @@
      "ep": "Surge",
      "logline": "Surge pricing moves onto Kafka and Spark streaming, and Marcus learns that data which never stops brings late events, duplicates and poison messages.",
      "scenes": [
-      "Tom wants surge multipliers per zone, recalculated every ten seconds from live trip requests. The batch job runs hourly. Marcus lists what changes when data never stops: late events, no natural end. Why is streaming harder than batch?",
+      "Tomas wants surge multipliers per zone, recalculated every ten seconds from live trip requests. The batch job runs hourly. Marcus lists what changes when data never stops: late events, no natural end. Why is streaming harder than batch?",
       "Dev draws the trip-request topic: 48 partitions, keyed by zone. Lena asks why one consumer lags while the others idle. The answer is inside Kafka. How does it actually store, order and hand out messages?",
       "In testing, a rider in Koramangala is charged surge twice for one request. The consumer crashed after writing but before committing its offset. At least once or exactly once: which guarantee does pricing really need?",
       "Marcus rebuilds the surge job in Spark Structured Streaming with ten-second windows. Then a phone that lost signal uploads requests from twenty minutes ago. Should a late event change a price already shown?",
@@ -619,7 +619,7 @@
      "ep": "Lift and Shift",
      "logline": "Meridian moves its platform to AWS while Mei watches the bill triple, and launch night ends with a region going dark.",
      "scenes": [
-      "Asha gives the team one quarter to move the platform to AWS. Tom asks whether streaming moves too. Marcus maps what changes and what stays the same: tables and jobs stay, storage, access and bills change. Where is the real risk?",
+      "Asha gives the team one quarter to move the platform to AWS. Tomas asks whether streaming moves too. Marcus maps what changes and what stays the same: tables and jobs stay, storage, access and bills change. Where is the real risk?",
       "Lena copies the lake to S3, and the first Spark job crawls, listing millions of tiny files. Dev asks about versioning and lifecycle rules. How does S3 really behave underneath the familiar paths?",
       "Reviewing permissions, Marcus finds the Airflow role can read every bucket, payments included, through a wildcard. Nobody remembers why. How do you give each job only the access it needs in IAM?",
       "Should the nightly batch run on EMR, Glue or containers on ECS, and who schedules it? Dev wants clusters he understands; Mei wants nothing running at 3 p.m. What decides the compute choice?",
@@ -632,7 +632,7 @@
       "Tomorrow on Meridian: Dev wants clusters, and Mei wants nothing running at 3 p.m.",
       "Tomorrow on Meridian: two staging setups, built by hand, behave differently.",
       "Tomorrow on Meridian: Mei posts the first full AWS bill, and it is triple.",
-      "Tomorrow on Meridian: season 4 begins, and Meridian is buying a company called Lumen."
+      "Tomorrow on Meridian: season 4 begins, and Meridian is buying a company called Brightcart."
      ],
      "boss": "Incident review: the bill triples and a role is too broad. Show Mei and Asha the cost breakdown, the fixes for transfer and idle compute, the narrowed IAM roles and the Terraform that keeps them narrow.",
      "finale": "Launch night: every pipeline runs on AWS and the dashboards are green. Grace texts: \"Test the failover before you need it.\" At 1:40 a.m. the pager fires. A whole region is dark, and surge has stopped.",
@@ -643,54 +643,54 @@
   {
    "season": 4,
    "title": "The Merger",
-   "logline": "Meridian buys Lumen, and Marcus must merge two platforms, two teams and two ways of working while Lumen's architect, Victor Hale, competes for the same job.",
+   "logline": "Meridian buys Brightcart, and Marcus must merge two platforms, two teams and two ways of working while Brightcart's architect, Viktor Hale, competes for the same job.",
    "modules": [
     {
      "mid": "j01",
      "ep": "The Other Estate",
-     "logline": "Marcus inherits Lumen's Scala, JVM and Kubernetes estate and must learn to read it before he can judge it.",
+     "logline": "Marcus inherits Brightcart's Scala, JVM and Kubernetes estate and must learn to read it before he can judge it.",
      "scenes": [
-      "Launch night ends at 4 a.m.: traffic fails over to the second region and Lena closes the incident. At nine, Asha announces Meridian is buying Lumen. Victor Hale's estate runs on the JVM. Why should a Python engineer care?",
-      "Victor shares a repository and says nothing. Marcus opens it: case classes, Options, pattern matches, a for-comprehension over Futures. Lena says it looks like Python wearing armour. Can Marcus read Scala well enough to review it by Friday?",
-      "Lumen's nightly fare job is a Spark Scala pipeline of typed Datasets and a few UDFs. Victor calls it faster than anything Meridian runs. Marcus spots a map over every row. Is it really faster, or just harder to read?",
-      "At 2 a.m. the Lumen fare job dies with an OutOfMemoryError. Lena, now leading on-call, pages Marcus. The executor heap looks fine, yet the container was killed anyway. Two kinds of out-of-memory, one alert. Which one is this?",
-      "Lumen runs Spark and Flink for forty teams on one shared Kubernetes cluster. Pods sit Pending all morning while one team's job hogs the nodes. Victor shrugs: requests and limits are the teams' problem. Are they, on a platform?",
-      "In a corner of Lumen's estate sits a Hadoop cluster: YARN queues, Hive tables, eight years of ride history. Victor wants it gone in a quarter. Dev wants it left alone. What does a safe migration off Hadoop look like?"
+      "Launch night ends at 4 a.m.: traffic fails over to the second region and Lena closes the incident. At nine, Asha announces Meridian is buying Brightcart. Viktor Hale's estate runs on the JVM. Why should a Python engineer care?",
+      "Viktor shares a repository and says nothing. Marcus opens it: case classes, Options, pattern matches, a for-comprehension over Futures. Lena says it looks like Python wearing armour. Can Marcus read Scala well enough to review it by Friday?",
+      "Brightcart's nightly fare job is a Spark Scala pipeline of typed Datasets and a few UDFs. Viktor calls it faster than anything Meridian runs. Marcus spots a map over every row. Is it really faster, or just harder to read?",
+      "At 2 a.m. the Brightcart fare job dies with an OutOfMemoryError. Lena, now leading on-call, pages Marcus. The executor heap looks fine, yet the container was killed anyway. Two kinds of out-of-memory, one alert. Which one is this?",
+      "Brightcart runs Spark and Flink for forty teams on one shared Kubernetes cluster. Pods sit Pending all morning while one team's job hogs the nodes. Viktor shrugs: requests and limits are the teams' problem. Are they, on a platform?",
+      "In a corner of Brightcart's estate sits a Hadoop cluster: YARN queues, Hive tables, eight years of ride history. Viktor wants it gone in a quarter. Dev wants it left alone. What does a safe migration off Hadoop look like?"
      ],
      "teasers": [
-      "Victor sends Marcus a Scala repository with no comment and a Friday deadline.",
-      "Lumen's fare job runs in Scala, and Victor says Python could never keep up.",
+      "Viktor sends Marcus a Scala repository with no comment and a Friday deadline.",
+      "Brightcart's fare job runs in Scala, and Viktor says Python could never keep up.",
       "A 2 a.m. page: the JVM runs out of memory, but not where anyone looks.",
       "Forty teams, one Kubernetes cluster, and pods that will not schedule.",
-      "Hidden in Lumen's estate: a Hadoop cluster holding eight years of ride history.",
-      "Lumen runs Databricks, Meridian runs Snowflake, and the board wants one set of tables."
+      "Hidden in Brightcart's estate: a Hadoop cluster holding eight years of ride history.",
+      "Brightcart runs Databricks, Meridian runs Snowflake, and the board wants one set of tables."
      ],
-     "boss": "Saturday's review: the Lumen fare job that died at 2 a.m. Victor blames Meridian's data volume; Marcus suspects off-heap memory. Lena chairs. Read the Scala, the GC logs and the pod events, then decide who is right.",
-     "finale": "Marcus approves Victor's pull request with three comments, all correct. Victor replies with one word: fair. Grace says, 'Learn their stack before you judge it.' Then finance asks why the same trips table exists twice, in Databricks and Snowflake.",
+     "boss": "Saturday's review: the Brightcart fare job that died at 2 a.m. Viktor blames Meridian's data volume; Marcus suspects off-heap memory. Lena chairs. Read the Scala, the GC logs and the pod events, then decide who is right.",
+     "finale": "Marcus approves Viktor's pull request with three comments, all correct. Viktor replies with one word: fair. Grace says, 'Learn their stack before you judge it.' Then finance asks why the same trips table exists twice, in Databricks and Snowflake.",
      "zoe": "Zoe: \"What did you build today?\" Marcus: \"Nothing new; I learned to read another team's language so I can help the people who wrote in it.\""
     },
     {
      "mid": "s08",
      "ep": "Two Platforms",
-     "logline": "Lumen's Databricks and Meridian's Snowflake must serve one set of tables, and one rider's deletion request tests whether either can.",
+     "logline": "Brightcart's Databricks and Meridian's Snowflake must serve one set of tables, and one rider's deletion request tests whether either can.",
      "scenes": [
-      "Merger day thirty. Lumen's analysts live in Databricks notebooks; Meridian's finance team lives in Snowflake. Mei finds both platforms storing the same trips and billing for both. Tom asks why there are two. Is either team wrong?",
-      "Victor walks Marcus through a Delta table: Parquet files, a _delta_log of JSON commits, a checkpoint every ten. One query scans four thousand tiny files. How does Delta decide which files to skip, and why is it skipping so few?",
-      "Marcus returns the favour in Snowflake: micro-partitions, clustering, a warehouse that suspends after sixty seconds. Victor's query runs in eight seconds here, but bills credits by the second. Which engine prunes better, and which is cheaper per answer?",
-      "Asha wants one copy of trips, readable from both engines. Victor proposes Delta with UniForm; Marcus suggests Iceberg tables that Snowflake can read. Both plans dodge the same question. Who owns the writes when two engines share one table?",
+      "Merger day thirty. Brightcart's analysts live in Databricks notebooks; Meridian's finance team lives in Snowflake. Mei finds both platforms storing the same trips and billing for both. Tomas asks why there are two. Is either team wrong?",
+      "Viktor walks Marcus through a Delta table: Parquet files, a _delta_log of JSON commits, a checkpoint every ten. One query scans four thousand tiny files. How does Delta decide which files to skip, and why is it skipping so few?",
+      "Marcus returns the favour in Snowflake: micro-partitions, clustering, a warehouse that suspends after sixty seconds. Viktor's query runs in eight seconds here, but bills credits by the second. Which engine prunes better, and which is cheaper per answer?",
+      "Asha wants one copy of trips, readable from both engines. Viktor proposes Delta with UniForm; Marcus suggests Iceberg tables that Snowflake can read. Both plans dodge the same question. Who owns the writes when two engines share one table?",
       "A rider in Bengaluru emails support: delete my data, everywhere. Her trips live in Delta, in Snowflake and in three old snapshots. Legal gives thirty days. Deleting a row is easy. How does Marcus prove it is gone from history too?",
-      "Lumen tags support tickets with a language model inside a nightly batch job. It is cheap until a failure makes it retry every row. Victor wants it in Snowflake next. Should a model sit inside a pipeline, and on which platform?"
+      "Brightcart tags support tickets with a language model inside a nightly batch job. It is cheap until a failure makes it retry every row. Viktor wants it in Snowflake next. Should a model sit inside a pipeline, and on which platform?"
      ],
      "teasers": [
-      "Victor opens a Delta table's log and shows Marcus how it really works.",
+      "Viktor opens a Delta table's log and shows Marcus how it really works.",
       "Marcus answers with Snowflake micro-partitions and the same query, timed on both.",
       "Asha wants one copy of the trips table, read by two engines.",
       "A rider asks to be deleted from everywhere, and legal starts a thirty-day clock.",
       "A language model in a batch pipeline bills for every retry, row by row.",
-      "Overnight, 12% of Lumen's trip rows disappear, and every job shows green."
+      "Overnight, 12% of Brightcart's trip rows disappear, and every job shows green."
      ],
      "boss": "The weekend review: the rider deletion. Support says it is done; an auditor finds her trips in a Delta time-travel version and a Snowflake clone. Walk through vacuum, retention, clones and masking, and show where the process leaked.",
-     "finale": "One trips table, two engines, and a deletion runbook legal signs. Victor admits Snowflake's pruning surprised him. Grace says, 'Two tools is fine; two truths is not.' Then on Monday the trip count drops 12% overnight.",
+     "finale": "One trips table, two engines, and a deletion runbook legal signs. Viktor admits Snowflake's pruning surprised him. Grace says, 'Two tools is fine; two truths is not.' Then on Monday the trip count drops 12% overnight.",
      "zoe": "Zoe: \"Why do you need two computers to hold the same toys?\" Marcus: \"We don't; we are teaching both of them to share one toy box.\""
     },
     {
@@ -698,10 +698,10 @@
      "ep": "Silent Failures",
      "logline": "When 12% of rows vanish without a single failed job, Marcus and Lena build tests, contracts and write-audit-publish so failures can no longer hide.",
      "scenes": [
-      "Monday standup. Every Airflow task is green, yet the Lumen trips table holds 12% fewer rows than on Friday. Tom's dashboard already shows a dip in Chennai demand. Nothing failed. How does a pipeline lose data while reporting success?",
-      "Lena traces the loss to an inner join against a driver table that arrived late. No test checked row counts. Victor says Lumen tests in production. Marcus asks which tests would have caught this, and where they should run.",
-      "The driver table belongs to a Lumen partner team, who renamed a column last Thursday without telling anyone. Victor calls it their right. Marcus calls it a broken promise. What would a data contract between the teams actually say?",
-      "Dev proposes a rule: no table is published until it is audited. Victor worries it doubles storage and slows every job. Marcus sketches write, audit, publish on a staging branch. Can bad data wait there without consumers noticing the delay?",
+      "Monday standup. Every Airflow task is green, yet the Brightcart trips table holds 12% fewer rows than on Friday. Tomas's dashboard already shows a dip in Chennai demand. Nothing failed. How does a pipeline lose data while reporting success?",
+      "Lena traces the loss to an inner join against a driver table that arrived late. No test checked row counts. Viktor says Brightcart tests in production. Marcus asks which tests would have caught this, and where they should run.",
+      "The driver table belongs to a Brightcart partner team, who renamed a column last Thursday without telling anyone. Viktor calls it their right. Marcus calls it a broken promise. What would a data contract between the teams actually say?",
+      "Dev proposes a rule: no table is published until it is audited. Viktor worries it doubles storage and slows every job. Marcus sketches write, audit, publish on a staging branch. Can bad data wait there without consumers noticing the delay?",
       "Asha asks for one health dashboard: freshness, volume, schema and distribution. Lena adds CI that runs the tests on every pull request. Then a harmless rename passes CI and breaks a Snowflake view. What did the checks not see?",
       "At 3 a.m. Lena runs an incident herself, calm, with a clear timeline in Slack. Afterwards she asks Marcus for an on-call agent that reads Airflow failures and gathers evidence. How much should an agent diagnose before a human looks?"
      ],
@@ -714,20 +714,20 @@
       "Asha asks Marcus to design for ten times the traffic, and a lost region."
      ],
      "boss": "The weekend review: 12% of rows vanished and nobody was paged. Lena presents the timeline. Find the root cause, the missing contract, the test that should exist, and where write-audit-publish would have stopped the bad load.",
-     "finale": "The contract is signed, the audit step blocks bad loads, and Lena's postmortem is the clearest Marcus has read. Victor copies it for Lumen. Grace says, 'Make the failure loud before you make it rare.' Then Asha books a design review.",
+     "finale": "The contract is signed, the audit step blocks bad loads, and Lena's postmortem is the clearest Marcus has read. Viktor copies it for Brightcart. Grace says, 'Make the failure loud before you make it rare.' Then Asha books a design review.",
      "zoe": "Zoe: \"How do you know all the toys are there?\" Marcus: \"We count them before anyone plays, and if some are missing, the box stays shut.\""
     },
     {
      "mid": "s10",
      "ep": "Ten Times",
-     "logline": "Asha asks for a design that survives ten times the traffic and a lost region, and Marcus and Victor must design it out loud together.",
+     "logline": "Asha asks for a design that survives ten times the traffic and a lost region, and Marcus and Viktor must design it out loud together.",
      "scenes": [
-      "Asha books a design review: the combined company expects ten times the trips within two years. Marcus and Victor each get forty-five minutes at the whiteboard. Victor starts drawing at once. Marcus starts with questions. Which approach does the room trust?",
+      "Asha books a design review: the combined company expects ten times the trips within two years. Marcus and Viktor each get forty-five minutes at the whiteboard. Viktor starts drawing at once. Marcus starts with questions. Which approach does the room trust?",
       "Marcus does the arithmetic aloud: two hundred million events a day, about two thousand a second, peaks ten times higher on festival nights. Mei asks what a year of storage costs. Do his numbers hold up under her questions?",
-      "The rider app needs a trip's fare in under fifty milliseconds. Victor proposes reading straight from Delta. Dev suggests a key-value store. Kofi wants Snowflake. Three serving stores, one latency budget. Which one fits the access pattern?",
-      "Victor asks what happens when two regions accept the same payment update. Marcus reaches for quorum, idempotency keys and exactly-once. Lena asks which of those words actually stops a double charge. Can Marcus explain it plainly?",
-      "Asha calls a surprise drill: the primary region is gone, now. Traffic doubles elsewhere, Kafka lag climbs, warehouse loads stall. Marcus and Victor share one whiteboard and ten minutes. What fails first, and what do they shed?",
-      "Lena brings a pipeline an AI assistant wrote for the drill: tidy, documented, and wrong in two places. Victor finds one, Marcus the other. What mistakes does AI-written pipeline code make, and how should a reviewer hunt for them?"
+      "The rider app needs a trip's fare in under fifty milliseconds. Viktor proposes reading straight from Delta. Dev suggests a key-value store. Kofi wants Snowflake. Three serving stores, one latency budget. Which one fits the access pattern?",
+      "Viktor asks what happens when two regions accept the same payment update. Marcus reaches for quorum, idempotency keys and exactly-once. Lena asks which of those words actually stops a double charge. Can Marcus explain it plainly?",
+      "Asha calls a surprise drill: the primary region is gone, now. Traffic doubles elsewhere, Kafka lag climbs, warehouse loads stall. Marcus and Viktor share one whiteboard and ten minutes. What fails first, and what do they shed?",
+      "Lena brings a pipeline an AI assistant wrote for the drill: tidy, documented, and wrong in two places. Viktor finds one, Marcus the other. What mistakes does AI-written pipeline code make, and how should a reviewer hunt for them?"
      ],
      "teasers": [
       "Marcus estimates ten times scale aloud, and Mei asks what a year costs.",
@@ -735,58 +735,58 @@
       "Two regions accept the same payment, and Lena wants plain words.",
       "Asha switches off a region mid-review and starts a ten-minute clock.",
       "An AI-written pipeline looks perfect, and is wrong in two places.",
-      "Victor proposes that every Lumen domain team owns its own data, and Kofi objects."
+      "Viktor proposes that every Brightcart domain team owns its own data, and Kofi objects."
      ],
-     "boss": "The weekend round: the lost-region drill, replayed. Ten times the traffic, one region dark, Kafka lag rising. Clarify, estimate, draw, go deep, break it and scale it, in forty-five minutes, as Marcus and Victor did.",
-     "finale": "The drill ends with no lost payments and a one-page design both names sign. Asha calls it the first document from the merged team. Grace says, 'Draw the failure first.' Then Victor sends a memo proposing data mesh for everyone.",
+     "boss": "The weekend round: the lost-region drill, replayed. Ten times the traffic, one region dark, Kafka lag rising. Clarify, estimate, draw, go deep, break it and scale it, in forty-five minutes, as Marcus and Viktor did.",
+     "finale": "The drill ends with no lost payments and a one-page design both names sign. Asha calls it the first document from the merged team. Grace says, 'Draw the failure first.' Then Viktor sends a memo proposing data mesh for everyone.",
      "zoe": "Zoe: \"What if the big computer room loses power?\" Marcus: \"Another room in another city takes over, and we practise that before it ever happens.\""
     },
     {
      "mid": "o01",
      "ep": "Who Owns Trips",
-     "logline": "Victor's push for data mesh forces Marcus to decide which domains should own their data products and which still need a central team.",
+     "logline": "Viktor's push for data mesh forces Marcus to decide which domains should own their data products and which still need a central team.",
      "scenes": [
-      "Victor's memo lands in every inbox: dissolve the central data team and give each domain its own data. Kofi's analysts worry. Dev calls it a reorganisation dressed as architecture. Why does data mesh exist, and what problem does it solve?",
+      "Viktor's memo lands in every inbox: dissolve the central data team and give each domain its own data. Kofi's analysts worry. Dev calls it a reorganisation dressed as architecture. Why does data mesh exist, and what problem does it solve?",
       "Asha asks for one example before any reorganisation. Marcus picks the trips dataset: an owner, a contract, SLOs, a catalogue entry, a stable interface. Lena asks what makes it a product rather than a table with a nice name.",
-      "The payments domain refuses: two engineers, no data skills, a quarter-end audit coming. Victor says ownership is non-negotiable. Marcus suspects mesh is the wrong answer for some teams. How does he decide which domains are ready?",
-      "If every domain builds its own pipelines, who runs storage, access and quality checks? Marcus sketches a self-serve platform; Victor adds policies enforced as code. Dev asks who wins when a domain's rule conflicts with the central one.",
+      "The payments domain refuses: two engineers, no data skills, a quarter-end audit coming. Viktor says ownership is non-negotiable. Marcus suspects mesh is the wrong answer for some teams. How does he decide which domains are ready?",
+      "If every domain builds its own pipelines, who runs storage, access and quality checks? Marcus sketches a self-serve platform; Viktor adds policies enforced as code. Dev asks who wins when a domain's rule conflicts with the central one.",
       "The trips product launches. Three weeks later, two teams use it and five still query the old warehouse copy. Kofi will not switch until it matches his numbers. How do you move consumers off a central warehouse without breaking them?",
-      "Victor shows Lumen's earlier mesh attempt: forty data products, eleven owners who have left, nine with no consumers. He wants it done properly this time. Marcus asks which failure modes companies hit, and which ones they are already repeating."
+      "Viktor shows Brightcart's earlier mesh attempt: forty data products, eleven owners who have left, nine with no consumers. He wants it done properly this time. Marcus asks which failure modes companies hit, and which ones they are already repeating."
      ],
      "teasers": [
       "Asha wants one real data product before anyone reorganises anything.",
-      "The payments team refuses to own their data, and Victor will not budge.",
+      "The payments team refuses to own their data, and Viktor will not budge.",
       "Domains want independence, and Dev wants to know who sets the rules.",
       "The new trips product is live, and Kofi still queries the old copy.",
-      "Victor opens Lumen's graveyard of forty abandoned data products.",
+      "Viktor opens Brightcart's graveyard of forty abandoned data products.",
       "Dev's new pipeline template has been live six weeks, and no team uses it."
      ],
-     "boss": "The weekend review: Victor's mesh proposal, as Asha will hear it on Monday. Name which domains own data products, write one product spec with an owner, a contract and an SLO, and say where mesh is the wrong answer.",
-     "finale": "Three domains own products; payments stays central for now. Victor calls it half a mesh. Marcus calls it the half that works. Grace says, 'Move ownership only where someone wants it.' Then Dev's new template sits unused.",
+     "boss": "The weekend review: Viktor's mesh proposal, as Asha will hear it on Monday. Name which domains own data products, write one product spec with an owner, a contract and an SLO, and say where mesh is the wrong answer.",
+     "finale": "Three domains own products; payments stays central for now. Viktor calls it half a mesh. Marcus calls it the half that works. Grace says, 'Move ownership only where someone wants it.' Then Dev's new template sits unused.",
      "zoe": "Zoe: \"Who owns the toys?\" Marcus: \"Whoever plays with them most looks after them, and promises to keep them tidy for everyone else.\""
     },
     {
      "mid": "o02",
      "ep": "Paved Roads",
-     "logline": "Dev's pipeline templates sit unused until Marcus and Victor learn to build golden paths that teams choose rather than obey.",
+     "logline": "Dev's pipeline templates sit unused until Marcus and Viktor learn to build golden paths that teams choose rather than obey.",
      "scenes": [
-      "Dev's pipeline template has been live six weeks with zero users. Lumen teams copy Victor's old Scala scaffold instead. Dev wants to mandate the template. Marcus wants to know why nobody chose it. What is a golden path, really?",
-      "Marcus lists how teams actually ship: a new batch pipeline, a data product, a backfill, a stream. Lena times each one: eleven days for a new pipeline. Victor says pave everything. Which journey should they pave first?",
-      "Lena drafts the template: Airflow DAG, dbt models, tests, owner tag, alerts and cost labels, all on by default. Victor asks how a team escapes when it needs something different. What belongs in a template, and what stays optional?",
+      "Dev's pipeline template has been live six weeks with zero users. Brightcart teams copy Viktor's old Scala scaffold instead. Dev wants to mandate the template. Marcus wants to know why nobody chose it. What is a golden path, really?",
+      "Marcus lists how teams actually ship: a new batch pipeline, a data product, a backfill, a stream. Lena times each one: eleven days for a new pipeline. Viktor says pave everything. Which journey should they pave first?",
+      "Lena drafts the template: Airflow DAG, dbt models, tests, owner tag, alerts and cost labels, all on by default. Viktor asks how a team escapes when it needs something different. What belongs in a template, and what stays optional?",
       "Two months later, thirty pipelines built from the template run three different versions of it. A security fix reaches only nine. Dev sighs that templates always rot. How do you keep a template alive after teams copy it?",
-      "Kofi's team wants to skip platform review, which takes a week. Victor proposes a developer portal with one-click creation. Marcus proposes CI checks instead of the review meeting. Can guardrails replace a gate without letting risk through?",
-      "Asha asks whether the golden path works. Dev shows downloads. Marcus shows time to first pipeline, down from eleven days to one. Victor shows the teams that left it. Which number proves teams actually chose the road?"
+      "Kofi's team wants to skip platform review, which takes a week. Viktor proposes a developer portal with one-click creation. Marcus proposes CI checks instead of the review meeting. Can guardrails replace a gate without letting risk through?",
+      "Asha asks whether the golden path works. Dev shows downloads. Marcus shows time to first pipeline, down from eleven days to one. Viktor shows the teams that left it. Which number proves teams actually chose the road?"
      ],
      "teasers": [
       "Lena times how long a new pipeline really takes: eleven days.",
-      "The first template ships, and Victor asks where the exit is.",
+      "The first template ships, and Viktor asks where the exit is.",
       "Thirty pipelines, three template versions, and a security fix that reaches nine.",
       "Kofi wants to skip the weekly platform review, and Marcus agrees with him.",
       "Asha asks for one number that proves the golden path works.",
       "A dashboard shows rider phone numbers to four hundred people who never needed them."
      ],
      "boss": "The weekend review: nobody uses our templates. Decide which journey to pave, what the template sets by default, how it stays current, which checks move into CI, and which metric shows teams chose it.",
-     "finale": "Nine of twelve new pipelines now start from the path, and Victor's team ships one too. Grace says, 'Make the right way the easy way.' Then Lena finds rider phone numbers in a dashboard four hundred people can open.",
+     "finale": "Nine of twelve new pipelines now start from the path, and Viktor's team ships one too. Grace says, 'Make the right way the easy way.' Then Lena finds rider phone numbers in a dashboard four hundred people can open.",
      "zoe": "Zoe: \"Why don't people just do it your way?\" Marcus: \"Because we made our way the easiest one, so now most of them want to.\""
     },
     {
@@ -794,47 +794,47 @@
      "ep": "Need to Know",
      "logline": "Rider phone numbers in an open dashboard push Marcus to build governance that protects riders without slowing the teams that need the data.",
      "scenes": [
-      "Four hundred people can see rider phone numbers in a Lumen dashboard. Nobody has misused them. Legal wants every dashboard locked. Kofi says locking everything stops the business. What is governance for, if not for saying no?",
-      "Marcus asks how many columns hold personal data. Nobody knows: names, emails, drop-off coordinates, a free-text notes field. Victor suggests tagging by hand. Lena counts eleven thousand columns. Can classification run automatically, and how accurate must it be?",
-      "Support needs a rider's phone number for an open ticket, in their own city only. Roles alone would mean forty new roles. Victor proposes attributes and row rules. How do roles, attributes and policies combine without becoming unmanageable?",
-      "Data scientists need to join trips to riders without seeing who the riders are. Masking breaks the join; Victor suggests tokenisation; legal asks about pseudonymisation. Three words that sound alike. Which one protects riders and keeps the join?",
+      "Four hundred people can see rider phone numbers in a Brightcart dashboard. Nobody has misused them. Legal wants every dashboard locked. Kofi says locking everything stops the business. What is governance for, if not for saying no?",
+      "Marcus asks how many columns hold personal data. Nobody knows: names, emails, drop-off coordinates, a free-text notes field. Viktor suggests tagging by hand. Lena counts eleven thousand columns. Can classification run automatically, and how accurate must it be?",
+      "Support needs a rider's phone number for an open ticket, in their own city only. Roles alone would mean forty new roles. Viktor proposes attributes and row rules. How do roles, attributes and policies combine without becoming unmanageable?",
+      "Data scientists need to join trips to riders without seeing who the riders are. Masking breaks the join; Viktor suggests tokenisation; legal asks about pseudonymisation. Three words that sound alike. Which one protects riders and keeps the join?",
       "A column tagged personal in Snowflake loses its tag after one Delta transform. Meanwhile legal puts a hold on Chennai trips that retention rules want deleted. Which rule wins, and how does lineage carry a tag downstream?",
-      "The auditors arrive on Monday and ask for evidence: who accessed rider data, under which policy, approved by whom. Victor's team keeps policies in a wiki. Marcus keeps them in code. Which one survives an audit?"
+      "The auditors arrive on Monday and ask for evidence: who accessed rider data, under which policy, approved by whom. Viktor's team keeps policies in a wiki. Marcus keeps them in code. Which one survives an audit?"
      ],
      "teasers": [
       "Lena counts eleven thousand columns, and nobody knows which hold personal data.",
       "Support needs one phone number, and roles alone would need forty new roles.",
       "Data scientists need to join riders to trips without knowing who they are.",
       "A personal-data tag vanishes after one transform, and legal places a hold.",
-      "The auditors arrive on Monday, and Lumen's access policies live in a wiki.",
+      "The auditors arrive on Monday, and Brightcart's access policies live in a wiki.",
       "Asha asks a simple question nobody can answer: what does the platform team do?"
      ],
      "boss": "The weekend review: the phone-number dashboard. Show how the column escaped classification, which policy should have masked it, how lineage would have carried the tag, and what evidence you would hand the auditors.",
-     "finale": "The audit closes with no findings, and teams barely notice the new rules. Victor moves Lumen's wiki into code without being asked. Grace says, 'Good governance is the kind people forget is there.' Then Asha asks what the platform is for.",
+     "finale": "The audit closes with no findings, and teams barely notice the new rules. Viktor moves Brightcart's wiki into code without being asked. Grace says, 'Good governance is the kind people forget is there.' Then Asha asks what the platform is for.",
      "zoe": "Zoe: \"Why can't everyone see everything?\" Marcus: \"Some things are private, like your diary, so only people who really need them get the key.\""
     },
     {
      "mid": "o04",
      "ep": "Head of Platform",
-     "logline": "Running the merged platform as a product puts Marcus and Victor side by side on service levels, cost and adoption, until Asha must choose one of them to lead it.",
+     "logline": "Running the merged platform as a product puts Marcus and Viktor side by side on service levels, cost and adoption, until Asha must choose one of them to lead it.",
      "scenes": [
-      "Asha merges both teams into one data platform and gives Marcus and Victor a quarter to prove it is worth funding. Tom asks what the platform team actually does. Neither has a crisp answer. Who are its users, really?",
-      "Marcus proposes SLOs: trips fresh by 6 a.m. on 99.5% of days. Victor wants 99.9%. Lena asks what happens when the error budget runs out in week two. Does the team stop shipping features, or keep going?",
-      "A Snowflake outage hits during the finance close. Lena runs the incident well, but forty teams learn of it from Kofi. Victor says the fix mattered more than the updates. How should a platform team communicate during an incident?",
-      "Mei brings the bill: the merged platform costs more than both did apart, and nobody knows which team spends what. She wants showback by Friday. Victor fears it starts a turf war. What is the right unit cost for a trip?",
-      "Victor shows active users rising. Marcus shows time to a trusted number falling from five days to one. Tom brings fourteen roadmap requests and wants all of them. Which metric shows outcomes, and how do they say no?",
-      "Asha asks for one page each: how the platform team should be funded, shaped and staffed for two years. Marcus and Victor draft separately, then compare. The pages are nearly identical. So why must Asha still pick one?"
+      "Asha merges both teams into one data platform and gives Marcus and Viktor a quarter to prove it is worth funding. Tomas asks what the platform team actually does. Neither has a crisp answer. Who are its users, really?",
+      "Marcus proposes SLOs: trips fresh by 6 a.m. on 99.5% of days. Viktor wants 99.9%. Lena asks what happens when the error budget runs out in week two. Does the team stop shipping features, or keep going?",
+      "A Snowflake outage hits during the finance close. Lena runs the incident well, but forty teams learn of it from Kofi. Viktor says the fix mattered more than the updates. How should a platform team communicate during an incident?",
+      "Mei brings the bill: the merged platform costs more than both did apart, and nobody knows which team spends what. She wants showback by Friday. Viktor fears it starts a turf war. What is the right unit cost for a trip?",
+      "Viktor shows active users rising. Marcus shows time to a trusted number falling from five days to one. Tomas brings fourteen roadmap requests and wants all of them. Which metric shows outcomes, and how do they say no?",
+      "Asha asks for one page each: how the platform team should be funded, shaped and staffed for two years. Marcus and Viktor draft separately, then compare. The pages are nearly identical. So why must Asha still pick one?"
      ],
      "teasers": [
-      "Marcus and Victor argue 99.5% against 99.9%, and an error budget runs out.",
+      "Marcus and Viktor argue 99.5% against 99.9%, and an error budget runs out.",
       "Snowflake goes down during the finance close, and forty teams hear it from Kofi.",
-      "Mei wants cost showback by Friday, and Victor fears a turf war.",
-      "Tom brings fourteen roadmap requests and expects every one of them shipped.",
-      "Asha asks Marcus and Victor for one page each on the platform's future.",
+      "Mei wants cost showback by Friday, and Viktor fears a turf war.",
+      "Tomas brings fourteen roadmap requests and expects every one of them shipped.",
+      "Asha asks Marcus and Viktor for one page each on the platform's future.",
       "Asha announces her choice, and Marcus starts writing a strategy both teams can sign."
      ],
      "boss": "The weekend review: Asha's quarterly platform review. Present the SLOs and error budget, the incident communication, Mei's unit cost per trip and the adoption numbers that matter. Then defend the three roadmap items you said no to.",
-     "finale": "The quarter closes: SLOs met, costs shown per team, adoption real. Grace says, 'The job goes to whoever makes the other one better.' Asha calls Marcus and Victor in together. She has chosen one head of data platform.",
+     "finale": "The quarter closes: SLOs met, costs shown per team, adoption real. Grace says, 'The job goes to whoever makes the other one better.' Asha calls Marcus and Viktor in together. She has chosen one head of data platform.",
      "zoe": "Zoe: \"Is the platform a shop?\" Marcus: \"Sort of; our customers are the other teams, and we only win if they want to come back.\""
     }
    ]
@@ -847,13 +847,13 @@
     {
      "mid": "r01",
      "ep": "The Joint Plan",
-     "logline": "Asha refuses to pick a winner, so Marcus and Victor must write one strategy, run one migration without drama, and lead two teams neither of them manages.",
+     "logline": "Asha refuses to pick a winner, so Marcus and Viktor must write one strategy, run one migration without drama, and lead two teams neither of them manages.",
      "scenes": [
-      "Asha closes the leadership meeting: no single head of data platform. Marcus and Victor will co-write a two-year strategy for both teams, due in six weeks. Nobody hands Marcus a ticket. So what does a staff architect actually own?",
-      "Victor drafts eleven pages arguing Delta; Marcus drafts nine arguing Iceberg. Asha reads both first pages and stops. \"Neither of you tells me what you are deciding, or what it costs to do nothing.\" What belongs in a design doc that moves a decision?",
-      "The first move is Lumen's finance tables onto the shared Iceberg lake. The Finance director has one question for Marcus: \"How will I know the new revenue number is right before you switch the old one off?\"",
-      "Mei forwards the bill: running Lumen's and Meridian's pipelines side by side costs more each month than either alone. Dev adds that nobody has agreed when the revenue table must land. Who owns reliability and cost when it spans two teams?",
-      "Lumen's analytics team declines to move their dashboards. Their manager reports to Victor, not Marcus, and says so politely in the Slack thread. Marcus has no authority over them. How does he change what they do anyway?",
+      "Asha closes the leadership meeting: no single head of data platform. Marcus and Viktor will co-write a two-year strategy for both teams, due in six weeks. Nobody hands Marcus a ticket. So what does a staff architect actually own?",
+      "Viktor drafts eleven pages arguing Delta; Marcus drafts nine arguing Iceberg. Asha reads both first pages and stops. \"Neither of you tells me what you are deciding, or what it costs to do nothing.\" What belongs in a design doc that moves a decision?",
+      "The first move is Brightcart's finance tables onto the shared Iceberg lake. The Finance director has one question for Marcus: \"How will I know the new revenue number is right before you switch the old one off?\"",
+      "Mei forwards the bill: running Brightcart's and Meridian's pipelines side by side costs more each month than either alone. Dev adds that nobody has agreed when the revenue table must land. Who owns reliability and cost when it spans two teams?",
+      "Brightcart's analytics team declines to move their dashboards. Their manager reports to Viktor, not Marcus, and says so politely in the Slack thread. Marcus has no authority over them. How does he change what they do anyway?",
       "Marcus sits on the panel for a new staff engineer. The candidate says \"we\" for every result and gives no numbers. Afterwards Marcus tries to tell his own migration story out loud and stalls at the result. Could he pass this round himself?"
      ],
      "teasers": [
@@ -864,9 +864,9 @@
       "Marcus interviews a staff candidate and discovers his own stories have no numbers.",
       "The strategy is signed. Now the board wants the whole data foundation on one blueprint."
      ],
-     "boss": "Weekend review: Asha has given Marcus and Victor one hour with the leadership team. Defend the strategy, the migration plan and its double-run cost, and answer every question with a number, a trade-off and a name.",
-     "finale": "Fourteen days of matching revenue numbers, and Finance signs the cutover. Victor presents the migration at all-hands and credits Lena. Then Asha forwards a note from the board: \"Show us the full foundation, sized and priced, next month.\"",
-     "zoe": "Zoe: \"Did you and Victor stop arguing?\" Marcus: \"We wrote down what we both want, then let the numbers decide who was right.\""
+     "boss": "Weekend review: Asha has given Marcus and Viktor one hour with the leadership team. Defend the strategy, the migration plan and its double-run cost, and answer every question with a number, a trade-off and a name.",
+     "finale": "Fourteen days of matching revenue numbers, and Finance signs the cutover. Viktor presents the migration at all-hands and credits Lena. Then Asha forwards a note from the board: \"Show us the full foundation, sized and priced, next month.\"",
+     "zoe": "Zoe: \"Did you and Viktor stop arguing?\" Marcus: \"We wrote down what we both want, then let the numbers decide who was right.\""
     },
     {
      "mid": "o05",
@@ -874,15 +874,15 @@
      "logline": "Marcus turns everything Meridian has learned into one data foundation blueprint, runs it under launch-day load in the simulator, and defends it in front of the board.",
      "scenes": [
       "Marcus opens a blank blueprint and types Kafka, Iceberg, Spark. Asha deletes the line. \"Start with what the company decides, and how much data that takes.\" How many events does Meridian produce on its busiest day, and who uses them?",
-      "Victor proposes seven principles. Dev reads them and shrugs: \"Nobody would disagree with any of these.\" Marcus realises a principle that never says no settles nothing. Which few rules will end next year's arguments before they start?",
-      "The whiteboard fills layer by layer: Debezium and Kafka for ingestion, Iceberg with a REST catalog, Spark and dbt, Flink for surge, Trino for serving. Victor asks for each rejected alternative. Can Marcus defend every single box?",
+      "Viktor proposes seven principles. Dev reads them and shrugs: \"Nobody would disagree with any of these.\" Marcus realises a principle that never says no settles nothing. Which few rules will end next year's arguments before they start?",
+      "The whiteboard fills layer by layer: Debezium and Kafka for ingestion, Iceberg with a REST catalog, Spark and dbt, Flink for surge, Trino for serving. Viktor asks for each rejected alternative. Can Marcus defend every single box?",
       "Kofi wants revenue owned centrally; the Orders team wants refunds as their own product. Dev asks who approves access to rider data at two in the morning. Who owns which data product, and what does the platform enforce for them?",
       "Marcus runs the blueprint in the simulator's foundation challenge at festival peak. Kafka lag climbs past ten minutes and the run fails. Mei leans over: \"And what does the version that passes cost per year?\"",
       "Board day. Marcus has ten minutes and forty slides. A board member interrupts on slide three: \"What are you not doing in the first ninety days, and why?\" How does a staff engineer defend a blueprint under pressure?"
      ],
      "teasers": [
-      "Victor writes seven principles, and Dev says none of them would ever say no.",
-      "One whiteboard, eight layers, and Victor wants the rejected option for every box.",
+      "Viktor writes seven principles, and Dev says none of them would ever say no.",
+      "One whiteboard, eight layers, and Viktor wants the rejected option for every box.",
       "Kofi and the Orders team both claim revenue. Somebody has to own it.",
       "The simulator turns Diwali traffic on the blueprint, and Kafka starts falling behind.",
       "Ten minutes in front of the board, and the first question is about what he left out.",
@@ -897,18 +897,18 @@
      "ep": "On Site",
      "logline": "At Swiftline Logistics, Marcus learns to find the real problem behind a request, ship something useful in a day, and stay calm when a customer says his numbers are wrong.",
      "scenes": [
-      "Swiftline's operations director opens the meeting: \"We need a dashboard of every delivery, by Friday.\" Tom is already nodding. Marcus keeps his laptop closed. What decision will this dashboard change, and who will look at it?",
+      "Swiftline's operations director opens the meeting: \"We need a dashboard of every delivery, by Friday.\" Tomas is already nodding. Marcus keeps his laptop closed. What decision will this dashboard change, and who will look at it?",
       "The real question surfaces: why are Swiftline's deliveries running late? The director wants one answer. Marcus draws the stages on the whiteboard, order placed to delivered. Where does lateness actually come from, and how would he prove it?",
       "Marcus has one day and a read-only copy of Swiftline's order database. Lena finds the stage timestamps are stored in three time zones. What is the smallest thing worth building today, on their real, messy data?",
       "The director replies to the chart: \"Your late rate is 18%. Our operations report says 11%. Your dashboard is wrong.\" She cannot say more. Marcus has five minutes before her next call. Which number is right?",
-      "Swiftline wants to test a new promised delivery time in two cities. Tom wants results in three days. Halfway through, the split shows 53 to 47 instead of 50 to 50. Can anyone trust this experiment?",
+      "Swiftline wants to test a new promised delivery time in two cities. Tomas wants results in three days. Halfway through, the split shows 53 to 47 instead of 50 to 50. Can anyone trust this experiment?",
       "Swiftline's lead engineer hands Marcus an unfamiliar pipeline in their repository, with a coding assistant open beside it. \"Tell me what this does and where it breaks.\" Marcus has not written a line of it. Where does he start?"
      ],
      "teasers": [
       "The customer asked for a dashboard. The real question is why deliveries are late.",
       "One day, one user, one decision, and timestamps in three time zones.",
       "Swiftline's director says 18% is wrong, because her own report says 11%.",
-      "A planned 50/50 experiment comes back 53/47, and Tom wants to ship anyway.",
+      "A planned 50/50 experiment comes back 53/47, and Tomas wants to ship anyway.",
       "Marcus is handed someone else's pipeline and an AI assistant, and asked where it breaks.",
       "A recruiter from Hyperion calls with one question: are you open to a staff role?"
      ],
@@ -925,7 +925,7 @@
       "Round two: Ines, coding. A shared editor, a text file and a request to count words in Spark with flatMap and reduceByKey, then a window query for consecutive months. Twenty-five minutes. Can Marcus think aloud and type at once?",
       "Round three: Sam, system design. \"Design the data platform for a delivery company growing ten times in two years.\" Marcus recognises the problem. Sam pushes at minute twelve: \"What breaks first at peak?\" Can he size it out loud?",
       "Round four: Priya, data modelling and product sense. Model trips, drivers and cancellations for a ride-sharing app, then pick a north star metric and its guardrails. Priya asks which table answers \"completed trips\". Will Marcus define it before he draws?",
-      "Round five: Ravi, behavioural. \"Tell me about influencing a team you had no authority over.\" Marcus starts with Lumen's dashboards. Ravi digs three levels deep: what did you do, what did it change, and how was that measured?",
+      "Round five: Ravi, behavioural. \"Tell me about influencing a team you had no authority over.\" Marcus starts with Brightcart's dashboards. Ravi digs three levels deep: what did you do, what did it change, and how was that measured?",
       "Final round: Elena, the hiring manager, asks for a project deep dive. Marcus shares five minutes on the Meridian foundation, a live failure and its fix. Elena asks: \"What would you build next, and why there?\" What does he say?"
      ],
      "teasers": [
