@@ -16,16 +16,32 @@
     "Asha agrees to a second demo on one condition: show her the score first. Marcus has fifty real questions from finance and no way to grade the answers. How do you evaluate a data agent before it meets the CEO again?"
    ],
    "teasers": [
-    "Tomorrow on Meridian: the CEO asks the bot a simple question, in front of everyone.",
-    "Tomorrow on Meridian: the query log shows exactly why \"revenue\" broke the bot.",
-    "Tomorrow on Meridian: Lena finds the bot's database account, and what it is allowed to drop.",
-    "Tomorrow on Meridian: forty thousand complaints a week, and nobody has time to read them.",
-    "Tomorrow on Meridian: Asha sets one condition for a second demo.",
-    "Tomorrow on Meridian: a driver sees two different wallet balances a minute apart."
+    "The CEO asks the bot a simple question in front of everyone. How do you make its SQL trustworthy?",
+    "The query log shows why \"revenue\" broke the bot. Can the bot read your metric definitions?",
+    "Lena finds what the bot's database account may drop. What would an MCP server change?",
+    "Forty thousand complaints a week and nobody reads them. What does each row cost to classify?",
+    "Asha sets one condition for a second demo. How do you evaluate a data agent first?",
+    "Next week: a driver sees two wallet balances a minute apart. Which reads must see their own writes?"
    ],
    "boss": "Incident review: the CEO's double-counted revenue answer. Walk Asha through the guarded SQL, the semantic layer, the read-only tool and the eval score that would have caught it before the meeting.",
    "finale": "The second demo scores 46 out of 50, and the bot says \"I don't know\" for the rest. Grace's advice: \"Never ship an answer you cannot grade.\" That night, two Postgres replicas disagree about a driver's balance.",
-   "zoe": "Zoe asks: \"Can your robot answer questions?\" Marcus says: \"Only if we teach it what our words mean and check its homework before anyone sees it.\""
+   "zoe": "Zoe asks: \"Can your robot answer questions?\" Marcus says: \"Only if we teach it what our words mean and check its homework before anyone sees it.\"",
+   "recall": [
+    "Recall: Where does the model end and the data begin?",
+    "Recall: How do you make generated SQL trustworthy?",
+    "Recall: Can the bot read them?",
+    "Recall: What would an MCP server change?",
+    "Recall: What does each row cost?",
+    "Recall: How do you evaluate a data agent before it meets the CEO again?"
+   ],
+   "to": [
+    "#/learn/a04/chapter",
+    "#/py/ya042",
+    "#/py/ya044",
+    "#/py/ya046",
+    "#/quiz/a04",
+    "#/learn/a04/practice"
+   ]
   },
   {
    "mid": "d01",
@@ -40,16 +56,32 @@
     "As the fix rolls out, the driver dashboard's cache key expires and every request hits Postgres at once. The database falls over for four minutes. What should sit between users and the database?"
    ],
    "teasers": [
-    "Tomorrow on Meridian: an eleven-second gap explains the driver's two balances.",
-    "Tomorrow on Meridian: Bengaluru crushes one shard while thirteen others sit idle.",
-    "Tomorrow on Meridian: one order, two refunds, and the same balance read twice.",
-    "Tomorrow on Meridian: for ninety seconds, Meridian has two primaries.",
-    "Tomorrow on Meridian: a cache key expires and the database falls over.",
-    "Tomorrow on Meridian: Tom wants surge prices per zone, updated every ten seconds."
+    "An eleven-second gap explains two balances. Which reads must see their own writes?",
+    "Bengaluru crushes one shard while thirteen idle. How do you spread data and keep what belongs together?",
+    "One order, two refunds, one balance read twice. Would a stricter isolation level have stopped it?",
+    "For ninety seconds Meridian has two primaries. How does a cluster agree on one leader?",
+    "A cache key expires and the database falls over. What should sit between users and the database?",
+    "Next week: surge prices per zone every ten seconds. How does Kafka store and hand out messages?"
    ],
    "boss": "Incident review: the split-brain wallet incident. Asha wants the full chain: replica lag, the isolation level, the failed leader election and the cache stampede that followed. Explain each layer as you would to an interviewer.",
    "finale": "The postmortem ships with Dev's name beside Marcus's. Grace reads it over Friday coffee: \"Every data tool is a storage engine with opinions.\" On Monday, Tom arrives with a slide titled Surge Pricing, Live.",
-   "zoe": "Zoe asks: \"Why did the app say two numbers?\" Marcus says: \"We keep copies of the notebook, and one copy was a few seconds behind.\""
+   "zoe": "Zoe asks: \"Why did the app say two numbers?\" Marcus says: \"We keep copies of the notebook, and one copy was a few seconds behind.\"",
+   "recall": [
+    "Recall: Why do payments live in Postgres while ride events sit in an LSM-based store?",
+    "Recall: Which reads must see their own writes?",
+    "Recall: How do you spread data without losing what belongs together?",
+    "Recall: Would a stricter isolation level have stopped it, and at what price?",
+    "Recall: How does a cluster agree on one leader, and whose clock wins?",
+    "Recall: What should sit between users and the database?"
+   ],
+   "to": [
+    "#/learn/d01/chapter",
+    "#/py/yd012",
+    "#/py/yd014",
+    "#/py/yd015",
+    "#/design/d01",
+    "#/sim/sc/stampede"
+   ]
   },
   {
    "mid": "s05",
@@ -64,16 +96,32 @@
     "Friday, 11 p.m.: Nadia leaves for a night shift, Zoe is asleep, and Marcus is on call. The pager fires: one malformed message, consumer lag climbing past two million. Retry it, skip it, or park it?"
    ],
    "teasers": [
-    "Tomorrow on Meridian: one consumer drowns while its neighbours sit idle.",
-    "Tomorrow on Meridian: a rider pays surge twice for one ride.",
-    "Tomorrow on Meridian: twenty-minute-old requests arrive from a phone that lost signal.",
-    "Tomorrow on Meridian: someone renames a field, and surge drops to 1.0 everywhere.",
-    "Tomorrow on Meridian: a night shift, a sleeping child, and a pager that will not stop.",
-    "Tomorrow on Meridian: refunds in Postgres and the warehouse disagree, and Lena remembers the 2% gap."
+    "One consumer drowns while its neighbours idle. How does Kafka hand out messages?",
+    "A rider pays surge twice for one ride. Which delivery guarantee does pricing really need?",
+    "Twenty-minute-old requests arrive from a phone that lost signal. Should a late event change a shown price?",
+    "Someone renames a field and surge drops to 1.0 everywhere. How should a stream handle schema change?",
+    "A night shift, a sleeping child and a pager that will not stop. Retry it, skip it or park it?",
+    "Next week: refunds in Postgres and the warehouse disagree. How does log-based capture work?"
    ],
    "boss": "Incident review: the poison message and the two-million-message lag. Dev wants the timeline, the dead-letter design, the guarantee pricing truly needs, and whether Flink, Spark or Kafka Streams should own surge next year.",
    "finale": "Surge runs live in all fourteen cities, with a dead-letter topic and a lag alert. Nadia asks him to swap his next on-call week. Grace: \"Choose the weakest guarantee the business can live with.\" Then finance flags mismatched refunds.",
-   "zoe": "Zoe asks: \"What is a stream?\" Marcus says: \"A conveyor belt of little notes that never stops, so we add them up as they pass.\""
+   "zoe": "Zoe asks: \"What is a stream?\" Marcus says: \"A conveyor belt of little notes that never stops, so we add them up as they pass.\"",
+   "recall": [
+    "Recall: Why is streaming harder than batch?",
+    "Recall: How does it actually store, order and hand out messages?",
+    "Recall: At least once or exactly once: which guarantee does pricing really need?",
+    "Recall: Should a late event change a price already shown?",
+    "Recall: How should a stream handle a schema that changes?",
+    "Recall: Retry it, skip it, or park it?"
+   ],
+   "to": [
+    "#/learn/s05/chapter",
+    "#/sim/sc/partitions",
+    "#/learn/s05/practice",
+    "#/step/s05/fix",
+    "#/step/s05/ai",
+    "#/interview/s05"
+   ]
   },
   {
    "mid": "s06",
@@ -88,16 +136,32 @@
     "The last causes are dull and real: refunds issued weeks after a trip, and a replication slot that once filled the disk. Lena proposes an agent that drafts the backfill. Who approves it before it runs?"
    ],
    "teasers": [
-    "Tomorrow on Meridian: the nightly export misses every change made after the cut-off.",
-    "Tomorrow on Meridian: Debezium arrives, and Lena asks what a delete looks like in a lake.",
-    "Tomorrow on Meridian: Kofi wants refunds in seconds, and Flink SQL makes it look easy.",
-    "Tomorrow on Meridian: the pipeline runs, and the totals are still 0.3% apart.",
-    "Tomorrow on Meridian: the last clue to the 2% gap is weeks old.",
-    "Tomorrow on Meridian: at 3 a.m., Lena cannot find the runbook that matters."
+    "The nightly export misses every change after the cut-off. How does log-based capture work?",
+    "Debezium arrives and Lena asks what a delete looks like in a lake. How do you apply changes?",
+    "Kofi wants refunds in seconds through Flink SQL. Is shorter also correct when updates arrive out of order?",
+    "The pipeline runs and the totals are still 0.3% apart. What do you count, and where?",
+    "The last clue to the 2% gap is weeks old. Who approves a fix before it runs?",
+    "Next week: at 3 a.m. the right runbook is nowhere. How should documents be chunked?"
    ],
    "boss": "Incident review: the database and the warehouse disagree. Present the whole 2% story to Asha and finance: missed deletes, late refunds, the full slot, the CDC design and the daily reconciliation that now guards it.",
    "finale": "For the first time since Marcus joined, the month closes with a difference of zero. Lena presents the fix herself. Grace: \"Trust is a reconciliation you run every day.\" Then the on-call channel asks for help again.",
-   "zoe": "Zoe asks: \"Did you find the lost money?\" Marcus says: \"It was never lost; we missed some changes, so now we write down every change as it happens.\""
+   "zoe": "Zoe asks: \"Did you find the lost money?\" Marcus says: \"It was never lost; we missed some changes, so now we write down every change as it happens.\"",
+   "recall": [
+    "Recall: The nightly export copies rows, but does it copy every change?",
+    "Recall: How does log-based capture work?",
+    "Recall: How do you apply changes to a table?",
+    "Recall: But is shorter also correct when updates for one order arrive out of order?",
+    "Recall: What do you count, and where?",
+    "Recall: Who approves it before it runs?"
+   ],
+   "to": [
+    "#/learn/s06/chapter",
+    "#/py/ys063",
+    "#/learn/s06/practice",
+    "#/step/s06/platform",
+    "#/step/s06/ai",
+    "#/interview/s06"
+   ]
   },
   {
    "mid": "a05",
@@ -112,16 +176,32 @@
     "Dev asks the question that matters: how often is the bot right? Marcus has anecdotes, not a number. How do you measure retrieval and answers separately, and when should the bot say it does not know?"
    ],
    "teasers": [
-    "Tomorrow on Meridian: the bot answers with half a command and the wrong heading.",
-    "Tomorrow on Meridian: Mei asks why forty thousand chunks need their own database.",
-    "Tomorrow on Meridian: the runbook changed last week, and the bot did not notice.",
-    "Tomorrow on Meridian: two years of postmortems, full of phone numbers.",
-    "Tomorrow on Meridian: Dev asks how often the bot is right, and wants a number.",
-    "Tomorrow on Meridian: the AI bill jumps fourfold, and the bot takes nine seconds to answer."
+    "The bot answers with half a command and the wrong heading. How should runbooks be chunked?",
+    "Mei asks why forty thousand chunks need their own database. Where should the vectors live?",
+    "A runbook changed last week and the bot did not notice. How do you keep an index fresh?",
+    "Two years of postmortems, full of phone numbers. Can extraction leave personal data behind?",
+    "Dev wants a number for how often the bot is right. How do you measure retrieval and answers apart?",
+    "Next week: the AI bill jumps fourfold. Why does the first word take so long?"
    ],
    "boss": "Incident review: the on-call bot that gave a stale command at 3 a.m. Show Dev the pipeline: chunking, the fresh index, redaction, citations, the abstain rule and the retrieval score that would have flagged it.",
    "finale": "The runbook bot now cites its sources and abstains when unsure, and Lena's next shift ends early. Grace: \"Measure retrieval before you touch the prompt.\" Then Mei forwards the model invoice with one word: why?",
-   "zoe": "Zoe asks: \"How does the robot know?\" Marcus says: \"It finds the right page in our instruction books first, reads it out, and says when it is not sure.\""
+   "zoe": "Zoe asks: \"How does the robot know?\" Marcus says: \"It finds the right page in our instruction books first, reads it out, and says when it is not sure.\"",
+   "recall": [
+    "Recall: Why?",
+    "Recall: How should documents be chunked and embedded?",
+    "Recall: Where should the vectors live?",
+    "Recall: How do you keep an index fresh?",
+    "Recall: Can a model extract the useful parts as ETL without carrying personal data along?",
+    "Recall: How do you measure retrieval and answers separately, and when should the bot say it does not know?"
+   ],
+   "to": [
+    "#/learn/a05/chapter",
+    "#/py/ya052",
+    "#/py/ya054",
+    "#/py/ya057",
+    "#/sim/sc/rag",
+    "#/learn/a05/practice"
+   ]
   },
   {
    "mid": "a06",
@@ -136,16 +216,32 @@
     "A rider types a card number into the support bot, and it appears in a trace log. Asha wants guardrails before the next launch. Where in the request path do the checks belong?"
    ],
    "teasers": [
-    "Tomorrow on Meridian: a nine-second answer, and most of it before the first word.",
-    "Tomorrow on Meridian: Mei prices every request, and three teams look expensive.",
-    "Tomorrow on Meridian: five teams, three providers, five keys and one retry loop.",
-    "Tomorrow on Meridian: the cheaper model saves 70%, but are the answers still right?",
-    "Tomorrow on Meridian: a card number shows up in a log where it should not.",
-    "Tomorrow on Meridian: Asha signs off on the move to AWS, and Mei starts a new spreadsheet."
+    "A nine-second answer, mostly before the first word. What is the model server doing meanwhile?",
+    "Mei prices every request and three teams look expensive. Which changes cut cost without hurting answers?",
+    "Five teams, three providers, five keys and one retry loop. What must a gateway own?",
+    "The cheaper model saves 70%. How do you know the answers are still right?",
+    "A card number shows up in a log. Where in the request path do the checks belong?",
+    "Next week: the move to AWS begins. How does S3 behave under the familiar paths?"
    ],
    "boss": "Incident review: the fourfold AI bill and the nine-second bot. Walk Mei and Asha through the traces, the cost per request, the gateway's limits and caching, the eval gate and the guardrails that close the gaps.",
    "finale": "The bill falls below last quarter's and the bot answers in under two seconds. Grace: \"Put a price on every request before anyone asks.\" Then Asha announces the data centre lease ends in March: Meridian moves to AWS.",
-   "zoe": "Zoe asks: \"Why is the robot expensive?\" Marcus says: \"Every word it reads costs a little, so we taught it to read less and use a smaller brain for easy jobs.\""
+   "zoe": "Zoe asks: \"Why is the robot expensive?\" Marcus says: \"Every word it reads costs a little, so we taught it to read less and use a smaller brain for easy jobs.\"",
+   "recall": [
+    "Recall: What changes once AI is in production?",
+    "Recall: What is the model server doing while the user waits?",
+    "Recall: Which changes make it cheaper and faster without making it worse?",
+    "Recall: What must the gateway own?",
+    "Recall: How do you keep score live?",
+    "Recall: Where in the request path do the checks belong?"
+   ],
+   "to": [
+    "#/learn/a06/chapter",
+    "#/py/ya063",
+    "#/py/ya067",
+    "#/py/ya0610",
+    "#/learn/a06/practice",
+    "#/interview/a06"
+   ]
   },
   {
    "mid": "s07",
@@ -160,16 +256,32 @@
     "Three weeks in, Mei posts the bill: triple the old data centre. Cross-zone transfer, idle clusters, a NAT gateway carrying every S3 read. Her question is short: who pays for this, and why?"
    ],
    "teasers": [
-    "Tomorrow on Meridian: the first Spark job on S3 spends its time listing files.",
-    "Tomorrow on Meridian: a wildcard role that can read the payments bucket.",
-    "Tomorrow on Meridian: Dev wants clusters, and Mei wants nothing running at 3 p.m.",
-    "Tomorrow on Meridian: two staging setups, built by hand, behave differently.",
-    "Tomorrow on Meridian: Mei posts the first full AWS bill, and it is triple.",
-    "Tomorrow on Meridian: season 4 begins, and Meridian is buying a company called Lumen."
+    "The first Spark job on S3 spends its time listing files. How does S3 really behave?",
+    "A wildcard role can read the payments bucket. How does each job get only what it needs?",
+    "Dev wants clusters and Mei wants nothing running at 3 p.m. What decides the compute choice?",
+    "Two hand-built staging setups behave differently. Can the batch path live as reviewed code?",
+    "The first full AWS bill is triple the estimate. Who pays for it, and why?",
+    "Next season: Meridian is buying Lumen. Can Marcus read Victor's Scala by Friday?"
    ],
    "boss": "Incident review: the bill triples and a role is too broad. Show Mei and Asha the cost breakdown, the fixes for transfer and idle compute, the narrowed IAM roles and the Terraform that keeps them narrow.",
    "finale": "Launch night: every pipeline runs on AWS and the dashboards are green. Grace texts: \"Test the failover before you need it.\" At 1:40 a.m. the pager fires. A whole region is dark, and surge has stopped.",
-   "zoe": "Zoe asks: \"What is the cloud?\" Marcus says: \"A huge computer room we rent by the minute, so we must remember to switch the lights off.\""
+   "zoe": "Zoe asks: \"What is the cloud?\" Marcus says: \"A huge computer room we rent by the minute, so we must remember to switch the lights off.\"",
+   "recall": [
+    "Recall: Where is the real risk?",
+    "Recall: How does S3 really behave underneath the familiar paths?",
+    "Recall: How do you give each job only the access it needs in IAM?",
+    "Recall: What decides the compute choice?",
+    "Recall: Can the whole batch path live as reviewed code?",
+    "Recall: Her question is short: who pays for this, and why?"
+   ],
+   "to": [
+    "#/learn/s07/chapter",
+    "#/py/ys073",
+    "#/learn/s07/practice",
+    "#/step/s07/fix",
+    "#/step/s07/ai",
+    "#/interview/s07"
+   ]
   }
  ]
 }

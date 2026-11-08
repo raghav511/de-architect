@@ -16,16 +16,32 @@
     "Kofi wants ninety days of rider activity without scanning ninety days of trips. Then the fraud team asks which drivers share phones. Over Friday coffee Grace says, \"Pick the shape the question needs.\" Which shape fits each question?"
    ],
    "teasers": [
-    "Kofi brings a whiteboard sketch of one giant table, and Finance hates it.",
-    "A single rider_id turns out to belong to two different people.",
-    "A Plus upgrade in the middle of March splits revenue between two teams.",
-    "Lena backfills two years of history, and one rider ends up with fourteen versions.",
-    "Kofi wants ninety days of activity without paying for ninety days of scans.",
-    "Next week: both teams count trips, but they are counting different events."
+    "Kofi sketches one giant table and Finance hates it. Should the city sit in a star or a snowflake?",
+    "One rider_id belongs to two different people. Which key should the warehouse own?",
+    "A Plus upgrade mid-March splits revenue between two teams. Which changes deserve history?",
+    "A two-year backfill gives one rider fourteen versions. How do daily snapshots become clean SCD2 rows?",
+    "Kofi wants ninety days of activity without ninety days of scans. Which shape fits the question?",
+    "Next week: both teams count trips, but different events. Which fact type tracks a lifecycle?"
    ],
    "boss": "Weekend review: last quarter's Plus revenue changed overnight because Kofi's dashboard joins every trip to the rider's current tier. Marcus must explain the grain, the keys and the SCD type that would have stopped it.",
    "finale": "The trip dimensions are agreed, with surrogate keys and SCD2 on rider tier. Kofi shakes on it, then adds, \"The real fight is the facts.\" He is right: the two counts still differ by 13,500.",
-   "zoe": "Zoe asks, \"What did you build today?\" Marcus says, \"A rule for what one line in our big list means, so everyone counts the same thing.\""
+   "zoe": "Zoe asks, \"What did you build today?\" Marcus says, \"A rule for what one line in our big list means, so everyone counts the same thing.\"",
+   "recall": [
+    "Recall: What should one row actually mean?",
+    "Recall: Should the city sit in a star or a snowflake?",
+    "Recall: Marcus asks her a question she is nervous to answer: which key should the warehouse own?",
+    "Recall: Which attribute changes deserve history, and which can simply be overwritten?",
+    "Recall: How do daily snapshots become clean SCD2 rows?",
+    "Recall: Which shape fits each question?"
+   ],
+   "to": [
+    "#/learn/m01/chapter",
+    "#/sql/qm012",
+    "#/sql/qm014",
+    "#/sql/qm015",
+    "#/design/m01",
+    "#/interview/m01"
+   ]
   },
   {
    "mid": "m02",
@@ -40,16 +56,32 @@
     "The ninety-day retention query reads and shuffles ninety rows per rider and takes twenty minutes. Grace says, \"Store the shape of the question, not of the event.\" Could one row per rider per month answer it?"
    ],
    "teasers": [
-    "Tom asks a lifecycle question that a plain transaction fact cannot answer.",
-    "Saturday's trip count is 6% higher than the trips drivers were paid for.",
-    "A refund rewrites last month's revenue, and Lena notices a pattern in the 2% gap.",
-    "Kofi asks for city and tier on every trip row. Finance says no.",
-    "A twenty-minute retention query meets an idea: a whole month in one row.",
-    "Next week: Kofi wants his wide table everywhere, and Asha asks what each layer is for."
+    "Tom asks a lifecycle question a transaction fact cannot answer. Which fact type can?",
+    "Saturday's trip count is 6% above trips drivers were paid for. How do you keep one row per trip?",
+    "A refund rewrites last month's revenue. How should a correction be recorded?",
+    "Kofi wants city and tier on every trip row, and Finance says no. How wide should a fact be?",
+    "A twenty-minute retention query meets an idea. Could one row per rider per month answer it?",
+    "Next week: Kofi wants his wide table everywhere. What is each layer of the platform for?"
    ],
    "boss": "Weekend review: a retry storm doubled trip_completed events on Saturday, and Kofi's dashboard celebrated a record day. Marcus must show the grain, the deduplication rule and the idempotent load that would have kept the count honest.",
    "finale": "Both teams sign off on one trip fact: one row per completed trip, deduplicated, with refunds as reversing ledger entries. Lena's 2% gap stays open. Asha asks the next question: which model belongs at each stage?",
-   "zoe": "Zoe asks why a shop receipt has a minus line. Marcus says, \"When we get money wrong, we never rub it out; we write a new line that fixes it.\""
+   "zoe": "Zoe asks why a shop receipt has a minus line. Marcus says, \"When we get money wrong, we never rub it out; we write a new line that fixes it.\"",
+   "recall": [
+    "Recall: Which event is the fact?",
+    "Recall: Which one tracks a lifecycle?",
+    "Recall: How do you keep exactly one row per trip, every time?",
+    "Recall: How should a correction be recorded?",
+    "Recall: How wide should a fact be?",
+    "Recall: Could one row per rider per month answer it?"
+   ],
+   "to": [
+    "#/learn/m02/chapter",
+    "#/sql/qm022",
+    "#/sql/qm024",
+    "#/sql/qm025",
+    "#/design/m02",
+    "#/interview/m02"
+   ]
   },
   {
    "mid": "m03",
@@ -64,16 +96,32 @@
     "A half-written trips table reaches the board dashboard for twenty minutes before the job finishes, and Kofi takes the questions. Grace says, \"Nobody should ever see your work in progress.\" How do you publish only what passed?"
    ],
    "teasers": [
-    "Marcus drafts one table that gives every platform stage its own model.",
-    "Payments renames a column overnight, and three sources must become one.",
-    "Two promos on one trip inflate Kofi's discount numbers by 9%.",
-    "The cancellation model is brilliant offline and useless in production. Why?",
-    "A half-written table reaches the board dashboard, and Kofi takes the heat.",
-    "Next week: Asha wants one trip to travel the whole platform, end to end, by Friday."
+    "One table gives every platform stage its own model. Which model goes where?",
+    "Payments renames a column, and three sources must become one. When do hubs, links and satellites pay off?",
+    "Two promos on one trip inflate discounts by 9%. How should one trip be shared between them?",
+    "The cancellation model is brilliant offline and useless live. What did it know at request time?",
+    "A half-written table reaches the board dashboard. How do you publish only what passed?",
+    "Next week: one trip must travel the whole platform by Friday. What do you build first?"
    ],
    "boss": "Weekend review: the board saw half a trips table for twenty minutes. Marcus walks through the stage map, the model chosen for each layer and the write-audit-publish gate that would have kept broken data hidden.",
    "finale": "Marcus walks Asha through every stage in forty-five minutes using a seven-step method. Kofi, quietly, backs the plan. Asha approves the map, then says, \"Now show me one trip moving through all of it, by Friday.\"",
-   "zoe": "Zoe asks why school has a coat room and a lunch room. Marcus says, \"Different rooms for different jobs, and our data needs different shapes for different jobs too.\""
+   "zoe": "Zoe asks why school has a coat room and a lunch room. Marcus says, \"Different rooms for different jobs, and our data needs different shapes for different jobs too.\"",
+   "recall": [
+    "Recall: Can one data model serve every stage?",
+    "Recall: Which goes where?",
+    "Recall: When do hubs, links and satellites pay off?",
+    "Recall: How should one trip be shared between two promos?",
+    "Recall: Marcus asks her one question: what did the model actually know at request time?",
+    "Recall: How do you publish only what passed?"
+   ],
+   "to": [
+    "#/learn/m03/chapter",
+    "#/sql/qm032",
+    "#/sql/qm033",
+    "#/learn/m03/practice",
+    "#/design/m03",
+    "#/interview/m03"
+   ]
   },
   {
    "mid": "s01",
@@ -88,16 +136,32 @@
     "Kofi asks how many trips Meridian did yesterday, and Marcus asks five questions back before writing any SQL. Then Lena reruns the 09:00 hour by hand after a fix. What happens when a job runs twice?"
    ],
    "teasers": [
-    "Dev refuses to touch a Hadoop cluster whose NameNode has no backup.",
-    "Lena's Kafka consumer crashes, restarts, and forty trips simply disappear.",
-    "Lena's first Spark job brings down the driver, and she almost hides it.",
-    "Dev opens forty Airflow DAGs with no owners, and one has failed since March.",
-    "Kofi asks a simple question, and Lena reruns an hour by hand.",
-    "Next week: Finance wants eighteen months of trips queryable in under ten seconds."
+    "Dev refuses to touch a NameNode with no backup. What does object storage change?",
+    "A Kafka consumer restarts and forty trips vanish. Where should a consumer start after a crash?",
+    "Lena's first Spark job brings down the driver. Who should do the counting?",
+    "Forty ownerless DAGs, one failing since March. What does a run for 09:00 actually cover?",
+    "Lena reruns an hour by hand for Kofi. What happens when a job runs twice?",
+    "Next week: eighteen months of trips, queryable in under ten seconds. Which file format fits analytics?"
    ],
    "boss": "Weekend review: Bengaluru shows twice as many completed trips for the 09:00 hour as the app does, because a rerun appended instead of overwriting. Marcus must make every hop idempotent and explain it to Kofi.",
    "finale": "One ride event travels from generator to Kafka, Spark, object storage and SQL, scheduled by Airflow, and a small LLM script explains failed runs to Dev. It is thin, but it walks. Then Finance tries an eighteen-month query.",
-   "zoe": "Zoe asks why Marcus built something badly on purpose. He says, \"I built a tiny version of every part first, so I know they all fit together.\""
+   "zoe": "Zoe asks why Marcus built something badly on purpose. He says, \"I built a tiny version of every part first, so I know they all fit together.\"",
+   "recall": [
+    "Recall: Why build every layer badly before any layer well?",
+    "Recall: What breaks if the NameNode dies, and what does object storage change?",
+    "Recall: Where should a consumer start after a crash?",
+    "Recall: Who should do the counting: the driver or the executors?",
+    "Recall: What does a run for 09:00 actually cover?",
+    "Recall: What happens when a job runs twice?"
+   ],
+   "to": [
+    "#/learn/s01/chapter",
+    "#/py/ys013",
+    "#/learn/s01/lab",
+    "#/step/s01/fix",
+    "#/step/s01/ai",
+    "#/sim/sc/skeleton"
+   ]
   },
   {
    "mid": "s02",
@@ -112,16 +176,32 @@
     "After a week of hourly writes, the Finance query has gone from two seconds to forty. The table now holds ten thousand tiny files. Grace says, \"Every table needs a janitor.\" What should compaction run, and how often?"
    ],
    "teasers": [
-    "Lena asks which file format wins, and Marcus answers with a question.",
-    "One partitioning choice creates four million directories overnight.",
-    "Yesterday's trips vanish from Kofi's dashboard, though every file is still there.",
-    "Marcus proposes Iceberg, and Dev wants to know what it actually fixes.",
-    "A two-second Finance query now takes forty, and nobody changed the SQL.",
-    "Next week: festival season starts, and Bengaluru brings 80% of the trips."
+    "Lena asks which file format wins. Which one fits analytics, and why?",
+    "One partitioning choice creates four million directories. Which column makes a good partition?",
+    "Yesterday's trips vanish though every file is still there. Why does a Hive table trust directories?",
+    "Marcus proposes Iceberg and Dev asks what it fixes. Can a table be a tree of metadata?",
+    "A two-second query now takes forty and nobody changed the SQL. What should compaction run?",
+    "Next week: Bengaluru brings 80% of festival trips. Where does Catalyst push a filter down?"
    ],
    "boss": "Weekend review: the Finance query slowed twentyfold under ten thousand tiny files, and a renamed fare column turned a week of fares into NULLs. Marcus must explain compaction, Iceberg column ids and the DAG that keeps the table healthy.",
    "finale": "Eighteen months of trips answer in under ten seconds, and Dev's maintenance DAG compacts the table every night. Failure alerts now arrive as structured fields, not prose. Then the nightly enrichment job warns: festival week starts Monday.",
-   "zoe": "Zoe asks why Marcus tidied files all day. He says, \"Finding one big book on a shelf is quicker than finding a thousand loose pages.\""
+   "zoe": "Zoe asks why Marcus tidied files all day. He says, \"Finding one big book on a shelf is quicker than finding a thousand loose pages.\"",
+   "recall": [
+    "Recall: How do you read fewer bytes?",
+    "Recall: Which fits analytics?",
+    "Recall: Which column makes a good partition, and when is bucketing better?",
+    "Recall: Why does a Hive table trust directories nobody validates?",
+    "Recall: Can a table really be a tree of metadata?",
+    "Recall: What should compaction run, and how often?"
+   ],
+   "to": [
+    "#/learn/s02/chapter",
+    "#/py/ys023",
+    "#/learn/s02/practice",
+    "#/step/s02/fix",
+    "#/step/s02/ai",
+    "#/interview/s02"
+   ]
   },
   {
    "mid": "s03",
@@ -136,16 +216,32 @@
     "Adaptive query execution splits the skewed partition, but executors now spill to disk and one dies out of memory. Mei asks why the Spark bill doubled. Grace says, \"Fix the data before you buy machines.\" How big should an executor be?"
    ],
    "teasers": [
-    "Marcus reads the plan and finds the date filter in the wrong place.",
-    "A 120 GB job writes 400 GB of shuffle, and Dev wants to know why.",
-    "A two-hundred-row table is being shuffled with thirty days of trips.",
-    "One task runs for fifty minutes. It holds every Bengaluru trip.",
-    "The skew is fixed, an executor dies anyway, and Mei arrives with the bill.",
-    "Next week: Finance's total for last Tuesday keeps changing, and nobody touched it."
+    "The date filter sits in the wrong place in the plan. What does Catalyst need to push it down?",
+    "A 120 GB job writes 400 GB of shuffle. What does a shuffle really do?",
+    "A 200-row table is shuffled with thirty days of trips. Which join strategy fits each table?",
+    "One task runs fifty minutes holding every Bengaluru trip. How do you split a key with 80% of rows?",
+    "The skew is fixed and an executor dies anyway. How big should an executor be?",
+    "Next week: last Tuesday's total keeps changing. Why would a NULL lose two thousand trips?"
    ],
    "boss": "Weekend review: on festival night the enrichment job went from twenty minutes to three hours, then failed at 40%. Bengaluru held 80% of the rows. Marcus must present three fixes, in order, with the evidence for each.",
    "finale": "The job is back to twenty minutes in festival week, and Marcus's agent now reads plans and event logs to explain slow stages. Mei approves the smaller cluster. Then Finance's number for last Tuesday changes again.",
-   "zoe": "Zoe asks why one checkout queue was so long. Marcus says, \"Everyone from the biggest city stood in one line, so we opened more tills just for them.\""
+   "zoe": "Zoe asks why one checkout queue was so long. Marcus says, \"Everyone from the biggest city stood in one line, so we opened more tills just for them.\"",
+   "recall": [
+    "Recall: Where does the time go?",
+    "Recall: What does Catalyst need before it can push a filter down?",
+    "Recall: What does a shuffle really do?",
+    "Recall: Which join strategy fits each table, and why not both?",
+    "Recall: How do you split a key with 80% of the rows?",
+    "Recall: How big should an executor be?"
+   ],
+   "to": [
+    "#/learn/s03/chapter",
+    "#/py/ys033",
+    "#/learn/s03/practice",
+    "#/step/s03/fix",
+    "#/step/s03/ai",
+    "#/interview/s03"
+   ]
   },
   {
    "mid": "s04",
@@ -160,16 +256,32 @@
     "Tom wants analysts to ask questions in plain English. The text-to-SQL bot answers confidently and wrongly, because completed still has two meanings. Grace says, \"Teach the definitions before the machine.\" What must the agent see, and with which role?"
    ],
    "teasers": [
-    "Two thousand trips disappear from the star schema, and a NULL is to blame.",
-    "A driver moves city, and a year of his trips moves with him.",
-    "Kofi writes his first dbt model and asks Marcus to review it.",
-    "Finance's Tuesday total changes again. Some trips arrive two days late.",
-    "Tom wants analysts to ask the warehouse questions in plain English.",
-    "Next season: Tom wants everything real time, and the SQL bot meets the CEO."
+    "Two thousand trips vanish from the star because of a NULL. What should a dimension offer for unknown?",
+    "A driver moves city and a year of his trips moves too. Which SCD type keeps history in place?",
+    "Kofi's first dbt model is up for review. What should a test catch before the board sees it?",
+    "Some trips arrive two days late and Tuesday changes again. How many days do you reprocess?",
+    "Tom wants analysts to ask the warehouse in plain English. What must the agent see?",
+    "Next season: the SQL bot meets the CEO. How do you make generated SQL trustworthy?"
    ],
    "boss": "Weekend review: a backfill meant to catch late trips double-counted a week of Finance revenue. Marcus and Kofi must show the merge on the trip key, the lookback window and why a rerun should change nothing it should not.",
-   "finale": "At the board meeting, completed and settled trips appear side by side, defined once in dbt, and both teams' numbers match. Kofi presents with Marcus. Lena's 2% gap stays in her notebook. Tom smiles: \"Now make it real time.\"",
-   "zoe": "Zoe asks why grown-ups argued about counting. Marcus says, \"We used one word for two different things, so we gave each its own name, and now everyone agrees.\""
+   "finale": "At the board meeting, completed and settled trips appear side by side, defined once in dbt, and both teams' numbers match. Kofi presents with Marcus. Lena's 2% gap stays in her notebook. Tom smiles: \"Now make it real time.\" Another entry for the log.",
+   "zoe": "Zoe asks why grown-ups argued about counting. Marcus says, \"We used one word for two different things, so we gave each its own name, and now everyone agrees.\"",
+   "recall": [
+    "Recall: What does completed actually mean at Meridian?",
+    "Recall: What should a dimension offer for unknown?",
+    "Recall: Which slowly changing dimension type keeps history where it happened?",
+    "Recall: What should a dbt test catch before the board ever sees a number?",
+    "Recall: How many days, and what does it cost?",
+    "Recall: What must the agent see, and with which role?"
+   ],
+   "to": [
+    "#/learn/s04/chapter",
+    "#/learn/s04/practice",
+    "#/step/s04/fix",
+    "#/step/s04/lead",
+    "#/design/s04",
+    "#/interview/s04"
+   ]
   }
  ]
 }

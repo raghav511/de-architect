@@ -16,16 +16,32 @@
     "Marcus spends the afternoon on setup: Docker, Python 3.11, Java 17 for Spark, a fresh repository called meridian-platform. At 6 p.m., before Java finishes installing, his first pager alert arrives. Which script failed?"
    ],
    "teasers": [
-    "Dev opens the platform map, and it has four layers nobody admits owning.",
-    "Lena has drawn the whole data flow, and nobody asked her to.",
-    "Tom wants AI on everything. Dev wants it banned. Marcus has until Thursday.",
-    "Asha wants the whole team scored, starting with the new staff architect.",
-    "Marcus sets up his machine, and the pager fires before Java installs.",
-    "Next week: a finance job that takes four hours because of one list."
+    "Dev's platform map has four layers nobody admits owning. What should the platform become?",
+    "Lena drew the whole data flow unasked. What turns pipelines into a foundation?",
+    "Tom wants AI on everything and Dev wants it banned. Which two rules can both accept?",
+    "Asha wants the whole team scored, the new architect first. How do you measure without making people defensive?",
+    "The pager fires before Java even installs. Which script failed?",
+    "Next week: why does one list make a finance job take four hours?"
    ],
    "boss": "Friday review: Asha asks Marcus for his first-week diagnosis of the platform. Where it stands, what he measured, which scores surprised him, and what he will not touch yet. Every claim needs a number behind it.",
    "finale": "Marcus has a baseline, a working machine and a map of the mess. Over Friday coffee Grace tells him, \"Measure before you hold opinions.\" On Monday, finance's nightly scripts become his problem.",
-   "zoe": "Zoe: \"What did you build today?\" Marcus: \"Nothing yet. I checked how strong everyone is before we lift anything heavy.\""
+   "zoe": "Zoe: \"What did you build today?\" Marcus: \"Nothing yet. I checked how strong everyone is before we lift anything heavy.\"",
+   "recall": [
+    "Recall: Where does a new architect start when everything looks broken?",
+    "Recall: What should the platform become?",
+    "Recall: What turns a pile of pipelines into a data foundation other teams can build on?",
+    "Recall: Which two rules can both accept?",
+    "Recall: How do you measure people without making them defensive?",
+    "Recall: Which script failed?"
+   ],
+   "to": [
+    "#/learn/s00/chapter",
+    "#/quiz/s00",
+    "#/py/y002",
+    "#/py/y003",
+    "#/py/y005",
+    "#/learn/s00/lab"
+   ]
   },
   {
    "mid": "p01",
@@ -40,16 +56,32 @@
     "Finance sends a CSV where one city name contains a comma, and the parser splits it in two. Meanwhile Tom proposes rewriting every job in Scala. What should Marcus check before agreeing to that?"
    ],
    "teasers": [
-    "A million trips, one list of drivers, and a job that takes four hours.",
-    "One line changes, the job finishes in minutes, and Lena wants to know why.",
-    "Dev wants a number: what happens to the job when Bengaluru trips double?",
-    "Lena's fix runs to forty lines. Marcus thinks one import replaces most of it.",
-    "A comma inside a city name breaks finance's export, and Tom wants Scala.",
-    "Next week: the same pasted cleanup code turns up in nine finance scripts."
+    "A million trips checked against a list of drivers takes four hours. What does one `in` cost?",
+    "One line changes and the job takes minutes. Why is a set so much faster?",
+    "Bengaluru trips double next quarter. How does the job's running time grow?",
+    "Lena's fix runs to forty lines. Which collections tool replaces most of it?",
+    "A comma inside a city name breaks the export. What should Marcus check before any rewrite?",
+    "Next week: nine scripts paste the same cleanup code. Can a function travel like data?"
    ],
    "boss": "Weekend review: the reconciliation job's runtime history goes on screen. Dev asks Marcus to explain every slowdown by what each line costs, and to argue whether a Scala rewrite is needed at all.",
    "finale": "The 3 a.m. job now finishes before midnight, and Python stays. Grace says, \"Cheap fixes first, rewrites last.\" Then Marcus finds the same pasted cleanup code in nine different finance scripts.",
-   "zoe": "Zoe: \"Why was your computer slow?\" Marcus: \"It checked every name on a long list, one by one. I gave it labelled boxes instead.\""
+   "zoe": "Zoe: \"Why was your computer slow?\" Marcus: \"It checked every name on a long list, one by one. I gave it labelled boxes instead.\"",
+   "recall": [
+    "Recall: Why did nobody notice?",
+    "Recall: What does a single `in` on a list actually cost?",
+    "Recall: Why is a set so much faster?",
+    "Recall: In the design review, Dev asks for a number: how will the job grow when Bengaluru trips double next quarter?",
+    "Recall: Which tool in collections fits?",
+    "Recall: What should Marcus check before agreeing to that?"
+   ],
+   "to": [
+    "#/learn/p01/chapter",
+    "#/py/y012",
+    "#/py/y013",
+    "#/py/y015",
+    "#/learn/p01/practice",
+    "#/interview/p01"
+   ]
   },
   {
    "mid": "p02",
@@ -64,16 +96,32 @@
     "The payment gateway call fails one night in fifty, and every script has its own retry loop. Marcus wants one retry decorator for all of them. What actually runs when the module is imported?"
    ],
    "teasers": [
-    "A refund script counts twice, and the culprit is an empty list.",
-    "Lena hits an UnboundLocalError and, for the first time, asks for help.",
-    "Dev rejects a pull request with one sentence about 3 a.m.",
-    "Finance wants payouts sorted two ways at once, and the old script gets it wrong.",
-    "Nine retry loops, nine slightly different bugs, and one decorator to replace them.",
-    "Next week: the CEO watches a demo and asks for \"AI agents\" by quarter end."
+    "A refund script counts twice because of an empty list. Why does Python keep it?",
+    "Lena hits UnboundLocalError on her counter. What is Python's scope rule doing?",
+    "Dev cannot read a triple-nested comprehension at 3 a.m. When does a comprehension stop helping?",
+    "Payouts sorted by city, then highest fare first, in one sort. What should the key return?",
+    "Nine retry loops, nine different bugs. What runs when a decorator's module is imported?",
+    "Next week: the CEO wants AI agents by quarter end. What is an agent, really?"
    ],
    "boss": "Weekend review: the nine scripts are now one shared module. Dev reads it line by line, asking which functions are pure, which keep state, and what the retry decorator needs before production.",
    "finale": "Finance runs on one module, every step pure and tested, and Lena explains closures back to Marcus. Then Asha forwards a note from the CEO: \"Where are our AI agents?\"",
-   "zoe": "Zoe: \"What did you build today?\" Marcus: \"A helper that tries again when the phone line is busy, so nine programs can share it.\""
+   "zoe": "Zoe: \"What did you build today?\" Marcus: \"A helper that tries again when the phone line is busy, so nine programs can share it.\"",
+   "recall": [
+    "Recall: Can a function be a value?",
+    "Recall: Why does Python keep it around?",
+    "Recall: What is Python's scope rule doing?",
+    "Recall: When does a comprehension stop helping?",
+    "Recall: What should one key function return?",
+    "Recall: What actually runs when the module is imported?"
+   ],
+   "to": [
+    "#/learn/p02/chapter",
+    "#/py/y022",
+    "#/py/y023",
+    "#/py/y025",
+    "#/learn/p02/practice",
+    "#/interview/p02"
+   ]
   },
   {
    "mid": "a01",
@@ -88,16 +136,32 @@
     "Marcus wants one daily chore automated by Sunday: the morning check of finance job statuses. It must run without him. What happens when it breaks and nobody is watching?"
    ],
    "teasers": [
-    "Marcus's first agent calls the same tool forty times and never stops.",
-    "The agent says done. The checks disagree. Dev says, \"So it lies.\"",
-    "Lena gives the agent everything it could possibly need, and it gets worse.",
-    "Mei brings a printed bill, and one line costs more than a laptop.",
-    "Marcus tries to automate his own morning check before Sunday.",
-    "Next week: a 40 GB month-end file meets a server with 16 GB of memory."
+    "The first agent calls one tool forty times and never stops. What stop conditions does every loop need?",
+    "The agent says done while the checks still fail. Which part of the harness should refuse it?",
+    "Lena gives the agent everything, and it gets worse. What belongs in an agent's context?",
+    "One test day cost more than a laptop. Why is prompt caching saving nothing?",
+    "Marcus automates his morning check. What happens when it breaks and nobody is watching?",
+    "Next week: a 40 GB file meets 16 GB of memory. What does a for loop ask for?"
    ],
    "boss": "Weekend review: Asha wants the agent demo with its full trace on screen, every step, tool call and credit spent. Mei and Dev both attend, and both will ask whether this needs to be an agent at all.",
    "finale": "The morning check now runs itself, cheaply, with a trace. Grace says, \"An agent is a loop you can stop.\" Then month-end data lands: a 40 GB export on a 16 GB machine.",
-   "zoe": "Zoe: \"Is a robot helping you?\" Marcus: \"Sort of. It tries, checks its work, and stops when it is finished or out of pocket money.\""
+   "zoe": "Zoe: \"Is a robot helping you?\" Marcus: \"Sort of. It tries, checks its work, and stops when it is finished or out of pocket money.\"",
+   "recall": [
+    "Recall: Asha asks Marcus for one page: what is an agent, really, and what is just a script that calls a model?",
+    "Recall: What are the stop conditions every loop needs?",
+    "Recall: Which part of the harness should refuse to accept the word done?",
+    "Recall: What belongs in an agent's context, and what should stay out?",
+    "Recall: Why is prompt caching saving them nothing?",
+    "Recall: What happens when it breaks and nobody is watching?"
+   ],
+   "to": [
+    "#/learn/a01/chapter",
+    "#/learn/a01/lab",
+    "#/design/a01",
+    "#/quiz/a01",
+    "#/interview/a01",
+    "#/learn/a01/practice"
+   ]
   },
   {
    "mid": "p03",
@@ -112,16 +176,32 @@
     "Warehouse writes go one row at a time and take hours. Marcus wants batches of 5,000. Lena's first version quietly drops the final partial chunk. How many rows went missing, and where?"
    ],
    "teasers": [
-    "Rows flow through, memory stays flat, and Lena wants to know where they wait.",
-    "The new job writes an empty summary, and the tests still pass.",
-    "Four small generators, one pipeline. Dev asks when the work actually runs.",
-    "Bengaluru appears three times in one summary, and groupby is not broken.",
-    "Batches of 5,000 speed up the load, but the last few hundred rows vanish.",
-    "Next week: fares stored as floats lose a paisa on every refund."
+    "Memory stays flat as rows stream through. Where do rows wait while a generator pauses?",
+    "The summary is empty and the tests still pass. Why is the second pass silent?",
+    "Four small generators make one pipeline. When does any of the work actually run?",
+    "Bengaluru appears three times in one summary. What does groupby assume about its input?",
+    "Batches of 5,000 speed up the load. Where did the last few hundred rows go?",
+    "Next week: refunds drift by a paisa a night. Should money ever be a float?"
    ],
    "boss": "Weekend review: Dev replays the month-end failure. Marcus walks through the generator pipeline, shows memory staying flat on the 40 GB file, and answers how he would process any file bigger than RAM.",
    "finale": "The 40 GB export runs in constant memory, and every batch lands. Lena presents the fix at standup, the first time she has spoken there. Next problem: refunds that drift by a few paise.",
-   "zoe": "Zoe: \"How did a giant file fit in a small computer?\" Marcus: \"It didn't. I read it one page at a time, like a bedtime story.\""
+   "zoe": "Zoe: \"How did a giant file fit in a small computer?\" Marcus: \"It didn't. I read it one page at a time, like a bedtime story.\"",
+   "recall": [
+    "Recall: What does a for loop actually ask a file for?",
+    "Recall: What is a generator, really?",
+    "Recall: Why is the second pass silent?",
+    "Recall: In either one, when does any work actually happen?",
+    "Recall: What does groupby assume about its input?",
+    "Recall: How many rows went missing, and where?"
+   ],
+   "to": [
+    "#/learn/p03/chapter",
+    "#/py/y032",
+    "#/py/y034",
+    "#/py/y037",
+    "#/learn/p03/practice",
+    "#/interview/p03"
+   ]
   },
   {
    "mid": "p04",
@@ -136,16 +216,32 @@
     "The validation code is a five-level inheritance tree nobody dares to touch. Adding one rule means editing three classes. Should rules be inherited, or should they be composed?"
    ],
    "teasers": [
-    "A Trip class rejects a negative fare, and finance asks what else it catches.",
-    "Lena proposes a Money type, and Dev asks one hard question: why frozen?",
-    "A script writes trip.fare directly, skipping every check Marcus added.",
-    "Rupees plus dirhams should be an error. Right now it returns a number.",
-    "Adding one validation rule means editing three classes. Marcus wants it to mean zero.",
-    "Next week: the finance agent learns to grade its own answers, and grades too kindly."
+    "A Trip class rejects a negative fare. What belongs in __init__, and what does not?",
+    "Lena proposes a Money type. What breaks when money can change after it is created?",
+    "A script sets trip.fare directly and skips every check. How can a property guard it?",
+    "Rupees plus dirhams quietly returns a number. Which special methods make Money refuse?",
+    "One new rule means editing three classes. Should validation rules be inherited or composed?",
+    "Next week: the finance agent grades its own answers. Who checks the grader?"
    ],
    "boss": "Weekend review: a mock design round. Dev plays interviewer and asks Marcus to model trips, money and validation rules on the whiteboard, defending every choice between class, dict and dataclass.",
    "finale": "Refunds now match to the paisa, and new rules plug in without edits. Grace says, \"Make wrong states impossible to build.\" Then the CEO asks whether the agent can check its own work.",
-   "zoe": "Zoe: \"Why do you count money in tiny coins?\" Marcus: \"Tiny coins never get rounded off, so nobody loses a single one.\""
+   "zoe": "Zoe: \"Why do you count money in tiny coins?\" Marcus: \"Tiny coins never get rounded off, so nobody loses a single one.\"",
+   "recall": [
+    "Recall: Marcus asks the first design question: does this need a class, a dict, or just a function?",
+    "Recall: What belongs in __init__, and what does not?",
+    "Recall: What breaks when money can change after it is created?",
+    "Recall: How can a property guard it without changing the callers?",
+    "Recall: Which special methods does it need?",
+    "Recall: Should rules be inherited, or should they be composed?"
+   ],
+   "to": [
+    "#/learn/p04/chapter",
+    "#/py/y042",
+    "#/py/y043",
+    "#/py/y045",
+    "#/learn/p04/practice",
+    "#/interview/p04"
+   ]
   },
   {
    "mid": "a02",
@@ -160,16 +256,32 @@
     "The agent keeps repeating last week's mistake on currency rows, so Marcus adds a lessons memory. Dev asks the harder question: what may an agent fix on its own, and what must it ask about first?"
    ],
    "teasers": [
-    "Three graders, one dataset, and the model judge passes every single answer.",
-    "The agent critiques itself and comes back more confident, not more correct.",
-    "The tests pass on iteration six. Dev reads the diff and frowns.",
-    "Train accuracy jumps to 92%. Marcus checks the held-out set before celebrating.",
-    "The agent repeats last week's mistake, and Dev asks who sets its limits.",
-    "Next week: the reconciliation job crashes at 3 a.m., and the bug is Marcus's."
+    "Three graders, one dataset, and the model judge passes everything. Which grader lies least?",
+    "Self-critique makes the agent more confident, not more correct. What is it missing?",
+    "The tests pass on iteration six and Dev frowns at the diff. What should have stopped the agent?",
+    "Training accuracy jumps to 92%. What will the held-out set say?",
+    "The agent repeats last week's mistake. What may it fix alone, and what must it ask about?",
+    "Next week: the 3 a.m. crash is Marcus's own bug. Will he say so first?"
    ],
    "boss": "Weekend review: Asha wants proof before the CEO demo. Marcus presents the eval set, held-out scores, the self-fixing trace and the guardrails. One question decides it: how do you evaluate this before shipping?",
    "finale": "The agent explains failures with scores nobody can inflate, and the CEO demo goes well. Then the reconciliation job crashes at 3 a.m., and the change that broke it is Marcus's.",
-   "zoe": "Zoe: \"How do you know your helper is right?\" Marcus: \"I test it on questions I already know, and keep some it never practises.\""
+   "zoe": "Zoe: \"How do you know your helper is right?\" Marcus: \"I test it on questions I already know, and keep some it never practises.\"",
+   "recall": [
+    "Recall: What must exist before the agent does?",
+    "Recall: Which grader lies the least?",
+    "Recall: What does self-critique need that it is missing here?",
+    "Recall: What should have stopped it?",
+    "Recall: What actually happened?",
+    "Recall: Dev asks the harder question: what may an agent fix on its own, and what must it ask about first?"
+   ],
+   "to": [
+    "#/learn/a02/chapter",
+    "#/learn/a02/lab",
+    "#/design/a02",
+    "#/quiz/a02",
+    "#/interview/a02",
+    "#/learn/a02/practice"
+   ]
   },
   {
    "mid": "p05",
@@ -184,16 +296,32 @@
     "The postmortem goes out under Marcus's name, blameless and specific, his own mistake listed first. Dev reads it twice, then asks for help packaging his scripts so others can install them. Where should config live?"
    ],
    "teasers": [
-    "A retry locks the finance API account, and Dev wants to know why it retried.",
-    "The crash leaves a half-open transaction and a temp file behind.",
-    "The only log line says \"error happened\". Dev spent forty minutes guessing.",
-    "Marcus writes a test for every failure, and none of them has to wait.",
-    "The postmortem goes out under Marcus's name, with his own mistake listed first.",
-    "Next week: 5,000 payout calls, each waiting 200 ms, and a closing deadline."
+    "A retry locks the finance API account. Which errors should ever be retried?",
+    "The crash left a transaction open and a temp file behind. What does a context manager guarantee?",
+    "The only log line says \"error happened\". What should it have told Dev?",
+    "Every failure gets a test, and none of them waits. How do you test code that sleeps?",
+    "Dev asks for help packaging his scripts. Where should their config live?",
+    "Next week: 5,000 payout calls at 200 ms each. Is the job computing or waiting?"
    ],
    "boss": "Weekend review: the incident postmortem, run in the open. Marcus walks the timeline with his own mistake first, then each fix: narrow exceptions, safe retries, cleanup, logs and tests. Dev asks how to handle bad records.",
    "finale": "Dev adds Marcus to the on-call rotation and says only, \"Good postmortem.\" Grace says, \"Own the mistake before anyone finds it.\" Next: month-end close, and payouts that take six hours.",
-   "zoe": "Zoe: \"Did you get in trouble?\" Marcus: \"I broke something, so I wrote down exactly how, and now a test stops anyone breaking it again.\""
+   "zoe": "Zoe: \"Did you get in trouble?\" Marcus: \"I broke something, so I wrote down exactly how, and now a test stops anyone breaking it again.\"",
+   "recall": [
+    "Recall: Will Marcus say it first?",
+    "Recall: Which errors should ever be retried?",
+    "Recall: What does a context manager guarantee?",
+    "Recall: What should a log line have told them?",
+    "Recall: How do you test time?",
+    "Recall: Where should config live?"
+   ],
+   "to": [
+    "#/learn/p05/chapter",
+    "#/py/y052",
+    "#/py/y053",
+    "#/py/y055",
+    "#/learn/p05/practice",
+    "#/interview/p05"
+   ]
   },
   {
    "mid": "p06",
@@ -208,16 +336,32 @@
     "Running fast, the job hits the payment gateway's rate limit and gets throttled. Tom wants the dashboard step fixed next and already knows the cause. Has anyone measured where the time goes?"
    ],
    "teasers": [
-    "Threads speed up the calls, then slow down the parsing. Dev blames the GIL.",
-    "Eight cores, 200 settlement files, and a process pool that finally uses them.",
-    "Threads in one file, processes in another. Marcus wants one interface for both.",
-    "One blocking call slips into the async code and stalls every payout.",
-    "The gateway starts throttling, and Tom is sure he knows the slow step.",
-    "Next week: an agent that watches month-end close overnight, on its own."
+    "Threads speed up the calls, then slow down the parsing. What does the GIL actually prevent?",
+    "Eight cores and 200 settlement files. Why do processes win where threads lost?",
+    "Threads in one file, processes in another. How do you swap pools in one line?",
+    "One blocking call stalls every payout at once. What blocks an event loop?",
+    "The gateway throttles and Tom already knows the slow step. Has anyone measured?",
+    "Next week: an agent watches month-end close overnight. What lets it resume after a crash?"
    ],
    "boss": "Weekend review: a dry run of month-end close. Marcus shows the profile before and after, explains threads, processes or asyncio for each step, and defends the token bucket that keeps the gateway happy.",
    "finale": "Payouts now take twelve minutes instead of six hours. Grace says, \"Profile first; your guess is usually wrong.\" Asha approves the next step: an agent that watches month-end close overnight.",
-   "zoe": "Zoe: \"Why was it slow?\" Marcus: \"It waited for one answer before asking the next question. Now it asks lots of friends at once.\""
+   "zoe": "Zoe: \"Why was it slow?\" Marcus: \"It waited for one answer before asking the next question. Now it asks lots of friends at once.\"",
+   "recall": [
+    "Recall: Is the job computing, or just waiting?",
+    "Recall: What does the GIL actually prevent?",
+    "Recall: Why do processes win where threads lost?",
+    "Recall: How do you swap pools in one line?",
+    "Recall: What blocks an event loop?",
+    "Recall: Has anyone measured where the time goes?"
+   ],
+   "to": [
+    "#/learn/p06/chapter",
+    "#/py/y062",
+    "#/py/y064",
+    "#/py/y067",
+    "#/learn/p06/practice",
+    "#/interview/p06"
+   ]
   },
   {
    "mid": "a03",
@@ -232,16 +376,32 @@
     "The agent wants to rerun the revenue load, which cannot be undone. Lena asks whether it should just go ahead, since it is right. What must an autonomous agent do before anything irreversible?"
    ],
    "teasers": [
-    "The agent skips two steps and reports success. Lena is the one who notices.",
-    "Tom wants five agents and a manager agent. Marcus wants one good one.",
-    "Dev tries a DELETE through Marcus's new MCP server, on purpose.",
-    "Dev breaks a schema on purpose, and the agent sounds very sure of itself.",
-    "The agent asks permission to rerun revenue, and the answer matters.",
-    "Next season: two dashboards, two numbers for completed trips, and one board meeting."
+    "The agent skips two steps and reports success. How do you make it say it could not?",
+    "Tom wants five agents and a manager agent. When do several agents beat one?",
+    "Dev tries a DELETE through the new MCP server on purpose. What should the server do?",
+    "Dev breaks a schema and the agent sounds very sure. Where is its evidence?",
+    "The agent asks to rerun revenue, which cannot be undone. What must happen first?",
+    "Next season: two dashboards, two numbers for completed trips. Which one is right?"
    ],
    "boss": "Weekend review: the close dry run, end to end. Asha wants the agent's report with evidence, its checkpoints and every action it asked permission for. Then the interview question: tell me about an agent that runs without a human.",
-   "finale": "Month-end close lands on time, every check green. Then Lena, staying late, reconciles revenue against payments by hand. Revenue is 2% short of what was paid, and nobody can explain why.",
-   "zoe": "Zoe: \"What does your helper do at night?\" Marcus: \"It checks our numbers while we sleep, writes down what it saw, and wakes me before touching anything important.\""
+   "finale": "Month-end close lands on time, every check green. Then Lena, staying late, reconciles revenue against payments by hand. Revenue is 2% short of what was paid, and nobody can explain why. Marcus writes it in the decision log Grace asked him to keep.",
+   "zoe": "Zoe: \"What does your helper do at night?\" Marcus: \"It checks our numbers while we sleep, writes down what it saw, and wakes me before touching anything important.\"",
+   "recall": [
+    "Recall: What lets it resume?",
+    "Recall: ?",
+    "Recall: When do multiple agents actually beat a single one?",
+    "Recall: What should the server do?",
+    "Recall: Before trusting it, Marcus asks one thing: where is the evidence?",
+    "Recall: What must an autonomous agent do before anything irreversible?"
+   ],
+   "to": [
+    "#/learn/a03/chapter",
+    "#/learn/a03/lab",
+    "#/design/a03",
+    "#/quiz/a03",
+    "#/interview/a03",
+    "#/learn/a03/practice"
+   ]
   }
  ]
 }

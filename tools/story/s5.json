@@ -13,19 +13,35 @@
     "The first move is Lumen's finance tables onto the shared Iceberg lake. The Finance director has one question for Marcus: \"How will I know the new revenue number is right before you switch the old one off?\"",
     "Mei forwards the bill: running Lumen's and Meridian's pipelines side by side costs more each month than either alone. Dev adds that nobody has agreed when the revenue table must land. Who owns reliability and cost when it spans two teams?",
     "Lumen's analytics team declines to move their dashboards. Their manager reports to Victor, not Marcus, and says so politely in the Slack thread. Marcus has no authority over them. How does he change what they do anyway?",
-    "Marcus sits on the panel for a new staff engineer. The candidate says \"we\" for every result and gives no numbers. Afterwards Marcus tries to tell his own migration story out loud and stalls at the result. Could he pass this round himself?"
+    "Marcus sits on a staff engineer panel; Lena shadows her first interview. The candidate says \"we\" for every result and gives no numbers. Afterwards Marcus tries to tell his own migration story out loud and stalls at the result. Could he pass this round himself?"
    ],
    "teasers": [
-    "Two architects, two drafts, and a CTO who reads only the first page.",
-    "Finance wants proof the numbers match before anything is switched off.",
-    "Mei finds the price of running two platforms at once, line by line.",
-    "A team that does not report to Marcus says no to his migration.",
-    "Marcus interviews a staff candidate and discovers his own stories have no numbers.",
-    "The strategy is signed. Now the board wants the whole data foundation on one blueprint."
+    "Two drafts and a CTO who reads only page one. What makes a design doc move a decision?",
+    "Finance wants proof before anything is switched off. How do you show the new revenue number is right?",
+    "Mei prices two platforms running at once. Who owns cost when it spans two teams?",
+    "A team outside Marcus's reporting line says no. How does he change what they do anyway?",
+    "Marcus interviews a staff candidate and hears his own stories lack numbers. Could he pass this round?",
+    "Next week: the board wants one blueprint. Which few principles will end next year's arguments?"
    ],
    "boss": "Weekend review: Asha has given Marcus and Victor one hour with the leadership team. Defend the strategy, the migration plan and its double-run cost, and answer every question with a number, a trade-off and a name.",
-   "finale": "Fourteen days of matching revenue numbers, and Finance signs the cutover. Victor presents the migration at all-hands and credits Lena. Then Asha forwards a note from the board: \"Show us the full foundation, sized and priced, next month.\"",
-   "zoe": "Zoe: \"Did you and Victor stop arguing?\" Marcus: \"We wrote down what we both want, then let the numbers decide who was right.\""
+   "finale": "Fourteen days of matching revenue numbers, and Finance signs the cutover. Marcus and Victor co-sign the migration memo. Victor presents it at all-hands and credits Lena. Then Asha forwards a note from the board: \"Show us the full foundation, sized and priced, next month.\"",
+   "zoe": "Zoe: \"Did you and Victor stop arguing?\" Marcus: \"We wrote down what we both want, then let the numbers decide who was right.\"",
+   "recall": [
+    "Recall: So what does a staff architect actually own?",
+    "Recall: What belongs in a design doc that moves a decision?",
+    "Recall: How will I know the new revenue number is right before you switch the old one off?",
+    "Recall: Who owns reliability and cost when it spans two teams?",
+    "Recall: How does he change what they do anyway?",
+    "Recall: Could he pass this round himself?"
+   ],
+   "to": [
+    "#/learn/r01/chapter",
+    "#/sql/qr011",
+    "#/design/r01",
+    "#/learn/r01/practice",
+    "#/quiz/r01",
+    "#/interview/r01"
+   ]
   },
   {
    "mid": "o05",
@@ -40,16 +56,32 @@
     "Board day. Marcus has ten minutes and forty slides. A board member interrupts on slide three: \"What are you not doing in the first ninety days, and why?\" How does a staff engineer defend a blueprint under pressure?"
    ],
    "teasers": [
-    "Victor writes seven principles, and Dev says none of them would ever say no.",
-    "One whiteboard, eight layers, and Victor wants the rejected option for every box.",
-    "Kofi and the Orders team both claim revenue. Somebody has to own it.",
-    "The simulator turns Diwali traffic on the blueprint, and Kafka starts falling behind.",
-    "Ten minutes in front of the board, and the first question is about what he left out.",
-    "Meridian's biggest business customer wants a dashboard by Friday, and Marcus keeps his laptop closed."
+    "Victor's seven principles would never say no. Which few rules actually decide things?",
+    "Eight layers on one whiteboard, a rejected option for each. Can Marcus defend every box?",
+    "Kofi and Orders both claim revenue. Who owns which data product?",
+    "Diwali traffic hits the blueprint and Kafka falls behind. What does the passing version cost per year?",
+    "Ten minutes with the board, and the first question is about what he left out. How does he defend it?",
+    "Next week: a customer wants a dashboard by Friday. What is the real question behind it?"
    ],
    "boss": "Weekend review: the board's technical adviser gets thirty minutes with the blueprint. Expect questions on peak sizing, cost per event, the migration order and the decision you would reverse first if you were wrong.",
    "finale": "The simulator run passes at launch-day load, and the board approves the first ninety days. Asha says one more thing: Swiftline Logistics, Meridian's largest business customer, wants Marcus on site on Monday.",
-   "zoe": "Zoe: \"What is a blueprint?\" Marcus: \"A drawing of the whole house before you build it, with how much every room costs.\""
+   "zoe": "Zoe: \"What is a blueprint?\" Marcus: \"A drawing of the whole house before you build it, with how much every room costs.\"",
+   "recall": [
+    "Recall: How many events does Meridian produce on its busiest day, and who uses them?",
+    "Recall: Which few rules will end next year's arguments before they start?",
+    "Recall: Can Marcus defend every single box?",
+    "Recall: Who owns which data product, and what does the platform enforce for them?",
+    "Recall: And what does the version that passes cost per year?",
+    "Recall: How does a staff engineer defend a blueprint under pressure?"
+   ],
+   "to": [
+    "#/learn/o05/chapter",
+    "#/py/yo053",
+    "#/learn/o05/practice",
+    "#/sim/sc/foundation",
+    "#/step/o05/ai",
+    "#/interview/o05"
+   ]
   },
   {
    "mid": "s11",
@@ -64,16 +96,32 @@
     "Swiftline's lead engineer hands Marcus an unfamiliar pipeline in their repository, with a coding assistant open beside it. \"Tell me what this does and where it breaks.\" Marcus has not written a line of it. Where does he start?"
    ],
    "teasers": [
-    "The customer asked for a dashboard. The real question is why deliveries are late.",
-    "One day, one user, one decision, and timestamps in three time zones.",
-    "Swiftline's director says 18% is wrong, because her own report says 11%.",
-    "A planned 50/50 experiment comes back 53/47, and Tom wants to ship anyway.",
-    "Marcus is handed someone else's pipeline and an AI assistant, and asked where it breaks.",
-    "A recruiter from Hyperion calls with one question: are you open to a staff role?"
+    "The customer asked for a dashboard, not a reason. Where does delivery lateness really come from?",
+    "One day, one user, timestamps in three time zones. What is the smallest thing worth building?",
+    "The director says 18% is wrong because her report says 11%. Which number is right?",
+    "A planned 50/50 test comes back 53/47 and Tom wants to ship. Can anyone trust it?",
+    "Someone else's pipeline, an AI assistant and one question. Where does Marcus start?",
+    "Next week: a recruiter calls about a staff role. Can Marcus think aloud and type at once?"
    ],
    "boss": "Weekend review: a mock customer gives Marcus a vague brief and forty minutes. Discover the decision, break the problem into parts, propose the smallest useful build, and explain a disputed number calmly.",
    "finale": "Swiftline renews for three years and asks Meridian to make the late-delivery view a product feature. That evening, Marcus's phone shows an unknown number. A recruiter from Hyperion asks if he is open to a staff role.",
-   "zoe": "Zoe: \"Why was the lady cross?\" Marcus: \"We counted late from different starting lines, so we both had a true number. Now we use the same line.\""
+   "zoe": "Zoe: \"Why was the lady cross?\" Marcus: \"We counted late from different starting lines, so we both had a true number. Now we use the same line.\"",
+   "recall": [
+    "Recall: What decision will this dashboard change, and who will look at it?",
+    "Recall: Where does lateness actually come from, and how would he prove it?",
+    "Recall: What is the smallest thing worth building today, on their real, messy data?",
+    "Recall: Which number is right?",
+    "Recall: Can anyone trust this experiment?",
+    "Recall: Where does he start?"
+   ],
+   "to": [
+    "#/learn/s11/chapter",
+    "#/learn/s11/practice",
+    "#/step/s11/fix",
+    "#/step/s11/lead",
+    "#/design/s11",
+    "#/interview/s11"
+   ]
   },
   {
    "mid": "s12",
@@ -88,16 +136,32 @@
     "Final round: Elena, the hiring manager, asks for a project deep dive. Marcus shares five minutes on the Meridian foundation, a live failure and its fix. Elena asks: \"What would you build next, and why there?\" What does he say?"
    ],
    "teasers": [
-    "Ines opens a shared editor: count words in Spark, then a window query.",
-    "Sam asks Marcus to design a platform he has already built once, at ten times scale.",
-    "Priya wants a ride-sharing model, and one precise definition of a completed trip.",
-    "Ravi asks for a story about influence, then asks for the numbers behind it.",
-    "The hiring manager wants five minutes on the thing Marcus is proudest of.",
-    "Two offers, one dinner table, and a choice that is finally his to make."
+    "A shared editor, Spark word counts, then a window query. Can Marcus think aloud and type?",
+    "Sam asks for a platform Marcus has built, at ten times scale. Can he size it out loud?",
+    "Priya wants a ride-sharing model. Will Marcus define a completed trip before he draws?",
+    "Ravi asks for an influence story, then the numbers. What did it change, and how was it measured?",
+    "The hiring manager wants five minutes on his proudest work. What does he say?",
+    "Two offers and one dinner table. Which evidence from five seasons decides it?"
    ],
    "boss": "Weekend review: the full loop, back to back. Recruiter questions, Spark and SQL coding, a platform design sized for peak, a ride-sharing model, two behavioural stories with numbers, and a five-minute project demo. Aim for seven out of ten in every round.",
    "finale": "Hyperion offers staff and a fresh platform; Asha offers Principal and the foundation he drew. At Friday coffee Grace says, \"Pick the work you will be glad to explain in five years.\" At dinner, Nadia and Zoe wait. Marcus smiles and starts to answer.",
-   "zoe": "Zoe: \"Did you pass your test?\" Marcus: \"Two places want me now, so I get to choose where I build next, and you two get a vote.\""
+   "zoe": "Zoe: \"Did you pass your test?\" Marcus: \"Two places want me now, so I get to choose where I build next, and you two get a vote.\"",
+   "recall": [
+    "Recall: What should he ask?",
+    "Recall: Can Marcus think aloud and type at once?",
+    "Recall: Can he size it out loud?",
+    "Recall: Will Marcus define it before he draws?",
+    "Recall: Ravi digs three levels deep: what did you do, what did it change, and how was that measured?",
+    "Recall: What does he say?"
+   ],
+   "to": [
+    "#/learn/s12/chapter",
+    "#/mock",
+    "#/step/s12/design",
+    "#/step/s12/platform",
+    "#/step/s12/ai",
+    "#/quiz/s12"
+   ]
   }
  ]
 }
