@@ -356,6 +356,79 @@ Break the problem down before opening a query editor. Then compare.
 
 The last step is the one to remember. A total tells you that something is wrong. A specific record tells you what.
 
+@@steps
+STEP: design
+TITLE: Design it: CDC that catches up, and a breaking schema change
+MIN: 10
+SIM: cdc, schema
+BODY: A short simulator challenge on this week's pipeline. It fails as given: find the cause, change the design and run it again until it passes. The second one is there for more practice.
+
+- **CDC that catches up.** After an outage or a snapshot, change events pile up faster than the sink applies them. Lag grows until the apply side can run in parallel by key, and the source keeps its log only as long as the slot holds it.
+- **A breaking schema change.** A column is renamed in the source database. Without a schema registry and a compatibility rule, every consumer breaks at once; with one, the change is caught before it ships.
+---
+STEP: fix
+TITLE: Read and fix: the late event that brings a row back
+MIN: 10
+SPEC: Change events arrive at least once and can be out of order. Each has an `op` ("c", "u" or "d"), a `key`, the log position `lsn` and, except for deletes, the new `row`. Apply them so each key ends at its newest version: an event with an lsn at or below the last one applied for that key is ignored, deletes included.
+CODE:
+```
+def apply_changes(table, versions, events):
+    """table: key -> row; versions: key -> last applied lsn; events: dicts with op, key, lsn, row."""
+    for e in events:
+        if e["op"] == "d":
+            table.pop(e["key"], None)
+        else:
+            table[e["key"]] = e["row"]
+        versions[e["key"]] = e["lsn"]
+    return table
+```
+FIX:
+```
+def apply_changes(table, versions, events):
+    """table: key -> row; versions: key -> last applied lsn; events: dicts with op, key, lsn, row."""
+    for e in events:
+        if e["lsn"] <= versions.get(e["key"], -1):
+            continue  # a replayed or late event: an older version must never overwrite a newer one
+        if e["op"] == "d":
+            table.pop(e["key"], None)
+        else:
+            table[e["key"]] = e["row"]
+        versions[e["key"]] = e["lsn"]
+    return table
+```
+BUG: 4
+TESTS: [["in order", "apply_changes({}, {}, [{\"op\": \"c\", \"key\": \"t1\", \"lsn\": 10, \"row\": \"a\"}, {\"op\": \"u\", \"key\": \"t1\", \"lsn\": 11, \"row\": \"b\"}])", {"t1": "b"}], ["a late update loses", "apply_changes({}, {}, [{\"op\": \"u\", \"key\": \"t1\", \"lsn\": 12, \"row\": \"new\"}, {\"op\": \"u\", \"key\": \"t1\", \"lsn\": 11, \"row\": \"old\"}])[\"t1\"]", "new"], ["a late insert does not undo a delete", "apply_changes({}, {}, [{\"op\": \"d\", \"key\": \"t7\", \"lsn\": 20}, {\"op\": \"c\", \"key\": \"t7\", \"lsn\": 15, \"row\": \"x\"}])", {}], ["a replay changes nothing", "t, v = {}, {}\nev = [{\"op\": \"c\", \"key\": \"t2\", \"lsn\": 5, \"row\": \"r\"}]\napply_changes(t, v, ev)\napply_changes(t, v, ev)\n[t, v]", [{"t2": "r"}, {"t2": 5}]]]
+BODY: Log-based capture delivers every change **at least once**, and a retry or a restarted connector can deliver an older event after a newer one. Applying events blindly lets a late update overwrite a newer row, or a late insert bring back a deleted one. The rule that makes the apply step safe: keep the last applied log position per key and ignore anything at or below it. The line to look at is where an event is applied without that check.
+---
+STEP: platform
+TITLE: Run it on the platform: managed CDC, the replication slot and the bill
+MIN: 8
+BODY: **Where CDC runs.** Debezium usually runs as Kafka Connect workers: on Kubernetes with the Strimzi operator (a `KafkaConnect` resource and one `KafkaConnector` per source), on Amazon MSK Connect, or as a fully managed connector from Confluent. Cloud services do the same job with fewer knobs: AWS DMS, Google Datastream and Azure Data Factory's CDC, plus SaaS tools such as Fivetran. On managed Postgres (RDS, Cloud SQL, Azure) you turn on logical replication with a parameter and a restart, and the connector creates a **replication slot**.
+
+**What it costs and how it fails.**
+- **The slot holds the log.** Postgres keeps every write-ahead log segment the slot has not confirmed. A paused or broken connector makes the source disk grow until the database stops. Cap it (`max_slot_wal_keep_size`) and alert on slot lag in bytes.
+- **Snapshots.** The first load reads every table; incremental snapshots spread it out so the source is not hammered.
+- **Workers and transfer.** Connect workers, Kafka storage and cross-zone traffic, the same drivers as last week.
+
+**Run it.** Alert on slot lag, connector task failures and end-to-end freshness (now minus the newest event's source time), and keep a runbook for a re-snapshot.
+CHECK: {"q": "The source Postgres disk keeps growing overnight while the CDC connector is stopped for maintenance. What is happening?", "c": ["Its replication slot keeps write-ahead log it has not confirmed", "Kafka writes its topic data back onto the database server at night", "Debezium copies every table onto the database disk before streaming"], "a": 0, "why": "A slot pins WAL until its consumer confirms it. Resume the connector, or cap the slot with max_slot_wal_keep_size and plan a re-snapshot, before the disk fills."}
+---
+STEP: lead
+TITLE: Lead it: the database team says no to CDC
+MIN: 10
+Q: The team that owns the orders database refuses to let you run CDC on it: "Last time a replication slot filled our disk at 3 a.m." Analytics needs the changes within minutes. What do you propose, and how do you win them over?
+A: Start from their incident: it was real, and the fear is a slot filling their disk, plus surprise load and schema changes they did not mean to break anyone with. Show that each risk has a control. Cap the slot (`max_slot_wal_keep_size`) so the database protects itself, alert on slot lag in bytes to both teams' on-call, and give them a runbook and the right to drop the slot. Use incremental snapshots at a set rate in quiet hours. Put schema changes behind a registry with a compatibility rule so a breaking change is caught in their CI, not in your pipeline.
+
+Offer a contract instead of raw tables where it fits: an outbox table the service writes in the same transaction, so they choose what is published. Agree an SLO and who is paged for what. Run a two-week pilot on one table with weekly reviews of slot lag and database load. Write the decision down, including the fallback: if the pilot breaks their limits, you move to a read replica (Postgres 16 can decode logically on a standby) or a nightly extract for the less urgent tables.
+BODY: Answer out loud in two minutes first, then write the short version and compare with the model answer. Staff interviewers listen for respect for the other team's incident, concrete controls for each risk, a contract they own, and a pilot with an exit.
+---
+STEP: ai
+TITLE: With AI: a reconciliation report triaged with Claude Code
+MIN: 10
+BODY: **Where LLM tooling helps with CDC.** Reading a reconciliation diff and a connector log together and saying what pattern they show; drafting the MERGE for a new table from its key and columns; writing the runbook for a re-snapshot; reviewing a schema change for compatibility. **Where it does not:** it cannot see your database unless you give it a read-only connection, and it will happily suggest dropping a slot or re-snapshotting a large table without counting the cost. The agent in 6.7 proposes and a person approves; keep that rule here.
+TASK: In the in-app terminal or your own, give Claude Code this week's lab output (the reconciliation counts and the rows that differ) and ask it, in one prompt, to (1) say which failure from 6.6 the pattern points to, (2) name the one query that would confirm it, and (3) propose one fix with its risk. Paste your prompt and its answer below.
+RUBRIC: The prompt gives the evidence (counts, example keys, log positions) and asks for a diagnosis, a confirming query and one fix with its risk. The answer is checked against the chapter: it names a cause that fits the evidence, does not propose deleting or re-snapshotting without saying what that costs, and you note one thing you would verify before acting.
+
 @@quiz
 TYPE: mcq
 TAG: cdc

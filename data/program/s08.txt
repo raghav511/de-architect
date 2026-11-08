@@ -360,6 +360,81 @@ How do you respond? Decide, then compare.
 
 The skill here is refusing a false choice politely and replacing it with a decision the customer can actually make.
 
+@@steps
+STEP: design
+TITLE: Design it: two engines, one set of tables
+MIN: 10
+DESIGN: yes
+BODY: Open this module's design problem and sketch the answer in five boxes: the table format and the one catalog of record, which engine writes each table (one writer per table), how the other engine reads it without a copy, the access rules generated for both platforms from one definition, and where lineage is recorded. Compare with the model answer, then tick the step. Say which interop limit you would test first and why.
+---
+STEP: fix
+TITLE: Read and fix: time travel that misses its own version
+MIN: 10
+SPEC: A Delta-style table keeps a log of numbered commits; each commit is a list of actions, either `{"add": file}` or `{"remove": file}`. The table **as of version v** is the set of files after replaying every commit from 0 up to and including v. Return its files, sorted.
+CODE:
+```
+def files_at(commits, version):
+    """commits: version -> list of actions like {"add": "f1"} or {"remove": "f1"}."""
+    files = set()
+    for v in sorted(commits):
+        if v >= version:
+            break
+        for a in commits[v]:
+            if "add" in a:
+                files.add(a["add"])
+            elif "remove" in a:
+                files.discard(a["remove"])
+    return sorted(files)
+```
+FIX:
+```
+def files_at(commits, version):
+    """commits: version -> list of actions like {"add": "f1"} or {"remove": "f1"}."""
+    files = set()
+    for v in sorted(commits):
+        if v > version:
+            break  # version v itself is part of the table as of v
+        for a in commits[v]:
+            if "add" in a:
+                files.add(a["add"])
+            elif "remove" in a:
+                files.discard(a["remove"])
+    return sorted(files)
+```
+BUG: 5
+TESTS: [["version 0 has its own files", "files_at({0: [{\"add\": \"a\"}, {\"add\": \"b\"}]}, 0)", ["a", "b"]], ["an optimize commit", "C = {0: [{\"add\": \"a\"}], 1: [{\"add\": \"b\"}], 2: [{\"remove\": \"a\"}, {\"remove\": \"b\"}, {\"add\": \"ab\"}]}\n[files_at(C, 1), files_at(C, 2)]", [["a", "b"], ["ab"]]], ["a version past the end is the latest", "files_at({0: [{\"add\": \"a\"}], 1: [{\"remove\": \"a\"}]}, 9)", []], ["commits given out of order", "files_at({1: [{\"add\": \"b\"}], 0: [{\"add\": \"a\"}]}, 1)", ["a", "b"]]]
+BODY: A table format's current state is a replay of its log, and time travel is the same replay stopped at a version. The stop condition is easy to get wrong by one: "as of version 2" includes commit 2. Off by one, a time-travel query returns the table before the change you were looking for, and a restore puts back the wrong version. The line to look at is the condition that stops the replay.
+---
+STEP: platform
+TITLE: Run it on the platform: what Databricks and Snowflake bill for
+MIN: 8
+BODY: **Databricks.** You pay DBUs per hour on top of the cloud machines, at a rate that depends on the compute type: jobs compute for scheduled pipelines is much cheaper than all-purpose clusters left open for notebooks, Photon raises the rate but usually finishes sooner, and serverless bills only while work runs. Cluster policies cap sizes and force auto-termination; spot workers cut batch costs.
+
+**Snowflake.** You pay credits per second while a virtual warehouse runs (60 seconds minimum each time it resumes), and each size step doubles the rate. Auto-suspend stops it when idle; multi-cluster warehouses add clusters for concurrency rather than making one bigger. Storage is cheap; compute is the bill. Resource monitors stop or alert at a credit quota.
+
+**On Kubernetes?** Neither runs on your cluster: both are managed services, so the platform work is policies, network paths (private links), access and cost reports, not pods.
+
+**Run it.** Report cost per warehouse or job per day, alert on queries that scan far more than usual, and review which teams use all-purpose clusters or oversized warehouses for scheduled work.
+CHECK: {"q": "An XL Snowflake warehouse serves dashboards that are busy from 9 to 6 but it runs all night too. What is the best first fix?", "c": ["Resize it to 2XL so that each dashboard query finishes faster", "Set auto-suspend to 60 seconds so it stops when idle", "Move all of the dashboards' data over to Databricks instead"], "a": 1, "why": "Credits are billed while the warehouse runs. Auto-suspend stops it between bursts and it resumes on the next query; a bigger size doubles the rate, and a migration is a far larger change."}
+---
+STEP: lead
+TITLE: Lead it: one platform for the whole company
+MIN: 10
+Q: Leadership wants to standardise on one platform, Databricks or Snowflake, to cut cost and confusion. Half the teams use each today. What do you recommend, and how do you run the decision?
+A: Start from what they want: lower cost, one way to do things, fewer skills to hire. Then look at the workloads, not the logos: which teams run heavy Spark and ML pipelines, which run SQL analytics and many dashboards, and what each costs today per workload. A forced migration of half the company is expensive and slow and puts reliability at risk for a year.
+
+A defensible answer is usually one storage layer and two engines with clear roles: keep one copy of shared tables in an open format (Iceberg), with one writer per table and one catalog of record; let the lakehouse engine own ingestion and heavy transformation, and the warehouse own BI and governed sharing; and generate access rules for both from one definition. Standardise everything else: golden-path templates, cost reporting per team, one place to find data.
+
+Run it as a decision with evidence: agree the criteria with leadership (cost per workload, skills, governance, exit cost), measure them on two or three representative workloads, write a short design doc with the options, and revisit in a year. If one platform clearly wins on the evidence, plan the migration in waves with the costliest workloads first.
+BODY: Answer out loud in two minutes first, then write the short version and compare with the model answer. Staff interviewers listen for the goal behind the request, workload-based reasoning, a concrete target architecture, and a decision process with criteria and evidence.
+---
+STEP: ai
+TITLE: With AI: costing an LLM step before it runs on 2 million rows
+MIN: 10
+BODY: **Where LLM tooling helps on these platforms.** Drafting the SQL that calls a warehouse AI function (Snowflake Cortex, Databricks `ai_query`) for a column; estimating tokens and credits before a run; writing the validation and the dead-letter table around it; explaining a query profile. **Where it does not:** it does not know your prices or row counts unless you give them, and it will happily propose running the model over every row of a large table. In 8.7 the rule is a budget and a sample run first; keep it.
+TASK: In the in-app terminal or your own, give Claude Code this week's AI lab setup (the table, how many rows, average text length and the price per million tokens) and ask it, in one prompt, to (1) estimate the cost of running the step over the whole table, (2) write the guard that stops the run past a budget, and (3) propose a sample size for a first run and how you would judge its quality. Paste your prompt and its answer below.
+RUBRIC: The prompt gives the numbers (rows, text length, prices, budget) and asks for an estimate, a budget guard and a sample plan. The answer is checked against the chapter: the arithmetic is right (tokens times price, input and output separately), the guard stops before the budget rather than after, and you note one thing you would verify before the full run.
+
 @@quiz
 TYPE: mcq
 TAG: spark
