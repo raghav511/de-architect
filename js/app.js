@@ -744,8 +744,8 @@ async function vPractice(f) {
     return;
   }
   if (f === 'py' || f === 'model') {
-    body.appendChild(el('p', { class: 'muted', style: { margin: 0 }, text: f === 'py' ? 'Exercises for the Python track. They are part of each Python module\'s daily plan, and you can redo any of them here.' : 'Exercises for the data modelling, platform and leadership modules: SCDs, as-of joins, cumulative tables, fact types, reading Scala, distributed systems mechanisms, migration reconciliation and cost attribution. They run on the sample tables in your browser.' }));
-    (f === 'py' ? ['s00'] : []).concat(MODS.filter(m => f === 'py' ? m[0] === 'p' : 'mjrd'.includes(m[0]))).forEach(m => {
+    body.appendChild(el('p', { class: 'muted', style: { margin: 0 }, text: f === 'py' ? 'Exercises for the Python track. They are part of each Python module\'s daily plan, and you can redo any of them here.' : 'Exercises for the data modelling, platform, leadership and organisation modules: SCDs, as-of joins, cumulative tables, fact types, reading Scala, distributed systems mechanisms, migration reconciliation and cost attribution. They run on the sample tables in your browser.' }));
+    (f === 'py' ? ['s00'] : []).concat(MODS.filter(m => f === 'py' ? m[0] === 'p' : 'mjrdo'.includes(m[0]))).forEach(m => {
       const k = f === 'py' ? 'py' : ['sql', 'spark', 'py'].find(b => DATA[b].some(x => x.m === m)) || 'sql';
       const xs = DATA[k].filter(x => x.m === m); if (!xs.length) return;
       body.appendChild(el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('h3', { class: 'grow', text: (m === 's00' ? 'Python level check' : modLabel(m) + ' · ' + modTitle(m)) }), el('span', { class: 'muted', text: xs.filter(x => S.solved[x.id]).length + ' / ' + xs.length })]), el('div', { class: 'list' }, xs.map(x => item(k, x)))]));

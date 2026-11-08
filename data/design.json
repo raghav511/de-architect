@@ -118,5 +118,10 @@
   "title": "A runbook assistant that stays fresh",
   "prompt": "On-call engineers search 8,000 runbook pages and 50,000 past incident notes. Pages change daily and some are deleted. Design retrieval with citations, access by team, and an index that is never more than 15 minutes behind the wiki.",
   "deliverable": "Ingest and query paths in boxes, the chunk schema with metadata, how changes and deletes reach the index, where vectors live and why, and the retrieval eval with its target."
+ },
+ "o01": {
+  "title": "Move a central data team to domain-owned data products",
+  "prompt": "A marketplace has 600 engineers, 14 product domains and one central data team of 45 that owns 3,000 warehouse tables. The team's backlog is five months; 40% of incidents come from upstream schema changes nobody announced; three dashboards show three different numbers for active sellers. Leadership wants domains to own their data within 18 months, at no more than 10% higher data spend.",
+  "deliverable": "A two-page plan: which domains move first and why, what the self-serve platform must offer before they do (with the order you build it), the contract and SLO each product must have, the five global governance rules enforced in code, which products stay central, how you dual-run and retire the old tables, the metrics you report each quarter, and two risks with what you will do about them."
  }
 }

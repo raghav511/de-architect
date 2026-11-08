@@ -2,7 +2,7 @@
    Loaded before app.js; uses its globals (S, DATA, el, svg, I, shell, chip, save, iso, ...) at call time. */
 'use strict';
 /* Diagnostic first, then the Python track interleaved with the AI modules, then data modelling, then data engineering. */
-const BASE_MODS = ['s00', 'p01', 'p02', 'a01', 'p03', 'p04', 'a02', 'p05', 'p06', 'a03', 'm01', 'm02', 'm03', 's01', 's02', 's03', 's04', 'a04', 'd01', 's05', 's06', 'a05', 's07', 'j01', 's08', 's09', 's10', 'r01', 's11', 's12'];
+const BASE_MODS = ['s00', 'p01', 'p02', 'a01', 'p03', 'p04', 'a02', 'p05', 'p06', 'a03', 'm01', 'm02', 'm03', 's01', 's02', 's03', 's04', 'a04', 'd01', 's05', 's06', 'a05', 's07', 'j01', 's08', 's09', 's10', 'o01', 'r01', 's11', 's12'];
 /* Claude Code and AI-at-work track: runs alongside the main path, inside the daily hour, spread so it lasts about as long as the main path */
 const CC_MODS = ['c01', 'c02', 'c03', 'c04', 'c05', 'c06', 'c07', 'c08', 'c09', 'c10', 'c11', 'c12'];
 const CC_PACE = { 1: { 6: 1 }, 2: { 3: 1, 6: 1 }, 3: { 3: 1, 6: 2 } }; /* steps per week -> steps per getDay(): Saturday first, then Wednesday */
@@ -14,9 +14,9 @@ const DN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 
 const midOf = x => { x = String(x == null ? '' : x); return /^\d+$/.test(x) ? 's' + x.padStart(2, '0') : x; };
 const isS = m => /^s\d\d$/.test(m);
 const qk = m => isS(m) ? +m.slice(1) : m; /* state keys stay compatible with v1.1 (numbers for DE modules) */
-function modLabel(m) { const k = m[0], n = +m.slice(1); return k === 'c' ? 'Claude Code ' + n : k === 'a' ? 'AI ' + n : k === 'p' ? 'Python ' + n : k === 'm' ? 'Modelling ' + n : k === 'j' ? 'Platform ' + n : k === 'd' ? 'Systems ' + n : k === 'r' ? 'Leadership ' + n : k === 's' ? (n === 0 ? 'Setup' : 'DE ' + n) : 'Extra ' + n; }
+function modLabel(m) { const k = m[0], n = +m.slice(1); return k === 'c' ? 'Claude Code ' + n : k === 'a' ? 'AI ' + n : k === 'p' ? 'Python ' + n : k === 'm' ? 'Modelling ' + n : k === 'j' ? 'Platform ' + n : k === 'd' ? 'Systems ' + n : k === 'r' ? 'Leadership ' + n : k === 'o' ? 'Org ' + n : k === 's' ? (n === 0 ? 'Setup' : 'DE ' + n) : 'Extra ' + n; }
 function modTitle(m) { return (MOD[m] && MOD[m].title) || modLabel(m); }
-function modColor(m) { return m[0] === 'a' || m[0] === 'c' ? 'c-ai' : m[0] === 'p' ? 'c-py' : m[0] === 'm' || m[0] === 'r' ? 'c-arch' : m[0] === 'j' || m[0] === 'd' ? 'c-core' : m[0] === 's' ? 'c-core' : 'c-arch'; }
+function modColor(m) { return m[0] === 'a' || m[0] === 'c' ? 'c-ai' : m[0] === 'p' ? 'c-py' : m[0] === 'm' || m[0] === 'r' || m[0] === 'o' ? 'c-arch' : m[0] === 'j' || m[0] === 'd' ? 'c-core' : m[0] === 's' ? 'c-core' : 'c-arch'; }
 function dayName(k) { const d = new Date(k + 'T00:00:00'); return DN[(d.getDay() + 6) % 7]; }
 function shortDate(k) { const d = new Date(k + 'T00:00:00'); return DN[(d.getDay() + 6) % 7].slice(0, 3) + ' ' + d.getDate() + ' ' + d.toLocaleString('en', { month: 'short' }); }
 function weekOf(k) { const s = new Date(S.start + 'T00:00:00'), d = new Date(k + 'T00:00:00'); return Math.max(1, Math.floor(Math.round((d - s) / 864e5) / 7) + 1); }
