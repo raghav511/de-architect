@@ -331,7 +331,7 @@ function vToday(off) {
     pre ? el('p', { style: { margin: 0 }, text: 'Your plan starts ' + shortDate(S.start) + '.' }) : null,
     off > 0 && !pre ? el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'A preview: the set is chosen on the morning of the day, from what is still open then.' }) : null,
     off === 0 && !pre && typeof repairHint === 'function' && repairHint(k) ? el('div', { class: 'hint quiet', role: 'status' }, [repairHint(k)]) : null,
-    !pre && items.length ? el('div', { class: 'hint' + (full ? '' : ' quiet'), role: 'status' }, full ? [el('b', { text: 'Daily set done · +' + DAY_BONUS + ' XP. ' }), 'It counts for your streak.'] : ['Finish all ' + items.length + ' for +' + DAY_BONUS + ' XP and a streak day. No time limit: the minutes are only a guide.']) : null].concat(PARTS.map(paneOf)));
+    !pre && items.length ? el('div', { class: 'hint' + (full ? '' : ' quiet'), role: 'status' }, full ? [el('b', { text: 'Daily set done · +' + DAY_BONUS + ' XP. ' }), 'It counts for your streak.'] : ['Finish all ' + items.length + ' for +' + DAY_BONUS + ' XP and a streak day. No time limit: the minutes are only a guide.' + (off === 0 && typeof caseHint === 'function' ? caseHint(k) : '')]) : null].concat(PARTS.map(paneOf)));
   const D = DATA.design[m];
   const modCard = el('section', { class: 'card pad stack' }, [
     el('div', { class: 'row wrap', style: { gap: '6px' } }, [el('span', { class: 'chip ' + modColor(m), text: 'Module ' + modLabel(m) }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: weeksText(sp) })]),
@@ -341,6 +341,7 @@ function vToday(off) {
   shell(off === 0 ? 'Today' : 'Plan · ' + shortDate(k), 'Module ' + modLabel(m), [
     el('div', { class: 'row greet' }, [el('div', { class: 'grow stack', style: { gap: '2px' } }, [el('h1', { text: (hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + (userName() ? ', ' + userName() : '') }), pre ? null : el('span', { class: 'muted', style: { fontSize: '14px' }, text: dayName(k) + ' ' + shortDate(k).slice(4) + ' · ' + all.xpd + ' of ' + all.xp + ' XP' })]), off === 0 ? gameMini() : null]),
     off === 0 && !pre && typeof storyColdOpen === 'function' && storyColdOpen(k) || (off === 0 && !pre && full && typeof storyCliff === 'function' ? storyCliff(k) : upNext), /* the Meridian series (js/story.js): Previously on, then Up next; Tomorrow on, once the set is done */
+    off === 0 && !pre && full && typeof storyCase === 'function' ? storyCase(k) : null, /* a case file after a full set, Monday to Saturday (ENGAGE 9) */
     off === 0 ? whatsNewCard() : null,
     el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [modCard, off === 0 ? el('div', { id: 'rtodayslot' }) : null])]),
     off === 0 ? el('div', { id: 'gcardslot' }) : null,

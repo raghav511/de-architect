@@ -745,3 +745,4 @@ select.btn{max-width:100%;text-overflow:ellipsis} /* a long module title never m
 .storycard{border-left:4px solid var(--teal)}.storycard .storytag{display:block;margin-bottom:8px}.storycard .acts{margin-top:4px}
 .storymap{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin:4px 0 10px}.storytile{display:flex;flex-direction:column;gap:3px;min-height:64px;padding:8px 10px;border:1px solid var(--line2);border-radius:10px;color:var(--ink);text-decoration:none;font-size:13.5px}.storytile.done{background:var(--teal-l);border-color:#7CC7B0}.storytile.now{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal)}.storytile .bar{height:4px}
 .storygo[hidden]{display:none}
+.casefile summary{cursor:pointer;list-style:none}.casefile summary::-webkit-details-marker{display:none}.casefile .casehead{font-weight:700;font-size:16.5px}.lasker,.linterviewer{font-size:14.5px}

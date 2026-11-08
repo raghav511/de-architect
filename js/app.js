@@ -1069,6 +1069,7 @@ function mergeState(a, b) {
   /* the daily set (F9): one day's picks from both devices (the first device's order, then the other's extras), done once either finished it */
   by('dayset', (x, y) => { const ids = new Set(), items = []; [].concat(x.items || [], y.items || []).forEach(r => { if (r && !ids.has(r.id)) { ids.add(r.id); items.push(r); } }); return { items, at: Math.min(x.at || Infinity, y.at || Infinity), full: Math.max(x.full || 0, y.full || 0) || undefined }; });
   /* the Meridian series (js/story.js): one day's episode; opened and planned stay set once either device set them */
+  by('cases', (x, y) => Object.assign({}, x, y, { open: Math.min(x.open || y.open, y.open || x.open) }));
   by('story', (x, y) => Object.assign({}, x, y, { open: x.open || y.open, plan: y.plan || x.plan, m: x.m || y.m, i: x.m ? x.i : y.i }));
   by('cmp', (x, y) => ((x.at || 0) >= (y.at || 0) ? Object.assign({}, x, { done: x.done || y.done }) : Object.assign({}, y, { done: y.done || x.done })));
   by('recall', (x, y) => when(x) > when(y) ? x : y); /* daily recall: the newer rating of an item wins */

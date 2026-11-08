@@ -82,7 +82,8 @@ async function liveAsk(system, user) {
 }
 function liveJSON(t) { const a = t.indexOf('{'), b = t.lastIndexOf('}'); if (a < 0 || b <= a) return null; try { return JSON.parse(t.slice(a, b + 1)); } catch (e) { return null; } }
 function liveSystem(m) {
-  return 'You are a ' + (m.style ? m.style + '-style ' : '') + 'interviewer running a live mock interview for a ' + (m.level === 'staff' ? 'staff or architect' : 'senior') + ' data engineer role. Be direct and fair, like a real interviewer at that level. Plain language. Reply with JSON only.';
+  const who = typeof storyInterviewer === 'function' && storyInterviewer(m);
+  return (who ? 'Your name is ' + who.name + '. ' : '') + 'You are a ' + (m.style ? m.style + '-style ' : '') + 'interviewer running a live mock interview for a ' + (m.level === 'staff' ? 'staff or architect' : 'senior') + ' data engineer role. Be direct and fair, like a real interviewer at that level. Plain language. Reply with JSON only.';
 }
 async function liveFollowup(m, q, a) {
   const t = await liveAsk(liveSystem(m), 'Question: ' + q.q + '\nWhat a strong answer covers: ' + (q.points.length ? q.points.join('; ') : q.model.slice(0, 900)) + '\nCandidate answer: ' + a + '\n\nAsk ONE follow-up question (at most 30 words) that probes the weakest part: why, when not, internals, scale limits, failure or cost. JSON: {"followup": "..."}');
@@ -157,6 +158,7 @@ function liveStart(page, k, m) {
   page.appendChild(el('section', { class: 'card pad stack live' }, [
     el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Live mock · ' + new Date(k + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short' }) }), el('b', { text: m.mins + ' min' })]),
     el('span', { class: 'muted', text: 'Built from this week: ' + m.week.map(x => modLabel(x)).join(', ') + (m.style ? ' · ' + m.style + '-style round' : '') }),
+    typeof storyInterviewer === 'function' && storyInterviewer(m) ? el('b', { class: 'linterviewer', text: storyInterviewer(m).line }) : null,
     el('ol', { class: 'lslots' }, m.qs.map(q => el('li', {}, [el('b', { text: q.label }), q.carried ? el('span', { class: 'chip c-ai', text: 'from ' + shortDate(q.carried) }) : null, el('span', { class: 'muted', text: ' · ' + q.q.replace(/\*\*|`/g, '').slice(0, 70) + (q.q.length > 70 ? '…' : '') })]))),
     el('div', { class: 'row wrap' }, [el('span', { class: 'lbl', text: 'Level' }), lv]),
     el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: via === 'mac' ? 'Follow-ups and scores come from Claude Code on your Mac (it must be awake).' : 'AI features are off: after each answer you compare with the model answer and mark yourself. Self-marked rounds count for practice and XP; promotions past Senior on the ladder need AI scoring.' }),
@@ -175,6 +177,7 @@ function liveQuestion(page, k, m) {
   const body = el('div', { class: 'stack' }), note = el('div', { role: 'status', class: 'muted', style: { fontSize: '14px' } });
   page.appendChild(el('section', { class: 'card pad stack live' }, [
     el('div', { class: 'row wrap' }, [el('span', { class: 'lbl grow', text: (i + 1) + ' of ' + m.qs.length + ' · ' + q.label }), q.carried ? el('span', { class: 'chip c-ai', text: 'from ' + shortDate(q.carried) }) : null, clock]),
+    typeof storyAsker === 'function' && storyAsker(q.slot) ? el('b', { class: 'lasker', text: storyAsker(q.slot) }) : null, /* the cast member who asks (js/story.js) */
     el('div', { class: 'lq', html: mdi(q.q) }), typeof simSketch === 'function' && /design|scale|architect|pipeline|system|throughput|latency|estimate|migrat|stream|kafka|outage|page|fail|cost|serv/i.test(q.q + ' ' + q.label) ? el('div', { class: 'row wrap' }, [simSketch(q.q, null, { k, i }), x.simHints ? el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'Simulator suggestions viewed: ' + x.simHints + ' (−0.25 each on this answer)' }) : null]) : null, body, note]));
   const next = () => { m.i = i + 1; if (m.i >= m.qs.length) { m.done = Date.now(); gameNote('live'); if (typeof confetti === 'function' && m.kind === 'we') confetti(); } save(); route(); };
   const showScored = () => {

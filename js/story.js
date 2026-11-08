@@ -135,3 +135,57 @@ async function vStory() {
           fin && a.zoe ? el('p', { class: 'muted', style: { margin: '4px 0 0', fontSize: '14px' }, text: 'At dinner: ' + a.zoe }) : null]); }))]));
   });
 }
+
+/* ---------------- ENGAGE 6: a cast you get to know ---------------- */
+/* who asks each kind of staff question (data/staff.json kinds); canon cast only (tools/story/BIBLE.md) */
+const STORY_ASK = { scale: ['Tom Reyes', 'Head of Product, wants it ten times bigger'], page: ['Dev Malhotra', 'on call'], defend: ['Victor Hale', 'Lumen\'s lead architect, not convinced'],
+  metric: ['Kofi Mensah', 'analytics lead'], org: ['Asha Iyer', 'CTO'], cost: ['Mei Chen', 'FinOps, reading the bill'], migrate: ['Dev Malhotra', 'platform lead'],
+  estimate: ['Mei Chen', 'FinOps'], deep: ['Grace Okafor', 'at Friday coffee'], lead: ['Asha Iyer', 'CTO'] };
+function storyAsker(kind) { const a = storyOn() && STORY_ASK[kind]; return a ? a[0] + ', ' + a[1] + ', asks:' : ''; }
+/* weekend interviewers: fictional people (the bible's Priya and Sam) running a round in a company's interview style */
+const STORY_PANEL = { Meta: ['Priya', 'product sense'], Salesforce: ['Priya', 'product sense'], Google: ['Sam', 'system design'], Uber: ['Sam', 'system design'] };
+function storyInterviewer(m) { const p = storyOn() && m && m.style && STORY_PANEL[m.style]; return p ? { name: p[0], line: 'Your interviewer: ' + p[0] + ' · ' + m.style + '-style ' + p[1] + ' round' } : null; }
+/* the coach speaks as Grace Okafor, Marcus's mentor */
+function storyCoachName() { return storyOn() ? 'Grace, your coach' : 'Your coach'; }
+
+/* ---------------- ENGAGE 9: case files ---------------- */
+/* Announced, never random: Monday to Saturday a full set opens one case file; the weekday sets the kind (Mon and Thu the harder
+   follow-up, Tue and Fri a field report from the news, Wed and Sat a question from the architect's lens). Content only: no XP,
+   no streak, and the boss round has Sunday to itself. Opening one is kept on the device in S.cases[date] (merged per date). */
+const CASE_KIND = [null, 'follow', 'field', 'lens', 'follow', 'field', 'lens'];
+const CASE_NAME = { follow: 'The harder follow-up', field: 'Field report', lens: 'From the architect\'s lens' };
+function caseKind(k) { return CASE_KIND[new Date(k + 'T00:00:00').getDay()]; }
+function caseHint(k) { return caseKind(k) ? ' Monday to Saturday, a full set also opens a case file.' : ''; }
+function caseHash(k) { return [...k].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7) >>> 0; }
+function storyCase(k) {
+  const kind = caseKind(k); if (!kind) return null;
+  const st = storyDay(k), m = (st && st.m) || schedule().cur, h = caseHash(k);
+  const body = el('div', { class: 'stack', style: { gap: '8px', marginTop: '10px' } }, [el('p', { class: 'muted', style: { margin: 0 }, text: 'Opening…' })]);
+  const head = el('span', { class: 'casehead', text: CASE_NAME[kind] });
+  const card = el('details', { class: 'card pad casefile' }, [el('summary', {}, [el('span', { class: 'upn', text: 'Case file · unlocked by today\'s set' }), el('br'), head]), body]);
+  card.addEventListener('toggle', () => { if (card.open && !(S.cases || {})[k]) { S.cases = S.cases || {}; S.cases[k] = { kind, open: Date.now() }; save(false); } });
+  const fill = kids => { body.textContent = ''; kids.filter(Boolean).forEach(x => body.appendChild(x)); };
+  const pts = (t, xs) => xs && xs.length ? el('details', {}, [el('summary', { class: 'tlink', text: t }), el('ul', { style: { margin: '6px 0 0', paddingLeft: '20px' } }, xs.map(x => el('li', { text: x })))]) : null;
+  if (kind === 'follow') {
+    const asked = new Set(((S.live || {})[k] || { qs: [] }).qs.map(q => q.q)), all = ((DATA.staff || {}).items || []).filter(s => !asked.has(s.q));
+    const pool = all.filter(s => s.mids.includes(m)).length ? all.filter(s => s.mids.includes(m)) : all.filter(s => s.mids.includes('*')).length ? all.filter(s => s.mids.includes('*')) : all, s = pool[h % (pool.length || 1)];
+    if (!s) return null;
+    head.textContent = CASE_NAME.follow + ': ' + ((DATA.staff.kinds || {})[s.kind] || s.kind);
+    fill([storyAsker(s.kind) ? el('b', { text: storyAsker(s.kind) }) : null, el('p', { style: { margin: 0 }, text: s.q }), pts('What a staff answer covers', s.points)]);
+  } else if (kind === 'field') {
+    const ns = ((DATA.news || {}).items || []).filter(n => n && n.title), near = ns.filter(x => x.mid === m), pool = near.length ? near : ns, n = pool[h % (pool.length || 1)];
+    if (!n) return null;
+    head.textContent = CASE_NAME.field + ': ' + n.title;
+    const safe = /^https:\/\//.test(n.url || '') ? n.url : '';
+    fill([el('p', { style: { margin: 0 }, text: n.summary || '' }), n.why ? el('p', { style: { margin: 0 } }, [el('b', { text: 'Why it matters: ' }), n.why]) : null, n.try ? el('p', { class: 'muted', style: { margin: 0 } }, [el('b', { text: 'Try: ' }), n.try]) : null,
+      safe ? el('a', { href: safe, target: '_blank', rel: 'noopener noreferrer', text: 'The original' + (n.source ? ' on ' + n.source : '') + ' ›' }) : null]);
+  } else {
+    /* the module's own interview set, else the next module that has one (the diagnostic has none), as the live mock borrows */
+    (async () => { for (const x of [m].concat(MODS.slice(MODS.indexOf(m) + 1).filter(y => !isCC(y)))) { const s = await sprint(x).catch(() => null); if (s && s.interview && s.interview.length) return [x, s]; } return [m, null]; })().then(([x, s]) => {
+      const iv = (s && s.interview) || [], arch = iv.filter(q => q.TAG === 'arch'), pool = arch.length ? arch : iv, q = pool[h % (pool.length || 1)];
+      if (!q) { card.remove(); return; }
+      head.textContent = CASE_NAME.lens + ': ' + modTitle(x);
+      fill([el('div', { html: mdi(q.Q) }), q.A ? el('details', {}, [el('summary', { class: 'tlink', text: 'The model answer' }), el('div', { style: { marginTop: '6px' }, html: md(q.A) })]) : null]); }).catch(() => card.remove());
+  }
+  return card;
+}
