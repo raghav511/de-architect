@@ -102,6 +102,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.36.27: F7 guided steps for DE 6, 7 and 8.
 - 1.36.26: F7 roll-out: integrated week steps in s01–s04.
 - 1.36.25: Module O5: the capstone data foundation blueprint.
 - 1.36.24: Module A6 part 2: choosing the approach and the model, guardrails and governance; ML system design basics in a06 (A6.12, SOURCES G9); Module O4: running the data platform as a product.

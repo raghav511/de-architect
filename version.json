@@ -1,10 +1,9 @@
 {
-  "version": "1.36.26",
+  "version": "1.36.27",
   "date": "2026-11-08",
   "notes": [
-    "Modules 1 to 4 now have five short steps each in their week, like Kafka: design it, read and fix a real bug, run it on the platform, lead it, and with AI.",
-    "The fix exercises are quiet wrong-data bugs from each week: an hour window that counts a row twice, a partition overwrite that deletes later days, a salted join that loses rows, and an incremental load that misses late rows.",
-    "Weeks without a simulator challenge open their design problem instead.",
-    "1465 of 1489 reels now play in the natural Heart voice."
+    "DE 6 (change data capture), DE 7 (the cloud) and DE 8 (Databricks and Snowflake) now each have five short guided steps in their week, just before the quiz: Design it, Read and fix, Run it on the platform, Lead it and With AI.",
+    "Each Read and fix is a real bug you fix in the browser with tests: a late change event that brings a deleted row back, a permission check that ignores an explicit deny, and time travel that misses its own version.",
+    "1489 of 1489 reels now play in the natural Heart voice."
   ]
 }
