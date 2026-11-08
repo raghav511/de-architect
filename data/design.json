@@ -133,5 +133,10 @@
   "title": "From pilot to 200,000 conversations a day",
   "prompt": "A customer-support assistant works well in a pilot with 500 users. The company wants it for every customer: 200,000 conversations a day, peak 4x average, answers grounded in 30,000 help articles, a budget of $1,000 a day, and a p95 time to first token under one second. Last week a model update made refund answers worse and nobody noticed for six days. Design how it runs in production.",
   "deliverable": "A two-page design: the request path with a p95 latency budget per step, the cost per request and per day with the two levers that bring it under budget (and their risks), the gateway rules it relies on, the golden set and regression gate every prompt or model change must pass, online checks on live traffic (including a judge you have checked against people), the trace each request writes and the three alerts you would set, and how a model update is rolled out."
+ },
+ "o03": {
+  "title": "Govern a fintech lakehouse",
+  "prompt": "A payments company keeps 4 PB in an Iceberg lakehouse read by Spark, Trino and a warehouse, by 1,500 people in 12 countries. Card numbers, emails and national ids sit in raw and silver tables; access is 900 roles granted by ticket; erasure requests take six weeks and nobody is sure old snapshots are cleaned; regulators want proof of who saw customer data. Design the governance that fixes this in two quarters.",
+  "deliverable": "A two-page design: how personal data is found and tagged (declared, detected, reviewed), the access model (roles versus tag and attribute policies, row and column rules, expiry and reviews) enforced in every engine, which data is masked, tokenised or pseudonymised and why, how lineage is collected and used, the retention classes and the erasure flow with legal holds and snapshot expiry, the audit evidence, the order you deliver it in, and two risks."
  }
 }

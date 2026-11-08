@@ -792,6 +792,23 @@ async function T(name, fn, opt) {
     const w = await text(p, '.whatsnew'); ok(/1 new module/.test(w) && /Golden paths/.test(w), 'What is new does not list O2: ' + w.replace(/\s+/g, ' ').slice(0, 300));
     ok(await p.evaluate(() => !Object.keys(S.done).some(k => k.startsWith('o02:'))), 'an O2 step was marked done');
   });
+  await T('module O3: governance sits right after O2 with chapter, lens, four exercises, design problem, quiz and reels; an existing learner is told about it and nothing is marked done', async p => {
+    await go(p, '#/path', 1500);
+    ok(await p.evaluate(() => MODS.indexOf('o03') === MODS.indexOf('o02') + 1 && modLabel('o03') === 'Org 3'), 'O3 is not right after O2');
+    ok(await p.$('.pcard[data-mid=o03]') && /Data governance that teams accept/.test(await all(p, '.pcard[data-mid=o03]')), 'O3 not on the Path');
+    await go(p, '#/learn/o03/chapter', 1500); await p.waitForSelector('.lens');
+    ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return document.querySelectorAll('.prose h2').length >= 9 && l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details:not(.fresh)').length === 6 && /legal hold/.test(l.textContent); }), 'O3 chapter or lens incomplete');
+    const r = await p.evaluate(async () => { const s = await sprint('o03'), us = modUnits('o03'), xs = DATA.py.filter(x => x.m === 'o03');
+      return { quiz: s.quiz.length, iv: s.interview.length, ex: xs.map(x => x.id).join(), build: us.filter(u => u.kind === 'build').map(u => u.href).join(), design: us.some(u => u.kind === 'design'), reels: (await reelsFor('o03')).filter(x => x.sec === 'O3.9').map(x => x.level), acc: (await reelsFor('o03')).filter(x => x.sec === 'O3.3').length }; });
+    ok(r.quiz >= 10 && r.iv >= 7 && r.ex === 'yo031,yo032,yo033,yo034' && /#\/py\/yo031/.test(r.build) && /#\/py\/yo033/.test(r.build) && r.design, 'O3 steps: ' + JSON.stringify(r));
+    ok(r.reels.length === 8 && ['New to it', 'How it works', 'Inside and caveats', 'Architect'].every(lv => r.reels.includes(lv)) && r.acc === 4, 'O3 reels: ' + JSON.stringify(r.reels));
+    await go(p, '#/design/o03', 1200); ok(/Govern a fintech lakehouse/.test(await text(p, '#page')), 'O3 design problem missing');
+    await go(p, '#/today', 1200);
+    await seed(p, () => { S.done['s00:S001'] = iso(new Date()); Object.keys(S.cv.known).filter(k => k.startsWith('o03:')).forEach(k => delete S.cv.known[k]); S.updates = []; });
+    await p.waitForSelector('.whatsnew'); await p.click('.whatsnew button:has-text("See")');
+    const w = await text(p, '.whatsnew'); ok(/1 new module/.test(w) && /governance/i.test(w), 'What is new does not list O3: ' + w.replace(/\s+/g, ' ').slice(0, 300));
+    ok(await p.evaluate(() => !Object.keys(S.done).some(k => k.startsWith('o03:'))), 'an O3 step was marked done');
+  });
   await T('architect\'s lens: Python 1 shows a lens card with seven questions and four internals answers, stacked on a phone; Start here explains the data foundation', async p => {
     await go(p, '#/learn/p01/chapter', 1500); await p.waitForSelector('.lens');
     ok(await p.evaluate(() => document.querySelectorAll('.lens tbody tr').length === 7 && document.querySelectorAll('.lens details').length === 4), 'lens card incomplete');

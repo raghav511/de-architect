@@ -2,7 +2,7 @@
    Loaded before app.js; uses its globals (S, DATA, el, svg, I, shell, chip, save, iso, ...) at call time. */
 'use strict';
 /* Diagnostic first, then the Python track interleaved with the AI modules, then data modelling, then data engineering. */
-const BASE_MODS = ['s00', 'p01', 'p02', 'a01', 'p03', 'p04', 'a02', 'p05', 'p06', 'a03', 'm01', 'm02', 'm03', 's01', 's02', 's03', 's04', 'a04', 'd01', 's05', 's06', 'a05', 'a06', 's07', 'j01', 's08', 's09', 's10', 'o01', 'o02', 'r01', 's11', 's12'];
+const BASE_MODS = ['s00', 'p01', 'p02', 'a01', 'p03', 'p04', 'a02', 'p05', 'p06', 'a03', 'm01', 'm02', 'm03', 's01', 's02', 's03', 's04', 'a04', 'd01', 's05', 's06', 'a05', 'a06', 's07', 'j01', 's08', 's09', 's10', 'o01', 'o02', 'o03', 'r01', 's11', 's12'];
 /* Claude Code and AI-at-work track: runs alongside the main path, inside the daily hour, spread so it lasts about as long as the main path */
 const CC_MODS = ['c01', 'c02', 'c03', 'c04', 'c05', 'c06', 'c07', 'c08', 'c09', 'c10', 'c11', 'c12'];
 const CC_PACE = { 1: { 6: 1 }, 2: { 3: 1, 6: 1 }, 3: { 3: 1, 6: 2 } }; /* steps per week -> steps per getDay(): Saturday first, then Wednesday */

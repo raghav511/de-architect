@@ -1,0 +1,321 @@
+@@meta
+id: o03
+n: 3
+title: Data governance that teams accept: classification, access, masking, lineage, retention and audit
+goal: Build governance that lets people use data safely instead of slowing them down: classify personal data automatically, grant access by roles and attributes with row and column rules, choose between masking, tokenisation and pseudonymisation, use lineage for impact and tag propagation, enforce retention and deletion with legal holds, keep audit evidence, and run it all as code in the platform.
+hours: 5
+
+@@tickets
+O301 | learn | 1 | Chapter part 1: what governance is for, classifying personal data, access control, masking and tokenisation | You can explain RBAC against ABAC with a tag-based policy, and say when to mask, tokenise or pseudonymise. | chapter:0-3
+O302 | learn | 1 | Chapter part 2: lineage, retention and deletion, audit evidence, governance as code, the architect's lens | You can say how a PII tag propagates through lineage, why a legal hold beats retention, and what an auditor asks for. | chapter:4-8
+O303 | build | 1 | Exercises 1–2: classify columns, decide access per column | Both pass in the editor: personal data found from sample values, and full, masked or denied access per column from tag policies. | py:1-2
+O304 | build | 0.75 | Exercises 3–4: lineage impact and a retention plan | Both pass: downstream tables and inherited PII tags from lineage, and which datasets to delete, keep or hold. | py:3-4
+O305 | practice | 0.5 | Write the access policy for one dataset, then the customer drill | Tags, roles, purposes, row and column rules and the retention class for one dataset, and the drill answered out loud. | practice
+O306 | test | 0.5 | Quiz O3 | 80% or better. | quiz
+O307 | talk | 0.75 | Interview set O3 | 5 of 7 answered out loud and ticked. | interview
+
+@@readings
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
+- **Reading note: GDPR in short.** Personal data needs a lawful basis and a purpose; collect only what the purpose needs; keep it no longer than needed; people may ask to see, correct or erase their data; you must be able to show compliance. Fines reach 4% of global turnover. [ⓘ](https://gdpr.eu/what-is-gdpr/)
+- **Reading note: Attribute-based access control.** Instead of one role per combination of data and job, decisions use attributes of the user (team, purpose, location), the data (tags, sensitivity) and the request. Policies stay few as the company grows. [ⓘ](https://csrc.nist.gov/projects/attribute-based-access-control)
+- **Reading note: OpenLineage.** An open standard for lineage events: each job run reports its inputs, outputs and, optionally, column-level lineage, so a catalog can build the graph across engines without parsing SQL. [ⓘ](https://openlineage.io/docs/)
+- **Reading note: Tag-based masking in warehouses.** Snowflake, BigQuery and Databricks let you attach a masking policy to a tag; every column carrying the tag is masked for readers without the right role, so classification drives protection automatically. [ⓘ](https://docs.snowflake.com/en/user-guide/tag-based-masking-policies)
+
+@@chapter
+## O3.1 What governance is for
+
+Governance has a bad name because it is often a committee that says no. Done well, it is the opposite: the reason people can use data quickly without fear. Its jobs are concrete:
+
+- **Know what you have**: which data exists, who owns it, what it means, and which of it is personal or sensitive.
+- **Control who sees what**, with the least access needed for the job, granted quickly.
+- **Protect personal data** with masking, tokenisation and encryption, by default.
+- **Trace where data comes from and where it goes**, so changes and incidents can be assessed.
+- **Keep data only as long as allowed**, and delete it properly when asked.
+- **Prove all of this** to auditors and regulators.
+
+The test of good governance: a new analyst gets the access they need in hours, never sees a raw card number, and the company can answer "who read this customer's data last month?" in minutes.
+
+## O3.2 Classifying personal data
+
+You cannot protect what you have not found. **Classification** tags each column with what it holds: `pii.email`, `pii.phone`, `pii.card`, `confidential.salary`, `public`. Tags drive everything else: masking, access, retention and audit.
+
+Do it in three layers:
+
+1. **Declared**: the producing team tags columns in the data product's contract (O1). This is the most reliable source.
+2. **Detected**: a scanner samples values and column names and proposes tags, for example "90% of values in `contact` look like email addresses". Detection catches what nobody declared, especially in raw and landing zones.
+3. **Reviewed**: proposed tags go to the owner to confirm, and confirmed tags become part of the contract.
+
+Detection rules use patterns (emails, phone numbers, card numbers with a Luhn check, national ids) and a threshold, because one email address in a free-text column does not make it an email column. False positives cost review time; false negatives leak data, so err towards proposing.
+
+## O3.3 Access control: roles, attributes and policies
+
+**Role-based access control (RBAC)** grants permissions to roles (`analyst_marketing`) and roles to people. It is simple, but roles multiply: one per team, data set and sensitivity, until there are thousands and nobody knows what any of them allows.
+
+**Attribute-based access control (ABAC)** decides from attributes: the user's team, purpose and location; the data's tags and owner; the request's time and tool. A few policies cover many cases:
+
+- Columns tagged `pii` are visible only to users whose purpose is `support` or `fraud`; everyone else sees them masked.
+- Rows are filtered by the user's region (**row-level security**).
+- Columns tagged `confidential.salary` are denied outright to everyone outside HR.
+
+Combine them in practice: roles for coarse access (which domains you may query at all), attributes and tags for fine rules. Add **least privilege** (start with nothing), **just-in-time access** for rare needs (granted for a day, then removed), and **access reviews** every quarter where owners confirm or remove grants.
+
+## O3.4 Masking, tokenisation and pseudonymisation
+
+Three different tools, often confused:
+
+| Technique | What it does | Reversible? | Use it when |
+|---|---|---|---|
+| **Masking** | Shows a hidden or partial value at read time (`****1234`, `j***@x.com`); the stored value is unchanged | For readers, no; the data is still there | Most analysts need the column to exist but not its value |
+| **Tokenisation** | Replaces the value with a random token; a secure vault maps tokens back | Yes, through the vault, for authorised services only | Card numbers and ids that some systems must recover |
+| **Pseudonymisation** | Replaces identifiers with a consistent stand-in (a keyed hash), so joins still work | Only with the key | Analysis across tables without knowing who the person is |
+| **Anonymisation** | Removes the link to a person for good (aggregation, generalisation, noise) | No | Publishing or sharing data outside the company |
+
+Two traps: a plain hash of an email is not anonymous (anyone can hash a list of emails and match them), so use a keyed hash and protect the key. And pseudonymised data is still personal data under GDPR; only truly anonymised data is not.
+
+## O3.5 Lineage: impact and tag propagation
+
+**Lineage** is the graph of which jobs read which tables and write which others, ideally down to columns. It answers three governance questions:
+
+- **Impact:** if this table or column changes, what breaks downstream? Lineage turns "who uses this?" from a guess into a list.
+- **Root cause:** a dashboard is wrong; which upstream table or job caused it?
+- **Propagation:** a column tagged `pii.email` flows into five tables; those columns should inherit the tag, so masking and retention follow the data automatically, until a step that masks, aggregates or drops it.
+
+Collect lineage from the jobs themselves (OpenLineage events from Spark, Airflow, dbt and Flink) rather than by parsing SQL afterwards. Store it in the catalog, keep column-level lineage for the tables that matter, and use it in CI: a pull request that changes a column shows the downstream products it affects.
+
+## O3.6 Retention, deletion and legal hold
+
+Keeping data forever is a cost and a risk: storage, breach exposure and legal discovery. **Retention policies** set how long each class of data is kept: raw events 13 months, financial records 7 years, support chat 2 years. Apply them by tag or by dataset class, automatically.
+
+**Deletion** comes in two kinds. Retention deletes whole partitions when they age out, which is cheap. **Erasure requests** (GDPR's right to be forgotten) delete one person's rows across every table, which is expensive: you need to know every table that holds their id (lineage and tags), delete in batches with merge-on-read deletes or deletion vectors, then compact and expire snapshots so the old files really go (O1 and the Iceberg lens). Backups follow the same rules, or the data is not deleted.
+
+A **legal hold** overrides retention: data involved in litigation or an investigation must be kept, even past its retention date, until the hold is lifted. The deletion job must check holds first; deleting held data is far worse than keeping data too long.
+
+## O3.7 Audit and evidence
+
+Regulators and auditors ask to see proof, not intentions:
+
+- **Access logs:** who read which table or column, when, from which tool, with which purpose. Keep them tamper-evident and for as long as policy requires.
+- **Grant history:** who approved which access, and the access reviews that confirmed or removed it.
+- **Policy as code history:** which policies were in force on a date, from version control.
+- **Deletion evidence:** erasure requests received, tables touched, rows deleted, snapshots expired.
+- **Classification coverage:** share of columns in production with a reviewed tag.
+
+The question "who saw this customer's data last month?" should be one query against the access log joined to lineage, not a two-week project.
+
+## O3.8 Governance as code, and how it fails
+
+The governance that works lives in the platform (O2's guardrails), not in documents:
+
+- Tags declared in contracts and checked in CI; publication blocked for an untagged column in a product.
+- Masking and row policies attached to tags in the warehouse, so a new tagged column is protected the moment it appears.
+- Access requested and granted through a workflow with an owner's approval and an expiry.
+- Retention and erasure jobs driven by tags and classes, with legal holds checked first.
+- Dashboards of coverage: tagged columns, owned products, expired grants.
+
+| Failure | What it looks like | Prevention |
+|---|---|---|
+| Committee governance | Weeks of review for every request | Policies as code; owners approve, not boards |
+| Role explosion | Thousands of roles nobody understands | Attributes and tags for fine rules; roles stay coarse |
+| Tags that rot | Tags never updated as schemas change | Tags in contracts, checked in CI; detection on new data |
+| Deletion that is not deletion | Old snapshots and backups still hold erased rows | Snapshot expiry, compaction and backup policy in the erasure job |
+| Shadow copies | Extracts in spreadsheets and personal buckets | Easy approved access; scanning of storage; ownership required |
+| Access that never expires | Grants from three years ago still active | Expiring grants, quarterly reviews |
+
+## O3.9 Architect's lens: data governance
+
+The questions an architect is asked about data governance: how to make it enabling, how to enforce it, and how it fails.
+
+| Question | Short answer for data governance |
+|---|---|
+| **What problem does it solve?** | Using data safely and legally at scale: knowing what personal and sensitive data exists, controlling who sees it, protecting it by default, tracing it, keeping it only as long as allowed, and proving all of that to auditors. |
+| **Why it over the alternatives?** | Against manual approval boards: policies as code apply the same rule to everyone in seconds. Against locking everything down: tag-based masking and attribute policies let most people use most data with personal values hidden. Against each team doing its own: shared tags, policies and audit make the company answer regulators once. |
+| **When not to use it?** | Heavy governance on public or synthetic data, or a tiny company with one database and three engineers, where a short access list and encryption at rest go further than a catalog and policy engine. Scale governance to the risk and the number of people. |
+| **Who owns and pays for it?** | A governance lead with legal and security sets the policies; the platform team builds classification, policy enforcement, lineage collection, retention jobs and audit logs; data owners classify their products, approve access and answer reviews. |
+| **Where does it sit?** | In the catalog (tags, owners, lineage), the query engines and warehouse (masking and row policies, enforced at read time), the CI pipelines (contract and tag checks), the storage layer (retention, deletion, encryption) and an access workflow. |
+| **How does it fail and scale?** | It scales with automation: detection, tag-driven policies and expiring grants. It fails as committees, role explosion, rotting tags, deletion that leaves snapshots and backups, shadow copies and grants that never expire. |
+| **When do you move off it?** | You do not move off governance, but you replace parts: manual reviews with policies as code, home-grown lineage with OpenLineage, one engine's policy model with a shared one when several engines read the same lake. |
+
+### Under the hood
+
+**1. How would you find personal data in a lake with 20,000 tables nobody tagged?**
+<details><summary>Model answer</summary>
+
+Run a scanner over every table: sample a few thousand values per column, test them against patterns (email, phone, card numbers with a Luhn check, national ids, addresses) and column names (`email`, `dob`, `ssn`), and propose a tag when a high share of non-empty values match, say 80%. Rank by risk (raw and landing zones first, tables with many readers), send proposals to owners to confirm, and write confirmed tags into contracts so they stay. Then make tagging part of the golden path, so new tables arrive tagged, and keep scanning new data for drift. Classification coverage (share of columns with a reviewed tag) is the number to report.
+
+</details>
+
+**2. RBAC or ABAC for a lakehouse with 2,000 analysts?**
+<details><summary>Model answer</summary>
+
+Both, for different jobs. Roles stay coarse: which domains and environments a person may query, granted through an access workflow with an owner's approval and an expiry. Fine rules use attributes and tags: columns tagged `pii` are masked unless the user's purpose is support or fraud; rows are filtered by region; salary columns are denied outside HR. That keeps roles to dozens instead of thousands, and a new tagged column is protected the moment it is created. Enforce at read time in every engine that reads the lake (warehouse, Trino, Spark), ideally from one policy definition, and log every decision for audit.
+
+</details>
+
+**3. When do you mask, tokenise or pseudonymise?**
+<details><summary>Model answer</summary>
+
+Mask at read time when most readers need the column to exist but not its value: the stored value is unchanged and authorised readers see it in full. Tokenise when some systems must recover the original (card numbers for payments): a vault maps random tokens back, and only authorised services can call it. Pseudonymise with a keyed hash when analysts must join or count by person without knowing who it is. Remember that a plain hash of an email is reversible by guessing, so use a key; and that pseudonymised data is still personal data, while only properly anonymised data (aggregated, generalised or noised) is not.
+
+</details>
+
+**4. How does lineage help governance, beyond drawing a nice graph?**
+<details><summary>Model answer</summary>
+
+Impact: before a column changes, CI lists the downstream products and owners it affects. Root cause: a wrong dashboard is traced upstream to the job or source that changed. Propagation: a `pii.email` tag on a source column flows to every derived column until a step masks, aggregates or drops it, so masking and retention follow the data without anyone tagging 40 derived tables by hand. Erasure: lineage lists every table that holds a person's id. Collect it from job runs (OpenLineage) rather than SQL parsing, and keep column-level lineage where it pays.
+
+</details>
+
+**5. A customer asks to be forgotten. What actually happens in a lakehouse?**
+<details><summary>Model answer</summary>
+
+Log the request with a deadline (30 days under GDPR). Find every table holding the person's identifiers from tags and lineage, not from memory. Batch erasures weekly: run merge-on-read deletes or deletion vectors by id on each table, then compaction rewrites the affected files and snapshot expiry removes old snapshots, or the rows are still readable by time travel. Apply the same to backups and to extracts in other systems, check legal holds first, and record evidence: tables touched, rows deleted, snapshots expired, date completed. Kafka topics with short retention expire on their own; compacted topics need a tombstone.
+
+</details>
+
+**6. Retention says delete, but legal says keep. Who wins, and how does the system know?**
+<details><summary>Model answer</summary>
+
+The legal hold wins: data involved in litigation or an investigation must be preserved even past its retention date, and destroying it can be far more serious than over-retention. The system knows because holds are records the deletion job reads first: each hold names the datasets or subjects it covers, who placed it and when it was lifted. The retention job deletes only what has expired and is not held, reports what it skipped because of holds, and resumes normal deletion once a hold is lifted.
+
+</details>
+
+@@lab
+## In the app: classification, access, lineage and retention in the browser (1.75 hours)
+
+Four exercises run real tests in your browser:
+
+1. **Classify columns.** From sample values, propose a personal data tag per column when enough values match a pattern.
+2. **Access per column.** Given a user's roles and purpose and the table's tag policies, decide full, masked or denied for every column.
+3. **Lineage impact and tag propagation.** From job lineage, list everything downstream of a changed table, and which tables inherit a PII tag until a masking step.
+4. **Retention plan.** Decide which datasets to delete, keep or hold, with legal holds checked first.
+
+## Going further (optional, 45 minutes)
+
+Write the tags, policies and retention classes for three tables from your own work, then answer this module's design problem in the design studio.
+
+@@practice
+## Write the access policy for one dataset (20 minutes)
+
+Pick a dataset with personal data from your own work. Write: the tags per column; who may see it fully, masked or not at all, and why (role or purpose); any row filter; the retention class and its period; and what a quarterly access review would check.
+
+## Customer drill: "the auditors are coming" (10 minutes)
+
+A CFO says: "External auditors arrive in six weeks. They will ask who can see customer data and prove we delete it on request. We have no catalog and access is granted by Slack message." Answer out loud in three minutes: what do you do in six weeks?
+
+<details><summary>A strong answer</summary>
+
+Focus on evidence for the two questions. Week 1: list the systems with customer data and turn on access logging everywhere it is off. Weeks 1–3: scan the main warehouse and lake for personal data and tag what you find, starting with the tables most people read; put tag-based masking on those columns so the default is safe. Weeks 2–4: move access requests from Slack into a simple workflow with an owner's approval and an expiry, and run a first access review that removes grants nobody can justify. Weeks 3–6: write down the erasure process, run it end to end on a test subject including snapshot expiry, and record the evidence. Say plainly what will not be finished, with dates.
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: arch
+Q: A column has one email address among 10,000 free-text notes. Should a scanner tag it pii.email?
+A) Yes, because one email address is enough to tag a column as email
+B) Not on that alone; tag when a high share of values match the pattern
+C) No, because free-text columns can never contain personal data at all
+D) Yes, and the platform should also delete the whole column right away
+ANS: B
+WHY: Detection uses a threshold so a stray value does not tag a column; the owner still reviews free-text columns for personal data.
+---
+TYPE: mcq
+TAG: arch
+Q: Why does ABAC scale better than RBAC for fine-grained data access?
+A) It needs no policies, since every user is trusted by default
+B) A few policies on tags and user attributes replace many roles
+C) It gives every analyst full access to every column in the lake
+D) It is enforced only once a year during the access reviews
+ANS: B
+WHY: Attributes of users and data combine into few policies, instead of one role per combination of data and job.
+---
+TYPE: mcq
+TAG: arch
+Q: Analysts need to count orders per customer without knowing who the customers are. What fits best?
+A) Masking the customer id at read time for every analyst in the company
+B) Pseudonymising the customer id with a keyed hash so joins still work
+C) Deleting the customer id column from every table where it appears
+D) Storing a plain unsalted hash of each customer's email in its place
+ANS: B
+WHY: A keyed hash keeps one consistent stand-in per person for joins and counts; a plain hash of an email can be reversed by guessing.
+---
+TYPE: mcq
+TAG: arch
+Q: Retention says a dataset expired last month, but it is under a legal hold. What should the deletion job do?
+A) Delete it, because the retention policy came first in time
+B) Keep it, report the hold, and delete it only after the hold lifts
+C) Delete half of the data and keep the other half just in case
+D) Move it into a personal bucket where the job will not find it
+ANS: B
+WHY: Legal holds override retention; destroying held data is far more serious than keeping data too long.
+---
+TYPE: mcq
+TAG: arch
+Q: After running an erasure request with merge-on-read deletes on an Iceberg table, the person's rows can still be read. Why?
+A) Iceberg cannot delete individual rows from tables at all
+B) Old snapshots still reference the old files until they expire
+C) Deletes only take effect after the table is renamed once
+D) The reader is caching results in memory for a whole year
+ANS: B
+WHY: Time travel keeps old files reachable; compaction and snapshot expiry must follow the delete.
+---
+TYPE: mcq
+TAG: arch
+Q: A pii.email column flows through five jobs into a marketing table. How should the marketing column get its tag?
+A) Someone tags it by hand once a quarter when they remember to
+B) It inherits the tag through lineage until a step masks or drops it
+C) It never needs a tag, because it is in a different domain's tables
+D) The marketing team decides for itself whether to tag it or not
+ANS: B
+WHY: Tag propagation through lineage keeps protection following the data automatically.
+---
+TYPE: fill
+TAG: arch
+Q: Filtering which rows a user can see by attributes such as their region is called ____-level security.
+ANS: row
+WHY: Column rules hide or mask values; row rules filter which records a user can see.
+---
+TYPE: fill
+TAG: arch
+Q: Replacing a card number with a random value that only a secure vault can map back is called ____.
+ANS: tokenisation
+WHY: Unlike masking, the original value is removed from the dataset and recoverable only through the vault.
+---
+TYPE: short
+TAG: arch
+Q: What evidence would you show an auditor about access to customer data?
+MODEL: Access logs of who read which tables and columns, when, from which tool and for which purpose; the grant history with approvals and expiries; the last access reviews and grants removed; the policies in force on each date from version control; classification coverage of customer tables; and erasure records showing requests, tables touched, rows deleted and snapshots expired.
+---
+TYPE: short
+TAG: arch
+Q: Name three ways data governance fails and how to prevent each.
+MODEL: Committee governance that delays every request (policies as code with owner approval); role explosion (coarse roles plus tag and attribute policies); tags that rot (tags in contracts checked in CI, detection on new data); deletion that leaves snapshots and backups (snapshot expiry, compaction and backup policy in the erasure job); shadow copies (easy approved access, storage scanning); grants that never expire (expiring grants and quarterly reviews).
+
+@@interview
+Q: How would you design data governance for a lakehouse used by 2,000 people?
+TAG: arch
+A: Make governance a property of the platform, not a committee. Classify: declared tags in data product contracts, a scanner that proposes tags for untagged columns, owners who confirm. Control access: coarse roles through an access workflow with owner approval and expiry, and fine rules from tag and attribute policies (masking for PII unless the purpose allows, row filters by region), enforced at read time in every engine. Trace: OpenLineage from jobs into the catalog, with tag propagation and impact in CI. Retain: retention by class, erasure batches with snapshot expiry, legal holds checked first. Prove: access logs, grant history, policy history and deletion evidence. Report coverage and time to access.
+---
+Q: What is the difference between masking, tokenisation, pseudonymisation and anonymisation?
+TAG: arch
+A: Masking hides values at read time while the stored data is unchanged, so authorised readers still see it. Tokenisation replaces values with random tokens that only a vault can map back, for systems that must recover the original, such as payments. Pseudonymisation replaces identifiers with consistent stand-ins, such as a keyed hash, so joins still work; it is still personal data under GDPR. Anonymisation removes the link to a person for good by aggregation, generalisation or noise, and only then is the data no longer personal. A plain hash of an email is not anonymous.
+---
+Q: A customer asks to be deleted. Walk me through it in a lakehouse.
+TAG: arch
+A: Record the request with its deadline. Use tags and lineage to find every table with the person's identifiers. In a weekly batch, delete by id on each table with merge-on-read deletes or deletion vectors, then compact and expire snapshots so time travel cannot bring the rows back. Apply the same to backups and downstream extracts, skip anything under legal hold and record why, and handle Kafka with short retention or tombstones on compacted topics. Keep evidence: tables touched, rows deleted, snapshots expired and the completion date.
+---
+Q: How do you stop the number of roles from exploding?
+TAG: arch
+A: Keep roles coarse: which domains and environments someone may use at all. Move fine-grained decisions to attributes and tags: columns tagged PII are masked unless the user's purpose allows; rows are filtered by region; sensitive columns are denied outside one team. A handful of policies replace thousands of roles, and new tagged columns are protected automatically. Add expiring grants and quarterly reviews so access does not pile up.
+---
+Q: How would you use lineage in governance?
+TAG: arch
+A: Collect it from job runs with OpenLineage into the catalog, with column-level lineage for important tables. Use it for impact (a pull request that changes a column lists the downstream products and owners), root cause (trace a wrong number upstream), tag propagation (PII tags flow to derived columns until a masking or aggregation step), and erasure (every table holding a person's id). Without it, every one of these is a guess.
+---
+Q: The auditors arrive in six weeks and access is granted by Slack messages. What do you do?
+TAG: arch
+A: Focus on evidence. Turn on access logging everywhere first. Scan and tag the most-read tables with customer data and put tag-based masking on them. Move access to a workflow with owner approval and expiry, then run an access review that removes unjustified grants. Run the erasure process end to end on a test subject with snapshot expiry and record it. Tell the CFO plainly what will and will not be done by the audit, with dates for the rest.
+---
+Q: Tell me about a time you had to balance access to data with protecting it.
+TAG: behavioral
+A: Answer with your own STAR story. A strong shape: a team blocked from data they needed, or data exposed more widely than it should have been; you found a way to give access to what the job needed (masked columns, aggregates, a purpose-based policy) rather than all or nothing; you agreed it with security or legal; and you measured the result (time to access, fewer exceptions, an audit passed).
