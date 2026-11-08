@@ -1,0 +1,358 @@
+@@meta
+id: o01
+n: 1
+title: Data mesh and data products: domain ownership, contracts, SLOs and the platform that makes it work
+goal: Decide when domain-owned data products are the right answer for an organisation and when they are not; define a data product with an owner, a contract, service levels, discoverability and stable interfaces; design the self-serve platform and federated governance it needs; measure adoption like a product; and plan the move from a central warehouse team without breaking anyone.
+hours: 5
+
+@@tickets
+O101 | learn | 1 | Chapter part 1: why mesh exists, what a data product is, domain ownership, the self-serve platform | You can write a data product's owner, contract, SLOs and interfaces from memory, and say in one minute when mesh is the wrong answer. | chapter:0-3
+O102 | learn | 1 | Chapter part 2: federated governance, product thinking, migrating from a central team, failure modes, the architect's lens | You can list three policies to automate, three adoption metrics, and the first three steps of a migration. | chapter:4-8
+O103 | build | 1 | Exercises 1–2: check a data contract and an SLO report | Both pass in the editor: a contract check that lists every violation, and an SLO report with the error budget left. | py:1-2
+O104 | build | 0.75 | Exercises 3–4: breaking changes and adoption | Both pass: a schema diff that says major or minor, and an adoption report that says whether a product can be retired. | py:3-4
+O105 | practice | 0.5 | Write a data product spec for one of your domains, then the customer drill | A spec with owner, grain, contract, two SLOs, interfaces and a deprecation rule, and the drill answered out loud. | practice
+O106 | test | 0.5 | Quiz O1 | 80% or better. | quiz
+O107 | talk | 0.75 | Interview set O1 | 5 of 7 answered out loud and ticked. | interview
+
+@@readings
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
+- **Reading note: How to move beyond a monolithic data lake to a distributed data mesh.** The essay that named data mesh. A central data team between every source and every consumer becomes the bottleneck as sources and uses multiply. The proposal: domains own their data as products, served through a shared self-serve platform, under federated governance. [ⓘ](https://martinfowler.com/articles/data-monolith-to-mesh.html)
+- **Reading note: Data mesh principles and logical architecture.** The four principles in detail: domain ownership, data as a product, self-serve data infrastructure as a platform, and federated computational governance. Each principle exists to stop the others from failing: products without a platform cost too much, and autonomy without governance gives silos. [ⓘ](https://martinfowler.com/articles/data-mesh-principles.html)
+- **Reading note: The Open Data Contract Standard.** A vendor-neutral YAML format for data contracts: the dataset's schema, semantics, quality rules, service levels, owner and support channel, in a file that tools can check in CI. [ⓘ](https://bitol-io.github.io/open-data-contract-standard/)
+- **Reading note: Team Topologies and the platform team.** Stream-aligned teams deliver value; a platform team offers internal services as a product so those teams can move without waiting; enabling teams coach. A data platform team in a mesh is a platform team in this sense. [ⓘ](https://teamtopologies.com/key-concepts)
+- **Reading note: Data products in practice.** Companies that adopted mesh report that the hard part is organisational: funding domain data engineers, agreeing on shared identifiers and definitions, and making the platform good enough that teams choose it. Treat any "we bought a data mesh" claim with suspicion.
+
+@@chapter
+## O1.1 Why data mesh exists
+
+A central data team works well at first. It builds the warehouse, ingests every source, models the tables and answers questions. Then the company grows: 40 source systems become 400, the questions come from every department, and every change to a source breaks a pipeline the source team has never heard of.
+
+The central team now sits between everyone. Its backlog is months long. Its engineers model domains they do not understand, so definitions drift ("an active rider" means three things). Source teams change schemas without warning, because the pipeline is not their problem. Quality issues are found by the CFO.
+
+**Data mesh** is an organisational answer to that bottleneck, not a technology. Four principles:
+
+1. **Domain ownership.** The team that runs a business domain (payments, trips, marketing) also owns the analytical data it produces.
+2. **Data as a product.** That data is published as a product, with an owner, a contract, service levels and real consumers.
+3. **A self-serve platform.** A platform team gives every domain paved roads for ingestion, storage, transformation, quality checks, access and discovery, so a domain does not build its own stack.
+4. **Federated computational governance.** A small set of global rules (identity, privacy, naming, interoperability) is agreed together and enforced by code, while domains decide everything else.
+
+Each principle protects the others. Ownership without a platform means 30 teams build 30 stacks. A platform without product thinking gives tables nobody trusts. Autonomy without governance gives silos that cannot be joined.
+
+## O1.2 What a data product is
+
+A **data product** is a dataset (or a set of related datasets) published for others to use, with everything a consumer needs to trust it without asking. It has:
+
+| Part | What it means |
+|---|---|
+| **Owner** | A named team and an on-call rotation, not a person who might leave. |
+| **Purpose and grain** | What it describes and what one row is: "one row per completed trip". |
+| **Contract** | Schema, types, keys, allowed values and semantics, versioned. Breaking changes need a new major version and a notice period. |
+| **Service levels** | Freshness (ready by 06:00 on 99% of days), completeness (no missing day), quality (null and duplicate checks pass). Published and measured. |
+| **Interfaces** | How to read it: a table in the lakehouse, a stream, an API, a semantic-layer metric. Often more than one. |
+| **Discoverability** | Listed in the catalog with description, owner, lineage, sample queries and its service-level history. |
+| **Access and policy** | Who may read what; personal data tagged and masked by rule. |
+| **Lifecycle** | Versioning, deprecation notice (for example 90 days), and how consumers are told. |
+
+A contract, written as a file next to the code:
+
+```yaml
+product: trips.completed_trips
+owner: team-trips (on-call: #trips-data)
+grain: one row per completed trip
+version: 2.1.0
+schema:
+  - {name: trip_id, type: string, required: true, unique: true}
+  - {name: city_id, type: int, required: true}
+  - {name: fare_usd, type: decimal(12,2), required: true, min: 0}
+  - {name: status, type: string, allowed: [completed, refunded]}
+slo:
+  freshness: {ready_by: "06:00", target: 0.99}
+  completeness: {no_missing_days: true}
+interfaces: [iceberg: lake.trips.completed_trips, metric: completed_trips]
+deprecation_notice_days: 90
+```
+
+The test of a data product: can a new consumer find it, understand it, trust it and use it, without a meeting? If not, it is a table, not a product.
+
+## O1.3 Domain ownership, and when mesh is the wrong answer
+
+Ownership means the trips team is accountable when `completed_trips` is late, the same way it is accountable when the trips API is down. That needs **data engineers inside the domain** (embedded, or a domain data team), a budget, and on-call.
+
+Not everything moves to domains. **Source-aligned products** (what happened in trips) belong to the source domain. **Consumer-aligned products** (a marketing attribution model) belong to the team that uses them. **Aggregate products** that join many domains (company revenue, the executive scorecard) often stay with a central analytics or finance data team, which is fine: the point is a clear owner, not that the central team disappears.
+
+**Mesh is the wrong answer when:**
+
+- The organisation is small: one data team of under about 15 people serving a handful of domains is not a bottleneck yet.
+- Domains have no engineers who could own data, and no budget to hire them.
+- There is no platform, and no plan or money to build one: domains will each build their own, badly.
+- The problems are really quality or speed problems that a better central team (contracts with source teams, tests, an SLO) would fix.
+- Leadership wants mesh as a rebrand. Renaming the warehouse team "the platform team" changes nothing.
+
+A good staff-level answer is often "not a full mesh": keep a central platform and a central team for shared products, and move ownership of source-aligned data to the two or three domains that are ready.
+
+## O1.4 The self-serve platform
+
+Domains will only own data products if doing it the right way is easier than doing it badly. The platform team builds **golden paths**: opinionated, supported ways to do the common jobs.
+
+| Need | What the platform gives |
+|---|---|
+| Start a product | A template repository: contract file, dbt or Spark project, tests, CI, deployment |
+| Ingest | Managed CDC and event ingestion with schema registry |
+| Store and compute | Lakehouse tables with a shared catalog; warehouse or engine access with quotas per domain |
+| Quality and SLOs | Contract checks in CI and on every run; freshness and completeness monitors that page the owner |
+| Discovery | Automatic catalog entries from the contract, lineage from jobs |
+| Access | Policy-based access (tags, roles), masking of personal data, audit |
+| Cost | Cost per product and per domain, shown back monthly |
+
+Measure the platform like a product too: time from "new product" to first consumer query (aim for days, not months), share of products on the golden path, and how often domains ask the platform team for help.
+
+## O1.5 Federated computational governance
+
+Governance in a mesh is **federated**: a council with representatives from domains, the platform, security and legal agrees on a short list of global rules. And it is **computational**: those rules are enforced by code in the platform, not by review meetings.
+
+Good global rules are few and testable:
+
+- Every product has an owner, a contract, and freshness and completeness SLOs before it can be published.
+- Personal data columns are tagged; tagged columns are masked unless the reader has a role that allows it.
+- Shared identifiers use the company-wide keys (customer_id, city_id) so products can be joined.
+- Naming: `domain.product` and snake_case columns.
+- Retention by data class, applied automatically.
+- Breaking changes need a new major version and a 90-day notice.
+
+Everything else (tools inside the domain, modelling style, internal tables) is the domain's choice. If a rule cannot be checked automatically, ask whether it is worth having.
+
+## O1.6 Product thinking: consumers and adoption
+
+A product has users. Before building, a domain should name its consumers and their questions, the same way an app team writes user stories. After publishing, it measures adoption:
+
+- **Weekly active consumers**: distinct users or jobs that read the product.
+- **Dependent products**: other products built on it (a sign of a foundational product).
+- **Time to first query** for a new consumer.
+- **SLO attainment** over the last 30 days.
+- **Support load**: questions per week, and how many the documentation should have answered.
+
+Products with no readers for 90 days are candidates for deprecation: announce, wait for the notice period, then archive. Retiring products is as much a part of product thinking as launching them; a catalog full of dead tables is why people stop trusting the catalog.
+
+## O1.7 Migrating from a central warehouse team
+
+You cannot switch an organisation to mesh in one quarter. A sequence that works:
+
+1. **Platform first.** Contract files, CI checks, the catalog, SLO monitors and cost per product, used by the central team itself before any domain.
+2. **Pick two or three lighthouse domains** that have engineers, a clear business owner and real consumers. Move their source-aligned products to them, with central engineers moving into the domains to help.
+3. **Contracts at the boundaries** before ownership moves: the source team signs the contract for what it emits, so central pipelines stop breaking.
+4. **Dual run and reconcile** the old central tables and the new domain products until numbers match, then move consumers in groups and deprecate the old tables.
+5. **Grow by demand:** domains join when the golden path is good enough that they ask to. Keep shared aggregate products central.
+
+Track the migration with numbers leadership understands: central backlog length, incidents from upstream changes, time to ship a new dataset, share of consumers reading certified products.
+
+## O1.8 Failure modes companies hit
+
+| Failure | What it looks like | Prevention |
+|---|---|---|
+| Mesh-washing | The warehouse team is renamed; nothing else changes | Ownership, budget and on-call actually move |
+| No platform | Every domain builds its own Kafka, Airflow and warehouse | Platform first; golden paths better than the alternatives |
+| Domains without data skills | Products are unreliable and nobody fixes them | Embed data engineers; enabling team that coaches |
+| Duplicate products | Three "customer" products with different numbers | Global identifiers; catalog search before publishing; one owner per concept |
+| Governance theatre | Long review boards, rules nobody checks | Few rules, enforced in code |
+| Interoperability gaps | Products cannot be joined (different keys, time zones, currencies) | Shared identifiers and conventions as global rules |
+| Cost explosion | Every domain runs its own clusters around the clock | Shared compute with quotas; cost per product shown back |
+| Orphaned products | The team reorganises; nobody owns the product | Ownership is a team, transferred on reorganisation; no owner, no publication |
+
+## O1.9 Architect's lens: data mesh and data products
+
+The questions an architect is asked about data mesh: when it is worth the cost, who owns what, and how it fails.
+
+| Question | Short answer for data mesh |
+|---|---|
+| **What problem does it solve?** | A central data team that has become the bottleneck between hundreds of sources and consumers: long backlogs, drifting definitions, pipelines broken by upstream changes nobody announced. Mesh moves ownership of analytical data to the domains that produce it, as products with contracts and service levels. |
+| **Why it over the alternatives?** | Against a central team: it scales with the number of domains, and puts data next to the people who understand it. Against "every team for itself": the shared platform and federated governance keep products joinable, compliant and affordable. Against a data fabric (tooling that integrates data centrally through metadata): mesh is about ownership and accountability, and can use fabric-style tools on its platform. |
+| **When not to use it?** | Small organisations, domains with no engineers or budget, no platform and no plan for one, or problems that a better central team with contracts and SLOs would fix. Often the right answer is partial: a central platform and shared products, with ownership moved to the few domains ready for it. |
+| **Who owns and pays for it?** | Domains own and fund their products (people, compute, on-call). The platform team owns the golden paths, catalog, policy engine and cost reporting. A federated governance group owns the global rules. Cost is shown back per product and per domain. |
+| **Where does it sit?** | It is an operating model on top of the stack: sources and domain pipelines publish products into a shared lakehouse and catalog; consumers find and read them through the platform; global policies run inside the platform. |
+| **How does it fail and scale?** | It scales with the number of domains that can own data. It fails as mesh-washing, no platform, duplicate and unjoinable products, domains without data skills, governance theatre and cost sprawl. |
+| **When do you move off it?** | When the organisation shrinks or consolidates domains, when domains cannot staff ownership and a central team would serve them better, or when product counts stay so small that the platform costs more than the bottleneck it removed. |
+
+### Under the hood
+
+**1. What makes a dataset a data product, and how would you check it automatically?**
+<details><summary>Model answer</summary>
+
+A named owning team with on-call; a stated purpose and grain; a versioned contract (schema, keys, allowed values, semantics); published service levels such as freshness and completeness that are measured; at least one documented interface (a table, a stream, a metric); a catalog entry with lineage and sample queries; access policies; and a deprecation rule. Most of this can be checked by the platform: the contract file exists and validates, CI runs contract tests against the data, SLO monitors are attached and report history, the catalog entry is generated from the contract, and publication is blocked until all of it passes. The exercises in this module build the contract and SLO checks.
+
+</details>
+
+**2. What counts as a breaking change to a data product, and how do you ship one?**
+<details><summary>Model answer</summary>
+
+Breaking: removing or renaming a column, changing its type or meaning, making an optional column required, changing the grain (one row per trip becomes one row per trip leg), removing an allowed value consumers rely on, or weakening a service level. Not breaking: adding an optional column, adding an allowed value consumers ignore, improving freshness. A breaking change gets a new major version published beside the old one (`completed_trips_v3`), a notice to every consumer found in the access logs, a migration guide and a fixed window (for example 90 days) of both versions running, then the old version is retired. Contract checks in CI catch accidental breaking changes before they merge.
+
+</details>
+
+**3. How do you keep products from different domains joinable?**
+<details><summary>Model answer</summary>
+
+Through a few global rules enforced by the platform: shared identifiers (one `customer_id` and `city_id` issued by the owning domain, used everywhere), shared conventions for time (UTC timestamps), currency (amounts with a currency code, or converted with a published rate product) and units, and reference products that other products join to (customers, cities, calendar). The catalog shows which products use which keys, and a contract check fails a product that invents its own customer key. Without this, mesh produces well-owned silos.
+
+</details>
+
+**4. What does the self-serve platform need before the first domain moves?**
+<details><summary>Model answer</summary>
+
+A template that creates a product with its contract, transformation project, tests and CI; contract and quality checks that run on every change and every run; SLO monitors that page the owning team; automatic catalog entries and lineage; policy-based access with personal data masking; and cost per product. The central team should use it for its own products first, so the golden path is proven before it is promised. The measure is time from "new product" to first consumer query.
+
+</details>
+
+**5. How do you know a mesh is working?**
+<details><summary>Model answer</summary>
+
+Leading numbers: time to ship a new product or change (down from months to days), central backlog length, incidents caused by unannounced upstream changes, share of consumer queries that read certified products, SLO attainment across products, adoption per product (weekly active consumers), duplicate products found, and cost per product. Ask consumers too: can they find and trust what they need without a meeting? If backlogs moved from the central team to the domains and nothing else improved, it is not working.
+
+</details>
+
+**6. One domain's backfill makes every product on the shared warehouse slow. What is wrong with the platform, and what do you change?**
+<details><summary>Model answer</summary>
+
+The platform shares compute without isolation, so one domain is a noisy neighbour. Give each domain (or heavy workload) its own compute with quotas: separate warehouses or resource groups, workload management queues, or separate clusters for backfills, while storage and the catalog stay shared. Charge compute back per domain so the cost of a backfill is visible to the team that runs it, and schedule large backfills with a throttle. The simulator's [shared platform challenge](#/sim/sc/mesh) fails until the noisy domain gets its own warehouse.
+
+</details>
+
+@@lab
+## In the app: data contracts and SLOs in the browser (1.75 hours)
+
+Four exercises run real tests in your browser, no cluster needed:
+
+1. **Check a data contract.** Given a contract and a batch of rows, list every violation: missing required values, wrong types, duplicate keys, values outside the allowed list or range.
+2. **SLO report and error budget.** Given a month of daily runs, compute freshness and completeness attainment against the contract's targets and how much error budget is left.
+3. **Breaking or not.** Compare two versions of a contract and say which changes break consumers, and whether the new version must be a major or a minor release.
+4. **Adoption and retirement.** From a query log, report weekly active consumers and dependent products, and decide whether a product may be retired.
+
+## Going further (optional, 45 minutes)
+
+Write the contract for one product from your own work in the format of O1.2, with two SLOs and a deprecation rule, then answer this module's design problem in the design studio.
+
+@@practice
+## Write a data product spec (20 minutes)
+
+Pick a dataset you know from your own work. Write its spec in the shape of O1.2: owner and on-call, purpose and grain, the schema with keys and allowed values, two SLOs, its interfaces, who reads it today, and how you would retire it. Then read it as a stranger would: could you use it without a meeting?
+
+## Customer drill: "we want to do data mesh" (10 minutes)
+
+A VP says: "We read about data mesh. We want every team to own its data by next quarter." The company has 120 engineers, one central data team of 9, and three teams that produce most of the data. Answer out loud in three minutes: what problem are they solving, is full mesh right, and what would you do in the next 90 days?
+
+<details><summary>A strong answer</summary>
+
+Start with the problem in numbers: how long is the data team's backlog, how many incidents come from upstream changes, how long does a new dataset take? At 9 data engineers and three main producing teams, a full mesh is probably premature: there is no platform yet, and most teams have no data engineers. In 90 days: put contracts on the three main sources so upstream changes stop breaking pipelines; build the golden path (template, contract checks, SLO monitors, catalog) for the central team's own products; pick one domain that has engineers and real consumers and move its source-aligned products to it, with one central engineer embedded. Measure backlog, incidents and time to ship, and decide on the next domains from the results.
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: arch
+Q: Which of these is one of the four data mesh principles?
+A) A single central team that models every domain's data
+B) Federated governance enforced by code in the platform
+C) One shared warehouse cluster for all with no quotas at all
+D) Every domain builds and runs its own separate data stack
+ANS: B
+WHY: The four principles are domain ownership, data as a product, a self-serve platform and federated computational governance.
+---
+TYPE: mcq
+TAG: arch
+Q: A product changes its grain from one row per trip to one row per trip leg. What is this change?
+A) A minor change, because not one column was removed
+B) A breaking change that needs a new major version
+C) A patch release, because the schema stays the same
+D) Not a change at all, because the table name stays
+ANS: B
+WHY: The meaning of every row changes, so every consumer's counts and joins change; publish a new major version beside the old one.
+---
+TYPE: mcq
+TAG: arch
+Q: A company has one data team of eight and four business domains. Leadership asks for a full data mesh. What is usually the best advice?
+A) Do the full mesh now so the company is ready to grow later
+B) Contracts and a platform first, then move the domains that are ready
+C) Buy a data catalog product and then call the result a data mesh
+D) Split the data team up so that each domain gets two of its people
+ANS: B
+WHY: At that size mesh is premature; contracts, a platform and one ready domain address the real problems.
+---
+TYPE: mcq
+TAG: arch
+Q: Which global rule belongs in federated governance?
+A) The modelling style each domain must use inside its pipelines
+B) Every product uses the shared customer_id issued by its owner
+C) Which orchestration tool each domain must use for its jobs
+D) The names of the internal tables that each domain keeps
+ANS: B
+WHY: Global rules cover what makes products joinable and compliant; tools and internals stay with the domain.
+---
+TYPE: mcq
+TAG: arch
+Q: Which number best shows the self-serve platform is working?
+A) The number of tools the platform team supports for domains
+B) Days from creating a product to its first consumer query
+C) The number of tables that exist in the shared catalog
+D) The number of people on the platform team this year
+ANS: B
+WHY: The platform exists to make publishing a trusted product fast; time to first query measures exactly that.
+---
+TYPE: mcq
+TAG: arch
+Q: A product has had no readers for 120 days. What should happen?
+A) Delete it at once to save money on storage and compute
+B) Keep it forever, because someone might need it later on
+C) Announce deprecation, wait the notice period, then archive it
+D) Move it into the central team's warehouse so it is still kept
+ANS: C
+WHY: Retirement follows the product's deprecation rule, so any hidden consumer has time to speak up.
+---
+TYPE: fill
+TAG: arch
+Q: Renaming the warehouse team to "the platform team" without moving ownership, budget or on-call is sometimes called mesh-____.
+ANS: washing
+WHY: Like greenwashing: the label changes, the practice does not.
+---
+TYPE: fill
+TAG: arch
+Q: The opinionated, supported ways a platform team offers for common jobs (start a product, ingest, publish) are called golden ____.
+ANS: paths
+WHY: Teams can leave the golden path, but the path should be the easiest way to do it right.
+---
+TYPE: short
+TAG: arch
+Q: List what a data product needs beyond the data itself.
+MODEL: An owning team with on-call; purpose and grain; a versioned contract (schema, keys, allowed values, semantics); measured service levels such as freshness and completeness; documented interfaces; a catalog entry with lineage and sample queries; access policies with personal data tagged; and a lifecycle rule for versioning and deprecation.
+---
+TYPE: short
+TAG: arch
+Q: Name three failure modes of data mesh and how to prevent each.
+MODEL: Mesh-washing (prevent by actually moving ownership, budget and on-call); no platform, so every domain builds its own stack (platform first, golden paths); duplicate or unjoinable products (shared identifiers and conventions as global rules, catalog search before publishing); domains without data skills (embedded data engineers, an enabling team); governance theatre (few rules enforced in code); cost sprawl (shared compute with quotas and cost per product).
+
+@@interview
+Q: Our central data team is the bottleneck. Should we move to data mesh?
+TAG: arch
+A: First the problem in numbers: backlog length, time to ship a new dataset, incidents from upstream changes, and how many domains and data engineers there are. Mesh helps when a central team sits between many sources and consumers and domains can staff ownership. It is the wrong answer for small organisations, domains with no engineers, or when there is no platform. Usually I recommend a staged path: contracts on the main sources, a self-serve platform used by the central team first, then move source-aligned products to two or three ready domains with embedded data engineers, keep shared aggregate products central, and measure backlog, incidents and time to first query to decide the next step.
+---
+Q: What is a data product? How is it different from a table?
+TAG: arch
+A: A table is storage. A data product is data published for others with everything they need to trust it without asking: an owning team with on-call, a stated purpose and grain, a versioned contract with schema and semantics, measured service levels such as freshness and completeness, documented interfaces (table, stream, metric), a catalog entry with lineage and examples, access policies, and a deprecation rule. The test: can a new consumer find, understand, trust and use it without a meeting?
+---
+Q: How do you introduce data contracts in a company that has none?
+TAG: arch
+A: Start where breakage hurts most: the few sources whose changes break the most pipelines. Write the contract with the producing team (schema, keys, allowed values, semantics, freshness) as a file in their repository, add a CI check that fails a change that breaks it, and run the same checks on the data each day. Make breaking changes possible but deliberate: a new major version, a notice period, both versions running for a while. Show the incidents avoided. Then make contracts part of the golden path so every new product has one from the start.
+---
+Q: Two domains publish "customer" products with different counts. How do you fix it?
+TAG: arch
+A: Find out why they differ: different definitions (all sign-ups versus active customers), different keys, different time zones or filters. Decide the owner of the customer concept, usually the domain that issues the identifier, and have it publish the reference customer product with clear definitions. The other domain either builds on it or renames its product for what it really is ("marketing_reachable_customers"). Make the shared customer_id a global rule, add a catalog check that warns before a new product duplicates an existing concept, and reconcile the two counts until consumers have moved.
+---
+Q: What should a self-serve data platform offer, and how do you measure it?
+TAG: arch
+A: Golden paths for the common jobs: a product template with contract, tests and CI; managed ingestion with a schema registry; lakehouse storage and compute with quotas; contract and quality checks on every run; SLO monitors that page the owner; automatic catalog entries and lineage; policy-based access with masking; and cost per product. I measure it like a product: time from new product to first consumer query, share of products on the golden path, SLO attainment, support requests per domain, and platform cost per product.
+---
+Q: How would you migrate a 60-person central data team to domain-owned data products?
+TAG: arch
+A: Platform first, used by the central team for its own products. Contracts on the main sources. Then two or three lighthouse domains with engineers and real consumers: central engineers move into them, they take over their source-aligned products, we dual-run and reconcile against the old central tables, move consumers in groups and deprecate the old tables. Shared aggregate products (revenue, executive metrics) stay with a central analytics team. A federated governance group agrees on a few global rules enforced in the platform. I track backlog, upstream incidents, time to ship and cost, and expand domain by domain when the golden path is good enough that teams ask to join.
+---
+Q: Tell me about a time you changed who owned a dataset or pipeline. How did you make it stick?
+TAG: behavioral
+A: Answer with your own STAR story. A strong shape: a dataset that broke often because the producing team did not own it; you made the cost visible (incidents, hours lost); you agreed a contract and service levels with the producing team, moved on-call to them with a runbook and a handover period, and made the right way easy (templates, checks in CI). Result with a number (incidents per month before and after), and what you would do differently.

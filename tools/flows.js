@@ -732,6 +732,25 @@ async function T(name, fn, opt) {
     await go(p, '#/dsa/d071', 900); ok(/Binary Search/.test(await p.evaluate(() => document.querySelector('.udemy').textContent)), 'binary search problem has no matching lecture');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
+  await T('module O1: data mesh sits after DE 10 for new learners with its chapter, lens, four exercises, design problem, quiz, reels and simulator challenge; an existing learner is told about it and nothing is marked done', async p => {
+    await go(p, '#/path', 1500);
+    ok(await p.evaluate(() => MODS.indexOf('o01') === MODS.indexOf('s10') + 1 && modLabel('o01') === 'Org 1'), 'O1 is not right after DE 10');
+    ok(await p.$('.pcard[data-mid=o01]') && /Data mesh and data products/.test(await all(p, '.pcard[data-mid=o01]')), 'O1 not on the Path');
+    await go(p, '#/learn/o01/chapter', 1500); await p.waitForSelector('.lens');
+    ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return document.querySelectorAll('.prose h2').length >= 9 && l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details:not(.fresh)').length === 6 && !!l.querySelector('a[href="#/sim/sc/mesh"]'); }), 'O1 chapter or lens incomplete');
+    const r = await p.evaluate(async () => { const s = await sprint('o01'), us = modUnits('o01'), xs = DATA.py.filter(x => x.m === 'o01');
+      return { quiz: s.quiz.length, iv: s.interview.length, ex: xs.map(x => x.id).join(), build: us.filter(u => u.kind === 'build').map(u => u.href).join(), design: us.some(u => u.kind === 'design'), reels: (await reelsFor('o01')).filter(x => x.sec === 'O1.9').map(x => x.level), prod: (await reelsFor('o01')).filter(x => x.sec === 'O1.2').length }; });
+    ok(r.quiz >= 10 && r.iv >= 7 && r.ex === 'yo011,yo012,yo013,yo014' && /#\/py\/yo011/.test(r.build) && /#\/py\/yo013/.test(r.build) && r.design, 'O1 steps: ' + JSON.stringify(r));
+    ok(r.reels.length === 8 && ['New to it', 'How it works', 'Inside and caveats', 'Architect'].every(lv => r.reels.includes(lv)) && r.prod === 4, 'O1 reels: ' + JSON.stringify(r.reels));
+    await go(p, '#/design/o01', 1200); ok(/central data team to domain-owned/.test(await text(p, '#page')), 'O1 design problem missing');
+    ok(await p.evaluate(() => { const sc = SIM_SC.find(x => x.id === 'mesh'), d = simFromSc(sc), g0 = SIM.grade(d, sc); SIM_HINTS.mesh.fix.forEach(f => simApplyFix(d, f)); return sc.mid === 'o01' && !g0.pass && SIM.grade(d, sc).pass; }), 'mesh challenge does not fail then pass');
+    /* an existing learner from before O1: its steps are new to them, listed in What is new, and nothing is done */
+    await go(p, '#/today', 1200);
+    await seed(p, () => { S.done['s00:S001'] = iso(new Date()); Object.keys(S.cv.known).filter(k => k.startsWith('o01:')).forEach(k => delete S.cv.known[k]); S.updates = []; });
+    await p.waitForSelector('.whatsnew'); await p.click('.whatsnew button:has-text("See")');
+    const w = await text(p, '.whatsnew'); ok(/1 new module/.test(w) && /Data mesh/.test(w), 'What is new does not list O1: ' + w.replace(/\s+/g, ' ').slice(0, 300));
+    ok(await p.evaluate(() => !Object.keys(S.done).some(k => k.startsWith('o01:'))), 'an O1 step was marked done');
+  });
   await T('architect\'s lens: Python 1 shows a lens card with seven questions and four internals answers, stacked on a phone; Start here explains the data foundation', async p => {
     await go(p, '#/learn/p01/chapter', 1500); await p.waitForSelector('.lens');
     ok(await p.evaluate(() => document.querySelectorAll('.lens tbody tr').length === 7 && document.querySelectorAll('.lens details').length === 4), 'lens card incomplete');

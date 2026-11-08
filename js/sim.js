@@ -312,7 +312,14 @@ const SIM_SC = [
     q: 'Writes go to the primary region and replicate to the second region through CDC. The link slows, then the primary database dies. Promise an RPO under 5 seconds (replica freshness) and an RTO of seconds (errors under 5% over the run, which allows a few seconds of failover).',
     hint: 'RTO: a hot standby takes over in seconds. RPO: the replica is only as fresh as replication, so give the link enough parallel apply to stay seconds behind even when slowed.',
     goals: { err: 5, fresh: 5 },
-    nodes: [['client', 40, 140, { rps: 3000 }], ['svc', 240, 140, { n: 6 }], ['pg', 440, 140, { n: 2, name: 'Primary region DB' }], ['cdc', 640, 140, { name: 'Cross-region replication' }], ['kv', 840, 140, { n: 2, name: 'Second region copy' }]], edges: [[0, 1], [1, 2], [2, 3], [3, 4]] }
+    nodes: [['client', 40, 140, { rps: 3000 }], ['svc', 240, 140, { n: 6 }], ['pg', 440, 140, { n: 2, name: 'Primary region DB' }], ['cdc', 640, 140, { name: 'Cross-region replication' }], ['kv', 840, 140, { n: 2, name: 'Second region copy' }]], edges: [[0, 1], [1, 2], [2, 3], [3, 4]] },
+  /* organisation (module O1): a shared platform needs isolation between domains */
+  { id: 'mesh', mid: 'o01', lvl: 'Advanced', t: 'Shared platform, noisy neighbour', secs: 60,
+    chaos: [{ type: 'backfill', on: 'files', from: 15, to: 50 }],
+    q: 'Three domains publish data products through one shared warehouse. When the orders domain runs a backfill, every product slows and fails. Keep errors under 1% while the backfill runs.',
+    hint: 'Storage and the catalog can be shared; compute should be isolated per domain. Give the noisy domain its own warehouse.',
+    goals: { err: 1 },
+    nodes: [['files', 40, 60, { rps: 200, name: 'Orders domain' }], ['producer', 40, 180, { rps: 200, name: 'Trips domain' }], ['client', 40, 300, { rps: 100, name: 'Marketing domain' }], ['wh', 320, 180, { n: 2, name: 'Shared warehouse' }]], edges: [[0, 3], [1, 3], [2, 3]] }
 ];
 function simFromSc(sc) {
   const ids = sc.nodes.map((x, i) => 'n' + (i + 1));
@@ -364,7 +371,9 @@ const SIM_HINTS = {
   petabyte: { look: 'Cost is far over budget while the Spark load bar is low: 40 executors for work that needs about 10.', idea: 'Unit economics: size compute to the throughput target, and put restartable batch work on spot capacity (module 10.3, unit costs table).', change: 'Run 12 executors on spot pricing.',
     fix: [{ set: 'spark', f: 'n', v: 12, why: '80,000 ÷ 8,000 is 10 executors; 12 leaves headroom.' }, { set: 'spark', f: 'cost', v: 70, why: 'Spot capacity costs about a third of on-demand; a backfill that redoes one partition on interruption can use it.' }] },
   region: { look: 'From second 10 the second region falls behind; at second 30 the primary dies and errors jump.', idea: 'RPO is how much data you can lose (how far the replica lags); RTO is how long you are down (how fast you fail over). Design for both numbers (module 10.5).', change: 'A hot standby for the primary, and three parallel replication tasks.',
-    fix: [{ set: 'pg', f: 'standby', v: true, why: 'The standby takes over in 3 seconds: an RTO of seconds.' }, { set: 'cdc', f: 'n', v: 3, why: 'Three apply tasks keep the second region seconds behind even when the link slows: an RPO of seconds.' }] }
+    fix: [{ set: 'pg', f: 'standby', v: true, why: 'The standby takes over in 3 seconds: an RTO of seconds.' }, { set: 'cdc', f: 'n', v: 3, why: 'Three apply tasks keep the second region seconds behind even when the link slows: an RPO of seconds.' }] },
+  mesh: { look: 'At second 15 the orders backfill triples its load; the shared warehouse turns red and every domain sees errors.', idea: 'A self-serve platform shares storage and the catalog but isolates compute per domain, with quotas and cost shown back (module O1.4 and its lens).', change: 'Route the orders domain to its own warehouse with three clusters.',
+    fix: [{ reroute: 'wh', a: 'files', b: 'wh', o: { n: 3, name: 'Orders warehouse' }, why: 'The noisy domain gets its own compute; the shared warehouse keeps serving the others.' }] }
 };
 const SIM_HINT_COST = [0, 5, 15, 35, 75]; /* marks lost in an exam after opening hint 1, 2, 3 or Show me */
 /* apply one fix step to a design; returns the id of the box it changed or added */
