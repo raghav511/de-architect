@@ -1,11 +1,17 @@
 {
-  "version": "1.36.18",
+  "version": "1.36.19",
   "date": "2026-11-08",
   "notes": [
-    "No change you will see: the working notes no longer repeat themselves.",
-    "Module 8's lab now runs in your browser, with no Databricks or Snowflake trial needed: a Delta-style table with a real _delta_log of add and remove commits, time travel, delete, vacuum and a zero-copy clone.",
-    "Five exercises with real tests: replay the log to find the live files; show what a merge or delete changed between two versions; erase a rider from every table, old versions included, with vacuum; a masking policy that hides phone numbers from the analyst role; and the nightly model step with masking, a cache and a budget, where a rerun makes zero calls (a stand-in model, so nothing is spent).",
-    "The cloud-trial labs stay below as optional.",
+    "New in module 10 (10.7): four AI system designs worked end to end: RAG over 10 million documents at 1,000 questions a second, a support agent with tools and handoff to a person, a company LLM gateway, and document extraction at scale, each with its estimate, latency and cost budget, decisions and failures.",
+    "Four new simulator challenges that fail until you add a semantic cache, route easy prompts to a small model, or put a queue in front of slow tools and the model; each has a Teach me walkthrough.",
+    "The interview loop's design round has an AI system designs section with the four designs.",
+    "New module AI 6, right after AI 5: how language-model features run in production. Where the time goes (time to first token and decode speed), what happens inside a model server (the KV cache, batching, quantization), what one request costs and how caching, routing and cascades bring it down, and what an LLM gateway owns.",
+    "It also covers evals in production (a regression gate for every prompt or model change, and checking a judge model against people) and tracing every request, with an architect's lens on LLM gateways and serving, eight reels, a design problem, quiz and interview sets.",
+    "Seven new exercises run in your browser: cost per request, latency percentiles, a gateway call with retries, fallback and a budget, a model cascade, a regression gate, judge agreement and trace summaries. Every model and judge in them is a stand-in; nothing is sent to an AI service.",
+    "New module O3, Data governance that teams accept, after O2: finding personal data, roles versus attribute and tag policies with row and column rules, masking versus tokenisation versus pseudonymisation, lineage for impact and tag propagation, retention, erasure and legal holds, audit evidence, and governance as code.",
+    "An architect's lens with six under-the-hood answers, and four exercises that run in your browser: classify columns from sample values, decide full, masked or denied access per column, trace lineage impact and inherited PII tags, and plan retention with legal holds.",
+    "A design problem (govern a fintech lakehouse), ten quiz and seven interview questions, and twelve reels. If you started before this update, What is new lists it and nothing is marked done.",
+    "No change for you: the app's tests no longer fail when Google's font or sign-in servers are unreachable.",
     "1295 of 1295 reels now play in the natural Heart voice."
   ]
 }
