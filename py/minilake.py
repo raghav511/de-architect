@@ -5,6 +5,9 @@ need no Docker. They keep the behaviour interviews ask about and leave out the o
               that share partitions and commit offsets; lag.
   ObjectStore buckets and keys like S3; list by prefix; Parquet written and read through DuckDB.
   Dag         tasks with dependencies, run once per data interval with retries; backfill over a range.
+  Table       an Iceberg-style table on the ObjectStore: every commit is a snapshot listing its data files, files
+              are partitioned by day, columns are tracked by id (a rename never rewrites files), time travel,
+              files and snapshots metadata, optimistic commits, compaction and snapshot expiry.
 """
 import datetime as _dt, io, json, os, tempfile, zlib
 
@@ -124,6 +127,104 @@ class ObjectStore:
             lit = '[' + ','.join("'" + f.replace("'", "''") + "'" for f in files) + ']'  # views cannot take parameters
             con.execute("create view " + view + " as select * from read_parquet(" + lit + ", hive_partitioning = true)")
         return con
+
+
+# ---------------- Iceberg-style table ----------------
+class CommitConflict(Exception):
+    """Another writer committed first: re-read the table and retry on the new snapshot."""
+
+
+class Table:
+    """An Iceberg-style table. Data files are JSON lines here (Parquet in the real thing) so you can read them; what
+    matters is the metadata: a snapshot is the full list of data files at one commit, and readers use one snapshot."""
+    def __init__(self, store, location, columns, ts_col='event_ts'):
+        self.store, self.location, self.ts_col = store, location.rstrip('/'), ts_col
+        self.ids = {c: i + 1 for i, c in enumerate(columns)}   # column name -> id; files store ids, not names
+        self.next_id, self.snaps, self.current, self._n = len(columns) + 1, [], None, 0
+
+    # --- reading ---
+    def snapshot(self, snapshot_id=None):
+        sid = self.current if snapshot_id is None else snapshot_id
+        for s in self.snaps:
+            if s['snapshot_id'] == sid:
+                return s
+        if sid is None:
+            return {'snapshot_id': None, 'files': []}
+        raise KeyError('no snapshot %s (expired?)' % sid)
+
+    def snapshot_as_of(self, ts):
+        """The snapshot that was current at time ts (a commit counter here)."""
+        old = [s for s in self.snaps if s['committed_at'] <= ts]
+        return old[-1]['snapshot_id'] if old else None
+
+    def scan(self, snapshot_id=None, day=None):
+        """Rows of one snapshot (the current one by default), with today's column names."""
+        names = {i: c for c, i in self.ids.items()}
+        out = []
+        for f in self.snapshot(snapshot_id)['files']:
+            if day is not None and f['partition'] != day:
+                continue  # partition pruning: the file's metadata says it cannot match
+            for line in self.store.get(f['path']).decode().splitlines():
+                r = json.loads(line)
+                out.append({names[int(k)]: v for k, v in r.items() if int(k) in names})
+        return out
+
+    def files(self, snapshot_id=None):
+        """The .files metadata table: one row per data file."""
+        return [dict(f) for f in self.snapshot(snapshot_id)['files']]
+
+    def snapshots(self):
+        """The .snapshots metadata table."""
+        return [{k: s[k] for k in ('snapshot_id', 'parent_id', 'committed_at', 'operation', 'added_files', 'deleted_files')} for s in self.snaps]
+
+    # --- writing ---
+    def _write_file(self, day, rows):
+        self._n += 1
+        path = '%s/data/day=%s/%05d.jsonl' % (self.location, day, self._n)
+        body = '\n'.join(json.dumps({str(self.ids[c]): v for c, v in r.items() if c in self.ids}, sort_keys=True) for r in rows)
+        self.store.put(path, body)
+        return {'path': path, 'partition': day, 'record_count': len(rows), 'size': len(body)}
+
+    def day_of(self, row):
+        return str(row[self.ts_col])[:10]
+
+    def commit(self, add_rows=(), delete_files=(), base=None, operation=None):
+        """Atomically replace delete_files with new files holding add_rows (one file per day). base is the snapshot
+        id the writer read; if another commit landed since, CommitConflict is raised and nothing changes."""
+        if base is not None and base != self.current:
+            raise CommitConflict('table moved from snapshot %s to %s' % (base, self.current))
+        gone = {f['path'] if isinstance(f, dict) else f for f in delete_files}
+        keep = [f for f in self.snapshot()['files'] if f['path'] not in gone]
+        by_day = {}
+        for r in add_rows:
+            by_day.setdefault(self.day_of(r), []).append(r)
+        added = [self._write_file(d, rs) for d, rs in sorted(by_day.items())]
+        sid = len(self.snaps) + 1 if not self.snaps else self.snaps[-1]['snapshot_id'] + 1
+        self.snaps.append({'snapshot_id': sid, 'parent_id': self.current, 'committed_at': sid, 'files': keep + added,
+                           'operation': operation or ('overwrite' if gone else 'append'), 'added_files': len(added), 'deleted_files': len(gone)})
+        self.current = sid
+        return sid
+
+    def append(self, rows):
+        return self.commit(add_rows=rows)
+
+    # --- schema and maintenance ---
+    def rename_column(self, old, new):
+        """Metadata only: the id stays, so every old file still reads under the new name."""
+        if new in self.ids:
+            raise ValueError(new + ' already exists')
+        self.ids[new] = self.ids.pop(old)
+
+    def add_column(self, name):
+        self.ids[name] = self.next_id; self.next_id += 1
+
+    def expire_snapshots(self, keep_last=1):
+        """Drop all but the newest keep_last snapshots, then delete data files no kept snapshot uses."""
+        self.snaps = self.snaps[-keep_last:]
+        live = {f['path'] for s in self.snaps for f in s['files']}
+        for k in self.store.list(self.location + '/data/'):
+            if k not in live:
+                self.store.delete(k)
 
 
 # ---------------- Airflow-style DAG ----------------
