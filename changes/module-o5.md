@@ -1,3 +1,0 @@
-# Module O5: the capstone data foundation blueprint
-- New module Org 5, the capstone: write a data foundation blueprint in ten parts (the business and its numbers, principles, architecture, owners, platform, governance, service levels, capacity and cost, roadmap, risks), with an architect's lens, four exercises, a design problem, quiz, interview set and reels.
-- Capstone steps that tick: run the whole foundation on launch day in the simulator (new challenge and Teach me walkthrough), fix a capacity plan that rounds down, choose build or buy, defend the blueprint to the CTO, and review it with AI.
