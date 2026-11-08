@@ -1,15 +1,9 @@
 {
-  "version": "1.36.24",
+  "version": "1.36.25",
   "date": "2026-11-08",
   "notes": [
-    "AI 6 gains two sections: when to use a better prompt, retrieval, fine-tuning or distillation (with LoRA in one paragraph and fine-tuning data treated as a pipeline), how to choose a model, and guardrails in layers with red teaming as a test suite.",
-    "It also explains the EU AI Act, the NIST AI Risk Management Framework and ISO/IEC 42001 in a paragraph each, for the 'how would you get this past legal' question.",
-    "Four new exercises run in your browser with stand-in models: a fine-tuning dataset with a leak-proof split, an output guard, permission-aware retrieval and a red-team run with a canary secret.",
-    "Module A6 adds ML system design basics: the training pipeline, a model registry, batch or online inference, training-serving skew, drift, and how a new model is rolled out, with the fraud-detection interview answered step by step.",
-    "Two new exercises: a drift report with the population stability index, and a ship, stop or keep-running decision for an A/B test with a latency guardrail; plus three quiz and two interview questions.",
-    "New module O4, Running the data platform as a product, after O3: knowing the platform's users, service levels and error budgets with burn-rate alerts, on-call and incidents, cost showback and unit costs, adoption and outcome numbers instead of vanity ones, a scored roadmap and saying no, and funding and failure modes.",
-    "An architect's lens with six under-the-hood answers, and four exercises that run in your browser: decide page, ticket or nothing from an error budget's burn rate, show cost by team with the untagged share, score a backlog with RICE, and find the biggest drop in an adoption funnel.",
-    "A design problem (run a 12-person platform team for 40 teams as a product), ten quiz and seven interview questions, and twelve reels. If you started before this update, What is new lists it and nothing is marked done.",
-    "1289 of 1465 reels now play in the natural Heart voice."
+    "New module Org 5, the capstone: write a data foundation blueprint in ten parts (the business and its numbers, principles, architecture, owners, platform, governance, service levels, capacity and cost, roadmap, risks), with an architect's lens, four exercises, a design problem, quiz, interview set and reels.",
+    "Capstone steps that tick: run the whole foundation on launch day in the simulator (new challenge and Teach me walkthrough), fix a capacity plan that rounds down, choose build or buy, defend the blueprint to the CTO, and review it with AI.",
+    "1465 of 1477 reels now play in the natural Heart voice."
   ]
 }

@@ -102,6 +102,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.36.25: Module O5: the capstone data foundation blueprint.
 - 1.36.24: Module A6 part 2: choosing the approach and the model, guardrails and governance; ML system design basics in a06 (A6.12, SOURCES G9); Module O4: running the data platform as a product.
 - 1.36.23: iPhone Safari pass: reel icons, mic refusal, coach button, end card; Daily set scored in XP, no daily time limit (F9).
 - 1.36.22: s10 10.6: five classic data designs (top-K, metrics, crawler, ID generator, ledger) and two simulator challenges; RAG at scale (A5.7, A5.8) and the RAG and vector store lens (A5.9); Tests: the platform and leadership journey follows the real module order.
