@@ -4981,5 +4981,938 @@
     ]
    }
   ]
+ },
+ "6.9 Architect's lens: Debezium and change data capture": {
+  "hash": "36a4d80fc37e",
+  "sec": "6.9",
+  "reels": [
+   {
+    "title": "CDC: copying every change, not every row",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "How do you keep the lake in step with a busy database, without hammering it?",
+      "show": {
+       "t": "big",
+       "text": "Copy the changes",
+       "sub": "Change data capture"
+      }
+     },
+     {
+      "say": "Every database writes each change to a log before it applies it. Change data capture reads that log and sends each insert, update and delete onward, in order, within seconds.",
+      "show": {
+       "t": "scene",
+       "title": "Read the log, *not the tables*",
+       "nodes": [
+        {
+         "id": "db",
+         "label": "Postgres",
+         "x": 18,
+         "y": 35,
+         "tone": "blue",
+         "sub": "write-ahead log",
+         "kind": "disk"
+        },
+        {
+         "id": "dz",
+         "label": "Debezium",
+         "x": 50,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "k",
+         "label": "Kafka",
+         "x": 82,
+         "y": 35,
+         "tone": "amber",
+         "sub": "one topic per table"
+        }
+       ],
+       "edges": [
+        [
+         "db",
+         "dz"
+        ],
+        [
+         "dz",
+         "k"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "db",
+          "dz",
+          "k"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "db",
+          "dz"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "dz",
+          "k"
+         ],
+         "n": 3
+        }
+       ]
+      }
+     },
+     {
+      "say": "The other ways are worse. Polling by updated time misses deletes. Triggers slow every write. Writing to two places from the app drifts apart.",
+      "show": {
+       "t": "points",
+       "title": "Other ways",
+       "items": [
+        "Polling: misses deletes",
+        "Triggers: slow every write",
+        "Dual writes: drift apart"
+       ]
+      }
+     },
+     {
+      "say": "Debezium is the open-source tool most teams use, running on Kafka Connect.",
+      "show": {
+       "t": "big",
+       "text": "Debezium",
+       "sub": "The standard CDC tool"
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does log-based CDC beat polling a table by its updated time?",
+     "opts": [
+      "It also sees deletes and every change in order",
+      "It needs no permission on the source database",
+      "It only copies the tables that change most"
+     ],
+     "ans": 0,
+     "why": "The log records every committed change, including deletes, in commit order; polling sees only the latest state since the last run."
+    },
+    "work": [
+     "List your pipelines that poll by updated time.",
+     "Check which of them silently miss deletes."
+    ]
+   },
+   {
+    "title": "Replication slots and the WAL",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How does CDC make sure it never misses a change?",
+      "show": {
+       "t": "big",
+       "text": "A bookmark in the log",
+       "sub": "Replication slots"
+      }
+     },
+     {
+      "say": "A replication slot is a bookmark in Postgres's write-ahead log. Postgres keeps every log file after the bookmark until the connector says it has read it.",
+      "show": {
+       "t": "scene",
+       "title": "The slot holds the *WAL*",
+       "nodes": [
+        {
+         "id": "w",
+         "label": "WAL",
+         "x": 25,
+         "y": 35,
+         "tone": "blue",
+         "sub": "kept after the bookmark",
+         "kind": "disk"
+        },
+        {
+         "id": "s",
+         "label": "Slot",
+         "x": 55,
+         "y": 35,
+         "tone": "teal",
+         "sub": "bookmark"
+        },
+        {
+         "id": "c",
+         "label": "Connector",
+         "x": 85,
+         "y": 35,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "w",
+         "s"
+        ],
+        [
+         "s",
+         "c"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "w",
+          "s",
+          "c"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "s",
+          "c"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Confirmed, bookmark moves",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "If the connector stops, the bookmark stops moving, and the log keeps growing until the disk is full.",
+      "show": {
+       "t": "bars",
+       "title": "WAL kept while the connector is down",
+       "unit": "GB",
+       "items": [
+        [
+         "Hour 1",
+         5,
+         ""
+        ],
+        [
+         "Day 1",
+         120,
+         ""
+        ],
+        [
+         "Day 2",
+         240,
+         "disk full"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "So alert on slot lag in bytes, cap the kept log with max slot WAL keep size, and send heartbeats from quiet databases.",
+      "show": {
+       "t": "points",
+       "title": "Defences",
+       "items": [
+        "Alert on slot lag in bytes",
+        "max_slot_wal_keep_size",
+        "Heartbeats for quiet databases"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "What makes Postgres keep WAL files for a CDC connector?",
+     "opts": [
+      "The replication slot's bookmark",
+      "The table's primary key index",
+      "The Kafka topic's retention time"
+     ],
+     "ans": 0,
+     "why": "WAL after the slot's confirmed position is kept until the consumer reads it."
+    },
+    "work": [
+     "Add an alert on replication slot lag in bytes.",
+     "Set max_slot_wal_keep_size on every CDC source."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Keys, order and the LSN",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Changes to one order must arrive in the right order. How?",
+      "show": {
+       "t": "big",
+       "text": "Order per row",
+       "sub": "Keys and positions"
+      }
+     },
+     {
+      "say": "Debezium keys each message by the row's primary key, so every change to one row goes to one Kafka partition, in commit order.",
+      "show": {
+       "t": "scene",
+       "title": "One key, *one partition*",
+       "nodes": [
+        {
+         "id": "r",
+         "label": "Order 9131",
+         "x": 20,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "p",
+         "label": "Partition 4",
+         "x": 55,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "a",
+         "label": "Apply",
+         "x": 85,
+         "y": 35,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "r",
+         "p"
+        ],
+        [
+         "p",
+         "a"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "r",
+          "p",
+          "a"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "r",
+          "p"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.75,
+         "chip": {
+          "text": "placed → paid → shipped",
+          "tone": "teal",
+          "icon": "→"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Each event carries its log position, the LSN. The target stores it and only accepts a change with a higher one, so replays cannot move a row backwards.",
+      "show": {
+       "t": "code",
+       "title": "Apply only newer changes",
+       "text": "WHEN MATCHED AND s.lsn > t.lsn THEN UPDATE SET *"
+      }
+     },
+     {
+      "say": "Watch the edges: tables with no primary key, an update that changes the key, and order between two tables, which is not guaranteed.",
+      "show": {
+       "t": "points",
+       "title": "Where order breaks",
+       "items": [
+        "No primary key",
+        "Primary key updates",
+        "Across tables"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does Debezium key each change event by the primary key?",
+     "opts": [
+      "So all changes to a row stay in one partition, in order",
+      "So Kafka can compress the change events better",
+      "So the connector can skip any unchanged rows"
+     ],
+     "ans": 0,
+     "why": "Same key, same partition: Kafka keeps order within a partition."
+    },
+    "work": [
+     "Find CDC tables without a primary key.",
+     "Check your apply job compares LSNs before updating."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Snapshots of huge tables",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "The table already has a billion rows. How does CDC start?",
+      "show": {
+       "t": "big",
+       "text": "Start with a snapshot",
+       "sub": "Then stream"
+      }
+     },
+     {
+      "say": "The first snapshot reads every row once before streaming starts. On a huge table that takes hours and holds a long transaction on the database.",
+      "show": {
+       "t": "bars",
+       "title": "Initial snapshot time, roughly",
+       "unit": "hours",
+       "items": [
+        [
+         "10 million rows",
+         0.2,
+         ""
+        ],
+        [
+         "1 billion rows",
+         8,
+         "long transaction"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Incremental snapshots read the table in key chunks while streaming continues. Watermarks around each chunk let live changes win over the copy, so nothing needs a lock.",
+      "show": {
+       "t": "scene",
+       "title": "Chunks between *watermarks*",
+       "nodes": [
+        {
+         "id": "lo",
+         "label": "Low mark",
+         "x": 20,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "ch",
+         "label": "Chunk of keys",
+         "x": 50,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "hi",
+         "label": "High mark",
+         "x": 80,
+         "y": 35,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "lo",
+         "ch"
+        ],
+        [
+         "ch",
+         "hi"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "lo",
+          "ch",
+          "hi"
+         ]
+        },
+        {
+         "at": 0.6,
+         "chip": {
+          "text": "Live change wins",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "You trigger one with a signal, and can re-snapshot a single table later, for example after a lost slot.",
+      "show": {
+       "t": "big",
+       "text": "Send a signal",
+       "sub": "Re-snapshot one table"
+      }
+     }
+    ],
+    "check": {
+     "q": "What does an incremental snapshot avoid?",
+     "opts": [
+      "Holding one long transaction over the whole table",
+      "Reading the rows of the table at least once",
+      "Sending the rows through Kafka at all"
+     ],
+     "ans": 0,
+     "why": "It reads in chunks while streaming continues, instead of one long snapshot transaction."
+    },
+    "work": [
+     "Set up the signalling table on one CDC source.",
+     "Practise re-snapshotting a single table in staging."
+    ],
+    "part": "1 of 3"
+   },
+   {
+    "title": "Schema changes and exactly-once applies",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "A column is renamed in production. What breaks?",
+      "show": {
+       "t": "big",
+       "text": "Schema changes",
+       "sub": "Through the registry"
+      }
+     },
+     {
+      "say": "With a schema registry, each new schema is checked against the old one. A new nullable column passes. A rename or type change is refused before readers break.",
+      "show": {
+       "t": "points",
+       "title": "Registry rules",
+       "items": [
+        "Add a nullable column: fine",
+        "Rename or retype: refused",
+        "Expand, backfill, then contract"
+       ]
+      }
+     },
+     {
+      "say": "Delivery is at least once, so events can repeat after a restart. Make the apply idempotent: keep the latest change per key, then MERGE only where the log position is higher.",
+      "show": {
+       "t": "scene",
+       "title": "Replays change *nothing*",
+       "nodes": [
+        {
+         "id": "b",
+         "label": "Batch",
+         "x": 20,
+         "y": 35,
+         "tone": "amber",
+         "sub": "may repeat"
+        },
+        {
+         "id": "m",
+         "label": "MERGE with LSN guard",
+         "x": 55,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "t",
+         "label": "Iceberg table",
+         "x": 85,
+         "y": 35,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "b",
+         "m"
+        ],
+        [
+         "m",
+         "t"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "b",
+          "m",
+          "t"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "b",
+          "m"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Same result twice",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Try both in the simulator: the schema challenge and the CDC catch-up challenge.",
+      "show": {
+       "t": "big",
+       "text": "Practise it",
+       "sub": "Simulator: schema, CDC"
+      }
+     }
+    ],
+    "check": {
+     "q": "Which schema change is safe under backward compatibility?",
+     "opts": [
+      "Adding a new nullable column",
+      "Renaming an existing column",
+      "Changing a column's type"
+     ],
+     "ans": 0,
+     "why": "Old readers can ignore a new nullable column; a rename or type change breaks them."
+    },
+    "work": [
+     "Turn on compatibility checks for every CDC subject.",
+     "Make sure each apply job keeps the latest change per key."
+    ],
+    "part": "2 of 3"
+   },
+   {
+    "title": "The slot that fills the disk at 3 a.m.",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Three a.m. The primary's disk is at ninety-five percent.",
+      "show": {
+       "t": "big",
+       "text": "Disk filling fast",
+       "sub": "A replication slot"
+      }
+     },
+     {
+      "say": "First, find the slot that is behind, and by how many bytes. Then restart the connector, and check it is not stuck on a bad event or a schema change.",
+      "show": {
+       "t": "points",
+       "title": "Diagnose",
+       "items": [
+        "Which slot, how far behind",
+        "Restart the connector",
+        "Stuck on a bad event?"
+       ]
+      }
+     },
+     {
+      "say": "If it cannot catch up before the disk fills, protect the database: drop the slot, then re-snapshot incrementally. The LSN guard absorbs the replayed rows.",
+      "show": {
+       "t": "scene",
+       "title": "Database *first*",
+       "nodes": [
+        {
+         "id": "db",
+         "label": "Primary",
+         "x": 25,
+         "y": 35,
+         "tone": "plum",
+         "sub": "95% full",
+         "kind": "disk"
+        },
+        {
+         "id": "x",
+         "label": "Drop slot",
+         "x": 75,
+         "y": 35,
+         "tone": "amber",
+         "sub": "re-snapshot later"
+        }
+       ],
+       "edges": [
+        [
+         "db",
+         "x"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "db",
+          "x"
+         ]
+        },
+        {
+         "at": 0.6,
+         "chip": {
+          "text": "Writes keep working",
+          "tone": "teal",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Afterwards: lag alerts well before the disk, a cap on kept log, heartbeats, and slots that move to the new primary on failover.",
+      "show": {
+       "t": "points",
+       "title": "Prevent it",
+       "items": [
+        "Alert early",
+        "Cap the kept WAL",
+        "Failover slots"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "The connector cannot catch up and the disk is nearly full. What protects the database?",
+     "opts": [
+      "Dropping the slot, then re-snapshotting",
+      "Deleting old rows from the source tables",
+      "Stopping all consumers of the Kafka topics"
+     ],
+     "ans": 0,
+     "why": "Dropping the slot releases the WAL; an incremental re-snapshot and the LSN guard restore the copy."
+    },
+    "work": [
+     "Write the runbook for a slot filling the disk.",
+     "Test dropping and re-snapshotting in staging."
+    ],
+    "part": "3 of 3"
+   },
+   {
+    "title": "Dual writes or the outbox?",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "A team wants to write to the database and Kafka in one request.",
+      "show": {
+       "t": "big",
+       "text": "Dual writes?",
+       "sub": "Pick and defend"
+      }
+     },
+     {
+      "say": "Two writes are not one transaction. A crash between them leaves the database and Kafka disagreeing, and nobody notices.",
+      "show": {
+       "t": "scene",
+       "title": "Half done, *silently*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Service",
+         "x": 20,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "db",
+         "label": "Database",
+         "x": 60,
+         "y": 20,
+         "tone": "blue",
+         "sub": "committed"
+        },
+        {
+         "id": "k",
+         "label": "Kafka",
+         "x": 60,
+         "y": 55,
+         "tone": "plum",
+         "sub": "never sent"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "db"
+        ],
+        [
+         "a",
+         "k"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "a",
+          "db",
+          "k"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "a",
+          "db"
+         ],
+         "n": 1
+        },
+        {
+         "at": 0.7,
+         "chip": {
+          "text": "Crash before Kafka",
+          "tone": "plum",
+          "icon": "!"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The outbox fixes it: write the event to an outbox table in the same transaction, and let CDC publish it. Both happen, or neither.",
+      "show": {
+       "t": "points",
+       "title": "Transactional outbox",
+       "items": [
+        "Event row in the same transaction",
+        "CDC publishes the outbox",
+        "Consumers dedupe by event id"
+       ]
+      }
+     },
+     {
+      "say": "Row changes for the lake? Plain CDC. Business events for other services? The outbox, still read by CDC.",
+      "show": {
+       "t": "big",
+       "text": "Pick by need",
+       "sub": "Rows or events"
+      }
+     }
+    ],
+    "check": {
+     "q": "What does the transactional outbox guarantee?",
+     "opts": [
+      "The event and the change commit together or not at all",
+      "Every event reaches each consumer exactly once",
+      "No consumer ever has to deduplicate any events"
+     ],
+     "ans": 0,
+     "why": "The outbox row commits in the same transaction; delivery is still at least once, so consumers dedupe."
+    },
+    "work": [
+     "Find services that write to a database and Kafka in one request.",
+     "Move one of them to an outbox table."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Owning CDC, and when to buy it",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Who owns two hundred CDC connectors?",
+      "show": {
+       "t": "big",
+       "text": "Ownership",
+       "sub": "and when to buy"
+      }
+     },
+     {
+      "say": "The platform team runs Kafka Connect, the connectors and the registry. Service teams own their table schemas as a contract. The database team owns slot alerts.",
+      "show": {
+       "t": "scene",
+       "title": "Three owners, *one pipeline*",
+       "nodes": [
+        {
+         "id": "p",
+         "label": "Platform",
+         "x": 20,
+         "y": 35,
+         "tone": "blue",
+         "sub": "Connect, registry"
+        },
+        {
+         "id": "s",
+         "label": "Service team",
+         "x": 50,
+         "y": 35,
+         "tone": "amber",
+         "sub": "schemas"
+        },
+        {
+         "id": "d",
+         "label": "Database team",
+         "x": 80,
+         "y": 35,
+         "tone": "teal",
+         "sub": "slots, WAL"
+        }
+       ],
+       "edges": [
+        [
+         "p",
+         "s"
+        ],
+        [
+         "s",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "p",
+          "s",
+          "d"
+         ]
+        },
+        {
+         "at": 0.7,
+         "chip": {
+          "text": "DDL announced first",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Managed services such as AWS DMS, Google Datastream, Fivetran or managed Debezium connectors remove operations, at a price per row or per hour.",
+      "show": {
+       "t": "points",
+       "title": "Buy instead?",
+       "items": [
+        "Fewer people on call",
+        "Price per row or hour",
+        "Less control over slots"
+       ]
+      }
+     },
+     {
+      "say": "Move off when the source has its own change feed, or consumers only ever needed a daily copy.",
+      "show": {
+       "t": "big",
+       "text": "Know when to leave",
+       "sub": "Native feeds or daily copies"
+      }
+     }
+    ],
+    "check": {
+     "q": "Who should own the schema of a table that CDC publishes?",
+     "opts": [
+      "The service team that owns the table",
+      "The analysts who read the lake copy",
+      "The vendor who runs the cloud database"
+     ],
+     "ans": 0,
+     "why": "The owning service treats its table schema as a contract and announces DDL before it ships."
+    },
+    "work": [
+     "Name an owner for every CDC source and topic.",
+     "Price a managed CDC service against your Connect cluster."
+    ],
+    "part": "2 of 2"
+   }
+  ]
  }
 }

@@ -222,6 +222,64 @@ Sooner or later the source of truth itself has to change while it is in use: a c
 
 **Rollback.** Until the contract step, rollback is flipping reads back to the old structure, which has stayed complete. That is why the old path is removed last.
 
+## 6.9 Architect's lens: Debezium and change data capture
+
+The questions an architect is asked about change data capture: which way to capture changes, what Debezium really guarantees, and the failure that pages someone at 3 a.m.
+
+| Question | Short answer for Debezium and CDC |
+|---|---|
+| **What problem does it solve?** | Copying every committed change in an operational database to other systems (Kafka, the lake, search, caches) in order, within seconds, without changing the application and without polling the database. |
+| **Why it over the alternatives?** | Log-based CDC (Debezium reading the WAL or binlog) sees every insert, update and delete, in commit order, with little load on the source. Query-based capture (`WHERE updated_at > last_run`) misses deletes and in-between updates and adds query load. Triggers capture everything but slow every write and live inside the database. Dual writes from the app (database and Kafka in one request) drift when one side fails; the **outbox pattern** with CDC fixes that. Managed services (AWS DMS, Google Datastream, Fivetran, Confluent's managed Debezium connectors) remove operations at a per-row or per-hour price. |
+| **When not to use it?** | Small tables that change rarely (a nightly full copy is simpler); when you need business events rather than row changes (use the outbox, still read by CDC); when the database team will not grant replication rights or watch slots; when minutes of delay and no deletes are acceptable to every consumer. |
+| **Who owns and pays for it?** | The platform team runs Kafka Connect, the connectors and the registry; the owning service team owns its tables' schemas as a contract and is told before DDL ships; the database team owns slot and WAL alerts. Cost: Connect workers, Kafka storage, and WAL kept on the database while a connector lags. |
+| **Where does it sit?** | Next to each operational database, publishing one topic per table to Kafka; consumers apply changes to the lakehouse with MERGE, to search indexes and caches. The database stays the system of record; the topics are a copy in motion. |
+| **How does it fail and scale?** | One connector reads one database's log, so the busiest database sets the throughput; a very large transaction arrives as one burst. It fails as a stopped connector whose slot fills the disk, a schema change that breaks readers, a re-snapshot after the slot is lost, out-of-order applies without an LSN guard, and lost changes on failover if the slot does not move to the new primary. |
+| **When do you move off it?** | When the source offers a native change feed that does the same job (DynamoDB Streams, Spanner change streams, table formats with change feeds), when a managed CDC service costs less than running Connect, or when the consumers only ever needed a daily snapshot. |
+
+### Under the hood
+
+**1. What is a replication slot, and why can it fill a database's disk?**
+<details><summary>Model answer</summary>
+
+A logical replication slot is a bookmark in the WAL owned by one consumer. Postgres keeps every WAL segment after the bookmark until the consumer confirms it has read it, which is how CDC never misses a change. If the connector stops, or reads one quiet database on a busy server, the bookmark stops moving and WAL keeps growing until the disk is full and the primary stops taking writes. Defences: alert on slot lag in bytes (`pg_replication_slots`, `pg_current_wal_lsn()` minus `confirmed_flush_lsn`), set `max_slot_wal_keep_size` (Postgres 13+) so Postgres invalidates the slot instead of dying, and use Debezium heartbeats so a quiet database still advances its slot. The simulator's [CDC challenge](#/sim/sc/cdc) shows a slowed connector falling behind.
+
+</details>
+
+**2. How does Debezium snapshot a table that is already huge, without stopping the stream?**
+<details><summary>Model answer</summary>
+
+The initial snapshot reads every row once (`op = r`) before streaming starts; on a billion-row table that takes hours and holds a long transaction. Incremental snapshots fix this: you send a signal (a row in a signalling table, or a Kafka message), and Debezium reads the table in primary-key chunks while streaming continues. For each chunk it writes a low and a high watermark into the log; any streamed change to a row in that chunk between the two watermarks wins over the snapshot copy, so the result is consistent without locks. This is the DBLog algorithm Netflix published. You can also re-snapshot a single table later, for example after adding it to the connector.
+
+</details>
+
+**3. How does CDC keep changes in order, and what can break the order?**
+<details><summary>Model answer</summary>
+
+Debezium keys each message by the row's primary key, so all changes to one row land on one Kafka partition in commit order; each event carries the source position (`source.lsn` in Postgres, binlog file and position in MySQL). Consumers apply only a change with a higher LSN than the stored one, so replays and retries cannot move a row backwards. Order breaks with tables that have no primary key (set a message key column or add a key), with an update that changes the primary key (Debezium emits a delete for the old key and a create for the new one, on different partitions), when topics are repartitioned, and across tables: there is no order between two topics unless you use transaction metadata to group a transaction's events.
+
+</details>
+
+**4. How should schema changes flow through CDC?**
+<details><summary>Model answer</summary>
+
+Debezium reads the table's new structure from the log (or its schema history topic for MySQL) and emits events with the new schema. With Avro or Protobuf and a schema registry, each new schema is registered under the topic's subject, and the registry's compatibility rule (backward, usually) refuses a change readers cannot handle, before any reader breaks. Safe changes are additive: a nullable column, a column with a default. A rename or a type change is a breaking change: add a new column, backfill it, move readers, then drop the old one (expand and contract). The lake table needs schema evolution turned on for added columns. The simulator's [schema challenge](#/sim/sc/schema) breaks readers until a registry is in the path.
+
+</details>
+
+**5. How do you get exactly-once results from CDC into a lakehouse table?**
+<details><summary>Model answer</summary>
+
+Debezium and Kafka Connect deliver at least once: after a crash, events since the last committed offset are sent again. You make the result exactly-once with an idempotent apply: reduce each batch to the latest change per key (highest LSN), then MERGE into the Iceberg or Delta table only where the incoming LSN is higher than the stored one, deleting on `op = d` or marking the row deleted. Applying the same batch twice changes nothing. Keep the raw changelog in an append-only bronze table so the current table can be rebuilt, and reconcile counts and sums against the source on a schedule. With Flink's two-phase commit to Iceberg, the commit and the offsets move together, which removes the replay window but not the need for the LSN guard.
+
+</details>
+
+**6. It is 3 a.m. and the primary's disk is at 95% because of a replication slot. What do you do?**
+<details><summary>Model answer</summary>
+
+Confirm it: `pg_replication_slots` shows which slot is inactive or far behind, and by how many bytes. If the connector is down, restart it and watch the lag shrink; check it is not failing on a poison event or a schema change. If it cannot catch up before the disk fills, protect the database first: add disk if you can, otherwise drop the slot, accepting that the connector must re-snapshot (incrementally) and that consumers will see replayed rows, which the LSN guard absorbs. Afterwards: alerts on slot lag well before the disk, `max_slot_wal_keep_size`, heartbeats for quiet databases, and on failover, slots that move with the primary (Postgres 17 failover slots) so a promotion does not lose changes. The simulator's [region challenge](#/sim/sc/region) shows replication lag as an RPO.
+
+</details>
+
 @@lab
 ## In the app: change data capture without Postgres or Kafka (2.5 hours)
 
@@ -299,6 +357,36 @@ Break the problem down before opening a query editor. Then compare.
 The last step is the one to remember. A total tells you that something is wrong. A specific record tells you what.
 
 @@quiz
+TYPE: mcq
+TAG: cdc
+Q: A Debezium connector for Postgres has been stopped for two days. What is the main risk to the source database?
+A) Its tables stay locked for writes until the connector restarts
+B) WAL held for the slot keeps growing and can fill the disk
+C) New rows are rejected because the slot is not being read
+D) The slot drops itself after a day and every change is lost
+ANS: B
+WHY: A replication slot keeps all WAL after its position until the consumer confirms it; set alerts and max_slot_wal_keep_size.
+---
+TYPE: mcq
+TAG: cdc
+Q: How does a Debezium incremental snapshot stay consistent while the stream keeps running?
+A) It locks each table for the whole time that the chunks are read
+B) It reads key chunks between watermarks; streamed changes win
+C) It pauses all streaming until every table has been fully read
+D) It copies the whole table from the most recent nightly backup
+ANS: B
+WHY: Low and high watermarks around each chunk let streamed changes to those rows replace the snapshot copy, so no lock is needed (the DBLog approach).
+---
+TYPE: mcq
+TAG: cdc
+Q: Change events can be delivered twice after a connector restart. What makes the lakehouse table correct anyway?
+A) Running the connector with only a single task and no retries
+B) A MERGE that applies a change only if its LSN is higher
+C) Turning off retries everywhere in Kafka Connect and the sink
+D) Writing every event to the target table with INSERT statements
+ANS: B
+WHY: Reducing to the latest change per key and guarding on the LSN makes the apply idempotent, so replays change nothing.
+---
 TYPE: mcq
 TAG: streaming
 Q: What is the main advantage of log-based change data capture over polling for rows with a newer `updated_at`?
@@ -614,6 +702,21 @@ assert out == [(1,"delivered",100),(3,"delivered",70),(4,"placed",30)], out
 -->
 
 @@interview
+Q: How would you capture changes from 200 Postgres databases into a lakehouse, and why log-based CDC over the alternatives?
+SRC: staff-level practice
+TAG: arch
+A: Log-based CDC with Debezium on Kafka Connect: one connector per database reading its WAL through a replication slot, one topic per table keyed by primary key, Avro schemas in a registry. It sees every insert, update and delete in commit order with little load on the source, unlike updated_at polling (misses deletes and in-between states) or triggers (slow every write). Services that need business events write to an outbox table in the same transaction, which CDC publishes, instead of dual writes. In the lake, a job reduces each batch to the latest change per key and MERGEs with an LSN guard into Iceberg, keeping the raw changelog in bronze. Operations: slot lag alerts, max_slot_wal_keep_size, heartbeats, incremental snapshots for new tables, and reconciliation of counts against the sources.
+---
+Q: A team proposes writing to the database and publishing to Kafka in the same request instead of using CDC. What do you say?
+SRC: staff-level practice
+TAG: arch
+A: That is a dual write: the two writes are not atomic, so a crash, timeout or retry between them leaves the database and Kafka disagreeing, silently. Reordering does not help. If they need row changes, use log-based CDC, which only publishes committed changes. If they need business events with their own shape, use the transactional outbox: write the event row in the same transaction as the business change, and let CDC publish the outbox table, so either both happen or neither does. Consumers still dedupe on an event id, because delivery is at least once.
+---
+Q: Your CDC pipeline lost changes after a database failover. What happened, and how do you prevent it?
+SRC: staff-level practice
+TAG: arch
+A: The replication slot lived on the old primary. After promotion the new primary had no slot at the connector's position, so the connector either started a new slot at the current WAL position, skipping changes committed between its last read and the failover, or failed. Prevention: failover slots that are synchronised to the standby (Postgres 17 can sync logical slots), or a managed database that preserves them; a runbook that re-snapshots affected tables incrementally after any failover; and reconciliation of counts and sums between source and lake that would have caught the gap. Measure replication lag as your RPO.
+---
 Q: You must change a column from INT to BIGINT on a two-billion-row orders table that takes writes all day. How do you do it with no downtime?
 TAG: core
 A: Expand and contract. Add a new BIGINT column (or a new table), keep it in sync for new writes with a trigger or CDC, and backfill old rows in small primary-key batches that commit separately, resume from the last id, are idempotent and throttle on replication lag. Verify old against new by key range, switch readers behind a flag, then stop writing the old column and drop it after a waiting period. Rollback until then is flipping the flag back.
