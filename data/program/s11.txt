@@ -210,6 +210,77 @@ Sources you already have:
 2. **Funnel conversion by step.** `events(user_id, step)` with steps view, add_to_cart, checkout, purchase. *Approach:* count distinct users per step, then divide each by the previous step's count with `LAG`.
 3. **Users who reacted but never commented in the same week.** Asked at Meta. You will meet it in the coding test; try it here first without looking.
 
+@@steps
+STEP: design
+TITLE: Design it: a launch-day spike without paying for peak
+MIN: 10
+SIM: spike, partner
+BODY: A short simulator challenge on the customer build's traffic. It fails as given: find the cause, change the design and run it again until it passes. The other one is there for more practice.
+
+- **A launch-day spike.** Four times the traffic for a short while. Auto-scaling with a high enough maximum keeps errors down without paying for peak all day, and every tier needs it, including the gateway.
+- **A slow partner API.** A call to a partner inside the request makes your p99 the partner's p99. Move it off the request path with a queue and a worker, and the user's request no longer waits for it.
+---
+STEP: fix
+TITLE: Read and fix: the retention metric that counts sign-up day
+MIN: 10
+SPEC: Week-1 retention is the share of users who were active on any day from 1 to 7 after their sign-up day. Activity on the sign-up day itself does not count, because almost everyone is active the day they sign up. Users in `activity` who are not in `signups` are ignored. Return a share rounded to 3 decimals, or 0.0 when nobody signed up.
+CODE:
+```
+def week1_retention(signups, activity):
+    """signups: {user: signup_day}; activity: [(user, day)]; days are whole numbers."""
+    retained = set()
+    for user, day in activity:
+        start = signups.get(user)
+        if start is not None and 0 <= day - start <= 7:
+            retained.add(user)
+    return round(len(retained) / len(signups), 3) if signups else 0.0
+```
+FIX:
+```
+def week1_retention(signups, activity):
+    """signups: {user: signup_day}; activity: [(user, day)]; days are whole numbers."""
+    retained = set()
+    for user, day in activity:
+        start = signups.get(user)
+        if start is not None and 1 <= day - start <= 7:  # the sign-up day does not count
+            retained.add(user)
+    return round(len(retained) / len(signups), 3) if signups else 0.0
+```
+BUG: 6
+TESTS: [["sign-up day only does not count", "week1_retention({'a': 0, 'b': 0, 'c': 5}, [('a', 0), ('b', 3), ('c', 5), ('c', 13)])", 0.333], ["the seventh day counts", "week1_retention({'a': 0}, [('a', 7)])", 1.0], ["unknown users are ignored", "week1_retention({'a': 0}, [('z', 2)])", 0.0], ["nobody signed up", "week1_retention({}, [])", 0.0]]
+BODY: `0 <=` lets the sign-up day count, and nearly every new user is active the day they sign up, so retention reads close to 100% and every cohort looks healthy. The query runs, the dashboard is green, and a product decision is made on it. The definition was written down (day 1 to 7); the code drifted from it. Catch it with a test cohort whose answer you know, by keeping one certified definition in the semantic layer instead of copies in every notebook, and by asking whether a number this good is plausible.
+---
+STEP: platform
+TITLE: Run it on the platform: product analytics and experiments
+MIN: 8
+BODY: **Where product metrics run.** Many teams start with a product analytics service (Amplitude, Mixpanel, PostHog) fed by an event SDK, and an experimentation service (Statsig, Optimizely, LaunchDarkly). Warehouse-native tools (Eppo, Statsig Warehouse Native, GrowthBook, which is open source) compute metrics and experiment results on your own tables, so the numbers match finance's. Self-run means event collection (Snowplow or a gateway into Kafka), dbt models and a semantic layer for the definitions, and GrowthBook or your own analysis on top.
+
+**What drives the bill.**
+- **Event volume.** Services price by events or monthly tracked users, so chatty client events (every scroll) cost more than the decisions they inform. Track what a metric or experiment needs.
+- **Two pipelines.** Sending events both to a vendor and to the warehouse doubles collection and gives two numbers for the same metric.
+- **Warehouse compute** for warehouse-native analysis: each experiment's daily query over large event tables.
+
+**Run it.** Alert on a sample ratio mismatch in any running experiment, and on event volume dropping for one platform or app version, which is how a broken release silently stops sending events.
+CHECK: {"q": "A 50/50 experiment over a million users shows a 52/48 split in assignments. What do you do before reading the result?", "c": ["Trust the lift as it is, since the sample is so large", "Find why assignment or logging is uneven first", "Rerun the same experiment with a 60/40 split"], "a": 1, "why": "A sample ratio mismatch means users were assigned or logged unevenly, so the groups are not comparable and the lift cannot be trusted until the cause is found."}
+---
+STEP: lead
+TITLE: Lead it: three numbers for active users
+MIN: 10
+Q: Marketing, product and finance each report a different number of monthly active users, and the CEO asks you to make it one number by the board meeting. What do you do, and how do you get the three teams to accept it?
+A: Start with why each team holds on to its number. Marketing counts anyone who opened an email or the app, because that is what its campaigns move; product counts users who did a core action; finance counts paying accounts. Each fear is losing the number they are judged on. None of them is wrong; they answer different questions under one name.
+
+Propose one certified definition of monthly active users for the board (users with at least one core action in the calendar month, by user id, excluding test and internal accounts), owned by a named person, defined once in the semantic layer and tested. The other two numbers stay, renamed for what they measure: "reached users" and "paying accounts". Publish all three side by side with their definitions, so nobody's number disappears.
+
+Write the exception down: a team may use a different metric for its own decisions, under its own name, never as "active users". Bring people along with a one-hour session where the three owners agree the wording, a reconciliation table showing how each number relates to the others, and a metric review after the board meeting.
+BODY: Answer out loud in two minutes first, then write the short version and compare with the model answer. Staff interviewers listen for the fear behind the request, the trade-off, a default with an exception, and how you would bring the teams along.
+---
+STEP: ai
+TITLE: With AI: check a metric before the customer sees it
+MIN: 10
+BODY: **Where LLM tooling helps in front of the customer.** Turning messy discovery notes into the questions you still need answered and a first decomposition; drafting the SQL for a metric from its written definition; explaining an experiment result in plain words for a non-technical audience. **Where it misleads:** it fills a vague request with a confident definition the customer never agreed, writes joins that fan out and double count (orders joined to items, then summed), and states statistical significance it never computed. Every metric it writes is checked against the agreed definition and a known answer.
+TASK: Give Claude Code this week's customer build: your discovery notes and the SQL behind its headline metric. Ask it, in one prompt, to (1) list the assumptions in the notes that the customer has not confirmed, (2) check the SQL for fan-out joins, duplicates and the wrong grain, and (3) propose one guardrail metric to show next to the headline. Paste your prompt and its answer below.
+RUBRIC: The prompt gives the notes and the SQL and asks for unconfirmed assumptions, a SQL check and a guardrail. You run the SQL on a case with a known answer and record whether the issues it raised were real. The guardrail protects against harm the headline could hide (cancellations, refunds, latency), and you write one question you would take back to the customer.
+
 @@quiz
 TYPE: mcq
 TAG: behavioral

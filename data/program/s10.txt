@@ -351,6 +351,72 @@ How do you respond? Decide, then compare.
 
 Pushing back politely with numbers, and then accepting a good reason, is how senior engineers are recognised in design reviews and in customer rooms.
 
+@@steps
+STEP: design
+TITLE: Design it: serve reads at scale, within a budget
+MIN: 10
+SIM: serving, stampede, million
+BODY: A short simulator challenge on this week's design ideas. It fails as given: find the cause, change the design and run it again until it passes. The other two are there for more practice.
+
+- **Serving reads at scale.** 20,000 reads a second, one Postgres and a budget. Run the service well under full load, because p99 climbs fast near 100%, and put a cache in front of the database.
+- **A cache stampede.** The cache goes cold and every request falls through. The store behind a cache must survive misses for a while: read replicas, or a store sized for them.
+- **One million events a second.** Per-partition throughput sets the floor: divide the rate by what one partition and one task can carry, then add headroom.
+---
+STEP: fix
+TITLE: Read and fix: the capacity estimate that comes up one short
+MIN: 10
+SPEC: Return the number of shards a serving store needs. Traffic is `daily_requests` spread over a day (86,400 seconds), multiplied by `peak_factor` at the busiest hour. Each shard may run at most at `1 - headroom` of its `per_shard_qps`. Never return fewer shards than the peak needs, and never fewer than one.
+CODE:
+```
+def shards_needed(daily_requests, peak_factor, per_shard_qps, headroom=0.25):
+    avg_qps = daily_requests / 86400
+    peak_qps = avg_qps * peak_factor
+    target = per_shard_qps * (1 - headroom)
+    return max(1, int(peak_qps // target))
+```
+FIX:
+```
+def shards_needed(daily_requests, peak_factor, per_shard_qps, headroom=0.25):
+    avg_qps = daily_requests / 86400
+    peak_qps = avg_qps * peak_factor
+    target = per_shard_qps * (1 - headroom)
+    return max(1, int(-(-peak_qps // target)))  # round up: a part of a shard is a whole shard
+```
+BUG: 5
+TESTS: [["peak needs 6.7 shards", "shards_needed(864_000_000, 3, 6000)", 7], ["just over two shards", "shards_needed(86_400 * 6100, 1, 4000)", 3], ["an exact fit", "shards_needed(86_400 * 6000, 1, 4000)", 2], ["tiny traffic", "shards_needed(1000, 3, 4000)", 1]]
+BODY: `//` is floor division, so 6.7 shards becomes 6, and the last two thirds of a shard's traffic has nowhere to go. At peak every shard runs over its target, p99 climbs, and the headroom you planned for a lost node is already spent. Nothing fails in the estimate; it fails at the first busy evening. Capacity arithmetic always rounds up, and an interviewer listening to your numbers expects you to say so. Catch it by testing just above an exact fit, as here, and by load-testing at the estimated peak before launch.
+---
+STEP: platform
+TITLE: Run it on the platform: managed serving stores and their bill
+MIN: 8
+BODY: **Where serving stores run.** Managed key-value and wide-column stores (DynamoDB, Bigtable, Cosmos DB, Astra or Keyspaces for Cassandra) and managed caches (ElastiCache or MemoryDB for Redis and Valkey, Memorystore) are the usual start: no nodes to patch, replication and backups built in. Self-run Cassandra or ScyllaDB on Kubernetes (K8ssandra, the Scylla operator) gives control and lower unit cost at very large scale, in exchange for an on-call rota that knows compaction, repairs and node replacement.
+
+**What drives the bill.**
+- **Provisioned versus on-demand capacity.** On-demand suits spiky or new traffic; steady traffic is far cheaper provisioned or reserved, with autoscaling between limits.
+- **Hot keys.** A store splits capacity across partitions, so one hot key throttles while the table has room. A cache or a better key fixes it; buying more capacity does not.
+- **Replication across regions.** Global tables write every change in every region, so multi-region roughly multiplies the write bill by the number of regions, plus data transfer.
+
+**Run it.** Alert on p99 latency against the SLO and on throttled requests per table or key, and watch cache hit rate: a falling hit rate is the stampede before it happens.
+CHECK: {"q": "A DynamoDB table throttles requests for one product page while the table's total capacity is mostly unused. What is the first fix?", "c": ["Double the provisioned capacity of the whole table", "Cache that hot item or spread its key over shards", "Move the whole table to another region close by"], "a": 1, "why": "Capacity is split across partitions, so one hot key throttles on its own partition. More total capacity barely helps; a cache or a spread key does."}
+---
+STEP: lead
+TITLE: Lead it: active-active everywhere?
+MIN: 10
+Q: After last year's regional outage, a VP asks that every data service run active-active in two regions by next quarter. You own the data platform. What do you propose, and how do you bring the VP and the teams with you?
+A: Start with the fear: being down for hours again, in front of customers, with no answer to "when will it be back". That is a fair fear, and active-active everywhere is an expensive answer to it: roughly double the serving and storage cost, writes replicated in every region, and conflict handling that most services were never designed for.
+
+Propose tiers instead, each with a written RPO and RTO. Tier 0 (payments, the customer-facing read path) runs active-active or with a hot standby and is failed over in game days every quarter. Tier 1 (internal dashboards, most pipelines) gets a warm standby and data replicated within minutes. Tier 2 (batch analytics) gets backups in another region and a documented rebuild. Each service owner picks a tier with the business owner, and the cost of each tier is shown next to it.
+
+The exception is written down: a service may ask for a higher tier and pays for it. Bring people along with one game day on a tier 0 service first, a dashboard of RPO and RTO measured against the promise, and a review with the VP after the first quarter.
+BODY: Answer out loud in two minutes first, then write the short version and compare with the model answer. Staff interviewers listen for the fear behind the request, the trade-off, a default with an exception, and how you would bring the teams along.
+---
+STEP: ai
+TITLE: With AI: a design review with Claude Code
+MIN: 10
+BODY: **Where LLM tooling helps in design work.** Checking capacity arithmetic step by step; listing failure modes for each box of a diagram; turning your notes into a one-page design document; playing the interviewer and asking follow-ups you had not prepared for. **Where it misleads:** numbers off by a factor of 10 or 1,000 stated with confidence (bytes versus bits, per second versus per day), the fashionable store for every problem, and designs that ignore the stated budget. Recompute every number it gives you before you rely on it.
+TASK: Give Claude Code one of this week's eight design documents from the build and ask it, in one prompt, to (1) recompute every capacity number and show the arithmetic, (2) name the single point of failure it sees first and how the design survives losing it, and (3) ask the three follow-up questions a staff interviewer would ask next. Paste your prompt and its answer below.
+RUBRIC: The prompt includes the design document and asks for recomputed numbers, a single point of failure and three follow-ups. You check the arithmetic yourself and note any number that was wrong. The single point of failure is real for this design, and the follow-ups probe trade-offs (consistency, cost, failure, scale) rather than definitions. You write one change you would make to the document.
+
 @@quiz
 TYPE: mcq
 TAG: design
