@@ -1082,6 +1082,29 @@ async function T(name, fn, opt) {
     await go(p, '#/learn/s08/lab', 900); ok(/Delta and Snowflake without a cloud account/.test(await text(p, '#page')), 'module 8 lab page does not lead with the in-app lab');
   });
 
+  await T('system labs: module 7 runs in the browser (Terraform plan, cost forecast, Athena bytes scanned, IAM least privilege) and ticks its build and incident steps', async p => {
+    await go(p, '#/path/s07', 900);
+    const sols = await p.evaluate(() => DATA.py.filter(x => x.m === 's07').map(x => [x.id, x.sol]));
+    ok(sols.length === 4, 'expected 4 module 7 exercises, got ' + sols.length);
+    for (const [id, sol] of sols) {
+      await hash(p, '#/py/' + id, 600);
+      await p.fill('textarea.code', sol);
+      await p.click('button.btn.pri:has-text("Run")');
+      await p.waitForFunction(() => { const v = document.querySelector('.verdict'); return v && v.style.display !== 'none' && /pass|Error/.test(v.textContent); }, null, { timeout: 120000 });
+      ok((await text(p, '.verdict')) === 'All checks pass', id + ' did not pass in the browser: ' + await text(p, '.out .body'));
+    }
+    const left = await p.evaluate(() => schedule().units.filter(u => u.mid === 's07' && (u.kind === 'build' || u.kind === 'incident') && !u.isDone).map(u => u.title));
+    ok(!left.length, 'module 7 steps not ticked: ' + left.join(', '));
+    /* a starter must not pass: the least-privilege exercise with the broad policy still fails */
+    await hash(p, '#/path/s07', 600); await hash(p, '#/py/ys074', 600);  /* a fresh page, so the earlier pass is not still on screen */
+    ok(!(await p.evaluate(() => { const v = document.querySelector('.verdict'); return v && v.style.display !== 'none' && /pass/.test(v.textContent); })), 'an old verdict is still showing');
+    await p.fill('textarea.code', 'def job_policy(bucket):\n    return {"Statement": [{"Effect": "Allow", "Action": "s3:*", "Resource": "*"}]}\n');
+    await p.click('button.btn.pri:has-text("Run")');
+    await p.waitForFunction(() => { const v = document.querySelector('.verdict'); return v && v.style.display !== 'none' && v.textContent.trim(); }, null, { timeout: 120000 });
+    ok((await text(p, '.verdict')) !== 'All checks pass', 'the s3:* policy passed the least-privilege exercise');
+    await go(p, '#/learn/s07/lab', 900); ok(/without an AWS account/.test(await text(p, '#page')), 'module 7 lab page does not lead with the in-app lab');
+  });
+
   await T('AI data stack: A4 and A5 labs run in the browser and tick their Path steps', async p => {
     await go(p, '#/path/a04', 900);
     ok(/LLMs meet the warehouse/.test(await text(p, '#page')) && /Guard the SQL/.test(await text(p, '#page')), 'A4 module or its lab steps missing');
