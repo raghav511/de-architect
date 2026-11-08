@@ -106,6 +106,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.36.34: A cast you get to know, and case files after a full set (ENGAGE 6, 9).
 - 1.36.33: Episodes frame the work, the weekend finale with a rematch, the season map (ENGAGE 2, 4, 5).
 - 1.36.32: Tests: lab journeys skip the week steps; O5 sits after Leadership 1.
 - 1.36.31: Meridian editor pass: questions, links to practice, recall and the cross-season threads.

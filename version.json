@@ -1,12 +1,11 @@
 {
-  "version": "1.36.33",
+  "version": "1.36.34",
   "date": "2026-11-08",
   "notes": [
-    "Today's module card, the Path page and week steps say which Meridian episode they are",
-    "A weak Sunday boss round opens a rematch next Sunday, never a loss",
-    "The series page has a season map of episodes with your earned XP",
-    "The cold open asks the scene's recall question and opens its practice; Look ahead after the set",
-    "No calendar file? Copy the calendar text instead",
+    "Staff questions in a live mock say which Meridian colleague asks them",
+    "Weekend rounds name your interviewer, Priya or Sam",
+    "The coach speaks as Grace, your mentor",
+    "Monday to Saturday, a full set opens a case file: a harder follow-up, a field report or a question from the architect's lens; no XP",
     "1489 of 1489 reels now play in the natural Heart voice."
   ]
 }
