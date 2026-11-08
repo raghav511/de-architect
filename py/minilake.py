@@ -14,8 +14,10 @@ need no Docker. They keep the behaviour interviews ask about and leave out the o
   MiniCluster a Spark-style join stage under load: hash partitioning, one task per shuffle partition, executor
               memory with spill and out-of-memory, broadcast joins, adaptive skew splits, and a real Spark event log
               (SparkListenerTaskEnd lines) that the chapter's stage_summary reads unchanged.
+  Athena      bytes scanned and cost for a query over JSON or columnar files, with dt= partition pruning; iam_allows
+              evaluates an IAM-style policy (explicit Deny wins, wildcards).
 """
-import datetime as _dt, io, json, os, tempfile, zlib
+import datetime as _dt, io, json, os, re, tempfile, zlib
 
 
 # ---------------- Kafka-style broker ----------------
@@ -514,3 +516,70 @@ def trip_events(n=200, seed=7, hour='2026-10-11T09'):
         if i % 97 == 3:
             out.append(dict(e))  # duplicate delivery
     return out
+
+
+# ---------------- Cloud: an Athena-style scanner and an IAM policy check (module 7) ----------------
+ATHENA_USD_PER_TB = 5.0          # Athena SQL pricing per TB scanned
+ATHENA_MIN_BYTES = 10 * 1024 ** 2  # every query is billed for at least 10 MB
+
+
+def write_columns(store, path, rows):
+    """A columnar file (Parquet stands in): one JSON list per column, so a reader can fetch only the columns it needs."""
+    cols = sorted({c for r in rows for c in r})
+    store.put(path, json.dumps({c: [r.get(c) for r in rows] for c in cols}, sort_keys=True))
+    return len(rows)
+
+
+class Athena:
+    """Scans files under a table location and counts the bytes it reads, the way Athena bills.
+    - JSON lines files (.json, .jsonl) are read whole: every byte of every row.
+    - Columnar files (.col, written by write_columns) are read one column at a time: only the columns a query uses.
+    - A path segment dt=YYYY-MM-DD is a partition: a query with day= skips files of other days without reading them."""
+    def __init__(self, store):
+        self.store, self.bytes_scanned = store, 0
+
+    def query(self, location, columns, day=None):
+        """Rows (dicts with only `columns`) from every file under location, optionally for one day."""
+        out = []
+        for k in self.store.list(location.rstrip('/') + '/'):
+            m = re.search(r'/dt=(\d{4}-\d{2}-\d{2})/', k)
+            if day is not None and m and m.group(1) != day:
+                continue  # partition pruning: never opened
+            body = self.store.get(k)
+            need = list(columns) + (['event_ts'] if day is not None and not m and 'event_ts' not in columns else [])
+            if k.endswith('.col'):
+                data = json.loads(body)
+                n = len(next(iter(data.values()))) if data else 0
+                for c in need:
+                    self.bytes_scanned += len(json.dumps(data.get(c, [None] * n)))
+                rows = [{c: data.get(c, [None] * n)[i] for c in need} for i in range(n)]
+            else:
+                self.bytes_scanned += len(body)
+                rows = [{c: r.get(c) for c in need} for r in (json.loads(l) for l in body.decode().splitlines() if l.strip())]
+            if day is not None and not m:  # no partition in the path: every row was read, now filter by event time
+                rows = [r for r in rows if str(r.get('event_ts', '')).startswith(day)]
+                rows = [{c: r[c] for c in columns} for r in rows]
+            out.extend(rows)
+        return out
+
+
+def athena_cost(bytes_scanned):
+    """Dollars for one query, with the 10 MB minimum."""
+    return max(bytes_scanned, ATHENA_MIN_BYTES) / 1024 ** 4 * ATHENA_USD_PER_TB
+
+
+def iam_allows(policy, action, resource):
+    """Evaluate an IAM-style policy: {"Statement": [{"Effect": "Allow"|"Deny", "Action": str|list, "Resource": str|list}]}.
+    Wildcards * and ? work as in IAM. An explicit Deny wins; otherwise any matching Allow allows; otherwise denied."""
+    import fnmatch
+    def match(pats, value):
+        pats = [pats] if isinstance(pats, str) else list(pats)
+        return any(fnmatch.fnmatchcase(value, p) for p in pats)
+    hit = False
+    for st in policy.get('Statement', []):
+        if match(st.get('Action', []), action) and match(st.get('Resource', []), resource):
+            if st.get('Effect') == 'Deny':
+                return False
+            if st.get('Effect') == 'Allow':
+                hit = True
+    return hit
