@@ -52,7 +52,7 @@ async function vStep(m, kind) {
   shell(x.TITLE, 'Module ' + modLabel(m) + ' · ' + modTitle(m) + ' · step ' + (i + 1) + ' of ' + list.length, [], { back: '#/today' });
   const page = $('#page'); page.textContent = '';
   page.appendChild(el('div', { class: 'row wrap', role: 'tablist', 'aria-label': 'This week\'s steps', style: { gap: '6px' } }, list.map(s => el('a', { class: 'btn sm' + (s === x ? ' pri' : ''), role: 'tab', 'aria-selected': String(s === x), href: '#/step/' + m + '/' + s.STEP, text: (schedule().units.find(v => v.uid === s.uid) || {}).isDone ? '✓ ' + STEP_NAME[s.STEP] : STEP_NAME[s.STEP] }))));
-  const card = el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: STEP_NAME[x.STEP] + ' · ' + x.mins + ' min' })]);
+  const card = el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: STEP_NAME[x.STEP] + ' · ' + x.mins + ' min' }), typeof storyFrame === 'function' ? storyFrame(m, { short: true }) : null]); /* the episode this step belongs to (js/story.js) */
   page.appendChild(card);
   const ta = (key, label, ph) => { const t = el('textarea', { class: 'code', 'aria-label': label, placeholder: ph, style: { minHeight: '120px', border: '1px solid var(--line2)', borderRadius: '10px', fontFamily: 'var(--body)', fontSize: '16px' } }); t.value = r[key] || ''; t.addEventListener('input', () => stepPut(x.uid, { [key]: t.value })); return t; };
   if (x.STEP === 'design') {

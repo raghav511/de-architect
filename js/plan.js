@@ -335,7 +335,7 @@ function vToday(off) {
   const D = DATA.design[m];
   const modCard = el('section', { class: 'card pad stack' }, [
     el('div', { class: 'row wrap', style: { gap: '6px' } }, [el('span', { class: 'chip ' + modColor(m), text: 'Module ' + modLabel(m) }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: weeksText(sp) })]),
-    el('b', { style: { fontSize: '18px' }, text: M ? M.title : '' }), el('span', { style: { fontSize: '14.5px' }, text: M ? M.goal : '' }),
+    el('b', { style: { fontSize: '18px' }, text: M ? M.title : '' }), typeof storyFrame === 'function' ? storyFrame(m, { short: true, season: true }) : null, el('span', { style: { fontSize: '14.5px' }, text: M ? M.goal : '' }),
     el('div', { class: 'row' }, [el('div', { class: 'bar grow' }, el('i', { style: { width: (sp ? Math.round(100 * sp.done / sp.n) : 0) + '%' } })), el('b', { text: modXP(m) })]),
     el('details', { class: 'modmenu' }, [el('summary', { class: 'btn', text: 'Open module' }), el('div', { class: 'stack', style: { gap: '10px', marginTop: '10px' } }, [modLinks(m), D ? el('a', { class: 'tlink', href: '#/design/' + m, style: { fontWeight: 600, fontSize: '14px' }, text: 'Design problem: ' + D.title + ' ›' }) : null, el('a', { class: 'tlink', href: '#/path/' + m, style: { fontWeight: 600, fontSize: '14px' }, text: 'See every step of this module ›' })])])]);
   shell(off === 0 ? 'Today' : 'Plan · ' + shortDate(k), 'Module ' + modLabel(m), [
@@ -411,7 +411,7 @@ function vPath(m) {
   const total = us.reduce((a, u) => a + u.mins, 0);
   const head = el('section', { class: 'card pad stack' }, [
     el('div', { class: 'row wrap', style: { gap: '6px' } }, [el('span', { class: 'chip ' + modColor(m), text: 'Module ' + modLabel(m) }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: weeksText(sp) + ' · ' + Math.round(total / 6) / 10 + ' h in the daily hour' + (M.coding ? ' + coding' : '') })]),
-    el('div', { class: 'phead' }, [topicArt(m, 80), el('h1', { text: M.title })]), el('p', { style: { margin: 0, fontSize: '16px' }, text: M.goal }),
+    el('div', { class: 'phead' }, [topicArt(m, 80), el('h1', { text: M.title })]), typeof storyFrame === 'function' ? storyFrame(m) : null, el('p', { style: { margin: 0, fontSize: '16px' }, text: M.goal }),
     el('div', { class: 'row' }, [el('div', { class: 'bar grow' }, el('i', { style: { width: Math.round(100 * sp.done / sp.n) + '%' } })), el('b', { text: sp.done + ' of ' + sp.n + ' steps' })]),
     el('span', { class: 'lbl', text: 'Everything in this module' }), modLinks(m)]);
   const steps = el('section', { class: 'card pad stack' }, [el('h2', { text: 'Steps, in order, with the day each is planned' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'Each step fits in one day\'s budget. Tick a step here or on Today. Unfinished steps slide to the next free day, so the dates always stay true.' })]
