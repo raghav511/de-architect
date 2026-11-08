@@ -10,12 +10,14 @@ A601 | learn | 1 | Chapter part 1: what changes in production, where the time go
 A602 | learn | 1 | Chapter part 2: cheaper and faster, the LLM gateway, the architect's lens | You can name four cost levers with their risks and list what a gateway owns. | chapter:4-6
 A603 | learn | 0.75 | Chapter part 3: evals in production and tracing | You can describe a regression gate for a prompt change, how to check a judge against people, and what a trace span records. | chapter:7-8
 A609 | learn | 0.75 | Chapter part 4: choosing the approach and the model, guardrails and governance | You can say when to fine-tune and when not, list the guardrail layers, and describe the EU AI Act, NIST AI RMF and ISO 42001 in a sentence each. | chapter:9-10
+A611 | learn | 0.5 | Chapter part 5: ML system design basics | You can say when to choose batch or online inference, name three causes of training-serving skew and how to prevent them, and read a population stability index. | chapter:11-11
 A604 | build | 1.25 | Exercises 1–4: cost, latency, a gateway call, a cascade | All four pass in the editor. | py:1-4
 A605 | build | 1 | Exercises 5–7: a regression gate, judge agreement, trace summaries | All three pass in the editor; every model and judge in them is a stub. | py:5-7
 A610 | build | 1 | Exercises 8–11: a fine-tuning dataset, an output guard, permission-aware retrieval, a red-team run | All four pass in the editor; every model in them is a stub. | py:8-11
+A612 | build | 0.5 | Exercises 12–13: a drift report and a model rollout decision | Both pass in the editor. | py:12-13
 A606 | practice | 0.5 | Latency and cost drills | Five drills answered, then checked against the model answers. | practice
 A607 | test | 0.5 | Quiz A6 | 80% or better. | quiz
-A608 | talk | 0.75 | Interview set A6 | 9 of 12 answered out loud and ticked. | interview
+A608 | talk | 0.75 | Interview set A6 | 11 of 14 answered out loud and ticked. | interview
 
 @@readings
 - **In this app: the chapter.** A6.1 to A6.11 cover everything the labs, quiz and interviews need. Tap ⓘ to read a source on its own site.
@@ -282,6 +284,33 @@ Guardrails are layers, because no single check holds. Put a check where each kin
 
 What these mean for an engineer: an inventory of every AI feature with its owner and risk level, an eval and red-team record for each release, the trace and audit trail, a named person who can switch a feature off, and a review before any feature moves into a high-risk use.
 
+## A6.12 ML system design basics
+
+Even in a year of language models, loops still ask for a classic machine learning system: fraud at checkout, ranking a feed, an arrival-time estimate, churn scores. The interviewer is rarely testing the algorithm. They want the data path around the model, and that is a data engineer's ground.
+
+**The training pipeline.** Raw events become features, features become a training set, the set trains a model, an offline evaluation decides whether it is better, and the result is registered. Two details separate a strong answer. The training set is built with **point-in-time joins**: each example sees only the feature values that existed at its timestamp, never later ones (the feature store in [M3.5](#/learn/m03/chapter) does this). The evaluation holds out **the most recent period**, not a random sample, because the model will be used on the future.
+
+**The model registry.** Every trained model is stored as a version with what made it: the data snapshot, the code commit, the feature definitions, the metrics and who approved it. Production points at a version through an alias, so a rollback is moving the alias back, not retraining. MLflow, the cloud platforms' registries and models in Unity Catalog all work this way.
+
+**Batch or online inference.**
+
+| | Batch | Online |
+|---|---|---|
+| How | Score every entity on a schedule, write the scores to a table or cache | Score one request when it arrives, inside a latency budget |
+| Fits | Churn risk, next week's demand, recommendations computed overnight | Fraud at checkout, arrival time, search ranking |
+| Features | Read from the warehouse | Read from an online store in milliseconds; some computed from a stream |
+| Cost and risk | Cheap and simple; scores are as old as the last run | Always-on serving, autoscaling, a p99 budget; fresh |
+
+Start from batch, and move to online only when the decision needs data from the last few minutes. Streaming scoring sits in between.
+
+**Training-serving skew.** The model scores well offline and badly in production because the features it sees are not the ones it learned from. The usual causes: the same feature written twice (SQL for training, service code for serving), future data leaking into training, different defaults for missing values, and units or time zones that differ. Prevent it with one feature definition used by both paths, by logging the features actually served and training on that log, and by comparing training and serving distributions feature by feature.
+
+**Drift.** Data drift is a change in the inputs: new markets, a new app version. Concept drift is a change in what the inputs mean for the outcome: fraudsters change tactics. Watch three things: each feature's distribution against training, measured with the **population stability index** (under 0.1 stable, 0.1 to 0.25 worth watching, above 0.25 investigate); the distribution of predictions; and real accuracy once labels arrive, which for fraud can take weeks. A drift alert is a question to answer, not an automatic retrain: retraining on data from a broken pipeline teaches the model the bug.
+
+**Rolling out a new model.** First in **shadow**: it scores live traffic but nothing acts on its output. Then an **A/B test** on a business metric, with guardrail metrics such as latency and complaint rate, and a sample size fixed before it starts so that nobody stops it at a lucky moment. If it loses or a guardrail breaks, move the alias back.
+
+**In the interview.** "Design fraud detection for card payments" is answered in this order: the decision and its budget (a block or allow within 100 milliseconds, and the cost of a missed fraud against a blocked good customer), features (velocity counts from a stream, history from the warehouse, one definition for both), online inference with rules as a backstop, the label delay and the feedback loop, then monitoring for skew and drift and how a new model is rolled out.
+
 @@lab
 ## In the app: cost, latency, a gateway, an eval gate and guardrails (3.25 hours)
 
@@ -469,7 +498,41 @@ D) OpenTelemetry's semantic conventions for generative AI
 ANS: C
 WHY: ISO/IEC 42001 defines an AI management system that can be audited and certified; the EU AI Act is law and the NIST framework is voluntary guidance.
 
+---
+TYPE: mcq
+TAG: ai
+Q: A fraud model scores well offline and poorly in production. Training used SQL features; the service recomputes them in Java. What is the likeliest cause?
+A) The production model has overfitted to the training set
+B) Training-serving skew from two copies of the features
+C) Concept drift caused by fraudsters changing their tactics
+D) The offline evaluation used too small a holdout sample
+ANS: B
+WHY: The same feature written twice drifts apart (defaults, units, time zones). One definition used by both paths, or training on logged served features, prevents it.
+---
+TYPE: mcq
+TAG: ai
+Q: Churn scores are used once a week by a retention team. Which inference style fits?
+A) Batch scoring on a schedule, written to a table
+B) Online scoring for every app request in real time
+C) Streaming scoring from every click event as it lands
+D) Scoring on the analyst's laptop before each meeting
+ANS: A
+WHY: The decision is weekly and needs no data from the last minutes, so a scheduled batch job is cheaper and simpler than always-on serving.
+---
+TYPE: fill
+TAG: ai
+Q: A feature's population stability index between training and serving is 0.31. By the usual rule of thumb this is ____ (stable, worth watching, or drift to investigate).
+ANS: drift | drift to investigate | investigate
+WHY: Under 0.1 is stable, 0.1 to 0.25 is worth watching, above 0.25 should be investigated before anyone retrains.
 @@interview
+Q: Design fraud detection for card payments at checkout.
+TAG: ai
+A: Start from the decision: block, allow or step-up within about 100 ms, and the cost of each error (a missed fraud against a blocked good customer). Features: velocity counts (cards, devices, merchants over minutes) computed from a stream into an online store, history from the warehouse, one definition used for both training and serving. Inference online, with rules as a backstop and a fallback when the model is slow. Labels (chargebacks) arrive weeks later, so evaluate on a time-based holdout and expect a feedback loop: blocked transactions never get labels, so keep a small random allow sample. Monitor feature drift (PSI), prediction distribution, false-positive rate by segment and latency. Roll out new models in shadow, then an A/B test with guardrails, with the registry alias as the rollback.
+---
+Q: What is training-serving skew, and how do you prevent it?
+TAG: ai
+A: The model sees different feature values in production from the ones it learned from, so it performs worse than offline. Causes: the feature written twice in different code, future data leaking into training, different handling of missing values, units or time zones. Prevent it with one feature definition shared by training and serving (a feature store), point-in-time joins for training sets, logging the features actually served and training on that log, and a check that compares training and serving distributions per feature.
+---
 Q: Design the serving path for a customer-support assistant that handles 200,000 conversations a day. Cover latency, cost and failure.
 TAG: ai
 A: Path: app, LLM gateway, retrieval (a05) and the model API, with streaming. Latency: a p95 budget with time to first token under a second (gateway 20 ms, retrieval 250 ms, queue and prefill 600 ms), streamed answers, the stable prompt prefix first so it is cached. Cost: about 3,000 input and 300 output tokens per request, so roughly $0.0135 on a large model and $2,700 a day; caching the prefix and routing simple intents to a small model bring it under $700 a day. Failure: the gateway retries a rate limit once, falls back to a second model that passed the same evals, and enforces timeouts and a daily budget. Quality: a golden set gates every prompt and model change, and live traffic is sampled and judged daily. Every request has a trace with tokens, cost and latency per step.

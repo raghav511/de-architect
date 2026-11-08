@@ -1736,6 +1736,23 @@ async function T(name, fn, opt) {
     ok(/Lakebase/.test(rows) && /Databricks Apps/.test(rows) && /Agent Bricks/.test(rows), 'Lakebase, Databricks Apps and Agent Bricks are not in a table in 8.3');
   });
 
+  await T('ML system design basics (a06, A6.12): the section renders, and the drift and rollout exercises pass in the browser and tick their step', async p => {
+    await go(p, '#/learn/a06/chapter', 1500);
+    const c = await text(p, '#page');
+    ok(/A6\.12 ML system design basics/.test(c) && /Training-serving skew/.test(c) && /population stability index/.test(c) && /shadow/.test(c), 'A6.12 is missing or incomplete');
+    ok(await p.evaluate(() => [...document.querySelectorAll('#page table')].some(t => /Batch/.test(t.innerText) && /Online/.test(t.innerText))), 'the batch or online table is missing');
+    const sols = await p.evaluate(() => DATA.py.filter(x => x.id === 'ya0612' || x.id === 'ya0613').map(x => [x.id, x.sol]));
+    ok(sols.length === 2, 'expected the two A6.12 exercises, got ' + sols.length);
+    for (const [id, sol] of sols) {
+      await hash(p, '#/py/' + id, 600);
+      await p.fill('textarea.code', sol);
+      await p.click('button.btn.pri:has-text("Run")');
+      await p.waitForFunction(() => { const v = document.querySelector('.verdict'); return v && v.style.display !== 'none' && /pass|Error/.test(v.textContent); }, null, { timeout: 120000 });
+      ok((await text(p, '.verdict')) === 'All checks pass', id + ' did not pass in the browser: ' + await text(p, '.out .body'));
+    }
+    ok(await p.evaluate(() => { schedFlush(); const u = schedule().units.find(x => x.uid === 'a06:A612'); return !!(u && u.isDone); }), 'the exercises step did not tick');
+  });
+
   await browser.close();
   results.forEach(r => console.log(r.join('  ')));
   const f = results.filter(r => r[0] === 'FAIL').length;
