@@ -4,14 +4,14 @@ import json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(os.path.dirname(HERE))
 CAST = [
   {'name': 'Marcus Bell', 'role': 'Meridian\'s first staff data architect, the lead. Careful, curious, a little too willing to fix things himself.'},
-  {'name': 'Asha Menon', 'role': 'CTO. Direct, high bar, fair: "Show me the number, then the plan."'},
-  {'name': 'Dev Okafor', 'role': 'Data platform lead and on-call veteran. Sceptical of new tools until they earn it.'},
+  {'name': 'Asha Iyer', 'role': 'CTO. Direct, high bar, fair: "Show me the number, then the plan."'},
+  {'name': 'Dev Malhotra', 'role': 'Data platform lead and on-call veteran. Sceptical of new tools until they earn it.'},
   {'name': 'Lena Park', 'role': 'Junior data engineer Marcus mentors. Quiet at first; leads on-call by season 4.'},
-  {'name': 'Mei Tan', 'role': 'FinOps lead. Reads every cloud bill line by line: "Who pays for this?"'},
-  {'name': 'Tomas Ruiz', 'role': 'Head of Product. Wants everything real time, yesterday.'},
+  {'name': 'Mei Chen', 'role': 'FinOps lead. Reads every cloud bill line by line: "Who pays for this?"'},
+  {'name': 'Tom Reyes', 'role': 'Head of Product. Wants everything real time, yesterday.'},
   {'name': 'Kofi Mensah', 'role': 'Analytics lead and owner of the executive dashboard; rival, then partner.'},
-  {'name': 'Grace Adeyemi', 'role': 'Retired principal engineer and Marcus\'s mentor; Friday coffees, one sentence of advice.'},
-  {'name': 'Viktor Hale', 'role': 'Lead architect at Brightcart, the company Meridian buys in season 4; rival, then ally.'},
+  {'name': 'Grace Okafor', 'role': 'Retired principal engineer and Marcus\'s mentor; Friday coffees, one sentence of advice.'},
+  {'name': 'Victor Hale', 'role': 'Lead architect at Lumen, the company Meridian buys in season 4; rival, then ally.'},
   {'name': 'Nadia and Zoe Bell', 'role': 'Marcus\'s wife, an ICU nurse on night shifts, and their daughter, 7, who asks what he built today.'}]
 LOGLINE = 'Marcus Bell joins Meridian, a rides, food and payments company in 14 cities, as its first staff data architect. Each day of your plan is an episode of his first two years: you answer the questions he faces.'
 

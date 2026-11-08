@@ -33,14 +33,14 @@
    "logline": "Marcus traces the gap in trip counts to the facts themselves: which event counts, how duplicates slip in, and why money is never edited in place.",
    "scenes": [
     "Kofi counts a trip when the app fires trip_completed. Finance counts it when the payment settles. Same trip, two events, sometimes on different days. Marcus writes the five W's on the whiteboard. Which event is the fact?",
-    "Tomas wants to know how long trips take from request to payment. A transaction fact cannot answer it cheaply, and Dev suggests a daily snapshot. Marcus lists the four fact types. Which one tracks a lifecycle?",
+    "Tom wants to know how long trips take from request to payment. A transaction fact cannot answer it cheaply, and Dev suggests a daily snapshot. Marcus lists the four fact types. Which one tracks a lifecycle?",
     "Saturday's trip_completed count is 6% higher than the number of trips drivers were paid for. Lena spots the cause first: the app retries on weak networks. How do you keep exactly one row per trip, every time?",
     "Finance edits fares in place when a refund lands, so last month's totals quietly change. Lena notices the unexplained 2% revenue gap is largest in months with many refunds. How should a correction be recorded?",
     "Kofi wants city name and rider tier copied onto every trip row so his dashboard stops joining. Finance worries the copies will drift. Marcus has to decide how wide the trip fact should be, and what that costs.",
     "The ninety-day retention query reads and shuffles ninety rows per rider and takes twenty minutes. Grace says, \"Store the shape of the question, not of the event.\" Could one row per rider per month answer it?"
    ],
    "teasers": [
-    "Tomas asks a lifecycle question that a plain transaction fact cannot answer.",
+    "Tom asks a lifecycle question that a plain transaction fact cannot answer.",
     "Saturday's trip count is 6% higher than the trips drivers were paid for.",
     "A refund rewrites last month's revenue, and Lena notices a pattern in the 2% gap.",
     "Kofi asks for city and tier on every trip row. Finance says no.",
@@ -128,7 +128,7 @@
    "ep": "Festival Load",
    "logline": "Festival week puts 80% of trips in Bengaluru, and Marcus learns to read a Spark job, find the skew and fix it without buying more machines.",
    "scenes": [
-    "Festival week starts, and the nightly enrichment job joining thirty days of trips to drivers and zones runs past breakfast. Tomas asks why the morning dashboard is empty. Marcus opens the Spark UI. Where does the time go?",
+    "Festival week starts, and the nightly enrichment job joining thirty days of trips to drivers and zones runs past breakfast. Tom asks why the morning dashboard is empty. Marcus opens the Spark UI. Where does the time go?",
     "Marcus reads the physical plan and sees the trip date filter applied after the join, not at the scan. Lena wrapped it in a Python UDF last month. What does Catalyst need before it can push a filter down?",
     "The join stage writes 400 GB of shuffle for a 120 GB input. Dev asks why joining two tables moves so much data across the network. Marcus has to explain, step by step, what a shuffle really does.",
     "The zones table has two hundred rows, yet Spark shuffles it alongside thirty days of trips. Drivers holds half a million rows. Lena suggests broadcasting both. Which join strategy fits each table, and why not both?",
@@ -157,18 +157,18 @@
     "A driver moves from Pune to Bengaluru. Overnight, all his Pune trips from last year move to Bengaluru on the dashboard, and the city leads notice. Which slowly changing dimension type keeps history where it happened?",
     "Kofi writes his first dbt model and asks Marcus to review it. They agree on staging, intermediate and marts folders, and Lena adds the tests. What should a dbt test catch before the board ever sees a number?",
     "Finance's total for last Tuesday keeps changing. Trips completed at 23:58 arrive two days late, and the incremental filter never sees them. Lena proposes a lookback window. How many days, and what does it cost?",
-    "Tomas wants analysts to ask questions in plain English. The text-to-SQL bot answers confidently and wrongly, because completed still has two meanings. Grace says, \"Teach the definitions before the machine.\" What must the agent see, and with which role?"
+    "Tom wants analysts to ask questions in plain English. The text-to-SQL bot answers confidently and wrongly, because completed still has two meanings. Grace says, \"Teach the definitions before the machine.\" What must the agent see, and with which role?"
    ],
    "teasers": [
     "Two thousand trips disappear from the star schema, and a NULL is to blame.",
     "A driver moves city, and a year of his trips moves with him.",
     "Kofi writes his first dbt model and asks Marcus to review it.",
     "Finance's Tuesday total changes again. Some trips arrive two days late.",
-    "Tomas wants analysts to ask the warehouse questions in plain English.",
-    "Next season: Tomas wants everything real time, and the SQL bot meets the CEO."
+    "Tom wants analysts to ask the warehouse questions in plain English.",
+    "Next season: Tom wants everything real time, and the SQL bot meets the CEO."
    ],
    "boss": "Weekend review: a backfill meant to catch late trips double-counted a week of Finance revenue. Marcus and Kofi must show the merge on the trip key, the lookback window and why a rerun should change nothing it should not.",
-   "finale": "At the board meeting, completed and settled trips appear side by side, defined once in dbt, and both teams' numbers match. Kofi presents with Marcus. Lena's 2% gap stays in her notebook. Tomas smiles: \"Now make it real time.\"",
+   "finale": "At the board meeting, completed and settled trips appear side by side, defined once in dbt, and both teams' numbers match. Kofi presents with Marcus. Lena's 2% gap stays in her notebook. Tom smiles: \"Now make it real time.\"",
    "zoe": "Zoe asks why grown-ups argued about counting. Marcus says, \"We used one word for two different things, so we gave each its own name, and now everyone agrees.\""
   }
  ]
