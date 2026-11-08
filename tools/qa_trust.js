@@ -2,6 +2,7 @@
    Each case is a way the app could lose data, mislead, show stale data or fail silently; it runs in a fresh browser
    context against the real app. The sync server is a stub on https://sync.test (never the learner's real one). */
 const { chromium } = require(process.env.PW || 'playwright');
+const { blockExternal } = require('./testnet');
 const BASE = (process.argv[2] && /^http/.test(process.argv[2])) ? process.argv[2] : 'http://localhost:8811/';
 const FILTER = process.argv.find(a => !/^http/.test(a) && a !== process.argv[0] && a !== process.argv[1]) || '';
 const results = [];
@@ -10,6 +11,7 @@ function ok(cond, msg) { if (!cond) throw new Error(msg); }
 async function T(id, name, fn, opt) {
   if (FILTER && !(id + ' ' + name).toLowerCase().includes(FILTER.toLowerCase())) return;
   const c = await browser.newContext(Object.assign({ viewport: { width: 1280, height: 860 }, acceptDownloads: true, bypassCSP: true }, opt || {})); /* stub hosts such as https://sync.test are outside the app's CSP; Q24 and Q35 run with it enforced */
+  await blockExternal(c); /* a DNS outage cannot hang a test: unstubbed outside hosts are refused at once */
   await c.route('http://127.0.0.1:8765/**', r => r.abort()); /* never reach a real grader on this Mac */
   const p = await c.newPage(); p.errs = [];
   p.on('pageerror', e => p.errs.push(e.message)); p.on('dialog', d => { p.errs.push('native dialog: ' + d.message()); d.dismiss(); });

@@ -4,6 +4,7 @@
    Run before every ship against the local server and after every ship against the live site (tools/improve/LOOP.md).
    Stubs: the AI interviewer (the page's macCall, the Mac route) and the sync server (https://sync.test); never the real ones. */
 const pw = require(process.env.PW || 'playwright');
+const { blockExternal } = require('./testnet');
 const args = process.argv.slice(2);
 const BASE = (args.find(a => /^http/.test(a)) || 'http://localhost:8811/').replace(/\/?$/, '/');
 const FILTER = (args.find(a => !/^http|^--|^(chromium|webkit)$/.test(a)) || '').toLowerCase();
@@ -24,7 +25,7 @@ async function run(engine) {
     if (FILTER && !name.toLowerCase().includes(FILTER)) return;
     if (extra && extra.only && extra.only !== engine) return;
     /* Playwright's WebKit cannot route requests made under a service worker, so stubbed checks there run without it */
-    const c = await browser.newContext(Object.assign({ bypassCSP: true }, opt, engine === 'webkit' && extra && extra.stub ? { serviceWorkers: 'block' } : {})); /* stub hosts are outside the app's CSP */ await c.route('http://127.0.0.1:8765/**', r => r.abort());
+    const c = await browser.newContext(Object.assign({ bypassCSP: true }, opt, engine === 'webkit' && extra && extra.stub ? { serviceWorkers: 'block' } : {})); /* stub hosts are outside the app's CSP */ await blockExternal(c); await c.route('http://127.0.0.1:8765/**', r => r.abort());
     await c.route('https://api.anthropic.com/**', r => r.abort()); /* the app never calls an AI service from the browser */
     const p = await c.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => { errs.push('native dialog'); d.dismiss(); });
     await p.addInitScript(SOUND);
