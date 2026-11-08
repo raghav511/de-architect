@@ -207,8 +207,10 @@ function reelPlayer(q, at, feedMode) {
     let wd = null; /* watchdog: a recording that stops arriving falls back to captions (QA fix 8) */
     function stop() { tok++; clearTimeout(timer); timer = null; clearInterval(wd); wd = null; if (audio) { audio.onended = audio.onerror = audio.onloadedmetadata = null; audio.pause(); audio = null; } try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { } if (fx) fx.stop(); }
     function render() {
-      paintBars(); stage.textContent = '';
-      if (bi >= r.beats.length) { cap.textContent = ''; stage.append(...reelEnd(r, () => go(i + 1), () => { bi = 0; play(); })); return null; }
+      paintBars();
+      if (bi >= r.beats.length) { if (stage.dataset.end) return null; /* already on the end card (closing the speed sheet plays again): keep it, so the check's options do not reshuffle under the finger (iPhone pass) */
+        stage.textContent = ''; stage.dataset.end = '1'; cap.textContent = ''; stage.append(...reelEnd(r, () => go(i + 1), () => { bi = 0; play(); })); return null; }
+      stage.textContent = ''; delete stage.dataset.end;
       const b = r.beats[bi]; fx = FX.build(b.show || {}); stage.appendChild(fx.el); cap.textContent = b.say; return b;
     }
     function beat() {

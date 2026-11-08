@@ -104,6 +104,14 @@ function liveHire(avg, m) {
 }
 function liveCheckRate(m) { const a = Object.values(m.ans || {}).filter(x => x.checks); return a.length ? a.reduce((s, x) => s + LIVE_CHECKS.filter(c => x.checks[c[0]]).length, 0) / (a.length * LIVE_CHECKS.length) : 0; }
 
+/* why speech input stopped, in words; null when there is nothing to say (the speaker stopped, or we stopped it).
+   iPhone Safari reports a refused prompt as service-not-allowed, Chrome as not-allowed (iPhone pass) */
+function micErrorText(err) {
+  if (/not-allowed/.test(err || '')) return /iPhone|iPad/.test(navigator.userAgent) ? 'Speech input is off for Safari. Turn Safari on in Settings › Privacy & Security › Speech Recognition (and Microphone), or type your answer.' : 'Microphone access is blocked for this site. Allow it in the browser settings, or type your answer.';
+  if (err === 'audio-capture') return 'No microphone was found. Type your answer instead.';
+  if (err === 'network') return 'Speech input needs a connection. Type your answer instead.';
+  return null; /* no-speech, aborted */
+}
 /* speech to text where the browser has it (Chrome, Safari); appends final words to the text box */
 function liveMic(ta, onText) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -115,7 +123,7 @@ function liveMic(ta, onText) {
     if (on) return stop();
     rec = new SR(); rec.continuous = true; rec.interimResults = false; rec.lang = navigator.language || 'en-US';
     rec.onresult = e => { for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) { ta.value = (ta.value ? ta.value.replace(/\s*$/, ' ') : '') + e.results[i][0].transcript.trim(); onText(); } };
-    rec.onerror = e => { stop(); if (e.error === 'not-allowed') toast('Microphone access is blocked for this site. Allow it in the browser settings, or type your answer.'); };
+    rec.onerror = e => { stop(); const why = micErrorText(e.error); if (why) toast(why, null, 6000); };
     rec.onend = () => { if (on) { try { rec.start(); } catch (e) { stop(); } } };
     try { rec.start(); on = true; b.setAttribute('aria-pressed', 'true'); b.lastChild.textContent = 'Stop'; b.classList.add('rec'); } catch (e) { toast('Speech input could not start. Type your answer instead.'); }
   };

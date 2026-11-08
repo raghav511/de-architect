@@ -522,6 +522,49 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
     ok(mg.a.code === 'new' && mg.b, 'merge lost step work: ' + JSON.stringify(mg));
   });
 
+  await T('Q54', 'reel chips and nodes show a symbol, never an icon name such as "lock" or "check" as text (iPhone pass: 1,141 icons in 843 reels)', async p => {
+    await boot(p);
+    const r = await p.evaluate(async () => {
+      const fx = FX.build({ t: 'scene', title: 'T', nodes: [{ id: 'a', label: 'Broker', icon: 'lock', x: 30, y: 50 }, { id: 'b', label: 'Disk', icon: 'made-up-word', x: 70, y: 50 }], steps: [{ at: 0, chip: { text: 'Shared knife', icon: 'check' } }, { at: 0.01, chip: { text: 'Keep', icon: '⇉' } }] });
+      document.body.appendChild(fx.el); fx.start(200); await new Promise(res => setTimeout(res, 600));
+      const icons = [...fx.el.querySelectorAll('i')].map(i => i.textContent); fx.stop(); fx.el.remove(); return icons;
+    });
+    ok(r.length === 4 && !r.some(x => /[a-z]{2,}/i.test(x)), 'an icon name showed as text: ' + JSON.stringify(r));
+    ok(r.includes('⚿') && r.includes('✓') && r.includes('•') && r.includes('⇉'), 'icons were not mapped as expected: ' + JSON.stringify(r));
+  });
+
+  await T('Q55', 'on a reel\'s end card, a tap on the card or the speed sheet keeps the check\'s options where they are (iPhone pass: a tap re-drew the card and reshuffled them)', async p => {
+    await boot(p, '#/reels/s05-52-1'); await p.waitForSelector('.rslide .rstart', { timeout: 20000 });
+    await p.click('.rslide .rstart'); await p.waitForTimeout(1500);
+    const w = await p.evaluate(() => innerWidth); for (let n = 0; n < 4; n++) { await p.mouse.click(w - 30, 420); await p.waitForTimeout(300); }
+    await p.waitForSelector('.ropt', { timeout: 10000 });
+    const order = () => p.evaluate(() => { const s = [...document.querySelectorAll('.rslide')].find(x => x.querySelector('.ropt')); return [...s.querySelectorAll('.ropt')].map(b => b.dataset.i).join(','); });
+    const before = await order();
+    /* a tap below the card (on the reel's title) is a play tap: on a finished reel it used to re-draw the card */
+    const at = await p.evaluate(() => { const s = [...document.querySelectorAll('.rslide')].find(x => x.querySelector('.ropt')); const r = s.querySelector('.rinfo').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+    for (let n = 0; n < 3; n++) { await p.mouse.click(at[0], at[1]); await p.waitForTimeout(400); }
+    await p.evaluate(() => { const s = [...document.querySelectorAll('.rslide')].find(x => x.querySelector('.ropt')); [...s.querySelectorAll('.rbtn')].find(b => /^Speed/.test(b.getAttribute('aria-label') || '')).click(); });
+    await p.waitForSelector('.rspeed'); await p.click('.rspeed .rvopt >> nth=3'); await p.waitForTimeout(300);
+    const after = await order();
+    ok(before && before === after, 'the options moved: ' + before + ' became ' + after);
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  await T('Q56', 'when speech input is refused, the live mock says why: iPhone Safari\'s service-not-allowed counts as blocked, not only Chrome\'s not-allowed (iPhone pass)', async p => {
+    await p.addInitScript(() => { class FakeSR { start() { setTimeout(() => this.onerror && this.onerror({ error: window.__srErr }), 50); } stop() { } } window.SpeechRecognition = FakeSR; window.webkitSpeechRecognition = FakeSR; });
+    await boot(p);
+    const k = await p.evaluate(() => iso(new Date())); await p.evaluate(k => { location.hash = '#/live/' + k; }, k); await p.waitForTimeout(800);
+    await p.click('button:has-text("Start")'); await p.waitForSelector('button[aria-label="Speak your answer"]');
+    const said = [];
+    for (const err of ['service-not-allowed', 'not-allowed', 'audio-capture', 'no-speech']) {
+      await p.evaluate(e => { window.__srErr = e; document.querySelectorAll('.toast').forEach(t => t.remove()); }, err);
+      await p.click('button[aria-label="Speak your answer"]'); await p.waitForTimeout(400);
+      said.push(await toasts(p));
+    }
+    ok(/Speech input is off|blocked/.test(said[0]) && /blocked|Speech input is off/.test(said[1]), 'a refused prompt said nothing: ' + JSON.stringify(said));
+    ok(/No microphone/.test(said[2]) && !said[3], 'other errors were not explained, or no-speech showed a message: ' + JSON.stringify(said));
+    ok(await p.evaluate(() => document.querySelector('button[aria-label="Speak your answer"]').getAttribute('aria-pressed') === 'false'), 'the Speak button stayed pressed');
+  });
+
   await browser.close();
   for (const r of results) console.log(r[0].padEnd(5), r[1], r[2], r[3] ? '\n      ' + r[3] : '');
   console.log(results.filter(r => r[0] === 'PASS').length + ' passed, ' + results.filter(r => r[0] === 'FAIL').length + ' failed');

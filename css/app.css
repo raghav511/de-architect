@@ -205,6 +205,7 @@ textarea.code{flex:1;width:100%;border:0;resize:none;padding:14px 16px;font:14px
 .toast button{min-height:38px;padding:0 12px;border-radius:8px;border:0;background:var(--amber-b);color:var(--ink);font-weight:700;cursor:pointer}
 .fab{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;border:0;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 6px 18px rgba(11,122,103,.35);z-index:40}
 @media (max-width:1023px){.fab{bottom:calc(76px + env(safe-area-inset-bottom));right:14px;width:48px;height:48px}}
+@media (max-width:1023px){body:has(.simwrap) .fab,body:has(#page .live) .fab{display:none}} /* iPhone pass: on a phone the coach button covered the simulator's Reset and the live mock's Start; both pages have their own hints */
 .coach{position:fixed;right:20px;bottom:calc(84px + env(safe-area-inset-bottom));width:min(380px,calc(100vw - 28px));max-height:min(560px,70vh);background:var(--card);border:1px solid var(--line2);border-radius:16px;box-shadow:0 12px 32px rgba(18,32,47,.18);padding:14px;display:flex;flex-direction:column;gap:10px;z-index:45}
 @media (max-width:1023px){.coach{right:14px;bottom:calc(132px + env(safe-area-inset-bottom))}}
 .coach .msgs{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;min-height:60px}
