@@ -8,8 +8,8 @@ quiz-same: uiz267 g89f0g jo389j 1sxtzhk
 
 @@tickets
 201 | learn | 2 | Chapter 2 and the readings | You can explain, step by step, how a query finds its files in a Hive table and in an Iceberg table. | chapter
-202 | build | 2.5 | Move trip events into an Iceberg table | Spark writes the table, Trino reads it, a `MERGE` rerun adds no rows, and a time-travel query returns yesterday's count. | lab
-203 | incident | 0.75 | Ten thousand tiny files, and a renamed column | Files per partition drop below 10, the before and after query times are written down, and the broken report is fixed. | lab
+202 | build | 1.25 | Move trip events into an Iceberg table: MERGE, files and time travel | Both exercises pass in the editor: a `MERGE` on `event_id` whose rerun adds no rows, and the file count per day and a time-travel count read from the table's metadata. | py:1-2
+203 | incident | 0.75 | Ten thousand tiny files, and a renamed column | Both exercises pass: compaction leaves one file per day without changing the rows, and a view keeps the Finance report working after the rename. | py:3-4
 204 | ai | 1 | Classify failures with structured output | 20 sample log tails are classified into your schema with zero parsing errors. | lab
 205 | practice | 1.25 | Warm-ups and the customer drill | Three SQL and three DSA warm-ups attempted, and the drill answered out loud. | practice
 206 | test | 0.5 | Quiz 2 | 80% or better. | quiz
@@ -296,6 +296,19 @@ In version 2, each merge-on-read delete writes a new position delete file: rows 
 </details>
 
 @@lab
+## In the app: an Iceberg table without a cluster (2 hours)
+
+Four exercises on the in-browser table (`minilake.Table`) cover what the cluster lab below proves, and what interviews ask. The table keeps Iceberg's metadata: every commit is a snapshot that lists its data files, files are partitioned by day, columns are tracked by id, and old snapshots stay readable until they are expired.
+
+1. **MERGE INTO on `event_id`:** duplicates inside a batch and a rerun of the same hour both add nothing, and only the days the batch touches are rewritten, in one commit.
+2. **Look inside the table:** the number of files per day and their average size come from the files metadata, and a time-travel read counts the rows from before the backfill.
+3. **Ten thousand tiny files:** compaction rewrites each day's small files as one, the rows do not change, and an older snapshot still reads until snapshots are expired (the incident, part one).
+4. **A renamed column:** old files read under the new name without being rewritten, and a view with both names keeps the Finance report working during the migration (the incident, part two).
+
+**Done when** all four pass (Path, module 2). Then explain out loud why `MERGE` fixed both kinds of duplicate when partition overwrite fixed only one, and why a rename is safe for the files but not for the report.
+
+The lab below runs the same steps on a real Spark, catalog and Trino setup (optional; it needs Docker).
+
 ## Build: trip events as an Iceberg table (2.5 hours)
 
 The starter kit for this sprint adds a catalog and Trino to your compose file and gives you a Spark session configured for Iceberg. Paste this lab into a chat with Claude and ask it to **generate the DE 2 starter kit**.
