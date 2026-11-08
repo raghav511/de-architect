@@ -355,7 +355,14 @@ const SIM_SC = [
     q: 'Invoices arrive at 150 a second and each is extracted by the model, which handles 300 a second at your rate limit. At month-end the volume triples for 15 seconds. Keep errors under 1% and the extracted table no more than 10 seconds behind at the end.',
     hint: 'Extraction does not need an answer in the same second: put a queue in front of the model. It absorbs the burst, the model works at its rate limit, and the backlog drains after the peak.',
     goals: { err: 1, fresh: 10 },
-    nodes: [['files', 40, 140, { rps: 150, name: 'Invoices (PDF)' }], ['svc', 240, 140, { n: 1, name: 'Extraction workers' }], ['llm', 460, 140, { n: 6, lat: 500, name: 'LLM (300 docs/s limit)' }], ['lake', 680, 140, { name: 'Extracted fields table' }]], edges: [[0, 1], [1, 2], [2, 3]] }
+    nodes: [['files', 40, 140, { rps: 150, name: 'Invoices (PDF)' }], ['svc', 240, 140, { n: 1, name: 'Extraction workers' }], ['llm', 460, 140, { n: 6, lat: 500, name: 'LLM (300 docs/s limit)' }], ['lake', 680, 140, { name: 'Extracted fields table' }]], edges: [[0, 1], [1, 2], [2, 3]] },
+  /* capstone (module O5): the whole foundation under a launch-day spike */
+  { id: 'foundation', mid: 'o05', lvl: 'Staff', t: 'The whole foundation on launch day', secs: 80,
+    chaos: [{ type: 'spike', from: 20, to: 50 }],
+    q: 'Your foundation blueprint as a running system: apps writing to Postgres with CDC into Kafka, product events into the same Kafka, a stream job feeding a serving store and the lake, and analysts on the warehouse. Launch day brings four times the traffic for 30 seconds. Keep errors under 0.5% and data no more than 10 seconds behind.',
+    hint: 'Size every layer for the peak, not the average: partitions and stream tasks for four times the events, database replicas for four times the writes and reads, and warehouse clusters for four times the queries.',
+    goals: { err: 0.5, fresh: 10 },
+    nodes: [['client', 40, 60, { rps: 2000, name: 'Apps' }], ['svc', 240, 60, { n: 4, auto: true, max: 16 }], ['pg', 440, 60, { n: 2 }], ['cdc', 640, 60, { n: 2 }], ['kafka', 640, 220, { n: 3, parts: 12 }], ['producer', 40, 220, { rps: 20000, name: 'Product events' }], ['stream', 840, 220, { n: 6 }], ['kv', 1040, 140, { n: 2 }], ['lake', 1040, 300], ['bi', 840, 380, { rps: 100 }], ['wh', 1040, 460, { n: 1 }]], edges: [[0, 1], [1, 2], [2, 3], [3, 4], [5, 4], [4, 6], [6, 7], [6, 8], [9, 10]] }
 ];
 function simFromSc(sc) {
   const ids = sc.nodes.map((x, i) => 'n' + (i + 1));
@@ -421,7 +428,9 @@ const SIM_HINTS = {
   extract: { look: 'At second 15 the invoices triple; the LLM box turns red and a third of documents fail.', idea: 'Work that can wait belongs on a queue: it smooths bursts to the provider\'s rate limit, retries failures and lets you use cheaper batch capacity (10.7, design D).', change: 'Insert a queue between the extraction workers and the LLM.',
     fix: [{ insert: 'queue', a: 'svc', b: 'llm', o: { name: 'Document queue' }, why: 'The burst waits in the queue; the model works at 300 a second and the backlog is gone 15 seconds after the peak.' }] },
   mesh: { look: 'At second 15 the orders backfill triples its load; the shared warehouse turns red and every domain sees errors.', idea: 'A self-serve platform shares storage and the catalog but isolates compute per domain, with quotas and cost shown back (module O1.4 and its lens).', change: 'Route the orders domain to its own warehouse with three clusters.',
-    fix: [{ reroute: 'wh', a: 'files', b: 'wh', o: { n: 3, name: 'Orders warehouse' }, why: 'The noisy domain gets its own compute; the shared warehouse keeps serving the others.' }] }
+    fix: [{ reroute: 'wh', a: 'files', b: 'wh', o: { n: 3, name: 'Orders warehouse' }, why: 'The noisy domain gets its own compute; the shared warehouse keeps serving the others.' }] },
+  foundation: { look: 'At second 20 traffic quadruples: the stream falls minutes behind, Postgres and the warehouse turn red.', idea: 'A foundation is only as strong as its smallest layer at peak: size each one for the launch-day number from the capacity plan (O5.7 and 10.3).', change: 'More partitions and stream tasks, a third Postgres node and a second warehouse cluster.',
+    fix: [{ set: 'kafka', f: 'parts', v: 48, why: 'Four times the events needs more partitions, or extra stream tasks sit idle.' }, { set: 'stream', f: 'n', v: 24, why: 'One task per partition, enough for the peak.' }, { set: 'pg', f: 'n', v: 3, why: 'A third node carries the peak reads and writes.' }, { set: 'wh', f: 'n', v: 2, why: 'A second cluster keeps analysts\' queries from failing at peak.' }] }
 };
 const SIM_HINT_COST = [0, 5, 15, 35, 75]; /* marks lost in an exam after opening hint 1, 2, 3 or Show me */
 /* apply one fix step to a design; returns the id of the box it changed or added */
@@ -931,7 +940,10 @@ const SIM_TPL = [
   { id: 'ride', swe: true, t: 'Ride-hailing', s: 'Driver locations through Kafka into a geo index; riders query it through an API', re: /ride|uber|lyft|taxi|driver|geo|location/i,
     nodes: [['producer', 40, 60, { rps: 10000 }], ['kafka', 260, 60, { n: 3, parts: 24 }], ['stream', 480, 60, { n: 4 }], ['kv', 700, 140, { n: 2 }], ['client', 40, 240, { rps: 1500 }], ['lb', 260, 240], ['svc', 480, 240, { n: 4, auto: true, max: 20 }]], edges: [[0, 1], [1, 2], [2, 3], [4, 5], [5, 6], [6, 3]] },
   { id: 'video', swe: true, t: 'Video streaming', s: 'Viewers through a CDN to object storage; uploads queued for transcoding', re: /video|youtube|netflix|stream(ing)? platform|transcod/i,
-    nodes: [['client', 40, 60, { rps: 40000 }], ['cdn', 260, 60, { hit: 0.95 }], ['lake', 480, 140], ['files', 40, 240, { rps: 100 }], ['queue', 260, 240], ['fn', 480, 300]], edges: [[0, 1], [1, 2], [3, 4], [4, 5], [5, 2]] }
+    nodes: [['client', 40, 60, { rps: 40000 }], ['cdn', 260, 60, { hit: 0.95 }], ['lake', 480, 140], ['files', 40, 240, { rps: 100 }], ['queue', 260, 240], ['fn', 480, 300]], edges: [[0, 1], [1, 2], [3, 4], [4, 5], [5, 2]] },
+  /* the capstone's end-to-end foundation (module O5), kept out of the quick-start row */
+  { id: 'foundation', ai: true, t: 'The data foundation', s: 'Apps and CDC, events, Kafka, stream, serving store, lake and warehouse', re: /foundation|blueprint|capstone|end.to.end platform/i,
+    nodes: [['client', 40, 60, { rps: 2000, name: 'Apps' }], ['svc', 240, 60, { n: 4, auto: true, max: 16 }], ['pg', 440, 60, { n: 2 }], ['cdc', 640, 60, { n: 2 }], ['kafka', 640, 220, { n: 3, parts: 12 }], ['producer', 40, 220, { rps: 20000, name: 'Product events' }], ['stream', 840, 220, { n: 6 }], ['kv', 1040, 140, { n: 2 }], ['lake', 1040, 300], ['bi', 840, 380, { rps: 100 }], ['wh', 1040, 460, { n: 1 }]], edges: [[0, 1], [1, 2], [2, 3], [3, 4], [5, 4], [4, 6], [6, 7], [6, 8], [9, 10]] }
 ];
 /* Teach me this design: one step per box (why it is there, what you could use instead, what it costs), then run, break and fix */
 const SIM_TEACH = {
@@ -1077,7 +1089,22 @@ const SIM_TEACH = {
       { why: 'A queue holds transcoding jobs so a burst of uploads waits instead of failing.', alt: 'Transcode inside the upload request: slow and fragile.', cost: 'Small.' },
       { why: 'Workers transcode each upload into chunks at several qualities and write them to storage.', alt: '-', cost: 'Per second of work.' }],
     brk: { type: 'stampede', on: 'cdn', t: 'A purge leaves the CDN cold just as a video goes viral' }, fix: [{ insert: 'cache', a: 'cdn', b: 'lake', o: { hit: 0.9 }, why: 'An origin shield cache between the CDN and storage absorbs the misses.' }],
-    goals: { err: 2 }, say: 'Viewers fetch adaptive-bitrate chunks through a CDN backed by object storage; uploads go to a queue and transcoding workers write every quality level. Protect the origin with a shield cache, because a cold CDN sends every request to storage.' }
+    goals: { err: 2 }, say: 'Viewers fetch adaptive-bitrate chunks through a CDN backed by object storage; uploads go to a queue and transcoding workers write every quality level. Protect the origin with a shield cache, because a cold CDN sends every request to storage.' },
+  foundation: { est: '2,000 app requests a second and 20,000 product events a second on a normal day; four times that on launch day. Serving reads in milliseconds, analytics within minutes.',
+    steps: [
+      { why: 'The company\'s apps: the operational source of truth starts here.', alt: '-', cost: '-' },
+      { why: 'Stateless services behind the apps, auto-scaling with traffic.', alt: '-', cost: 'Replicas, more at peak.' },
+      { why: 'Postgres holds operational state; the data platform never queries it directly for analytics.', alt: 'A distributed SQL database when one primary cannot take the writes.', cost: 'Primary plus replicas.' },
+      { why: 'CDC reads the database log into Kafka, so the platform gets every change without dual writes (6.9).', alt: 'An outbox table for business events.', cost: 'Connector tasks.' },
+      { why: 'Kafka is the backbone: one log for changes and events, replayable by every consumer (5.9).', alt: 'A managed stream service.', cost: 'Brokers, the largest fixed cost.' },
+      { why: 'Product events from apps and devices, with schemas in a registry.', alt: '-', cost: '-' },
+      { why: 'A stream job builds fresh serving data and lands everything in the lake (5.10).', alt: 'Micro-batches when minutes are fine.', cost: 'Tasks, one per partition at most.' },
+      { why: 'A serving store answers product reads in milliseconds.', alt: 'Postgres read replicas when volume is small.', cost: 'Nodes sized for reads.' },
+      { why: 'The lakehouse keeps history in open tables, the system of record for analytics (2.9).', alt: 'Straight into the warehouse.', cost: 'Cheapest storage.' },
+      { why: 'Analysts and dashboards: the consumers the data products exist for.', alt: '-', cost: '-' },
+      { why: 'The warehouse serves analytics with governance applied at read time (O3).', alt: 'Trino over the lake.', cost: 'Compute per query or per hour.' }],
+    brk: { type: 'spike', t: 'Launch day: four times the traffic' }, fix: [{ set: 'kafka', f: 'parts', v: 48, why: 'More partitions for the peak.' }, { set: 'stream', f: 'n', v: 24, why: 'Tasks to match.' }, { set: 'pg', f: 'n', v: 3, why: 'A third database node.' }, { set: 'wh', f: 'n', v: 2, why: 'A second warehouse cluster.' }],
+    goals: { fresh: 10, err: 0.5 }, say: 'Apps write to Postgres and CDC carries every change into Kafka beside the product events; a stream job keeps a serving store fresh and lands history in the lakehouse, and analysts use the warehouse with governance applied at read time. I size each layer for the launch-day peak from the capacity plan, because the smallest layer at peak decides the whole system.' }
 };
 SIM_TPL.forEach(t => { t.teach = SIM_TEACH[t.id]; });
 function simNewFrom(tplId, name, from) {

@@ -816,6 +816,33 @@ async function T(name, fn, opt) {
     const w = await text(p, '.whatsnew'); ok(/1 new module/.test(w) && /platform as a product/i.test(w), 'What is new does not list O4: ' + w.replace(/\s+/g, ' ').slice(0, 300));
     ok(await p.evaluate(() => !Object.keys(S.done).some(k => k.startsWith('o04:'))), 'an O4 step was marked done');
   });
+  await T('module O5: the capstone sits right after the review module with chapter, lens, four exercises, design problem, quiz, reels and five capstone steps; the design step ticks only when the foundation challenge passes; nothing is marked done', async p => {
+    await go(p, '#/path', 1500);
+    ok(await p.evaluate(() => MODS.indexOf('o05') === MODS.indexOf('r01') + 1 && modLabel('o05') === 'Org 5'), 'O5 is not right after r01');
+    ok(await p.$('.pcard[data-mid=o05]') && /foundation blueprint/i.test(await all(p, '.pcard[data-mid=o05]')), 'O5 not on the Path');
+    await go(p, '#/learn/o05/chapter', 1500); await p.waitForSelector('.lens');
+    ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return document.querySelectorAll('.prose h2').length >= 10 && l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details:not(.fresh)').length === 6 && /strangler/i.test(l.textContent); }), 'O5 chapter or lens incomplete');
+    const r = await p.evaluate(async () => { const s = await sprint('o05'), us = modUnits('o05'), xs = DATA.py.filter(x => x.m === 'o05'), rs = await reelsFor('o05');
+      return { quiz: s.quiz.length, iv: s.interview.length, ex: xs.map(x => x.id).join(), build: us.filter(u => u.kind === 'build').map(u => u.href).join(), design: us.some(u => u.kind === 'design'), steps: us.filter(u => /:st\./.test(u.uid)).map(u => [u.uid, u.mins, !!(u.isDone || (u.auto && u.auto()))]), lens: rs.filter(x => x.sec === 'O5.9').map(x => x.level), cap: rs.filter(x => x.sec === 'O5.7').length }; });
+    ok(r.quiz >= 10 && r.iv >= 7 && r.ex === 'yo051,yo052,yo053,yo054' && /#\/py\/yo051/.test(r.build) && /#\/py\/yo053/.test(r.build) && r.design, 'O5 units: ' + JSON.stringify(r));
+    ok(r.steps.length === 5 && r.steps.every(x => x[1] <= 10 && !x[2]), 'O5 capstone steps missing, too long or already done: ' + JSON.stringify(r.steps));
+    ok(r.lens.length === 8 && ['New to it', 'How it works', 'Inside and caveats', 'Architect'].every(lv => r.lens.includes(lv)) && r.cap === 4, 'O5 reels: ' + JSON.stringify(r));
+    /* the design step: the foundation challenge fails as given and passes with its fix; only a pass ticks the step */
+    const t = await p.evaluate(() => { const sc = SIM_SC.find(x => x.id === 'foundation'), x = stepList('o05')[0], d = simFromSc(sc), g0 = SIM.grade(simFromSc(sc), sc).pass;
+      SIM_HINTS.foundation.fix.forEach(f => simApplyFix(d, f)); const g1 = SIM.grade(d, sc).pass, before = stepAuto('o05', x);
+      simState().done.foundation = iso(new Date()); schedFlush(); return { sims: x.sims, g0, g1, before, after: stepAuto('o05', x), unit: schedule().units.find(u => u.uid === 'o05:st.design').isDone }; });
+    ok(t.sims[0] === 'foundation' && !t.g0 && t.g1 && !t.before && t.after && t.unit, 'the capstone design step did not tick on the pass: ' + JSON.stringify(t));
+    await go(p, '#/step/o05/platform', 1200); await p.waitForSelector('[role=tab]');
+    const ck = await p.evaluate(() => { const x = stepList('o05')[2]; stepPut(x.uid, { pick: (x.check.a + 1) % 3 }); const a = stepAuto('o05', x); stepPut(x.uid, { pick: x.check.a }); return [a, stepAuto('o05', x)]; });
+    ok(!ck[0] && ck[1], 'the O5 platform check: ' + ck);
+    await go(p, '#/sim/sc/foundation', 1500); ok(/foundation on launch day/i.test(await text(p, '#page')), 'the foundation challenge does not open');
+    await go(p, '#/design/o05', 1200); ok(/ride and delivery marketplace/.test(await text(p, '#page')), 'O5 design problem missing');
+    await go(p, '#/today', 1200);
+    await seed(p, () => { S.done['s00:S001'] = iso(new Date()); S.sim = {}; S.steps = {}; Object.keys(S.cv.known).filter(k => k.startsWith('o05:')).forEach(k => delete S.cv.known[k]); S.updates = []; });
+    await p.waitForSelector('.whatsnew'); await p.click('.whatsnew button:has-text("See")');
+    const w = await text(p, '.whatsnew'); ok(/1 new module/.test(w) && /blueprint/i.test(w), 'What is new does not list O5: ' + w.replace(/\s+/g, ' ').slice(0, 300));
+    ok(await p.evaluate(() => !Object.keys(S.done).some(k => k.startsWith('o05:'))), 'an O5 step was marked done');
+  });
   await T('architect\'s lens: Python 1 shows a lens card with seven questions and four internals answers, stacked on a phone; Start here explains the data foundation', async p => {
     await go(p, '#/learn/p01/chapter', 1500); await p.waitForSelector('.lens');
     ok(await p.evaluate(() => document.querySelectorAll('.lens tbody tr').length === 7 && document.querySelectorAll('.lens details').length === 4), 'lens card incomplete');
