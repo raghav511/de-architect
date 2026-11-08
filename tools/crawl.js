@@ -73,6 +73,7 @@ async function crawl(browser, engine, state) {
   page.on('pageerror', e => ev.errs.push('pageerror: ' + e.message.slice(0, 200)));
   page.on('console', m => {
     if (m.type() !== 'error') return; const t = m.text(), loc = (m.location() || {}).url || '';
+    if (/Loading the image vm\/sys\/flat\/.* failed|cancelled/.test(t)) return; /* terminal files cancelled by leaving the screen while Linux boots */
     if (/Failed to preconnect|Failed to load resource|net::ERR|ERR_FAILED|blocked by CORS|Access-Control/.test(t) && !sameOrigin(loc)) return; /* our own stubs aborting third-party requests */
     if (/Content Security Policy|Refused to/.test(t)) return ev.errs.push('csp: ' + t.slice(0, 200));
     ev.errs.push('console: ' + t.slice(0, 200));
@@ -270,7 +271,7 @@ async function crawl(browser, engine, state) {
         if (ev.fc > e0.fc) fx.push('file picker');
         if (ev.dlg > e0.dlg) { fx.push('native dialog'); issue(route, 'dialog', 'native browser dialog (blocked on iPhone home-screen apps)', c.label); }
         if (a.y !== b1.y && Math.abs(a.y - b1.y) > 20 && !fx.length) fx.push('scrolled');
-        if (a.focus !== b1.focus && !/^<(button|a|summary|select|input)/i.test(a.focus) && !fx.length) fx.push('focus moved');
+        if (a.focus !== b1.focus && (/^<(input|textarea)/i.test(a.focus) || !/^<(button|a|summary|select)/i.test(a.focus)) && !fx.length) fx.push('focus moved');
         if (!fx.length && (a.dom !== b1.dom || a.body !== b1.body) && (a.mut - b1.mut) > mutBase * 2) fx.push('content changed');
       }
       if (clickErr) issue(route, 'click', 'cannot click: ' + clickErr, c.label);
