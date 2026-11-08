@@ -1,9 +1,8 @@
 {
-  "version": "1.36.27",
+  "version": "1.36.28",
   "date": "2026-11-08",
   "notes": [
-    "DE 6 (change data capture), DE 7 (the cloud) and DE 8 (Databricks and Snowflake) now each have five short guided steps in their week, just before the quiz: Design it, Read and fix, Run it on the platform, Lead it and With AI.",
-    "Each Read and fix is a real bug you fix in the browser with tests: a late change event that brings a deleted row back, a permission check that ignores an explicit deny, and time travel that misses its own version.",
+    "Reliability, Design at scale, In front of the customer and Loops each get five short guided steps before their quiz: a simulator challenge or the design problem, a read-and-fix bug, running it on a real platform, a leadership question and a With AI task.",
     "1489 of 1489 reels now play in the natural Heart voice."
   ]
 }
