@@ -1,7 +1,57 @@
 {
- "updated": "2026-11-07",
+ "updated": "2026-11-08",
  "note": "Refreshed every week by the program's research task. Each item says what changed, why it matters to a data engineer or architect, and how to test the claim yourself.",
  "items": [
+  {
+   "title": "Snowflake: read and write another account's Iceberg tables through Horizon Catalog, with no secrets to manage (GA)",
+   "summary": "Announced on 1 November 2026. A Snowflake account can now read and write Apache Iceberg tables owned by a different Snowflake account through a Horizon Catalog integration, without creating, storing or rotating any secret. Authentication uses workload identity federation, Horizon vends short-lived storage credentials, both accounts work on the same files with no copy, and it covers cross-region access, catalog-linked databases and private connectivity.",
+   "why": "Sharing one copy of a table between business units or regions used to mean a service user, a key pair and a rotation runbook per link. Federated identity plus vended credentials removes the long-lived secret, which is the part security reviews and incidents care about, and keeps a single source of truth instead of two drifting copies.",
+   "try": "In the 8.5 chapter's two-engine design, add a second Snowflake account that writes to the same Iceberg table. Write down who commits to the catalog, how a concurrent write from each account is resolved (optimistic commit on the metadata pointer), and what credential each side holds before and after this change.",
+   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-01-horizon-catalog-integration-wif-ga",
+   "source": "Snowflake release notes",
+   "mid": "s08",
+   "sec": "8.5"
+  },
+  {
+   "title": "BigQuery queries Iceberg tables in Unity Catalog, Glue and Snowflake Horizon in place, with an opt-in cross-cloud cache (GA)",
+   "summary": "Released on 2 November 2026. BigQuery's Lakehouse federated catalogs now reach remote Iceberg catalogs as a GA feature: Databricks Unity Catalog, AWS Glue Data Catalog, Snowflake Horizon Catalog and Workday Data Lake, from BigQuery and Spark, without migrating data, over the internet or Cross-Cloud Interconnect and inside VPC Service Controls. A separate GA option caches the remote files in your Google Cloud region to cut egress and speed up repeat queries; it is off by default.",
+   "why": "'One table, many engines' now crosses clouds and vendors through the catalog, not through copies. The cost question moves to egress: every remote scan pays transfer unless you cache, and a cache brings a freshness question you must answer in the design.",
+   "try": "Take a 2 TB table read daily from another cloud. Using the unit-costs table in module 10, price a full scan per day with and without the regional cache, then list what a stale cached file could break and how you would detect it.",
+   "url": "https://docs.cloud.google.com/bigquery/docs/release-notes#November_02_2026",
+   "source": "BigQuery release notes",
+   "mid": "s08",
+   "sec": "8.5"
+  },
+  {
+   "title": "BigQuery: change history (APPENDS) and continuous queries now work on Iceberg managed tables (GA)",
+   "summary": "Released on 2 November 2026. The APPENDS table-valued function returns the rows appended to a BigQuery-managed Iceberg table over a time range, and BigQuery continuous queries can read new rows from these tables and write results back into them. On 3 November continuous queries also gained persistent and temporary SQL UDFs.",
+   "why": "Incremental processing over an open table no longer needs a watermark column you maintain yourself: the engine tells you what was appended since a time. It is append-only, though, so updates and deletes still need CDC-style merge logic, which is exactly the distinction interviewers probe.",
+   "try": "In the 6.3 lab, write the incremental step twice: once with a high-water-mark column and once as 'rows appended since the last run time'. Then add an update to an existing row and show which version misses it and why.",
+   "url": "https://docs.cloud.google.com/bigquery/docs/release-notes#November_02_2026",
+   "source": "BigQuery release notes",
+   "mid": "s06",
+   "sec": "6.3"
+  },
+  {
+   "title": "dbt's remote MCP server lands on Databricks Marketplace and checks permissions on every tool call",
+   "summary": "In dbt's November 2026 release notes. The remote dbt MCP server can be installed from Databricks Marketplace. Each tool call is now checked against the project, environment, job or run it targets, calls without permission fail early with clearer errors, service tokens can use text_to_sql, and read-only users can query metrics through a shared analytics credential an admin sets up.",
+   "why": "This is the 'tools, not passwords' pattern from A4.4 shipped by a vendor: the agent gets narrow tools, and authorization is decided per call on the object touched, not once per session. It is a ready answer to 'how do you stop an agent reading what the user can't'.",
+   "try": "For the read-only data tool in Lab A4.3, write the per-call check: given a user, a tool and a target model, return allow or deny, and add three tests (allowed metric, model in another project, a write tool called by a read-only user).",
+   "url": "https://docs.getdbt.com/docs/dbt-versions/dbt-cloud-release-notes#november-2026",
+   "source": "dbt release notes",
+   "mid": "a04",
+   "sec": "A4.4"
+  },
+  {
+   "title": "dbt Core 1.13.0-rc1 drops Python 3.10, and dbt v2.0.11 renames --run-cache-mode to --state-mode",
+   "summary": "dbt-core 1.13.0-rc1 was released on 4 November 2026 as a pre-release; it drops Python 3.10, which is end of life, and accepts the v2-only keys (info_schema, check-paths, checks) in dbt_project.yml. dbt v2.0.11 on 3 November renamed --run-cache-mode to --state-mode (the old flag stays as a deprecated alias) and DBT_AI_PROVIDER to DBT_ENGINE_AI_PROVIDER. In Studio IDE, v2 runs now follow the threads value in your credentials rather than the v2 default.",
+   "why": "CI images pinned to Python 3.10 will fail on the next upgrade, and scripts using the old flag or environment variable will warn now and break later. Threads changing under you changes warehouse concurrency and cost without any code change.",
+   "try": "In the 4.6 dbt project, list the Python version, flags and environment variables your CI job depends on, and write the one-line change each needs for 1.13 and v2.0.11. Then predict what happens to run time and warehouse load if threads drops from 48 to 4.",
+   "url": "https://github.com/dbt-labs/dbt/releases/tag/v1.13.0rc1",
+   "source": "dbt GitHub releases",
+   "mid": "s04",
+   "sec": "4.6"
+  },
   {
    "title": "Airflow 3.4.0: task loops, a draining state, and breaking defaults for Python, Postgres and asset runs",
    "summary": "Released on 6 November 2026. Task groups can now repeat at runtime with .loop() (an until condition and a max_iterations cap), an experimental Dag importer accepts Dags written in TypeScript, Go, Java or YAML, and a new 'draining' Dag state lets active runs finish and then pauses the Dag. Breaking: Python 3.11 or later is required, the Dataset alias is gone from the airflow module (use Asset from airflow.sdk), psycopg3 (postgresql+psycopg://) is the Postgres driver, asset-triggered Dags start one run per event instead of batching events, and try_number on an up_for_retry task now points at the next try.",
@@ -11,46 +61,6 @@
    "source": "Apache Airflow release notes",
    "mid": "s01",
    "sec": "1.6"
-  },
-  {
-   "title": "Snowflake Open Data Sharing is GA: share Iceberg tables with engines outside Snowflake",
-   "summary": "On 2 November 2026 Snowflake made Open Data Sharing generally available. Consumers outside Snowflake can read live, read-only Snowflake-managed Iceberg tables through the standard Iceberg REST Catalog API, without copies or ETL, authenticating with programmatic access tokens or workload identity federation (AWS, Azure, GCP or OIDC). External consumers can be added to existing listings, and cross-region sharing works in AWS and Azure commercial regions.",
-   "why": "Sharing used to mean the consumer also ran Snowflake (or used a reader account). Now a partner's Spark, Trino or DuckDB can read the shared table directly, which changes how you design data products and is a strong answer to 'how do two companies on different platforms share data'.",
-   "try": "In module 8's build (the same data on two platforms), write down which tables you would expose as an Iceberg share, what identity the external engine would use, and how you would test that it can read but never write; then compare the cost and freshness with exporting Parquet files to the partner.",
-   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-02-open-data-sharing-ga",
-   "source": "Snowflake release notes",
-   "mid": "s08",
-   "sec": "8.5"
-  },
-  {
-   "title": "Snowflake backups now cover Iceberg tables on Snowflake Storage (GA on AWS)",
-   "summary": "On 4 November 2026 backup sets gained support for Iceberg tables on Snowflake Storage (CREATE BACKUP SET ... FOR ICEBERG TABLE) and dynamic Iceberg tables, restored with CREATE [DYNAMIC] ICEBERG TABLE ... FROM BACKUP SET. Schema and database backups now include eligible Iceberg tables. Available on AWS.",
-   "why": "Immutable backups and recovery were a reason to keep regulated data in native tables. With Iceberg tables covered, an open format no longer costs you the disaster-recovery story, which is a common objection in platform design rounds.",
-   "try": "For the governance incident in module 8 (delete one rider everywhere), write down how a backup set interacts with the right to be forgotten: how long backups keep the deleted rider, and what retention you would set so recovery and deletion rules both hold.",
-   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-04-iceberg-backups",
-   "source": "Snowflake release notes",
-   "mid": "s08",
-   "sec": "8.4"
-  },
-  {
-   "title": "Snowflake's managed MCP server can run agents in the background",
-   "summary": "On 4 November 2026 the Snowflake-managed MCP server's CORTEX_AGENT_RUN and CODING_AGENT tools gained a background option that returns a handle the client polls. Servers with those tools automatically get ASYNC_AGENT_RUN_STATUS, ASYNC_AGENT_RUN_CANCEL and AGENT_RUN_RESULT, which do not count toward the 50-tool limit, and a content_cel_filter parameter lets a client read an outline first and fetch only the blocks it needs.",
-   "why": "Long warehouse agent jobs no longer have to fit inside an MCP client timeout, and reading only the parts of a large result keeps the agent's context small and cheap. Start, poll, cancel and fetch is the pattern to describe for any long-running tool.",
-   "try": "In module A4's read-only data tool lab, add a second tool pair, start_query and query_status, that returns a handle immediately and lets the agent poll, and decide what the agent does if the status never reaches done (budget, cancel and report).",
-   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-04-mcp-async-agent-tools",
-   "source": "Snowflake release notes",
-   "mid": "a04",
-   "sec": "A4.4"
-  },
-  {
-   "title": "Databricks: AI Function tasks in jobs (Beta), and AI Functions in SQL will need Runtime 17.3 LTS",
-   "summary": "On 4 November 2026 Databricks added a Beta job task type that runs ai_parse_document, ai_extract or ai_classify over files in a volume or rows in a table and processes only new or changed inputs. On 5 November it announced that from January 2027 AI Functions in SQL require Databricks Runtime 17.3 LTS or later (ai_similarity and the REST API are unaffected).",
-   "why": "LLM extraction becomes an incremental, orchestrated job step, which is how it should be designed: only new inputs, retries, and cost you can see per run. Teams calling AI Functions from older runtimes have a hard upgrade date.",
-   "try": "In module A4's AI column function lab, make your function skip rows it has already processed (keyed on a content hash), then count how many model calls a second run makes; it should be zero for unchanged rows.",
-   "url": "https://docs.databricks.com/aws/en/release-notes/product/2026/november",
-   "source": "Databricks release notes",
-   "mid": "a04",
-   "sec": "A4.5"
   }
  ]
 }

@@ -1,13 +1,8 @@
 {
-  "version": "1.36.8",
-  "date": "2026-11-07",
+  "version": "1.36.9",
+  "date": "2026-11-08",
   "notes": [
-    "Module 10's capacity section now works at staff scale: 1 million events a second, Kafka per-partition throughput, S3 request rates per prefix, a multi-petabyte backfill with its cost, and multi-region RPO and RTO, with the arithmetic shown.",
-    "A unit costs table (storage tiers, cost per TB scanned, per vCPU-hour, spot, egress and transfer between regions) lets you put a price on any design.",
-    "Four new simulator challenges at staff scale (One million events a second, S3 request rate per prefix, Backfill on a budget, Lose a region) fail at those numbers until you fix them; the chapter links to each, and the interview loop's designs list them.",
-    "The design set grows to twelve: ads attribution at billions a day, an experimentation platform, GDPR deletion across a petabyte lake, and a lineage and catalog platform, plus three staff-level interview questions.",
-    "The live mock's staff-level bank grows from 38 to 80 questions, eight of each kind (what breaks at scale, the 3 a.m. page, pick and defend, metric then model, fix the organization, cut the cost, migrate live, estimate it, project deep dive, lead and influence).",
-    "The new questions lean on data engineering loops at Uber, Meta, Google and Salesforce: CDC and WAL incidents, Flink checkpoints, S3 throttling, lakehouse versus warehouse, BigQuery and storage bills, Oracle and Kafka migrations, ads and embedding estimates, and leading across teams; each has five answer points to compare with.",
-    "798 of 1239 reels now play in the natural Heart voice."
+    "What is new: 5 items, on Snowflake reading and writing Iceberg tables across accounts without secrets, BigQuery querying Iceberg tables in other clouds' catalogs, BigQuery change history on Iceberg tables, dbt's MCP server checking permissions per call, and dbt 1.13 dropping Python 3.10.",
+    "No new data engineering interview questions were reported this week beyond those already added."
   ]
 }
