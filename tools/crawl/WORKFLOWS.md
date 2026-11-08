@@ -14,4 +14,4 @@ Walked on WebKit as an iPhone 13, first run, from Today, with the sync server an
 | Sync with a stub server | 2 | Avatar → Sync now | Fine. |
 | Update the app | 2 | Avatar → Update app | Fine: shows installed and latest version. |
 
-Existing suites on this build: `tools/smoke.js` 16/16 on Chromium and 16/16 on WebKit (two WebKit checks needed a rerun because the Python runtime CDN did not answer in time); `tools/qa_trust.js` 32/32.
+Existing suites (2026-11-07 and 08, local build with the fixes): `tools/qa_trust.js` 32/32, later 39/39; `tools/flows.js` 136/136 (two Python journeys needed a rerun alone); `tools/smoke.js` all pass on Chromium; on WebKit all pass except "Coding: Run executes Python", which also fails on the live 1.36.4 build without these changes (the editor stays on Loading DuckDB…; reported to the leader).

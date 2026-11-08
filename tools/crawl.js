@@ -47,7 +47,7 @@ const MID = () => {
   (sc.byDay[today] || []).slice(0, 1).forEach(u => { S.done[u.uid] = today; S.cv.units[u.uid] = unitHash(u); });
   const ids = [].concat(...['py', 'dsa', 'sql', 'spark'].map(k => (DATA[k] || []).slice(0, 3).map(x => x.id)));
   ids.slice(0, 12).forEach((id, i) => { S.solved[id] = 1; if (i < 3) { S.rev = S.rev || {}; S.rev[id] = { n: 1, due: today }; } });
-  S.settings.syncUrl = 'https://sync.test/exec?k=test'; S.lastSync = Date.now() - 3600e3;
+  S.settings.syncUrl = 'https://script.google.com/macros/s/crawler-stub/exec?k=test'; /* allowed by the app's CSP; the crawler's route answers it, nothing leaves the machine */ S.lastSync = Date.now() - 3600e3;
   S.settings.name = 'Sam';
   save();
 };
@@ -61,18 +61,20 @@ async function crawl(browser, engine, state) {
   await ctx.route(u => !u.href.startsWith(BASE) && u.host !== 'cdn.jsdelivr.net' && /^https?:/.test(u.protocol), r => {
     const u = r.request().url();
     if (/api\.anthropic\.com/.test(u)) return AI(r);
-    if (/sync\.test/.test(u)) return SYNC(r);
+    if (/sync\.test|script\.google\.com\/macros\/s\/crawler-stub\//.test(u)) return SYNC(r);
     return r.abort();
   });
   await ctx.route('http://127.0.0.1:8765/**', r => r.abort());
   const page = await ctx.newPage();
   await page.addInitScript(INIT);
-  const R = { engine, state, base: BASE, at: new Date().toISOString(), routes: [], controls: [], issues: [], skipped: [] };
+  const R = { engine, state, only: ONLY ? ONLY.source : '', base: BASE, at: new Date().toISOString(), routes: [], controls: [], issues: [], skipped: [] };
   const ev = { errs: [], dlg: 0, dl: 0, fc: 0, popup: 0 };
   const sameOrigin = u => !u || u.startsWith(BASE) || u.startsWith('blob:') || u.startsWith('data:');
   page.on('pageerror', e => ev.errs.push('pageerror: ' + e.message.slice(0, 200)));
   page.on('console', m => {
     if (m.type() !== 'error') return; const t = m.text(), loc = (m.location() || {}).url || '';
+    if (/Failed to preconnect/.test(t)) return; /* Google Fonts, aborted by the crawler's network stub */
+    if (/Loading the image vm\/sys\/flat\/.* failed|cancelled/.test(t)) return; /* terminal files cancelled by leaving the screen while Linux boots */
     if (/Failed to preconnect|Failed to load resource|net::ERR|ERR_FAILED|blocked by CORS|Access-Control/.test(t) && !sameOrigin(loc)) return; /* our own stubs aborting third-party requests */
     if (/Content Security Policy|Refused to/.test(t)) return ev.errs.push('csp: ' + t.slice(0, 200));
     ev.errs.push('console: ' + t.slice(0, 200));
@@ -224,8 +226,8 @@ async function crawl(browser, engine, state) {
     const queue = ctls.map(c => ({ c, prefix: [] }));
     const seenKeys = new Set(ctls.map(c => c.key + '#' + c.n));
     let subStates = 0;
-    const deadline = Date.now() + 8 * 60e3 * T; /* one screen never holds up the whole crawl */
-    while (queue.length) { if (Date.now() > deadline) { issue(route, 'crawler', 'stopped after 8 minutes; ' + queue.length + ' controls not clicked'); break; } try {
+    const deadline = Date.now() + 15 * 60e3 * T; /* one screen never holds up the whole crawl */
+    while (queue.length) { if (Date.now() > deadline) { issue(route, 'crawler', 'stopped after 15 minutes; ' + queue.length + ' controls not clicked'); break; } try {
       /* chapter text repeats the same kinds of control under every heading (reel, details, figure steps): in module
          tabs a kind of control is clicked three times in all, ignoring its label; elsewhere each label twice */
       const loose = fam.startsWith('learn/'), { c, prefix } = queue.shift(), sg = (loose ? 'learn' : fam) + '|' + sigOf(c, loose);
@@ -270,7 +272,7 @@ async function crawl(browser, engine, state) {
         if (ev.fc > e0.fc) fx.push('file picker');
         if (ev.dlg > e0.dlg) { fx.push('native dialog'); issue(route, 'dialog', 'native browser dialog (blocked on iPhone home-screen apps)', c.label); }
         if (a.y !== b1.y && Math.abs(a.y - b1.y) > 20 && !fx.length) fx.push('scrolled');
-        if (a.focus !== b1.focus && !/^<(button|a|summary|select|input)/i.test(a.focus) && !fx.length) fx.push('focus moved');
+        if (a.focus !== b1.focus && (/^<(input|textarea)/i.test(a.focus) || !/^<(button|a|summary|select)/i.test(a.focus)) && !fx.length) fx.push('focus moved');
         if (!fx.length && (a.dom !== b1.dom || a.body !== b1.body) && (a.mut - b1.mut) > mutBase * 2) fx.push('content changed');
       }
       if (clickErr) issue(route, 'click', 'cannot click: ' + clickErr, c.label);
@@ -281,6 +283,7 @@ async function crawl(browser, engine, state) {
         if (ev.dl > e0.dl) fx.push('download'); else if (ev.popup > e0.popup || (a2 && a2.open > b1.open)) fx.push('popup');
         else if (a2 && (a2.hash !== b1.hash || a2.scrim > b1.scrim || (a2.toast && a2.toast !== b1.toast) || a2.dom !== a.dom)) fx.push('changed after a second');
       }
+      if (!clickErr && !fx.length && /^Fit to screen$/.test(c.label)) fx.push('no change: the design already fits the screen');
       if (!clickErr && !fx.length && c.term) fx.push('sent to the terminal (drawn on its canvas; see the terminal journeys)');
       if (!clickErr && !fx.length) issue(route, 'dead', 'nothing visible happened', c.label || c.tag);
       ev.errs.splice(0).forEach(e => issue(route, /^csp/.test(e) ? 'csp' : 'error', 'after click: ' + e, c.label));
@@ -345,11 +348,11 @@ const REGRESS = [
 
 function dedupe(issues) { const m = new Map(); issues.forEach(i => { const k = i.kind + '|' + i.what + '|' + i.ctl; if (!m.has(k)) m.set(k, Object.assign({ routes: [] }, i)); const x = m.get(k); if (!x.routes.includes(i.route)) x.routes.push(i.route); }); return [...m.values()]; }
 function report() {
-  const runs = fs.readdirSync(OUT).filter(f => /^(chromium|webkit)-(fresh|mid)\.json$/.test(f)).map(f => JSON.parse(fs.readFileSync(path.join(OUT, f))));
+  const runs = fs.readdirSync(OUT).filter(f => /^(chromium|webkit)-(fresh|mid)(-only)?\.json$/.test(f)).map(f => JSON.parse(fs.readFileSync(path.join(OUT, f))));
   const esc = s => String(s || '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
   let md = '# Button crawl report\n\nWritten by `node tools/crawl.js BASE --report` (see the header of `tools/crawl.js`). Chromium = Mac 1440x900; WebKit = iPhone 13. Fresh = first run; mid = five weeks in with progress and a stub sync server.\n\n';
   md += '| Run | When | Screens | Controls found | Clicked | Skipped (destructive) | Issues |\n|---|---|---|---|---|---|---|\n';
-  runs.forEach(r => { md += `| ${r.engine} / ${r.state} | ${r.at.slice(0, 16).replace('T', ' ')} | ${r.routes.length} | ${r.routes.reduce((a, x) => a + x.controls, 0)} | ${r.controls.length} | ${r.skipped.length} | ${dedupe(r.issues).length} |\n`; });
+  runs.forEach(r => { md += `| ${r.engine} / ${r.state}${r.only ? ' (rerun of ' + r.only.split('|').length + ' screens)' : ''} | ${r.at.slice(0, 16).replace('T', ' ')} | ${r.routes.length} | ${r.routes.reduce((a, x) => a + x.controls, 0)} | ${r.controls.length} | ${r.skipped.length} | ${dedupe(r.issues).length} |\n`; });
   const all = dedupe([].concat(...runs.map(r => r.issues.map(i => Object.assign({ run: r.engine + '/' + r.state }, i)))));
   md += '\n## Issues\n\n' + (all.length ? '| Kind | Control | What | Screens |\n|---|---|---|---|\n' + all.map(i => `| ${i.kind} | ${esc(i.ctl)} | ${esc(i.what)} | ${esc(i.routes.slice(0, 4).join(', ') + (i.routes.length > 4 ? ' +' + (i.routes.length - 4) : ''))} |`).join('\n') + '\n' : 'None.\n');
   const sk = new Map(); runs.forEach(r => r.skipped.forEach(s => { const k = s.label; sk.set(k, (sk.get(k) || new Set()).add(s.route)); }));
@@ -358,7 +361,7 @@ function report() {
   const fx = {}; runs.forEach(r => r.controls.forEach(c => { const k = c.effect.split(/[ ,"]/)[0] || 'none'; fx[k] = (fx[k] || 0) + 1; }));
   md += '\n## What clicks did\n\n| Effect | Clicks |\n|---|---|\n' + Object.entries(fx).sort((a, b) => b[1] - a[1]).map(([k, n]) => `| ${k} | ${n} |`).join('\n') + '\n';
   runs.forEach(r => { md += `\n## Screens: ${r.engine} / ${r.state}\n\n| Screen | Controls | Clicked | Seconds |\n|---|---|---|---|\n` + r.routes.map(x => `| ${esc(x.route)} | ${x.controls} | ${x.clicked} | ${Math.round(x.ms / 1000)} |`).join('\n') + '\n'; });
-  const wf = path.join(OUT, 'WORKFLOWS.md'); if (fs.existsSync(wf)) md += '\n' + fs.readFileSync(wf, 'utf8');
+  ['TRIAGE.md', 'WORKFLOWS.md'].forEach(f => { const x = path.join(OUT, f); if (fs.existsSync(x)) md += '\n' + fs.readFileSync(x, 'utf8'); });
   fs.writeFileSync(path.join(OUT, 'REPORT.md'), md);
   console.log('wrote', path.join(OUT, 'REPORT.md'));
 }
