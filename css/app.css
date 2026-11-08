@@ -662,8 +662,6 @@ a.srcl:hover{background:var(--teal-l)}
 .upnext > .unit{margin:0}
 .plan .dsum[aria-selected=true]{border-color:var(--teal);background:var(--teal-xl);color:var(--teal-d)}
 .plan .dsum[aria-selected=true] span{color:var(--teal-d)}
-.dsum .dshort{display:none}.dsum b span,.plan .dsum[aria-selected=true] b span{color:inherit}
-@container (max-width:600px){.dsum .dlong{display:none}.dsum .dshort{display:inline}}
 .plan [role=tabpanel][hidden]{display:none}
 .modmenu > summary{list-style:none;align-self:flex-start;display:inline-flex;cursor:pointer}
 .modmenu > summary::-webkit-details-marker{display:none}
