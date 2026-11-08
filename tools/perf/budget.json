@@ -1,7 +1,17 @@
 {
-  "note": "Guard budgets for tools/perf/budget.js (fails above budget + 10%). Set just above the speed-baseline branch medians on a busy Mac so a return to the old serial loading fails; the targets to reach are in BASELINE.md. Milliseconds, local server, Fast 4G.",
+  "note": "Guard budgets for tools/perf/budget.js (fails above budget + 10%). Set just above the speed-baseline branch medians on a busy Mac so a return to the old serial loading fails; the targets to reach are in BASELINE.md. Milliseconds, local server, Fast 4G. reels_tab_warm_ms: tapping Reels as soon as Today shows on a return visit, until the first slide (leader target, 1.5 s).",
   "items": {
-    "chromium": { "today_usable_cold_ms": 7000, "today_usable_warm_ms": 5000, "actions_ms.switch_today_tab": 100 },
-    "webkit": { "today_usable_cold_ms": 13000, "today_usable_warm_ms": 9000, "actions_ms.switch_today_tab": 100 }
+    "chromium": {
+      "today_usable_cold_ms": 7000,
+      "today_usable_warm_ms": 5000,
+      "actions_ms.switch_today_tab": 100,
+      "reels_tab_warm_ms": 1500
+    },
+    "webkit": {
+      "today_usable_cold_ms": 13000,
+      "today_usable_warm_ms": 9000,
+      "actions_ms.switch_today_tab": 100,
+      "reels_tab_warm_ms": 1500
+    }
   }
 }
