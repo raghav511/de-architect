@@ -2,24 +2,27 @@
 id: a06
 n: 6
 title: AI engineering in production: latency, cost, gateways, evals and traces
-goal: Run language-model features the way you run any production service: know where the time goes (time to first token, decode speed, p95), what is happening inside a model server (KV cache, batching, quantization), what one request costs and how routing, caching and cascades bring it down, put an LLM gateway in front of every model, gate prompt and model changes with an eval set and a judge you have checked against people, and trace every request so a slow or wrong answer can be explained.
-hours: 6
+goal: Run language-model features the way you run any production service: know where the time goes (time to first token, decode speed, p95), what is happening inside a model server (KV cache, batching, quantization), what one request costs and how routing, caching and cascades bring it down, put an LLM gateway in front of every model, gate prompt and model changes with an eval set and a judge you have checked against people, trace every request so a slow or wrong answer can be explained, choose between prompting, retrieval and fine-tuning, and put guardrails and governance around what a model may see, do and say.
+hours: 7.5
 
 @@tickets
 A601 | learn | 1 | Chapter part 1: what changes in production, where the time goes, inside a model server, what a request costs | You can split a request's latency into time to first token and decode, explain the KV cache, and price a feature per request and per month. | chapter:0-3
 A602 | learn | 1 | Chapter part 2: cheaper and faster, the LLM gateway, the architect's lens | You can name four cost levers with their risks and list what a gateway owns. | chapter:4-6
 A603 | learn | 0.75 | Chapter part 3: evals in production and tracing | You can describe a regression gate for a prompt change, how to check a judge against people, and what a trace span records. | chapter:7-8
+A609 | learn | 0.75 | Chapter part 4: choosing the approach and the model, guardrails and governance | You can say when to fine-tune and when not, list the guardrail layers, and describe the EU AI Act, NIST AI RMF and ISO 42001 in a sentence each. | chapter:9-10
 A604 | build | 1.25 | Exercises 1–4: cost, latency, a gateway call, a cascade | All four pass in the editor. | py:1-4
 A605 | build | 1 | Exercises 5–7: a regression gate, judge agreement, trace summaries | All three pass in the editor; every model and judge in them is a stub. | py:5-7
+A610 | build | 1 | Exercises 8–11: a fine-tuning dataset, an output guard, permission-aware retrieval, a red-team run | All four pass in the editor; every model in them is a stub. | py:8-11
 A606 | practice | 0.5 | Latency and cost drills | Five drills answered, then checked against the model answers. | practice
 A607 | test | 0.5 | Quiz A6 | 80% or better. | quiz
-A608 | talk | 0.75 | Interview set A6 | 6 of 8 answered out loud and ticked. | interview
+A608 | talk | 0.75 | Interview set A6 | 9 of 12 answered out loud and ticked. | interview
 
 @@readings
-- **In this app: the chapter.** A6.1 to A6.9 cover everything the labs, quiz and interviews need. Tap ⓘ to read a source on its own site.
+- **In this app: the chapter.** A6.1 to A6.11 cover everything the labs, quiz and interviews need. Tap ⓘ to read a source on its own site.
 - **Reading note: serving engines.** Open-source servers such as vLLM keep the attention cache in fixed-size blocks so many requests share GPU memory, and add new requests to a running batch at every step instead of waiting for a batch to finish. Most of their speed comes from those two ideas. [ⓘ](https://docs.vllm.ai/en/latest/)
 - **Reading note: prompt caching.** Providers can reuse the work already done for a prompt prefix they have seen recently, which lowers both the price of those input tokens and the time to first token. It only works when the stable part of the prompt comes first and is byte-for-byte identical. [ⓘ](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching)
 - **Reading note: tracing language-model calls.** OpenTelemetry has semantic conventions for generative AI: standard span attributes for the model, the input and output token counts and the operation, so any tracing backend can show cost and latency per call. [ⓘ](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
+- **Reading note: the NIST AI Risk Management Framework.** A voluntary framework that organises AI risk work into govern, map, measure and manage, with a companion profile for generative AI. Useful as a checklist when a security or risk team asks how a feature is controlled. [ⓘ](https://www.nist.gov/itl/ai-risk-management-framework)
 - **Reading note: models as judges.** Using a model to grade answers scales evaluation, but judges lean toward longer answers, toward the first of two options and toward their own family's style. Check a judge against human labels before trusting it. [ⓘ](https://arxiv.org/abs/2306.05685)
 
 @@chapter
@@ -229,10 +232,60 @@ OpenTelemetry's generative-AI conventions name these attributes, so the same tra
 
 **From traces to dashboards and alerts.** Per feature: requests, p95 time to first token, cost per request and per day, error, timeout and fallback rates, cache hit rate, and the latest online eval score. Alert on a cost spike (an agent stuck in a loop, a prompt that doubled), on the fallback rate (a provider in trouble), and on a falling eval score after a model update. Every alert links to example traces.
 
-@@lab
-## In the app: cost, latency, a gateway and an eval gate (2.25 hours)
+## A6.10 Choosing the approach and the model
 
-Seven exercises run real tests in your browser. Every model and judge in them is a stub: nothing is sent to any AI service.
+Before writing a prompt, decide what kind of change the problem needs. Interviewers ask this as "would you fine-tune?", and the strong answer is usually "not first".
+
+| The problem | Reach for | Why |
+|---|---|---|
+| The model does not follow the format or the steps | A better prompt: instructions, a few examples, structured output | Cheapest to try, minutes to change, easy to roll back |
+| The model does not know your facts, or they change weekly | Retrieval (RAG, a05) or tools that look facts up | Facts stay in your data, update without retraining, and can be cited |
+| A narrow, high-volume task needs a fixed style or format, cheaper or faster | Fine-tuning a smaller model | Bakes the behaviour in, so prompts get shorter and a small model can do it |
+| A large model already does the task well, but costs too much at volume | Distillation: train a small model on the large model's answers | Keeps most of the quality at a fraction of the cost |
+
+Fine-tuning teaches **behaviour**, not facts. A model fine-tuned on last quarter's prices will state them confidently next quarter. Facts that change belong in retrieval.
+
+**LoRA in one paragraph.** Full fine-tuning updates every weight. Low-rank adaptation freezes the model and trains two small matrices per layer whose product is the change. The adapter is a tiny fraction of the model's size, trains on one GPU in hours, and several adapters can be served on one base model and swapped per request. Most fine-tuning in practice is some form of it.
+
+**The data is the work, and it is a data-engineering job.** Collect real inputs and the answers you want, usually from production traces and expert corrections. Remove personal data, remove duplicates, and split by a hash of the input so the same question can never sit in both training and eval sets. Version the dataset like a table, record which model was trained on which version, and keep the eval set aside: a model scored on data it saw in training looks better than it is.
+
+**Choosing a model.** Score the candidates on your own eval set, then compare:
+
+- **Quality** on your tasks, per category, not a public leaderboard.
+- **Latency:** time to first token and decode speed at your prompt sizes.
+- **Cost** per request at your token mix (A6.4).
+- **Context length**, tool calling and structured output support, if the feature needs them.
+- **Where it runs:** an API, a cloud provider in your region, or your own servers, and whether your data may go there.
+- **Licence and lifecycle:** open weights you can keep running, or a hosted model that will be retired on someone else's schedule.
+
+Keep the decision reversible: call models through the gateway (A6.6) with the prompt and model version as configuration, so trying the next model is an eval run and a config change, not a rewrite.
+
+## A6.11 Guardrails and governance in production
+
+Guardrails are layers, because no single check holds. Put a check where each kind of failure can enter.
+
+| Layer | What it stops | How |
+|---|---|---|
+| **Input** | Prompt injection in what the user types, and in documents or web pages the system retrieves | Treat retrieved text as data, never as instructions; mark it clearly in the prompt; scan for known attack patterns; strip hidden text |
+| **Access** | The model seeing or doing more than the user may | Retrieval filtered by the user's permissions before ranking; tools that run as the user, with the least privilege, read-only by default |
+| **Action** | An agent changing something it should not | Allow-lists of tools and arguments, spending and rate limits, a person approving anything irreversible (s06 6.7's propose-then-approve) |
+| **Output** | Wrong shape, invented citations, personal data, policy breaches | Validate structure, check every cited source was retrieved, filter personal data, a policy classifier on risky categories |
+| **Audit** | Not being able to say what happened | A trace per request (A6.9), kept for the retention period your legal team sets |
+
+**Red teaming as a test suite.** Write attacks the way you write tests: direct injection ("ignore your instructions"), indirect injection hidden in a document the system will retrieve, jailbreak role-play, attempts to pull out the system prompt or another user's data. Plant a canary string in the system prompt and in a private test document; any reply containing it is a failure. Run the suite on every prompt or model change, track the failure rate by attack kind, and add every real incident to it.
+
+**Governance in one page each.** Staff interviews ask how you would get an AI feature past security, legal and risk. Know the shape of three frameworks:
+
+- **The EU AI Act** sorts uses by risk. A few are banned; high-risk uses (hiring, credit, education, critical services and similar) need risk management, data governance, logging, human oversight, accuracy and robustness testing, and documentation; most other uses mainly need transparency, such as telling people they are talking to an AI. Providers of general-purpose models have their own obligations. Its duties phase in from 2025 to 2027, so check which dates apply when you are asked.
+- **The NIST AI Risk Management Framework** (United States, voluntary) organises the work into four functions: govern (owners, policies, culture), map (the context and risks of each use), measure (test and track those risks) and manage (act on them and monitor).
+- **ISO/IEC 42001** is a management-system standard for AI, like ISO 27001 for security: policies, roles, risk assessment, controls and audits, and a company can be certified against it.
+
+What these mean for an engineer: an inventory of every AI feature with its owner and risk level, an eval and red-team record for each release, the trace and audit trail, a named person who can switch a feature off, and a review before any feature moves into a high-risk use.
+
+@@lab
+## In the app: cost, latency, a gateway, an eval gate and guardrails (3.25 hours)
+
+Eleven exercises run real tests in your browser. Every model and judge in them is a stub: nothing is sent to any AI service.
 
 1. **Cost per request, per model, per month,** with cached input priced separately.
 2. **Time to first token and tokens per second** from request timings, with nearest-rank percentiles.
@@ -241,6 +294,10 @@ Seven exercises run real tests in your browser. Every model and judge in them is
 5. **A regression gate** for a prompt change, scored by a judge, that fails on a mean drop or on one item that broke.
 6. **Can you trust the judge?** Agreement and Cohen's kappa against human labels.
 7. **From spans to a trace summary:** time, tokens, cost, the slowest step, and whether retrieval dominated.
+8. **A fine-tuning dataset you can trust:** personal data out, duplicates out, a split that never leaks a prompt into eval.
+9. **An output guard:** shape, invented citations and personal data, checked before an answer is shown.
+10. **Permission-aware retrieval:** filter by the user's groups before ranking.
+11. **A red-team run** against a stub assistant, with a canary secret and failures by attack kind.
 
 ## Going further (optional, 45 minutes)
 
@@ -371,6 +428,46 @@ TYPE: short
 TAG: ai
 Q: What would you put on one span of a trace for a model call, and why each?
 MODEL: The model and its version and the prompt template version, so a change in quality can be tied to a change in either. Input, cached and output tokens and the cost, for cost per feature. Time to first token and total time, for latency. The finish reason, to spot truncated or filtered answers. Retries and whether a fallback was used, to see provider trouble. The team and feature, for chargeback. With retrieval and tool spans in the same trace, one bad answer can be explained step by step. Personal data is redacted before storage and prompt text is kept only briefly.
+---
+TYPE: mcq
+TAG: ai
+Q: A support bot gives last quarter's prices because prices change every month. What is the right fix?
+A) Fine-tune the model on this month's price list
+B) Retrieve current prices from your data at answer time
+C) Raise the temperature so the answer is less fixed
+D) Use a larger model that remembers more prices
+ANS: B
+WHY: Fine-tuning teaches behaviour, not changing facts; facts that change belong in retrieval or a tool.
+---
+TYPE: mcq
+TAG: ai
+Q: Why split a fine-tuning dataset by a hash of the prompt rather than at random per row?
+A) Hashing makes training run faster on smaller GPUs
+B) The same prompt can never be in both train and eval
+C) Random splits are not allowed for language models
+D) It removes personal data from the rows automatically
+ANS: B
+WHY: Duplicate or near-duplicate prompts split at random leak into the eval set and inflate the score.
+---
+TYPE: mcq
+TAG: ai
+Q: Where should a document's access rules be enforced in a RAG assistant?
+A) In the prompt, telling the model not to reveal private content
+B) In retrieval, before ranking, from the user's own permissions
+C) In the output filter, by scanning answers for private words
+D) In the embedding model, by training it to skip private text
+ANS: B
+WHY: Once a forbidden chunk is in the prompt, no instruction reliably keeps it out of the answer; filter before it gets there.
+---
+TYPE: mcq
+TAG: arch
+Q: Which framework is a certifiable management-system standard for AI?
+A) The EU AI Act, through its sorting of uses by risk
+B) The NIST AI Risk Management Framework's four functions
+C) ISO/IEC 42001, in the same family of standards as ISO 27001
+D) OpenTelemetry's semantic conventions for generative AI
+ANS: C
+WHY: ISO/IEC 42001 defines an AI management system that can be audited and certified; the EU AI Act is law and the NIST framework is voluntary guidance.
 
 @@interview
 Q: Design the serving path for a customer-support assistant that handles 200,000 conversations a day. Cover latency, cost and failure.
@@ -404,3 +501,19 @@ A: The average hid a regression: one category or a type of user got worse, the g
 Q: How would you trace an agent that makes several model and tool calls per request?
 TAG: ai
 A: One trace per request, with a span for each model call, tool call, retrieval and retry, nested under the step that caused it. Each model span carries the model and prompt versions, input, cached and output tokens, cost, time to first token, total time and finish reason; tool spans carry the arguments and the result status. Use the OpenTelemetry generative-AI attribute names so any backend can read them. Redact personal data before storing, keep prompt text for days and numbers for longer, and alert on cost spikes, loop length and fallback rates with links to example traces.
+---
+Q: Would you fine-tune a model for our support assistant?
+TAG: ai
+A: Not first. I would fix format and steps with the prompt and structured output, and put the facts (policies, prices, order status) in retrieval and tools, because they change and must be cited. I would fine-tune only for a narrow, high-volume task where a fixed style or format is needed and a smaller model could take over: then a LoRA adapter on a small model trained on cleaned production examples, with personal data removed, duplicates removed and a hash-based split so the eval set never leaks. The decision is made on the eval set by cost, latency and quality per category, and the model stays a configuration value behind the gateway so it can be swapped back.
+---
+Q: How do you choose which model to use for a new feature?
+TAG: ai
+A: Build a small eval set from real inputs first, then score the candidates on it per category. Compare time to first token and decode speed at our prompt sizes, cost per request at our token mix, context length and tool or structured-output support, where the model runs and whether our data may go there, and its licence and retirement schedule. Pick the cheapest model that meets the quality bar, keep the choice behind the gateway as configuration, and re-run the eval when a new version appears.
+---
+Q: What guardrails would you put on an agent that can issue refunds?
+TAG: ai
+A: Layers. Input: treat retrieved emails and documents as data, not instructions, and scan for injection. Access: tools run as the customer's account with the least privilege, and the agent can only see that customer's orders. Action: an allow-list of tools and argument limits, a refund ceiling per request and per day, and a person approving anything above it or anything irreversible. Output: validate the structure and keep personal data out of replies and logs. Audit: a trace per request. Then a red-team suite with canaries, run on every prompt or model change.
+---
+Q: Legal asks whether our AI hiring screener is allowed. How do you answer as an engineer?
+TAG: arch
+A: I would say it is very likely a high-risk use: under the EU AI Act, hiring is in the high-risk group, which needs risk management, data governance, logging, human oversight, accuracy and robustness testing, and documentation, phased in on dates I would check with them. From engineering we can provide the inventory entry with an owner, the eval and bias results per group, red-team results, a trace and audit trail for every decision, a person who reviews and can override each outcome, and a switch to turn it off. If we cannot show those, it should not go live. I would map the same work to the NIST AI RMF and ISO 42001 if the company uses them.
