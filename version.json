@@ -1,13 +1,8 @@
 {
-  "version": "1.36.29",
+  "version": "1.36.30",
   "date": "2026-11-08",
   "notes": [
-    "Reels for today now plays today's three reels and stops on That's today's reels, with Back to Today or Keep watching; nothing plays next by itself.",
-    "Missed a day? It counts again in your streak if, within two days, you finish that day's set plus One more in each of Learn, Practice and Interview. Earned by studying, never bought, and Today only tells you which day you can still count.",
-    "Your plan is now a series: Marcus Bell, Meridian's new staff data architect, lives through five seasons that follow your modules, from his first week to his own staff interview loop.",
-    "From the second day, Today opens with Previously on Meridian: a short scene and your recall set before the plan (skip it any time).",
-    "When the day's set is done, it ends on Tomorrow on Meridian with one hook and a one-tap plan for tomorrow that you can add to your calendar. Nothing plays next.",
-    "Meridian series in the Learn menu shows the seasons, the scenes so far and the cast; Profile \u203a Look \u203a Meridian story turns the story text off.",
+    "No change to the app: a test that expected eleven A6 exercises now accepts the two added in A6.12 and any added later, while still catching a missing or renumbered one.",
     "1489 of 1489 reels now play in the natural Heart voice."
   ]
 }
