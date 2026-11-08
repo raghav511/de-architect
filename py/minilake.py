@@ -5,6 +5,9 @@ need no Docker. They keep the behaviour interviews ask about and leave out the o
               that share partitions and commit offsets; lag.
   ObjectStore buckets and keys like S3; list by prefix; Parquet written and read through DuckDB.
   Dag         tasks with dependencies, run once per data interval with retries; backfill over a range.
+  DeltaTable  a Delta-style table: Parquet-like data files plus a _delta_log of numbered JSON commits with add and
+              remove actions, replayed to find the live files; optimistic commits, VERSION AS OF, history,
+              OPTIMIZE, DELETE that rewrites files, VACUUM, and a zero-copy CLONE.
   Table       an Iceberg-style table on the ObjectStore: every commit is a snapshot listing its data files, files
               are partitioned by day, columns are tracked by id (a rename never rewrites files), time travel,
               files and snapshots metadata, optimistic commits, compaction and snapshot expiry.
@@ -328,6 +331,124 @@ def trips_for_join(n=50000, hot_share=0.0, null_share=0.0, seed=11):
         z = None if x < null_share else 1 if x < null_share + hot_share else r.randint(2, 200)
         trips.append({'trip_id': i, 'zone_id': z})
     return trips, zones
+
+
+# ---------------- Delta-style table ----------------
+class ConcurrentModification(Exception):
+    """Another writer created this commit number first: re-read the log and retry on top."""
+
+
+class DeltaTable:
+    """A Delta-style table on the ObjectStore. Data files are JSON lines (Parquet in the real thing); the truth is the
+    log: <location>/_delta_log/00000000000000000000.json, ...0001.json, each a list of actions such as
+    {"add": {"path": ..., "rows": n}} and {"remove": {"path": ...}}. The table at version v is the replay of commits
+    0..v. Removed files stay on storage until vacuum, which is why old versions (and deleted rows) are still readable."""
+    def __init__(self, store, location):
+        self.store, self.location, self._n = store, location.rstrip('/'), 0
+        self.log = self.location + '/_delta_log/'
+
+    def _commit_path(self, v):
+        return self.log + '%020d.json' % v
+
+    def version(self):
+        """The latest commit number, or -1 for a table with no commits."""
+        ks = [k for k in self.store.list(self.log) if k.endswith('.json')]
+        return int(ks[-1][len(self.log):-5]) if ks else -1
+
+    def _actions(self, v):
+        return json.loads(self.store.get(self._commit_path(v)).decode())
+
+    def files(self, version=None):
+        """Live data files at a version: replay add and remove actions from commit 0."""
+        v = self.version() if version is None else version
+        live = {}
+        for i in range(v + 1):
+            for a in self._actions(i):
+                if 'add' in a:
+                    live[a['add']['path']] = a['add']
+                elif 'remove' in a:
+                    live.pop(a['remove']['path'], None)
+        return sorted(live)
+
+    def read(self, version=None):
+        """Rows at a version (VERSION AS OF). Raises FileNotFoundError when vacuum removed a file it needs."""
+        out = []
+        for f in self.files(version):
+            if f not in self.store.objects:
+                raise FileNotFoundError(f + ' was vacuumed: this version can no longer be read')
+            out += [json.loads(l) for l in self.store.get(f).decode().splitlines() if l]
+        return out
+
+    def history(self):
+        """DESCRIBE HISTORY: one row per commit."""
+        rows = []
+        for i in range(self.version() + 1):
+            acts = self._actions(i)
+            op = next((a['commitInfo']['operation'] for a in acts if 'commitInfo' in a), 'WRITE')
+            rows.append({'version': i, 'operation': op, 'added': sum('add' in a for a in acts), 'removed': sum('remove' in a for a in acts)})
+        return rows
+
+    def _write(self, rows):
+        self._n += 1
+        path = '%s/part-%05d-%d.jsonl' % (self.location, self._n, zlib.crc32(self.location.encode()) % 997)
+        self.store.put(path, '\n'.join(json.dumps(r, sort_keys=True) for r in rows))
+        return {'add': {'path': path, 'rows': len(rows)}}
+
+    def commit(self, add_rows=(), remove=(), operation='WRITE', read_version=None):
+        """Write add_rows as one new file and remove the given file paths, as the next numbered commit. If
+        read_version is given and someone committed after it, ConcurrentModification is raised."""
+        v = self.version() + 1
+        if read_version is not None and read_version != v - 1:
+            raise ConcurrentModification('version %d was written after you read version %d' % (v - 1, read_version))
+        acts = [{'commitInfo': {'operation': operation}}] + [{'remove': {'path': p}} for p in remove]
+        if add_rows:
+            acts.append(self._write(list(add_rows)))
+        if self._commit_path(v) in self.store.objects:   # put-if-absent: only one writer gets this number
+            raise ConcurrentModification('commit %d already exists' % v)
+        self.store.put(self._commit_path(v), json.dumps(acts))
+        return v
+
+    def append(self, rows):
+        return self.commit(add_rows=rows, operation='WRITE')
+
+    def delete(self, where):
+        """DELETE FROM ... WHERE: every file with a matching row is rewritten without it (copy-on-write)."""
+        hit, keep = [], []
+        for f in self.files():
+            rows = [json.loads(l) for l in self.store.get(f).decode().splitlines() if l]
+            if any(where(r) for r in rows):
+                hit.append(f); keep += [r for r in rows if not where(r)]
+        if not hit:
+            return 0
+        n = sum(1 for f in hit for l in self.store.get(f).decode().splitlines() if l and where(json.loads(l)))
+        self.commit(add_rows=keep, remove=hit, operation='DELETE')
+        return n
+
+    def optimize(self):
+        """OPTIMIZE: rewrite all live files as one."""
+        fs = self.files()
+        if len(fs) > 1:
+            self.commit(add_rows=self.read(), remove=fs, operation='OPTIMIZE')
+        return len(fs)
+
+    def vacuum(self, keep_versions=None):
+        """VACUUM: physically delete data files no kept version uses. keep_versions=None keeps every version
+        (Delta's 7-day default, in effect); keep_versions=1 keeps only the latest (a short retention)."""
+        last = self.version()
+        first = 0 if keep_versions is None else max(0, last - keep_versions + 1)
+        needed = set()
+        for v in range(first, last + 1):
+            needed |= set(self.files(v))
+        gone = [k for k in self.store.list(self.location + '/') if not k.startswith(self.log) and k not in needed]
+        for k in gone:
+            self.store.delete(k)
+        return len(gone)
+
+    def clone(self, location):
+        """A zero-copy clone (Snowflake CLONE, Delta shallow clone): a new log whose first commit adds the same files."""
+        c = DeltaTable(self.store, location)
+        c.store.put(c._commit_path(0), json.dumps([{'commitInfo': {'operation': 'CLONE'}}] + [{'add': {'path': f, 'rows': None}} for f in self.files()]))
+        return c
 
 
 # ---------------- Airflow-style DAG ----------------

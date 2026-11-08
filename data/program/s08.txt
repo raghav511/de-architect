@@ -8,9 +8,9 @@ quiz-same: 1uv1hmu 1i99a05
 
 @@tickets
 801 | learn | 2 | Chapter 8 and the readings | You can explain how Delta and Snowflake each store a table, and what really happens to the bytes when a row is deleted. | chapter
-802 | build | 2.5 | The same data on Databricks and Snowflake | Auto Loader fills a Delta table you have optimised and time-travelled, Snowflake holds the same trips with a clone and a dynamic table, and one Iceberg table is read from both sides. | lab
-803 | incident | 0.75 | Delete one rider everywhere, and hide a column | The rider is gone from every layer including old versions, and an analyst role sees masked phone numbers, shown by a test that fails then passes. | lab
-804 | ai | 1 | An LLM step inside a batch pipeline | Cancellation reasons are classified for a full day of data under a call budget, and a rerun makes zero new calls. | lab
+802 | build | 1.25 | Delta from the inside: the log and time travel | Both exercises pass in the editor: you replay `_delta_log` to find the live files at any version, and you show what a merge or a delete changed between two versions. | py:1-2
+803 | incident | 0.75 | Delete one rider everywhere, and hide a column | Both exercises pass: the rider is gone from every table and from their old versions after vacuum, and the analyst role sees masked phone numbers. | py:3-4
+804 | ai | 0.75 | An LLM step inside a batch pipeline | The exercise passes: one model call per distinct masked reason, the budget stops an oversized run before any call, and a rerun makes zero calls. | py:5-5
 805 | practice | 1.25 | Warm-ups and the customer drill | Three SQL and three DSA warm-ups attempted, and the drill answered out loud. | practice
 806 | test | 0.5 | Quiz 8 | 80% or better. | quiz
 807 | test | 1 | Coding test 8 | Attempted inside the 60-minute timer. | coding
@@ -247,6 +247,20 @@ Decide by the main workload and who will operate it. SQL analytics and BI with a
 
 
 @@lab
+## In the app: Delta and Snowflake without a cloud account (2 hours)
+
+Five exercises on the in-browser Delta table (`minilake.DeltaTable`) cover what the cloud labs below prove, and what interviews ask. The table keeps a real `_delta_log`: numbered JSON commits with `add` and `remove` actions, replayed to find the live files. Old files stay on storage until `vacuum`, so earlier versions, and deleted rows, are still readable until then. It also has history, `OPTIMIZE`, a copy-on-write `DELETE` and a zero-copy clone.
+
+1. **Open the log:** replay `_delta_log` to find the live files at any version, the way every Delta reader starts.
+2. **Time travel:** show which rows a merge or a delete added, removed or changed between two versions (`VERSION AS OF` with `EXCEPT`).
+3. **Delete one rider everywhere:** delete from every table, see that the old version still holds the rider, then vacuum so it cannot be read (the incident, part one).
+4. **Hide a column:** a masking policy that shows the phone number only to an allowed role, proven by the test as `ANALYST` (the incident, part two).
+5. **An LLM step in a batch job:** mask phone numbers, normalise, hash and cache, check the budget before any call, and make zero calls on a rerun (the AI lab). A stand-in model is used, so nothing is spent.
+
+**Done when** all five pass (Path, module 8). Then explain out loud why a `DELETE` alone does not erase anyone, and what the design in section 8.6 changes.
+
+The labs below run the same steps on Databricks and Snowflake trials (optional; they need cloud accounts).
+
 ## Build: the same data on two platforms (2.5 hours)
 
 Start both trials now. Set every cluster to terminate after ten minutes of inactivity and every warehouse to suspend after one minute. Paste this lab into a chat with Claude and ask it to **generate the DE 8 starter kit**.
