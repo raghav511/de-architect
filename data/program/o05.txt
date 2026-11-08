@@ -1,0 +1,394 @@
+@@meta
+id: o05
+n: 5
+title: Capstone: the data foundation blueprint, designed, sized, run in the simulator and defended
+goal: Put the whole program together into one blueprint for a company's data foundation: start from the business and its numbers, set principles, choose the architecture layer by layer, map data products to owners, define the platform, governance and service levels, size and price it, plan the first 90 days and the year, run it in the simulator under launch-day load, and defend it in a review the way a staff or principal engineer would.
+hours: 6
+
+@@tickets
+O501 | learn | 1 | Capstone part 1: what the blueprint is, the business and its numbers, principles, the reference architecture, data products | You can list the blueprint's ten parts and say which earlier module each part draws on. | chapter:0-4
+O502 | learn | 1 | Capstone part 2: the platform and governance, capacity and cost, the roadmap, the architect's lens, defending it | You can size the event backbone from a peak number, price the platform per year and sketch a 90-day plan. | chapter:5-9
+O503 | build | 1 | Exercises 1–2: capacity plan, blueprint gaps | Both pass in the editor: a capacity plan from source volumes, and a check that lists missing parts and weak decisions in a blueprint. | py:1-2
+O504 | build | 0.75 | Exercises 3–4: roadmap by quarter, total cost over three years | Both pass: a dependency-aware plan by quarter, and three-year totals that pick the cheapest option. | py:3-4
+O505 | practice | 2 | Write your blueprint (the capstone deliverable) | A blueprint with all ten parts for the design problem or your own company, each decision with the alternative you rejected and why, and the simulator challenge passed. | practice
+O506 | test | 0.5 | Quiz O5 | 80% or better. | quiz
+O507 | talk | 1 | Interview set O5: present and defend the blueprint | 5 of 7 answered out loud and ticked, including a 10-minute walkthrough of your blueprint. | interview
+
+@@readings
+- **In this app.** This capstone pulls together every module. Each part of the blueprint names the module it draws on; reopen that module when a part feels thin.
+- **Reading note: Writing architecture documents people read.** Lead with the decision and the reason, keep the context short, show the alternatives you rejected, and say what would make you change your mind. A blueprint nobody reads changes nothing. [ⓘ](https://www.industrialempathy.com/posts/design-docs-at-google/)
+- **Reading note: Architecture decision records.** One short record per significant decision: context, decision, consequences. A blueprint's decisions section is a set of these, and each keeps its date so readers know what was true when it was made. [ⓘ](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
+- **Reading note: Well-architected reviews.** Cloud providers' review frameworks ask the same questions this capstone does: reliability, security, cost, performance, operations and sustainability. Use them as a checklist, not as the design. [ⓘ](https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html)
+
+@@chapter
+## O5.1 What the blueprint is
+
+The capstone is one document, the **data foundation blueprint**, for a company you know or for this module's design problem. It is what a staff or principal engineer writes when asked "what should our data platform be for the next three years, and how do we get there?". It has ten parts:
+
+| Part | What it answers | Draws on |
+|---|---|---|
+| 1. Business and numbers | What the data is for, who uses it, how much there is | 10.3, 11 |
+| 2. Principles | The few rules every later decision follows | R1, O1 |
+| 3. Reference architecture | Each layer and the technology chosen for it | 1–8, 10 |
+| 4. Data products and owners | Which domains own which products | O1, M1–M3 |
+| 5. Platform and golden paths | What teams get to build on | O2 |
+| 6. Governance | Classification, access, lineage, retention, audit | O3 |
+| 7. Service levels and operations | The platform's SLOs, on-call, incidents | O4, 9 |
+| 8. Capacity and cost | Peak numbers, sizing, cost per year and per unit | 10.3, 7, O4 |
+| 9. Roadmap | The first 90 days, the year, the migration | R1, 6.8 |
+| 10. Risks and decisions | What could go wrong; each decision with its alternative | All |
+
+You also run it: the simulator's **foundation** challenge is the blueprint as a working system under launch-day load, and it must pass.
+
+## O5.2 Start from the business and its numbers
+
+Every good blueprint starts with what the company is trying to do, not with tools. Write down:
+
+- **The decisions data must support:** pricing, fraud, supply and demand, finance close, product experiments, AI features.
+- **The consumers:** how many analysts, dashboards, ML models, product features, external partners.
+- **The sources:** operational databases, event streams, files from partners, SaaS tools.
+- **The numbers:** events a day and at peak, bytes per event, tables, growth per year, freshness each consumer needs, how long data must be kept, regions.
+- **The constraints:** regulation (GDPR, PCI, local data residency), budget, team size, existing contracts.
+
+If you cannot write the numbers, estimate them out loud with the arithmetic from 10.3; an interviewer or a CTO checks that the design follows from them.
+
+## O5.3 Principles
+
+Principles are the few rules that settle later arguments. Good ones are specific enough to say no to something:
+
+1. **Open table formats as the system of record**: data lives in Iceberg or Delta on object storage; engines come and go.
+2. **Domains own their data products**, with contracts and SLOs; the platform owns the paved roads (O1, O2).
+3. **Log first**: every change in an operational system reaches the platform through CDC or events, never through nightly dumps or dual writes (5, 6).
+4. **Freshness to match the decision**: streaming where seconds change a decision, batch everywhere else (5.10).
+5. **Governance as code**: tags, policies and retention enforced by the platform, not by review boards (O3).
+6. **Cost is a feature**: every resource tagged, every team sees its spend, unit costs reported monthly (O4).
+7. **Buy the commodity, build the differentiator**: managed services for undifferentiated plumbing, your own code where the business wins.
+
+Five to eight principles is enough. Each should be one that someone could reasonably disagree with; otherwise it says nothing.
+
+## O5.4 The reference architecture, layer by layer
+
+Draw the layers and choose one primary technology for each, with the alternative you rejected and why:
+
+| Layer | Job | Typical choice | Module |
+|---|---|---|---|
+| Sources | Apps, databases, events, files, SaaS | — | 1 |
+| Ingestion | CDC, event collection, file landing, SaaS connectors | Debezium and Kafka; managed connectors for SaaS | 5, 6 |
+| Storage | The system of record for analytics | Iceberg or Delta on object storage with a REST catalog | 2, 8 |
+| Processing | Batch and streaming transformations | Spark or the warehouse with dbt for batch; Flink or Spark streaming | 3, 4, 5 |
+| Serving | Dashboards, APIs, ML features, AI | Warehouse or Trino; OLAP for live dashboards; key-value for product reads; vector store for RAG | 8, 10, A5 |
+| Orchestration | Scheduling and dependencies | Airflow | 1 |
+| Governance | Catalog, lineage, policies, quality | A catalog with OpenLineage; tag-based policies in every engine; contracts in CI | O3, 4 |
+| Observability | Freshness, volume, cost, incidents | SLO monitors, cost reports, a status page | 9, O4 |
+
+Then draw the flow end to end: apps write to Postgres, CDC carries changes into Kafka beside product events, a stream job keeps serving stores fresh and lands history in the lakehouse, batch jobs build the curated models, and analysts, products and models read through governed interfaces. That flow is what the simulator's foundation challenge runs.
+
+## O5.5 Data products and owners
+
+Map the business domains to the data products they will own (O1), and say which products stay central:
+
+| Domain | Source-aligned products | Owner |
+|---|---|---|
+| Orders | orders, payments, refunds | Orders team |
+| Trips | trips, driver locations | Trips team |
+| Marketing | campaigns, attribution | Marketing data team |
+| Company-wide | revenue, executive scorecard, customers (reference) | Central analytics |
+
+For each important product give its grain, consumers and one SLO. Name the shared identifiers (customer, city, currency) that make products joinable, and which domain issues each.
+
+## O5.6 The platform and governance
+
+Describe what teams get, in the words of O2 to O4:
+
+- **Golden paths** for the top journeys: new batch data product, new CDC source, new streaming job, access request; each a template with contract, tests, CI, deployment, monitors and catalog registration.
+- **Governance as code:** tags declared in contracts and detected by a scanner, tag-based masking and row rules in every engine, OpenLineage into the catalog, retention by class and erasure with snapshot expiry, access through a workflow with expiry, audit logs.
+- **Service levels for the platform:** ingestion freshness, job success, query latency, availability; an error budget policy; burn-rate alerts; a status page.
+- **Showback:** tags on every resource, unit costs, a monthly report per team.
+
+## O5.7 Capacity and cost
+
+Size every layer for the **peak**, not the average, with the arithmetic of 10.3:
+
+- Events per second at peak, bytes per event, MB/s into Kafka; partitions at a few MB/s each with headroom; stream tasks to match.
+- Database writes and reads at peak, and the replicas they need.
+- Storage per year raw and compressed, by tier; retention by class.
+- Queries per hour, bytes scanned per query, warehouse or engine capacity.
+
+Then price it per year: compute, storage, transfer, licences and people. Give unit costs (per TB scanned, per data product per month, per event) and compare at least two options for the expensive layers, such as a managed warehouse against Iceberg on Trino, over three years including the people to run each. The cheapest option in year one is often not the cheapest over three.
+
+## O5.8 The roadmap: 90 days, a year, and the migration
+
+A blueprint without a plan is a wish. Write:
+
+- **First 90 days:** the foundations everything else needs (catalog, contracts on the top sources, CDC for the two busiest databases, the first golden path, cost tags), and one visible win for a real consumer.
+- **The year:** quarter by quarter, in dependency order, within the team's capacity; each item with the outcome it should move.
+- **The migration** from what exists today (R1, 6.8): inventory, dual run with reconciliation, consumers moved in groups, old systems retired with dates.
+- **What you are not doing**, and why.
+
+## O5.9 Architect's lens: the data foundation blueprint
+
+The questions an architect is asked about a data foundation blueprint: what it is for, how to make it real, and how it fails.
+
+| Question | Short answer for the foundation blueprint |
+|---|---|
+| **What problem does it solve?** | A company whose data grew team by team: many copies, unclear owners, surprise costs, slow new datasets and no single answer to "what is our revenue?". The blueprint sets one direction (principles, architecture, ownership, platform, governance, cost and a plan) that every team can follow. |
+| **Why it over the alternatives?** | Against no plan: teams keep solving the same problems separately. Against a big-bang rebuild: a staged roadmap with dual runs delivers value every quarter and can stop safely. Against copying another company's architecture: the blueprint follows this company's numbers, constraints and skills. |
+| **When not to use it?** | A startup with one data engineer and one database needs a page of principles, not a three-year blueprint. Write the full blueprint when several teams, real cost and regulation are involved. |
+| **Who owns and pays for it?** | A staff or principal engineer writes it with the platform lead, domain leads, security and finance, and the head of data or CTO approves it. It is funded as a programme with quarterly outcomes, and reviewed every half year. |
+| **Where does it sit?** | Above the individual designs: each new pipeline, product or tool decision is checked against its principles and architecture, and its decisions section records why the foundation is shaped as it is. |
+| **How does it fail and scale?** | It scales by delegation: principles and golden paths let teams decide locally. It fails as a document nobody reads, a plan without numbers, a tool shopping list, a big bang that never ships, and a design that ignores the people who must run it. |
+| **When do you move off it?** | You revise it rather than abandon it: when the business, scale, regulation or technology change enough that a principle or a layer no longer fits, write a new decision, update the blueprint and say what changed. |
+
+### Under the hood
+
+**1. How do you size the event backbone for a foundation?**
+<details><summary>Model answer</summary>
+
+From the peak, not the average: events per second at peak (daily total ÷ 86,400 × the peak factor) times bytes per event gives MB/s. Divide by what one partition and one consumer task handle (a few MB/s) and add headroom of about 1.5, rounding up. Brokers must carry that rate times the replication factor. Retention in days times MB/s times replication gives disk, or tiered storage moves older segments to object storage. Then run it: the simulator's [foundation challenge](#/sim/sc/foundation) fails on launch day until partitions, tasks, database replicas and warehouse clusters are sized for four times the normal load.
+
+</details>
+
+**2. How do you choose between a managed warehouse and an open lakehouse for the foundation?**
+<details><summary>Model answer</summary>
+
+Start from workloads and constraints, then compare total cost over three years. A managed warehouse wins on zero tuning, high-concurrency dashboards and a small team; an open lakehouse wins on one copy read by many engines, lower storage cost, ML and streaming access to the same tables, and less lock-in. Many foundations do both: open tables as the system of record, and a warehouse or OLAP store for hot, high-concurrency marts. Count the people needed to run each, not only the compute, and say what would change the decision.
+
+</details>
+
+**3. What goes in the first 90 days of a foundation programme?**
+<details><summary>Model answer</summary>
+
+What everything else depends on, plus one visible win. Foundations: the catalog and its ownership model, cost tags and the first showback report, contracts and CDC on the two or three busiest sources, the first golden path (a new batch data product), and the platform's first SLOs. The win: one consumer, such as finance's daily revenue or a product team's dashboard, served from a certified data product faster and more reliably than before. Say what you are deliberately not doing yet.
+
+</details>
+
+**4. How do you get a blueprint adopted rather than ignored?**
+<details><summary>Model answer</summary>
+
+Write it with the people who must follow it: domain leads, the platform team, security and finance review drafts. Keep it short, lead with decisions and reasons, and show the alternatives. Make it executable: golden paths and guardrails turn principles into the easiest way to work, so following the blueprint is faster than ignoring it. Tie it to outcomes leadership already wants (time to a new dataset, trusted revenue numbers, cost per query) and report them quarterly. Revisit it every half year with a dated change log.
+
+</details>
+
+**5. How do you migrate to the new foundation without stopping the business?**
+<details><summary>Model answer</summary>
+
+Strangler, domain by domain: build the new platform beside the old, move one domain's sources through CDC, dual-run the old and new tables and reconcile them daily by key and totals until they match, then move consumers in groups with a rollback path, and retire the old tables and jobs with announced dates. Start with a domain that has engineers and real consumers, measure each step, and keep the old system read-only until the new one has run clean for a full reporting cycle such as a month-end close.
+
+</details>
+
+**6. What risks would you list in a foundation blueprint, and what do you do about each?**
+<details><summary>Model answer</summary>
+
+People: too few data engineers in domains (embed engineers, an enabling team, hiring in the plan). Adoption: teams keep old ways (golden paths that are faster, retire support for old ways with dates). Cost: spend grows faster than value (tags, showback, unit costs, budgets per domain). Migration: numbers do not match (dual runs and reconciliation before any cutover). Vendor or technology: a managed service changes price or terms (open formats, a tested exit). Regulation: a new residency or AI rule (governance as code, region-aware storage). Each risk gets an owner and an early warning number.
+
+</details>
+
+## O5.10 Presenting and defending the blueprint
+
+The last step is a review, like a staff design review or the final round of a loop. In 10 minutes:
+
+1. **The problem in numbers** (1 minute): what is slow, costly or untrusted today, and for whom.
+2. **The principles** (1 minute): the few rules, and one thing they say no to.
+3. **The architecture** (3 minutes): the end-to-end flow, the choice per layer and one rejected alternative each.
+4. **Ownership, platform and governance** (2 minutes): who owns what, what teams get, how data is protected.
+5. **Cost and the plan** (2 minutes): cost per year and per unit, the first 90 days and the year.
+6. **Risks** (1 minute): the top three and what you will watch.
+
+Expect follow-ups: what breaks at ten times the load, what you would cut with half the budget, why not another tool, how a region outage is handled, and what you would do differently next time. Answer with numbers and trade-offs, and say "I don't know, here is how I would find out" when that is true.
+
+@@steps
+STEP: design
+TITLE: Design it: the whole foundation on launch day
+MIN: 10
+SIM: foundation, region, mesh
+BODY: Run your blueprint as a system. The foundation challenge wires apps, Postgres and CDC, product events, Kafka, a stream job, a serving store, the lake, analysts and the warehouse, then quadruples the traffic for 30 seconds. It fails as given: size each layer for the peak and run it again until it passes. The other two test parts of the blueprint on their own.
+
+- **Every layer at peak.** Partitions and stream tasks, database nodes and warehouse clusters all need launch-day numbers.
+- **Lose a region.** The cross-region copy is your RPO; the standby is your RTO.
+- **A shared platform.** One domain's backfill must not slow the others.
+---
+STEP: fix
+TITLE: Read and fix: the capacity plan that rounds down
+MIN: 10
+SPEC: Return how many Kafka partitions the backbone needs at peak: peak events a second times event size gives MB/s; divide by what one partition handles, multiply by the headroom, and round **up** to a whole partition. Never return fewer than one.
+CODE:
+```
+def partitions_needed(peak_events, event_kb, per_partition_mb, headroom=1.5):
+    mb_per_s = peak_events * event_kb / 1000
+    return int(mb_per_s / per_partition_mb * headroom)
+```
+FIX:
+```
+import math
+
+
+def partitions_needed(peak_events, event_kb, per_partition_mb, headroom=1.5):
+    mb_per_s = peak_events * event_kb / 1000
+    return max(1, math.ceil(mb_per_s / per_partition_mb * headroom))
+```
+BUG: 3
+TESTS: [["one million events a second", "partitions_needed(1000000, 1, 4)", 375], ["a fraction rounds up", "partitions_needed(10000, 1, 4)", 4], ["a tiny stream still needs one", "partitions_needed(100, 1, 4)", 1], ["no headroom", "partitions_needed(8000, 1, 4, 1)", 2]]
+BODY: A capacity plan that rounds down under-sizes every layer a little, and launch day finds the gap. `int()` drops the fraction, so 3.75 partitions becomes 3 and a quiet stream gets 0. Round up, and never plan zero of anything.
+---
+STEP: platform
+TITLE: Run it on the platform: build, buy or both
+MIN: 8
+BODY: **The expensive layers.** For storage and processing most foundations choose between a managed warehouse (Snowflake, BigQuery, Redshift), a managed lakehouse (Databricks, or Iceberg tables with a managed catalog such as S3 Tables or Polaris) and a self-run open lakehouse (Iceberg on object storage with Trino or Spark on Kubernetes). **Compare over three years, with people.** Managed services cost more per unit of compute but need fewer engineers to run; a self-run lakehouse is cheapest per TB at scale but needs a platform team that can operate it, upgrade it and be on call. **The common answer** is open tables as the system of record (so engines can change) with managed compute where it saves people, and a warehouse or OLAP store only for hot, high-concurrency marts. Say what would change the choice: much higher query concurrency, a smaller team, a residency rule, or a vendor's price change.
+CHECK: {"q": "A 6-person data team must serve 300 analysts within six months. Which foundation choice usually fits best?", "c": ["Self-run Iceberg on Trino and Spark on Kubernetes, to minimise cost per TB", "Open tables as the system of record with managed compute, so the small team is not running clusters", "A separate database per team, so nobody waits for the platform"], "a": 1, "why": "With few engineers, people are the scarce resource: managed compute over open tables keeps the exit open without making a six-person team operate clusters."}
+---
+STEP: lead
+TITLE: Lead it: defend the blueprint to the CTO
+MIN: 10
+Q: You present your data foundation blueprint to the CTO, the CFO and three product VPs. The CFO says the plan costs too much; a VP says her team needs its own warehouse now. In five minutes, how do you respond?
+A: Start from the outcomes they already want and the numbers: time to a new dataset today versus the plan, the revenue number finance cannot reconcile, the current spend and its trend without the plan. To the CFO: show cost per year and per unit against the cost of doing nothing (duplicated stacks, incidents, people time), the three-year comparison that chose the cheaper option over year one's cheapest, and what can be cut or delayed with half the budget and what that gives up. Offer quarterly checkpoints with outcomes, so the spend is released as value appears.
+
+To the VP: find the need behind the request (speed, isolation, control of her queries). Offer what the foundation gives her team now: an isolated compute cluster with its own quota on the shared platform, priority on the golden path, and a date. Keep the exception path written down: if her need cannot be met that way, a dedicated warehouse from the same templates and governance. Close with the decision you need from them today and when you will report back.
+BODY: Answer out loud first, in five minutes, then compare. Staff and principal reviewers listen for numbers, a respectful response to each objection, a default with an exception, and a clear ask.
+---
+STEP: ai
+TITLE: With AI: a review of your blueprint
+MIN: 10
+BODY: **Where AI helps with a blueprint.** As a reviewer: finding parts that are missing, decisions without an alternative or a reason, numbers that do not add up, and risks you did not list. As a sparring partner for the review: asking the follow-up questions a CTO would. **Where it does not:** it does not know your company's constraints, costs or people, and it will happily recommend fashionable tools. Every suggestion is checked against your numbers and principles before it changes the blueprint.
+TASK: Give Claude Code your blueprint (or its outline) and ask it, in one prompt, to (1) list any of the ten parts that are missing or thin, (2) find decisions without a rejected alternative or a reason, (3) check the capacity arithmetic, and (4) ask you the three hardest questions a CTO would. Paste your prompt, its answer, and one change you made because of it.
+RUBRIC: The prompt gives the blueprint and asks for gaps, weak decisions, an arithmetic check and hard questions. The answer is checked against the blueprint and the chapter, at least one suggestion is rejected with a reason, and one change is made and explained.
+
+@@lab
+## In the app: the capstone exercises in the browser (1.75 hours)
+
+Four exercises run real tests in your browser:
+
+1. **Capacity plan.** From source volumes, compute the average and peak events a second, MB/s at peak, Kafka partitions and storage a year.
+2. **Blueprint gaps.** Check a blueprint for missing or empty parts and decisions that lack an alternative or a reason.
+3. **Roadmap by quarter.** Plan items in dependency order within each quarter's capacity, and say which are blocked.
+4. **Three-year cost.** Compare foundation options over three years with data growth and people, and pick the cheapest.
+
+## The capstone itself (2 hours)
+
+Write the blueprint for this module's design problem or for your own company, with all ten parts, and pass the simulator's foundation challenge. Then rehearse the 10-minute review from O5.10 out loud.
+
+@@practice
+## Write your blueprint (the capstone deliverable, 2 hours)
+
+Use the ten parts in O5.1. For each decision write the choice, the alternative you rejected and why. Include the numbers and the arithmetic, the cost per year and per unit, the first 90 days and the year, and the top three risks with what you will watch. Keep it to about six pages.
+
+## Customer drill: "give me the two-minute version" (10 minutes)
+
+A CEO stops you in a corridor: "I hear you wrote a data platform plan. Two minutes: what is it and why should I fund it?" Answer out loud.
+
+<details><summary>A strong answer</summary>
+
+Start with the problem in their terms: new datasets take six weeks, finance and product disagree on revenue, and data spend grows 40% a year with nobody owning it. The plan: one platform that every team builds on, owned data products with clear numbers, governance built in, and cost visible per team. In 90 days, finance's daily revenue comes from one certified source; in a year, new datasets take days and spend per query is down a third. It costs X a year, less than the duplicated stacks it replaces. What I need from you: backing for the domain teams to own their data.
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: arch
+Q: Where should a data foundation blueprint start?
+A) With the tools the team would most like to try out over the next year
+B) With the business decisions, consumers, sources and their numbers
+C) With a copy of a large tech company's published architecture
+D) With the vendor that offers the biggest discount this year
+ANS: B
+WHY: The design must follow from what the data is for and how much there is, not from tools.
+---
+TYPE: mcq
+TAG: arch
+Q: Which is a useful principle for a blueprint?
+A) We will always use the best tools available on the market
+B) Every change reaches the platform through CDC or events, not dumps
+C) Data quality is important to everyone at this company
+D) We value both speed and reliability in roughly equal measure across teams
+ANS: B
+WHY: A good principle is specific enough to say no to something; the others cannot settle an argument.
+---
+TYPE: mcq
+TAG: arch
+Q: Peak is 100,000 events a second at 1 KB each, a partition handles 4 MB/s, with 1.5 headroom. How many partitions?
+A) 25, because 100 MB/s divided by 4 MB/s gives exactly 25
+B) 38, from 100 MB/s ÷ 4 MB/s × 1.5 rounded up
+C) 150, because each 1,000 events needs one more partition
+D) 100, because there is one partition per 1 MB/s of events
+ANS: B
+WHY: 100 MB/s ÷ 4 MB/s = 25, times 1.5 headroom = 37.5, rounded up to 38.
+---
+TYPE: mcq
+TAG: arch
+Q: Option A costs less in year one; option B costs less over three years once data growth and the people to run it are counted. What should the blueprint do?
+A) Choose A, because the first year's budget is all that matters
+B) Show both totals and choose on the three-year cost and risks
+C) Choose whichever option the most senior engineer prefers
+D) Leave the choice out of the blueprint until next year's budget
+ANS: B
+WHY: Foundations last years; compare total cost including people, and state what would change the choice.
+---
+TYPE: mcq
+TAG: arch
+Q: What belongs in the first 90 days of a foundation plan?
+A) Migrating every existing table at once, before anything else
+B) The catalog, cost tags, CDC on top sources, one path and one visible win
+C) A full evaluation of every vendor before any work at all begins
+D) Hiring the whole team first, and only then starting any work
+ANS: B
+WHY: Start with what everything depends on, plus a win that shows value to a real consumer.
+---
+TYPE: mcq
+TAG: arch
+Q: The CFO says the plan costs too much. What is the strongest first response?
+A) Reduce the plan's scope by half without any further discussion
+B) Show cost per year and per unit against the cost of doing nothing
+C) Explain that good data platforms are always expensive to build
+D) Ask the CFO to approve the plan now and review the cost later
+ANS: B
+WHY: Numbers against the real alternative, with what a smaller budget would give up, keep the discussion on trade-offs.
+---
+TYPE: fill
+TAG: arch
+Q: Migrating domain by domain while the old system keeps running, then retiring it, follows the ____ fig pattern.
+ANS: strangler
+WHY: Build beside the old, move piece by piece, retire the old last.
+---
+TYPE: fill
+TAG: arch
+Q: Each layer of the foundation must be sized for the ____ load, not the average.
+ANS: peak
+WHY: The smallest layer at peak decides whether the whole system holds on launch day.
+---
+TYPE: short
+TAG: arch
+Q: List the ten parts of a data foundation blueprint.
+MODEL: Business and numbers; principles; reference architecture by layer; data products and owners; platform and golden paths; governance; service levels and operations; capacity and cost; roadmap (90 days, the year, the migration); risks and decisions with their alternatives.
+---
+TYPE: short
+TAG: arch
+Q: How do you get a blueprint adopted rather than ignored?
+MODEL: Write it with the people who must follow it; keep it short with decisions, reasons and alternatives; make it executable through golden paths and guardrails so following it is the fastest way to work; tie it to outcomes leadership wants and report them quarterly; and revise it every half year with a dated change log.
+
+@@interview
+Q: Walk me through the data foundation you would build for this company, in ten minutes.
+TAG: arch
+A: The problem in numbers first: what is slow, costly or untrusted today, and for whom. Then the principles (open tables as the system of record, domains own products, log first, freshness to match the decision, governance as code, cost visible). The architecture end to end: apps to Postgres, CDC and product events into Kafka, a stream job feeding serving stores and the lakehouse, batch models with dbt, analysts on a warehouse or Trino, each layer with the alternative I rejected. Ownership and platform: domains own source-aligned products, golden paths for the top journeys, governance as code. Capacity and cost with the arithmetic, the first 90 days and the year, and the top three risks with what I will watch.
+---
+Q: How did you size the platform?
+TAG: arch
+A: From the peak: events a day per source, divided by 86,400 and multiplied by the peak factor, times bytes per event, gives MB/s at peak; partitions at a few MB/s each with 1.5 headroom, rounded up, and stream tasks to match. Database writes and reads at peak for replicas, storage per year raw and compressed by tier, and queries per hour times bytes scanned for warehouse capacity. Then I ran it in a simulator under four times the normal load and fixed the layers that failed.
+---
+Q: Why did you choose a lakehouse over a warehouse, or the other way round?
+TAG: arch
+A: From the workloads, constraints and three-year cost with people. Open tables as the system of record let many engines read one copy, keep storage cheap and avoid lock-in; a managed warehouse gives high-concurrency dashboards with little tuning and a small team. My usual answer is both: open tables as the record, managed compute where it saves people, and a warehouse or OLAP store for hot marts. I would change it if concurrency, team size, residency rules or prices changed.
+---
+Q: What would you cut with half the budget?
+TAG: arch
+A: Keep what everything depends on: the catalog, contracts and CDC on the busiest sources, cost tags, and the first golden path. Delay or drop the expensive and the optional: the second streaming use case if minutes are acceptable, the separate OLAP store if the warehouse can serve the dashboards, the self-run components in favour of managed ones. Say what each cut gives up (freshness, a team's speed, a later date) and which outcome moves more slowly.
+---
+Q: How would you migrate from the current warehouse to this foundation?
+TAG: arch
+A: Domain by domain with the strangler pattern: platform first, then one domain's sources through CDC into the new tables, dual-run old and new with daily reconciliation by key and totals, move consumers in groups with a rollback path, and retire old tables with dates. Start with a domain that has engineers and real consumers, keep the old system read-only through a full month-end close, and report progress in numbers each month.
+---
+Q: What are the biggest risks in your blueprint?
+TAG: arch
+A: People (too few data engineers in domains: embedding and hiring in the plan), adoption (teams keep old ways: faster golden paths and retirement dates), cost (spend outruns value: tags, showback, unit costs), migration (numbers do not match: dual runs before cutover), vendors (price or terms change: open formats and a tested exit) and regulation (new residency or AI rules: governance as code). Each has an owner and an early warning number.
+---
+Q: Tell me about the largest design you have led end to end. What would you do differently?
+TAG: behavioral
+A: Answer with your own STAR story. A strong shape: the business problem in numbers; how you gathered requirements and wrote the design with the people who would run it; two key decisions with the alternatives you rejected; how you delivered it in stages; the measured result; and an honest, specific change you would make, such as starting the migration reconciliation earlier or involving finance sooner.

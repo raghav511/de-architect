@@ -143,5 +143,10 @@
   "title": "Run a data platform team as a product",
   "prompt": "A data platform team of 12 serves 40 domain teams on a lakehouse that costs 4 million a year. There is no roadmap (the loudest request wins), incidents happen every week, 35% of spend has no team tag, a satisfaction survey scored 5 out of 10, and three teams have started building their own stacks. The new CTO wants a plan within a month and results within two quarters.",
   "deliverable": "A two-page plan: the users and their top journeys, the platform's SLIs and SLOs with the error budget policy and burn-rate alerts, the on-call and incident changes, the showback model (tags, shared costs, unit costs) and when to move to chargeback, the intake and scoring for the roadmap with the capacity split, the five numbers you report monthly, what you will stop doing, and two risks."
+ },
+ "o05": {
+  "title": "The data foundation blueprint for a ride and delivery marketplace",
+  "prompt": "A ride and delivery marketplace in 9 countries has 40 million customers, 25 Postgres databases behind its apps, 1.5 billion product events a day (peak 4x on Friday evenings and launches), 30 SaaS sources, 600 analysts and 80 ML models. Today there are three warehouses, nightly dumps, no catalog, revenue that finance and product report differently, new datasets that take six weeks, and data spend growing 45% a year with nobody owning it. EU and Indian customer data must stay in region. The data team is 35 engineers. Write the blueprint for the next three years.",
+  "deliverable": "The ten-part blueprint (about six pages): the business and its numbers with the arithmetic; five to seven principles; the architecture layer by layer with one rejected alternative each; data products and owners; golden paths; governance with residency; the platform's SLOs; capacity and cost per year and per unit with a three-year comparison of two options; the first 90 days, the year and the migration from the three warehouses; and the top risks with early warning numbers. Pass the simulator's foundation challenge and rehearse the 10-minute review."
  }
 }
