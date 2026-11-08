@@ -219,7 +219,7 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
   await T('Q23', 'a reel with no recording yet is read aloud by a device voice, not played silently', async p => {
     await p.addInitScript(() => { window.__spoke = []; const fake = { speaking: false, speak: u => { window.__spoke.push(u.text); setTimeout(() => u.onend && u.onend(), 300); }, cancel: () => { }, getVoices: () => [], addEventListener: () => { } }; Object.defineProperty(window, 'speechSynthesis', { value: fake }); window.SpeechSynthesisUtterance = function (t) { this.text = t; }; });
     await boot(p);
-    const id = await p.evaluate(async () => { const all = []; for (const m of ['p03', 's05', 'a01']) (await reelsFor(m)).forEach(r => all.push(r)); const r = all.find(x => x.beats && x.beats.every(b => !b.audio)); return r && r.id; });
+    const id = await p.evaluate(async () => { const all = []; for (const m of ['p03', 's05', 'a01']) (await reelsFor(m)).forEach(r => all.push(r)); let r = all.find(x => x.beats && x.beats.every(b => !b.audio)); if (!r && (r = all.find(x => x.beats && x.beats.length))) r.beats.forEach(b => delete b.audio); /* every reel is recorded now: strip one cached reel's audio to stand in for a new, unrecorded one */ return r && r.id; });
     ok(id, 'no reel without a recording to test with');
     await p.evaluate(i => { location.hash = '#/reels/' + i; }, id); await p.waitForTimeout(1200);
     await p.click('.rstart'); await p.waitForTimeout(1500);
