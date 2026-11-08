@@ -3,16 +3,16 @@
 import json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(os.path.dirname(HERE))
 CAST = [
-  {'name': 'Marcus Bell', 'role': 'Meridian\'s first staff data architect, the lead. Careful, curious, a little too willing to fix things himself.'},
-  {'name': 'Asha Iyer', 'role': 'CTO. Direct, high bar, fair: "Show me the number, then the plan."'},
-  {'name': 'Dev Malhotra', 'role': 'Data platform lead and on-call veteran. Sceptical of new tools until they earn it.'},
-  {'name': 'Lena Park', 'role': 'Junior data engineer Marcus mentors. Quiet at first; leads on-call by season 4.'},
-  {'name': 'Mei Chen', 'role': 'FinOps lead. Reads every cloud bill line by line: "Who pays for this?"'},
-  {'name': 'Tom Reyes', 'role': 'Head of Product. Wants everything real time, yesterday.'},
-  {'name': 'Kofi Mensah', 'role': 'Analytics lead and owner of the executive dashboard; rival, then partner.'},
-  {'name': 'Grace Okafor', 'role': 'Retired principal engineer and Marcus\'s mentor; Friday coffees, one sentence of advice.'},
-  {'name': 'Victor Hale', 'role': 'Lead architect at Lumen, the company Meridian buys in season 4; rival, then ally.'},
-  {'name': 'Nadia and Zoe Bell', 'role': 'Marcus\'s wife, an ICU nurse on night shifts, and their daughter, 7, who asks what he built today.'}]
+  {'name': 'Marcus Bell', 'pronouns': 'he', 'role': 'Meridian\'s first staff data architect, the lead. Careful, curious, a little too willing to fix things himself.'},
+  {'name': 'Asha Iyer', 'pronouns': 'she', 'role': 'CTO. Direct, high bar, fair: "Show me the number, then the plan."'},
+  {'name': 'Dev Malhotra', 'pronouns': 'he', 'role': 'Data platform lead and on-call veteran. Sceptical of new tools until they earn it.'},
+  {'name': 'Lena Park', 'pronouns': 'she', 'role': 'Junior data engineer Marcus mentors. Quiet at first; leads on-call by season 4.'},
+  {'name': 'Mei Chen', 'pronouns': 'she', 'role': 'FinOps lead. Reads every cloud bill line by line: "Who pays for this?"'},
+  {'name': 'Tom Reyes', 'pronouns': 'he', 'role': 'Head of Product. Wants everything real time, yesterday.'},
+  {'name': 'Kofi Mensah', 'pronouns': 'he', 'role': 'Analytics lead and owner of the executive dashboard; rival, then partner.'},
+  {'name': 'Grace Okafor', 'pronouns': 'she', 'role': 'Retired principal engineer and Marcus\'s mentor; Friday coffees, one sentence of advice.'},
+  {'name': 'Victor Hale', 'pronouns': 'he', 'role': 'Lead architect at Lumen, the company Meridian buys in season 4; rival, then ally.'},
+  {'name': 'Nadia and Zoe Bell', 'pronouns': 'she, she', 'role': 'Marcus\'s wife, an ICU nurse on night shifts, and their daughter, 7, who asks what he built today.'}]
 LOGLINE = 'Marcus Bell joins Meridian, a rides, food and payments company in 14 cities, as its first staff data architect. Each day of your plan is an episode of his first two years: you answer the questions he faces.'
 
 def words(s): return len(re.findall(r'\S+', s))
@@ -27,11 +27,18 @@ def main():
             for k in ('ep', 'logline', 'boss', 'finale', 'zoe'):
                 if not a.get(k): errs.append(a['mid'] + ': ' + k + ' missing')
             if len(a.get('scenes', [])) != 6 or len(a.get('teasers', [])) != 6: errs.append(a['mid'] + ': needs 6 scenes and 6 teasers')
-            if any(not 15 <= words(x) <= 55 for x in a.get('scenes', [])): errs.append(a['mid'] + ': a scene is not 25 to 45 words')
+            if any(not 25 <= words(x) <= 45 for x in a.get('scenes', [])): errs.append(a['mid'] + ': a scene is not 25 to 45 words')
+            if any(not 8 <= words(x) <= 20 for x in a.get('teasers', [])): errs.append(a['mid'] + ': a teaser is not 8 to 20 words')
+            if any(a.get(k) and not 20 <= words(a[k]) <= 45 for k in ('boss', 'finale')): errs.append(a['mid'] + ': boss or finale is not 20 to 45 words')
             if '—' in json.dumps(a, ensure_ascii=False): errs.append(a['mid'] + ': em dash')
     if errs: print('\n'.join(errs)); sys.exit(1)
     out = {'logline': LOGLINE, 'cast': CAST, 'seasons': seasons}
-    json.dump(out, open(os.path.join(ROOT, 'data', 'story.json'), 'w'), ensure_ascii=False, indent=1)
+    dest = os.path.join(ROOT, 'data', 'story.json')
+    if '--check' in sys.argv:
+        cur = json.load(open(dest)) if os.path.exists(dest) else None
+        if cur != out: print('data/story.json is stale: run python3 tools/story/build.py'); sys.exit(1)
+        print('data/story.json is current'); return
+    json.dump(out, open(dest, 'w'), ensure_ascii=False, indent=1)
     print('data/story.json: %d seasons, %d arcs' % (len(seasons), len(have)))
 
 if __name__ == '__main__': main()

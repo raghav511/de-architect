@@ -9,17 +9,17 @@ The learner follows Marcus and answers the questions he faces. Every scene point
 work and never replaces it.
 
 ## Cast (all fictional; no real people or companies)
-- Marcus Bell: staff data architect, the lead. Careful, curious, a little too willing to fix things himself. Wants to make Principal.
-- Nadia Bell: his wife, an ICU nurse on rotating nights. She keeps him honest about on-call and evenings.
-- Zoe Bell: their daughter, 7. Asks "what did you build today?" at dinner; Marcus has to explain his work simply.
-- Asha Iyer: CTO. Direct, high bar, fair. "Show me the number, then the plan."
-- Dev Malhotra: data platform lead and on-call veteran. Sceptical of new tools; becomes Marcus's strongest ally once trust is earned.
-- Lena Park: junior data engineer Marcus mentors. Fast learner, afraid to ask questions at first.
-- Mei Chen: FinOps lead. Reads every cloud bill line by line. "Who pays for this?"
-- Tom Reyes: Head of Product. Wants everything real time, yesterday.
-- Kofi Mensah: analytics lead. Owns the executive dashboard; first rival, later partner in the metric war.
-- Grace Okafor: retired principal engineer, Marcus's mentor; Friday coffees. Speaks for the app's coach.
-- Victor Hale: lead architect at Lumen, the company Meridian acquires in season 4. A Scala and lakehouse person; rival, then ally.
+- Marcus Bell: (he) staff data architect, the lead. Careful, curious, a little too willing to fix things himself. Wants to make Principal.
+- Nadia Bell: (she) his wife, an ICU nurse on rotating nights. She keeps him honest about on-call and evenings.
+- Zoe Bell: (she) their daughter, 7. Asks "what did you build today?" at dinner; Marcus has to explain his work simply.
+- Asha Iyer: (she) CTO. Direct, high bar, fair. "Show me the number, then the plan."
+- Dev Malhotra: (he) data platform lead and on-call veteran. Sceptical of new tools; becomes Marcus's strongest ally once trust is earned.
+- Lena Park: (she) junior data engineer Marcus mentors. Fast learner, afraid to ask questions at first.
+- Mei Chen: (she) FinOps lead. Reads every cloud bill line by line. "Who pays for this?"
+- Tom Reyes: (he) Head of Product. Wants everything real time, yesterday.
+- Kofi Mensah: (he) analytics lead. Owns the executive dashboard; first rival, later partner in the metric war.
+- Grace Okafor: (she) retired principal engineer, Marcus's mentor; Friday coffees. Speaks for the app's coach.
+- Victor Hale: (he) lead architect at Lumen, the company Meridian acquires in season 4. A Scala and lakehouse person; rival, then ally.
 - Interviewers (season 5 only): named per company style (for example "Priya, product sense"; "Sam, system design"). Companies are
   fictional: Hyperion, Northwind Labs, Atlas Cloud, Kestrel.
 

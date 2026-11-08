@@ -218,6 +218,9 @@ try:
         if not a: err('story: no arc for module', m, '(tools/story/build.py)')
         elif len(a.get('scenes', [])) != 6 or len(a.get('teasers', [])) != 6 or not a.get('finale') or not a.get('boss'): err('story: arc', m, 'needs 6 scenes, 6 teasers, a boss line and a finale')
 except FileNotFoundError: err('data/story.json missing (python3 tools/story/build.py)')
+import subprocess as _sp
+_r = _sp.run([sys.executable, 'tools/story/build.py', '--check'], capture_output=True, text=True)
+if _r.returncode: err('story:', (_r.stdout or _r.stderr).strip().replace('\n', '; '))
 swsrc = open('sw.js').read()
 listed = set(re.findall(r"'([a-z]\d\d)'", swsrc[swsrc.index('const PROGRAM'):swsrc.index(';', swsrc.index('const PROGRAM'))]))
 for f in glob.glob('data/program/*.txt'):
