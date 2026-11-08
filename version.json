@@ -1,16 +1,13 @@
 {
-  "version": "1.36.12",
+  "version": "1.36.13",
   "date": "2026-11-08",
   "notes": [
-    "The nightly coach now sees your last live mock's scorecard (the four averages, your weakest area, and which answers the AI scored, you marked yourself or you skipped), so tomorrow's practice can target it.",
-    "Company questions can no longer appear twice under different ids.",
-    "Module 6 gets an architect's lens on Debezium and change data capture (6.9): log-based capture against polling, triggers and dual writes, the outbox pattern, managed CDC services, who owns what, and when to move off it.",
-    "Six under-the-hood answers: replication slots and the WAL that fills a disk, snapshots of huge tables without locks, keys and log order, schema changes through the registry, exactly-once applies into the lakehouse with MERGE, and the 3 a.m. slot incident; they link to the simulator's CDC, schema and region challenges.",
-    "Three interview and three quiz questions, and eight reels at four levels (built into the reel feed by the next release).",
-    "No change you can see: a check that the app reads a reel aloud when it has no recording now works even though every reel has a Heart recording.",
-    "Daily recall: interview answers you opened or ticked and quizzes you submitted come back on Today as a short Recall set after 1, 3, 7 and 21 days; answer from memory, then check and mark it easy, hard or missed (missed ones come back tomorrow).",
-    "Honest ladder: live mocks you mark yourself still count for practice and XP, but Staff, Principal and Architect now need a weekend boss round scored by the AI interviewer; the ladder and the scorecard say which answers were self-marked and why a level is locked.",
-    "Reels no longer stop with an error when a reel near the one you are watching has a picture the app cannot draw: that picture shows as a plain caption card and the narration carries on.",
-    "851 of 1247 reels now play in the natural Heart voice."
+    "The app no longer stores or uses an AI API key: any page on the same web address could read it. The coach, the live mock interviewer and grading now run only through Claude Code on your Mac (or AI is off).",
+    "A key saved by an older version is deleted the first time this version opens, on every device.",
+    "Profile \u203a AI no longer has a key field, and the coach's photo button is gone (photos needed a key).",
+    "Reels now look like Instagram Reels everywhere: the picture fills the screen, the title and caption sit at the bottom left, Save, Speed and Voice are icons on the right, and a round play button shows when a reel is paused.",
+    "Speed now offers 0.25x, 0.5x, 0.75x, Normal, 1.25x, 1.5x, 1.75x and 2x.",
+    "Opening Reels shows the player straight away with a short 'Getting your reels ready' state instead of a bare 'Loading reels\u2026' line.",
+    "1045 of 1255 reels now play in the natural Heart voice."
   ]
 }
