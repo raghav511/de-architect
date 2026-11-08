@@ -1,8 +1,14 @@
 {
-  "version": "1.36.15",
+  "version": "1.36.16",
   "date": "2026-11-08",
   "notes": [
-    "The app opens faster on phones: on 4G, Today is ready in about 5 seconds instead of 9 on a first visit, and in about 3 instead of 8 when you come back.",
-    "1093 of 1275 reels now play in the natural Heart voice."
+    "New in module 8 (8.8): the architect's lens for Snowflake and Databricks. When to pick each, or Iceberg on Trino, who owns and pays, how they fail and scale, and six under-the-hood answers: pruning and micro-partitions, clustering and search optimization, warehouse credits and the three caches, Time Travel and clones, Photon with deletion vectors and liquid clustering, Unity Catalog and serverless compute. Each feature says whether it is generally available.",
+    "Three new interview questions, three quiz questions and eight reels for the lens.",
+    "New module O2, Golden paths and self-serve templates, after O1: what a golden path is, which journeys to pave, what a template should create, keeping templates alive as they drift, the developer portal, guardrails instead of review gates, measuring a path, and how paths fail.",
+    "An architect's lens with six under-the-hood answers, and four exercises that run in your browser: render a template with checked parameters, report how far behind each repository is, run guardrails that honour expiring waivers, and measure whether the golden path is working.",
+    "A design problem (a golden path that gets a new data product to production in a day), ten quiz and seven interview questions, and twelve reels. If you started before this update, What is new lists it and nothing is marked done.",
+    "The \u24d8 source buttons and Udemy lecture links next to reading notes are easier to tap on a phone.",
+    "The simulator's All filter is easier to tap on a phone.",
+    "1129 of 1275 reels now play in the natural Heart voice."
   ]
 }

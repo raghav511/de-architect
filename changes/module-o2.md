@@ -1,4 +1,0 @@
-# Module O2: golden paths and self-serve templates
-- New module O2, Golden paths and self-serve templates, after O1: what a golden path is, which journeys to pave, what a template should create, keeping templates alive as they drift, the developer portal, guardrails instead of review gates, measuring a path, and how paths fail.
-- An architect's lens with six under-the-hood answers, and four exercises that run in your browser: render a template with checked parameters, report how far behind each repository is, run guardrails that honour expiring waivers, and measure whether the golden path is working.
-- A design problem (a golden path that gets a new data product to production in a day), ten quiz and seven interview questions, and twelve reels. If you started before this update, What is new lists it and nothing is marked done.

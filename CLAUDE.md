@@ -97,6 +97,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.36.16: Snowflake and Databricks architect's lens; Module O2: golden paths and self-serve templates; Crawler batch 3: final crawl report, source chips and simulator chip at 44 px.
 - 1.36.15: Speed: Today opens faster (scripts download together, start-up files at once, reels after the first screen).
 - 1.36.14: Postgres internals architect's lens; Module O1: data mesh and data products; Smoke test: Python timeouts say whether the network or the app is at fault (WebKit Python P1: no regression).
 - 1.36.13: No API key in the browser: AI only through Claude Code on the Mac; Reels player: Instagram-style layout, speeds 0.25x to 2x, a real loading state.
