@@ -1625,799 +1625,1114 @@
   ]
  },
  "10.7 AI in the design round": {
-  "hash": "eee58f42ac9e",
+  "hash": "bc5e2e32485b",
   "sec": "10.7",
   "reels": [
    {
-    "title": "The AI model is a new hire",
+    "title": "The AI feature is a new teammate",
     "level": "New to it",
     "beats": [
      {
-      "say": "If you hired a brilliant new colleague, would you hand them every key on day one?",
-      "show": {
-       "t": "big",
-       "text": "Every key on day one?",
-       "sub": "A brilliant new colleague"
-      }
-     },
-     {
-      "say": "Of course not. You tell them which files they may read. You check their work. You set a time and money limit. And for big decisions, a manager signs off.",
+      "say": "If the interviewer says add AI to this system, what are you really adding? Think of it as hiring a very fast, very confident new teammate.",
       "show": {
        "t": "scene",
-       "title": "Trust is *limited* on purpose",
+       "title": "A new *teammate* joins",
        "nodes": [
         {
-         "id": "new",
-         "label": "New colleague",
-         "sub": "smart, but untested",
+         "id": "t",
+         "label": "AI teammate",
+         "sub": "fast and confident",
          "x": 50,
-         "y": 20,
-         "tone": "blue"
-        },
-        {
-         "id": "files",
-         "label": "Files they may read",
-         "x": 25,
-         "y": 50,
-         "tone": "teal"
-        },
-        {
-         "id": "boss",
-         "label": "Manager signs off",
-         "x": 75,
-         "y": 50,
-         "tone": "amber"
+         "y": 40,
+         "tone": "plum"
         }
        ],
-       "edges": [
-        [
-         "new",
-         "files"
-        ],
-        [
-         "new",
-         "boss"
-        ]
-       ],
+       "edges": [],
        "steps": [
         {
-         "at": 0.1,
-         "show": "new"
-        },
-        {
-         "at": 0.4,
-         "show": "files",
-         "packet": [
-          "new",
-          "files"
-         ],
-         "n": 2
+         "at": 0.3,
+         "show": "t"
         },
         {
          "at": 0.7,
-         "show": "boss",
-         "packet": [
-          "new",
-          "boss"
-         ],
-         "n": 1,
          "chip": {
-          "text": "Big decisions need approval",
-          "tone": "amber",
-          "icon": "check"
+          "text": "Model = one more component",
+          "tone": "plum",
+          "icon": "user"
          }
         }
        ]
       }
      },
      {
-      "say": "An AI model in your system is that colleague. It is one more part, with its own needs. You decide what it sees, what it can change, and how you will know when it gets something wrong.",
-      "show": {
-       "t": "points",
-       "title": "The model is one more component",
-       "items": [
-        "Decide what it can see",
-        "Decide what it can change",
-        "Decide how you spot mistakes"
-       ]
-      }
-     },
-     {
-      "say": "And you keep a notebook of everything it did, so any bad answer can be explained.",
-      "show": {
-       "t": "big",
-       "text": "Keep a notebook",
-       "sub": "Every action written down"
-      }
-     }
-    ],
-    "check": {
-     "q": "Why not give a new AI feature broad access to all your data and systems from the start?",
-     "opts": [
-      "It makes the model slower to answer",
-      "Like a new hire, it should earn trust, so limit what it can read and change",
-      "Models cannot read large amounts of data"
-     ],
-     "ans": 1,
-     "why": "Limited access and human approval for big actions reduce the damage from mistakes, just as with a new employee."
-    },
-    "work": [
-     "List what data and actions any AI feature in your team's product can reach today.",
-     "Name who approves a change the model wants to make.",
-     "Check that every AI answer can be traced back to what it did."
-    ]
-   },
-   {
-    "title": "Five needs of an AI component",
-    "level": "How it works",
-    "beats": [
-     {
-      "say": "The interviewer says: add an AI feature to this system. What do you say first?",
-      "show": {
-       "t": "big",
-       "text": "Add an AI feature",
-       "sub": "What do you say first?"
-      }
-     },
-     {
-      "say": "Treat the model as a component with five needs. Context: what data it needs, fetched through retrieval or tools. Evaluation: a fixed test set that scores quality before and after every change.",
+      "say": "You would not hand them the keys on day one. You decide which files they can see, how you will check their work, and how much time and money each task may take.",
       "show": {
        "t": "scene",
-       "title": "Context and *evaluation*",
+       "title": "Set the *rules* first",
        "nodes": [
         {
-         "id": "data",
-         "label": "Data",
-         "sub": "retrieval and tools",
-         "x": 25,
-         "y": 20,
-         "tone": "teal"
-        },
-        {
-         "id": "model",
-         "label": "Model",
-         "x": 75,
-         "y": 20,
+         "id": "f",
+         "label": "Files",
+         "sub": "what it sees",
+         "x": 20,
+         "y": 30,
          "tone": "blue"
         },
         {
-         "id": "tests",
-         "label": "Test set",
-         "sub": "scored every change",
+         "id": "c",
+         "label": "Checks",
+         "sub": "measure quality",
          "x": 50,
-         "y": 55,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "b",
+         "label": "Budget",
+         "sub": "time and cost",
+         "x": 80,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "t",
+         "label": "AI teammate",
+         "x": 50,
+         "y": 65,
          "tone": "plum"
         }
        ],
        "edges": [
         [
-         "data",
-         "model"
+         "f",
+         "t"
         ],
         [
-         "model",
-         "tests"
+         "c",
+         "t"
+        ],
+        [
+         "b",
+         "t"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "t"
+        },
+        {
+         "at": 0.4,
+         "show": "f",
+         "packet": [
+          "f",
+          "t"
+         ]
+        },
+        {
+         "at": 0.6,
+         "show": "c",
+         "packet": [
+          "c",
+          "t"
+         ]
+        },
+        {
+         "at": 0.8,
+         "show": "b",
+         "packet": [
+          "b",
+          "t"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "say": "You also decide what they may change, and when a person must sign off. And you keep a diary of everything they did, so a bad answer can be explained.",
+      "show": {
+       "t": "scene",
+       "title": "Sign-off and a *diary*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "AI teammate",
+         "x": 20,
+         "y": 40,
+         "tone": "plum"
+        },
+        {
+         "id": "p",
+         "label": "Person approves",
+         "sub": "risky changes",
+         "x": 50,
+         "y": 40,
+         "tone": "amber"
+        },
+        {
+         "id": "d",
+         "label": "Trace diary",
+         "sub": "every step logged",
+         "x": 80,
+         "y": 40,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "p"
+        ],
+        [
+         "p",
+         "d"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "t"
+        },
+        {
+         "at": 0.5,
+         "show": "p",
+         "packet": [
+          "t",
+          "p"
+         ]
+        },
+        {
+         "at": 0.8,
+         "show": "d",
+         "packet": [
+          "p",
+          "d"
+         ]
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Explain any bad answer",
+          "tone": "teal",
+          "icon": "search"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "An interviewer asks you to add an AI feature to an existing system. What is the strongest first move?",
+     "opts": [
+      "Treat the model as a component with its own context, evaluation, budgets, guardrails and tracing",
+      "Choose the largest available model, because higher quality removes most other concerns",
+      "Let the model write straight to the database so there is no extra step to maintain",
+      "Launch quickly and add request tracing later, once users report bad answers"
+     ],
+     "ans": 0,
+     "why": "The model is one more component with its own requirements: what data it needs, how quality is measured, latency and cost limits, what it may change, and a trace to explain answers. A bigger model fixes none of those."
+    },
+    "work": [
+     "List context, evaluation, budget, guardrails and tracing for any AI feature before you build it.",
+     "Decide which actions the model may never take without a person approving."
+    ]
+   },
+   {
+    "title": "RAG at a thousand questions a second: the sums",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How big is the bill for answering a thousand questions every second? Do the sums before you draw any boxes.",
+      "show": {
+       "t": "big",
+       "text": "1,000 questions per second",
+       "sub": "Estimate first, design second"
+      }
+     },
+     {
+      "say": "Ten million documents of two thousand tokens, cut into chunks of five hundred, make about forty million chunks. Each vector is four kilobytes, so the index is about one hundred sixty gigabytes. Quantised to int8 it is about forty. So shard it four ways and replicate each shard.",
+      "show": {
+       "t": "bars",
+       "title": "Index size",
+       "unit": "GB",
+       "items": [
+        [
+         "float32",
+         160,
+         "40M chunks x 4 KB"
+        ],
+        [
+         "int8",
+         40,
+         "quantised"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "A thousand questions a second is eighty-six million a day. At two thousand input tokens each, that is about one hundred seventy billion tokens. Assuming twenty cents per million, input alone costs about thirty-five thousand dollars a day. That number drives the design.",
+      "show": {
+       "t": "scene",
+       "title": "The *daily* bill",
+       "nodes": [
+        {
+         "id": "q",
+         "label": "86M questions",
+         "sub": "per day",
+         "x": 25,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "k",
+         "label": "170B tokens",
+         "sub": "2,000 each",
+         "x": 75,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "m",
+         "label": "$35,000",
+         "sub": "per day, input only",
+         "x": 50,
+         "y": 70,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "q",
+         "k"
+        ],
+        [
+         "k",
+         "m"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "q"
+        },
+        {
+         "at": 0.5,
+         "show": "k",
+         "packet": [
+          "q",
+          "k"
+         ]
+        },
+        {
+         "at": 0.8,
+         "show": "m",
+         "packet": [
+          "k",
+          "m"
+         ]
+        },
+        {
+         "at": 0.95,
+         "chip": {
+          "text": "Say your price out loud",
+          "tone": "amber",
+          "icon": "dollar"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does the estimate come before the architecture in the retrieval design?",
+     "opts": [
+      "Daily token cost and index size shape which caches, shards and models you need",
+      "Interviewers prefer numbers to boxes, so the order is purely a matter of style",
+      "The index must be built first because the prompt cannot be sized without it",
+      "Token prices are fixed quotes, so the bill can be read straight off a price list"
+     ],
+     "ans": 0,
+     "why": "About 40 GB to 160 GB of vectors forces sharding and replicas, and roughly $35,000 a day of input tokens forces caching and routing. Prices are assumptions you state, not quotes."
+    },
+    "work": [
+     "Practice estimating chunks, index size and daily tokens on a whiteboard in under two minutes.",
+     "Always state your assumed price per million tokens before giving a cost."
+    ],
+    "part": "1 of 3"
+   },
+   {
+    "title": "Where the first second goes",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Where do the first one and a half seconds go in a retrieval answer?",
+      "show": {
+       "t": "big",
+       "text": "About 1 to 1.5 seconds",
+       "sub": "p95 to the first token"
+      }
+     },
+     {
+      "say": "The question passes the gateway and is embedded. Hybrid search then runs, vector plus keyword, filtered by what this user may see. A cross-encoder reranks the top fifty. The prompt is built with numbered passages.",
+      "show": {
+       "t": "scene",
+       "title": "The *retrieval* path",
+       "nodes": [
+        {
+         "id": "g",
+         "label": "Gateway",
+         "x": 20,
+         "y": 25,
+         "tone": "grey"
+        },
+        {
+         "id": "e",
+         "label": "Embed",
+         "x": 50,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "s",
+         "label": "Hybrid search",
+         "sub": "permission filter",
+         "x": 80,
+         "y": 25,
+         "tone": "teal"
+        },
+        {
+         "id": "r",
+         "label": "Rerank top 50",
+         "x": 35,
+         "y": 60,
+         "tone": "amber"
+        },
+        {
+         "id": "m",
+         "label": "Model",
+         "sub": "cites passages",
+         "x": 70,
+         "y": 60,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "g",
+         "e"
+        ],
+        [
+         "e",
+         "s"
+        ],
+        [
+         "s",
+         "r"
+        ],
+        [
+         "r",
+         "m"
         ]
        ],
        "steps": [
         {
          "at": 0.1,
          "show": [
-          "data",
-          "model"
+          "g",
+          "e"
          ],
          "packet": [
-          "data",
-          "model"
-         ],
-         "n": 3
+          "g",
+          "e"
+         ]
         },
         {
-         "at": 0.6,
-         "show": "tests",
+         "at": 0.4,
+         "show": "s",
          "packet": [
-          "model",
-          "tests"
+          "e",
+          "s"
+         ]
+        },
+        {
+         "at": 0.65,
+         "show": "r",
+         "packet": [
+          "s",
+          "r"
+         ]
+        },
+        {
+         "at": 0.85,
+         "show": "m",
+         "packet": [
+          "r",
+          "m"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "say": "Gateway ten milliseconds, embedding twenty, retrieval fifty, reranking a hundred, prompt ten. Then the model takes five hundred to eight hundred before the first word. The model is the budget, so everything else must stay small. Then the answer streams.",
+      "show": {
+       "t": "bars",
+       "title": "Latency budget",
+       "unit": "ms",
+       "items": [
+        [
+         "Gateway",
+         10,
+         ""
+        ],
+        [
+         "Embedding",
+         20,
+         ""
+        ],
+        [
+         "Retrieval",
+         50,
+         ""
+        ],
+        [
+         "Rerank",
+         100,
+         ""
+        ],
+        [
+         "Prompt",
+         10,
+         ""
+        ],
+        [
+         "Model first token",
+         650,
+         "500 to 800"
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "In the latency budget, which stage dominates time to the first token?",
+     "opts": [
+      "The model's time to first token, so the other stages must stay small",
+      "The rerank step, because cross-encoders are the slowest part of any search",
+      "The retrieval step, since scanning forty million chunks is always the slowest",
+      "The gateway, because identity and quota checks run before everything else"
+     ],
+     "ans": 0,
+     "why": "The model takes 500 to 800 ms, while the gateway, embedding, retrieval, rerank and prompt add up to about 190 ms. Streaming lets the user see words while the rest generates."
+    },
+    "work": [
+     "Write a per-stage p95 budget for any AI request and check it in tracing.",
+     "Stream model output so users see the first words early."
+    ],
+    "part": "2 of 3"
+   },
+   {
+    "title": "Reviewing code an assistant wrote",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "An assistant wrote your pipeline in two minutes, and it runs. So what could possibly be wrong?",
+      "show": {
+       "t": "big",
+       "text": "It runs. Is it right?",
+       "sub": "Flaws hide in behaviour over time"
+      }
+     },
+     {
+      "say": "One real example overwrote the full history on every run, re-scored rows that had not changed, and averaged all of history when the business wanted a recent window.",
+      "show": {
+       "t": "points",
+       "title": "Three hidden flaws",
+       "items": [
+        "Overwrote all history each run",
+        "Re-scored unchanged records",
+        "Averaged all time, not a recent window"
+       ]
+      }
+     },
+     {
+      "say": "Ask five questions. What happens on the second run, and the hundredth? Does it process only what changed? Does it compute the grain and window asked for? What does a run cost as data grows? And how does it treat duplicates, late data and nulls?",
+      "show": {
+       "t": "points",
+       "title": "Five review questions",
+       "items": [
+        "Second run? Hundredth run?",
+        "Only what changed?",
+        "Right grain and window?",
+        "Cost as data grows?",
+        "Duplicates, late data, nulls?"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A generated pipeline passes its first test run. Which review question finds the most serious hidden risk?",
+     "opts": [
+      "What happens on the second and hundredth run, and what does each cost?",
+      "Does the code use the same naming style as the rest of the repository?",
+      "Did the assistant add comments explaining every function it wrote?",
+      "Does the pipeline finish quickly on the small sample used for testing?"
+     ],
+     "ans": 0,
+     "why": "Generated code usually runs once. Problems appear over time: full overwrites, reprocessing unchanged rows and growing cost. Style and sample speed reveal none of that."
+    },
+    "work": [
+     "Run any generated pipeline twice and compare outputs and cost.",
+     "Check the metric against the business window and grain before approving."
+    ],
+    "part": "3 of 3"
+   },
+   {
+    "title": "Refund once, never twice",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "A support agent says your refund is on its way. What stops it paying twice?",
+      "show": {
+       "t": "big",
+       "text": "Never refund twice",
+       "sub": "Retries are normal"
+      }
+     },
+     {
+      "say": "It is one agent with a few tools, not several, because the task does not split into independent parts. Refunds and cancels are jobs on a queue, each with an idempotency key. That is a unique label, so a retry is recognised and does not act again. The agent replies at once while a worker does the slow part.",
+      "show": {
+       "t": "scene",
+       "title": "Write tools are *queued* jobs",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Agent",
+         "sub": "replies at once",
+         "x": 20,
+         "y": 35,
+         "tone": "plum"
+        },
+        {
+         "id": "q",
+         "label": "Queue",
+         "sub": "idempotency key",
+         "x": 50,
+         "y": 35,
+         "tone": "amber"
+        },
+        {
+         "id": "w",
+         "label": "Worker",
+         "sub": "does refund",
+         "x": 80,
+         "y": 35,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "q"
+        ],
+        [
+         "q",
+         "w"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "a"
+        },
+        {
+         "at": 0.45,
+         "show": "q",
+         "packet": [
+          "a",
+          "q"
+         ]
+        },
+        {
+         "at": 0.7,
+         "show": "w",
+         "packet": [
+          "q",
+          "w"
          ],
-         "n": 2,
+         "n": 2
+        },
+        {
+         "at": 0.9,
          "chip": {
-          "text": "Measure before and after",
-          "tone": "plum",
-          "icon": "check"
+          "text": "Same key, acts once",
+          "tone": "teal",
+          "icon": "lock"
          }
         }
        ]
       }
      },
      {
-      "say": "Budgets: say three seconds and two cents per request, and a plan for going over, like a cheaper model or a fallback answer. Guardrails: read only access by default, and a person approves any change.",
+      "say": "The limit lives in the refund tool, not the prompt. The tool checks the amount and that the customer owns the order. Above the limit, a person approves.",
       "show": {
-       "t": "bars",
-       "title": "A budget per request",
-       "unit": "",
-       "items": [
+       "t": "scene",
+       "title": "Guardrails live in the *tool*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Refund tool",
+         "sub": "limit and ownership",
+         "x": 30,
+         "y": 40,
+         "tone": "red"
+        },
+        {
+         "id": "p",
+         "label": "Person approves",
+         "sub": "over the limit",
+         "x": 70,
+         "y": 40,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
         [
-         "Latency limit (seconds)",
-         3,
-         "then fall back"
-        ],
-        [
-         "Cost limit (cents)",
-         2,
-         "then use cheaper model"
+         "t",
+         "p"
         ]
+       ],
+       "steps": [
+        {
+         "at": 0.3,
+         "show": "t",
+         "glow": "t"
+        },
+        {
+         "at": 0.7,
+         "show": "p",
+         "packet": [
+          "t",
+          "p"
+         ]
+        }
        ]
       }
      },
      {
-      "say": "Observability: a trace of every request, with each model call, tool call, token count and latency. Then a bad answer can be explained, not guessed at.",
+      "say": "Customer text is data, never instructions, and the agent can only call tools it was given. That limits prompt injection.",
       "show": {
-       "t": "flow",
-       "title": "One trace per request",
+       "t": "points",
+       "title": "Injection defence",
+       "items": [
+        "Customer text is data",
+        "Tool results are data",
+        "Only granted tools can be called"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Where should the refund limit and order ownership checks be enforced?",
+     "opts": [
+      "Inside the refund tool itself, whatever the model asks for",
+      "In the system prompt, telling the model never to exceed the limit",
+      "In the chat window, by hiding the refund button from customers",
+      "In the evaluation set, which will catch any bad refund afterwards"
+     ],
+     "ans": 0,
+     "why": "Prompts can be talked around by injected text. A tool that enforces limits and ownership holds no matter what the model asks. Evals measure risk but do not prevent it."
+    },
+    "work": [
+     "Move every business rule from the prompt into the tool that acts.",
+     "Give each write action an idempotency key and test a double retry."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Leaks, inventions and failures in RAG",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "Your search is fast and your answers sound great. So how might it leak secrets or invent facts?",
+      "show": {
+       "t": "big",
+       "text": "Fast is not safe",
+       "sub": "Leaks and invented facts"
+      }
+     },
+     {
+      "say": "Permissions are stored with each chunk and filtered during retrieval. If you filter after the model has read it, it is already too late.",
+      "show": {
+       "t": "scene",
+       "title": "Filter *before* the model",
        "nodes": [
         {
-         "id": "r",
-         "label": "Request"
+         "id": "s",
+         "label": "Search",
+         "sub": "chunk permissions",
+         "x": 25,
+         "y": 40,
+         "tone": "teal"
+        },
+        {
+         "id": "f",
+         "label": "Permission filter",
+         "x": 55,
+         "y": 40,
+         "tone": "amber"
         },
         {
          "id": "m",
-         "label": "Model call"
+         "label": "Model",
+         "x": 85,
+         "y": 40,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "s",
+         "f"
+        ],
+        [
+         "f",
+         "m"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.3,
+         "show": "s"
         },
         {
+         "at": 0.6,
+         "show": "f",
+         "packet": [
+          "s",
+          "f"
+         ],
+         "glow": "f"
+        },
+        {
+         "at": 0.9,
+         "show": "m",
+         "packet": [
+          "f",
+          "m"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "say": "To limit wrong answers, answer only from retrieved passages, cite them, and say I do not know when the retrieval score is low. Measure groundedness on a golden set before every change.",
+      "show": {
+       "t": "points",
+       "title": "Fewer wrong answers",
+       "items": [
+        "Answer only from passages",
+        "Cite numbered sources",
+        "I do not know below a score",
+        "Golden set before every change"
+       ]
+      }
+     },
+     {
+      "say": "Plan for failure. If the provider throttles, use the cache or a second provider. If a shard dies, replicas serve. After a deploy empties the cache, warm it. And re-embed only changed chunks.",
+      "show": {
+       "t": "points",
+       "title": "Failure plan",
+       "items": [
+        "Throttled: cache or second provider",
+        "Shard dies: replicas",
+        "Cold cache: warm it",
+        "Doc changes: re-embed changed chunks"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Where must document permissions be applied in a retrieval pipeline?",
+     "opts": [
+      "During retrieval, so forbidden chunks never reach the model",
+      "After the answer is written, by removing sentences the user cannot see",
+      "At login only, since a signed-in user may read every indexed chunk",
+      "In the system prompt, by asking the model to respect access rules"
+     ],
+     "ans": 0,
+     "why": "Once forbidden text is in the prompt it can leak into the answer. Storing permissions with each chunk and filtering at search time keeps it out entirely."
+    },
+    "work": [
+     "Store access labels on every chunk and test with a user who has no access.",
+     "Build a golden set and run groundedness before each prompt or model change."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Cutting the thirty-five thousand dollar bill",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Thirty-five thousand dollars a day for input tokens alone. Where do you cut it?",
+      "show": {
+       "t": "big",
+       "text": "$35,000 a day",
+       "sub": "Where do you cut?"
+      }
+     },
+     {
+      "say": "Three levers. A semantic cache returns a stored answer when a new question is very close to an old one; support traffic often hits thirty to sixty percent. Routing easy questions to a small model is the second. Caching the fixed system prompt is the third.",
+      "show": {
+       "t": "scene",
+       "title": "Three cost *levers*",
+       "nodes": [
+        {
+         "id": "c",
+         "label": "Semantic cache",
+         "sub": "30 to 60% hits",
+         "x": 20,
+         "y": 35,
+         "tone": "teal"
+        },
+        {
+         "id": "r",
+         "label": "Small-model router",
+         "sub": "easy questions",
+         "x": 50,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "p",
+         "label": "Prompt cache",
+         "sub": "fixed system prompt",
+         "x": 80,
+         "y": 35,
+         "tone": "amber"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.25,
+         "show": "c",
+         "glow": "c"
+        },
+        {
+         "at": 0.55,
+         "show": "r",
+         "glow": "r"
+        },
+        {
+         "at": 0.85,
+         "show": "p",
+         "glow": "p"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Each has a price. A cache can serve stale answers, and a small model can be wrong more often. So prove every lever on your evaluation set, and say your price assumptions out loud.",
+      "show": {
+       "t": "points",
+       "title": "Prove each lever",
+       "items": [
+        "Cache: staleness risk",
+        "Small model: more errors",
+        "Measure on the eval set",
+        "State price assumptions"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "You add a semantic cache and a small-model router. What must you do before keeping them?",
+     "opts": [
+      "Check on the evaluation set that quality holds while cost falls",
+      "Assume savings are safe, since cached answers were once correct",
+      "Remove the evaluation set, because the cache replaces model calls",
+      "Route every question to the small model so savings are maximal"
+     ],
+     "ans": 0,
+     "why": "Both levers trade quality for cost: caches can be stale and small models err more. Only an evaluation set shows whether the savings are worth it."
+    },
+    "work": [
+     "Measure cache hit rate and answer quality on cache hits separately.",
+     "Add an escalation path from small to large model when confidence is low."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Why one gateway for every model call",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Why force every team through one gateway instead of letting them call providers directly?",
+      "show": {
+       "t": "big",
+       "text": "One door for all models",
+       "sub": "Control, cost and resilience"
+      }
+     },
+     {
+      "say": "Teams never hold provider keys. The gateway applies a token bucket quota per team, a monthly budget, allowed models and redaction of personal data. Every call is traced with tokens, cost, latency and team, so spend is reported per team.",
+      "show": {
+       "t": "scene",
+       "title": "The gateway *checks* first",
+       "nodes": [
+        {
          "id": "t",
-         "label": "Tool call"
+         "label": "Team key",
+         "x": 20,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "g",
+         "label": "Gateway",
+         "sub": "quota, budget, redaction",
+         "x": 50,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "o",
+         "label": "Trace",
+         "sub": "cost per team",
+         "x": 80,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "g"
+        ],
+        [
+         "g",
+         "o"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "t"
+        },
+        {
+         "at": 0.5,
+         "show": "g",
+         "packet": [
+          "t",
+          "g"
+         ],
+         "glow": "g"
+        },
+        {
+         "at": 0.8,
+         "show": "o",
+         "packet": [
+          "g",
+          "o"
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "say": "It checks caches, then a router sends easy tasks to a small model and escalates when unsure. If a provider fails, it retries and fails over to a second provider or region. Batch work uses cheaper batch APIs.",
+      "show": {
+       "t": "scene",
+       "title": "Route and *fail over*",
+       "nodes": [
+        {
+         "id": "r",
+         "label": "Router",
+         "sub": "small first",
+         "x": 25,
+         "y": 35,
+         "tone": "plum"
         },
         {
          "id": "a",
-         "label": "Answer"
+         "label": "Provider A",
+         "x": 75,
+         "y": 20,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Provider B",
+         "sub": "failover",
+         "x": 75,
+         "y": 55,
+         "tone": "teal"
         }
        ],
        "edges": [
         [
          "r",
-         "m"
-        ],
-        [
-         "m",
-         "t"
-        ],
-        [
-         "t",
          "a"
-        ]
-       ]
-      }
-     }
-    ],
-    "check": {
-     "q": "A request to your AI feature gives a wrong answer. Which of the five needs lets you find out why?",
-     "opts": [
-      "Guardrails",
-      "Budgets",
-      "Observability through a full trace"
-     ],
-     "ans": 2,
-     "why": "A trace records each model call, tool call, tokens and latency, so you can see where the answer went wrong."
-    },
-    "work": [
-     "Write the five needs as a checklist for any AI design you discuss.",
-     "Pick a per-request latency and cost budget and name the fallback.",
-     "Build a small fixed test set before you change a prompt."
-    ],
-    "part": "1 of 2"
-   },
-   {
-    "title": "One agent or several?",
-    "level": "How it works",
-    "beats": [
-     {
-      "say": "Would you use several agents? Usually the answer is no.",
-      "show": {
-       "t": "big",
-       "text": "Several agents?",
-       "sub": "Default answer: no"
-      }
-     },
-     {
-      "say": "One agent with good tools is cheaper, faster, and easier to debug. There is one trace to read and one context to inspect.",
-      "show": {
-       "t": "scene",
-       "title": "One agent, *good tools*",
-       "nodes": [
-        {
-         "id": "agent",
-         "label": "Agent",
-         "sub": "one context",
-         "x": 50,
-         "y": 20,
-         "tone": "blue"
-        },
-        {
-         "id": "logs",
-         "label": "Log tool",
-         "x": 25,
-         "y": 55,
-         "tone": "teal"
-        },
-        {
-         "id": "code",
-         "label": "Code tool",
-         "x": 75,
-         "y": 55,
-         "tone": "teal"
-        }
-       ],
-       "edges": [
-        [
-         "agent",
-         "logs"
         ],
         [
-         "agent",
-         "code"
+         "r",
+         "b"
         ]
        ],
        "steps": [
         {
-         "at": 0.1,
-         "show": "agent"
-        },
-        {
-         "at": 0.4,
-         "show": [
-          "logs",
-          "code"
-         ],
-         "packet": [
-          "agent",
-          "logs"
-         ],
-         "n": 2
-        },
-        {
-         "at": 0.8,
-         "chip": {
-          "text": "Cheaper and easier to debug",
-          "tone": "teal",
-          "icon": "check"
-         }
-        }
-       ]
-      }
-     },
-     {
-      "say": "Several agents earn their place when work splits into independent parts. In an outage, one agent reads logs while another reads recent code changes. They run at the same time, each with a clean context.",
-      "show": {
-       "t": "scene",
-       "title": "Independent work in *parallel*",
-       "nodes": [
-        {
-         "id": "orch",
-         "label": "Orchestrator",
-         "x": 50,
-         "y": 15,
-         "tone": "amber"
-        },
-        {
-         "id": "a1",
-         "label": "Log agent",
-         "x": 25,
-         "y": 50,
-         "tone": "blue"
-        },
-        {
-         "id": "a2",
-         "label": "Code change agent",
-         "x": 75,
-         "y": 50,
-         "tone": "blue"
-        }
-       ],
-       "edges": [
-        [
-         "orch",
-         "a1"
-        ],
-        [
-         "orch",
-         "a2"
-        ]
-       ],
-       "steps": [
-        {
-         "at": 0.1,
-         "show": "orch"
-        },
-        {
-         "at": 0.4,
-         "show": [
-          "a1",
-          "a2"
-         ],
-         "packet": [
-          "orch",
-          "a1"
-         ],
-         "n": 2
-        },
-        {
-         "at": 0.6,
-         "packet": [
-          "orch",
-          "a2"
-         ],
-         "n": 2
-        }
-       ]
-      }
-     },
-     {
-      "say": "An orchestrator then combines their findings. But every agent adds tokens, delay, and places for errors to hide. So prove the split wins on your evaluation set.",
-      "show": {
-       "t": "points",
-       "title": "Each agent has a price",
-       "items": [
-        "More tokens",
-        "More delay",
-        "More places for errors",
-        "Prove it on your evaluation set"
-       ]
-      }
-     }
-    ],
-    "check": {
-     "q": "Which task is the best candidate for several agents?",
-     "opts": [
-      "Three steps where each needs the previous answer",
-      "Reading logs and reading recent code changes during an outage",
-      "A simple question answered from one document"
-     ],
-     "ans": 1,
-     "why": "The two reads are independent, so they can run in parallel with separate contexts and be combined afterwards."
-    },
-    "work": [
-     "Start every design with one agent and good tools.",
-     "Split only when subtasks are truly independent.",
-     "Compare single and multi agent on the same evaluation set."
-    ],
-    "part": "2 of 2"
-   },
-   {
-    "title": "Reading code an assistant wrote",
-    "level": "Inside and caveats",
-    "beats": [
-     {
-      "say": "An assistant wrote a working pipeline in two minutes. So what is wrong with it?",
-      "show": {
-       "t": "big",
-       "text": "It runs. So what's wrong?",
-       "sub": "Two minutes to write"
-      }
-     },
-     {
-      "say": "The code runs. The flaws show up over time. In one published example, it overwrote the full history on every run, re-scored records that had not changed, and averaged all of history when the business wanted a recent window.",
-      "show": {
-       "t": "points",
-       "title": "Flaws that appear over time",
-       "items": [
-        "Overwrites full history each run",
-        "Re-scores unchanged records",
-        "Averages all history, not a recent window"
-       ]
-      }
-     },
-     {
-      "say": "So ask: what happens on the second run, and the hundredth? Does it process only what changed? Does it compute what the business asked for, at the right grain and window?",
-      "show": {
-       "t": "scene",
-       "title": "Ask about *behaviour over time*",
-       "nodes": [
-        {
-         "id": "q1",
-         "label": "Run two, run one hundred?",
-         "x": 50,
-         "y": 15,
-         "tone": "amber"
-        },
-        {
-         "id": "q2",
-         "label": "Only what changed?",
-         "x": 25,
-         "y": 50,
-         "tone": "teal"
-        },
-        {
-         "id": "q3",
-         "label": "Right grain and window?",
-         "x": 75,
-         "y": 50,
-         "tone": "teal"
-        }
-       ],
-       "edges": [
-        [
-         "q1",
-         "q2"
-        ],
-        [
-         "q1",
-         "q3"
-        ]
-       ],
-       "steps": [
-        {
-         "at": 0.1,
-         "show": "q1"
-        },
-        {
-         "at": 0.4,
-         "show": "q2",
-         "packet": [
-          "q1",
-          "q2"
-         ],
-         "n": 1
-        },
-        {
-         "at": 0.7,
-         "show": "q3",
-         "packet": [
-          "q1",
-          "q3"
-         ],
-         "n": 1
-        }
-       ]
-      }
-     },
-     {
-      "say": "Then: what does each run cost as data grows? And what happens with duplicates, late data and nulls?",
-      "show": {
-       "t": "points",
-       "title": "Two more checks",
-       "items": [
-        "Cost per run as data grows",
-        "Duplicates, late data and nulls"
-       ]
-      }
-     }
-    ],
-    "check": {
-     "q": "A generated pipeline passes on its first run. What is the best next review question?",
-     "opts": [
-      "Does it use my favourite library?",
-      "What happens on the second and hundredth run?",
-      "How fast did the assistant write it?"
-     ],
-     "ans": 1,
-     "why": "Generated code usually runs once. The real flaws are in repeat behaviour: overwrites, duplicates and reprocessing."
-    },
-    "work": [
-     "Run any generated pipeline twice and compare the output.",
-     "Check that it filters to new or changed rows only.",
-     "Test it with duplicate, late and null records."
-    ],
-    "part": "1 of 2"
-   },
-   {
-    "title": "The pipeline whose bill doubles",
-    "level": "Inside and caveats",
-    "beats": [
-     {
-      "say": "Why does a pipeline that works today become a bill problem next year?",
-      "show": {
-       "t": "big",
-       "text": "Works today, costly next year",
-       "sub": "Why?"
-      }
-     },
-     {
-      "say": "Say it holds ten million reviews, and a hundred thousand arrive each day. A full rewrite re-scores all ten million every night, paying for the model on records that never changed.",
-      "show": {
-       "t": "bars",
-       "title": "Records scored each night",
-       "unit": "records",
-       "items": [
-        [
-         "Full rewrite",
-         10000000,
-         "re-scores everything"
-        ],
-        [
-         "Only new rows",
-         100000,
-         "what actually changed"
-        ]
-       ]
-      }
-     },
-     {
-      "say": "Next year it is twenty million, and the bill doubles, though the real work is the same hundred thousand.",
-      "show": {
-       "t": "scene",
-       "title": "Cost grows, *work* does not",
-       "nodes": [
-        {
-         "id": "hist",
-         "label": "History",
-         "sub": "20 million rows",
-         "x": 25,
-         "y": 30,
-         "tone": "red"
-        },
-        {
-         "id": "new",
-         "label": "New today",
-         "sub": "100 thousand",
-         "x": 75,
-         "y": 30,
-         "tone": "teal"
-        },
-        {
-         "id": "bill",
-         "label": "Scoring bill",
-         "x": 50,
-         "y": 65,
-         "tone": "amber"
-        }
-       ],
-       "edges": [
-        [
-         "hist",
-         "bill"
-        ],
-        [
-         "new",
-         "bill"
-        ]
-       ],
-       "steps": [
-        {
-         "at": 0.1,
-         "show": [
-          "hist",
-          "new"
-         ]
+         "at": 0.2,
+         "show": "r"
         },
         {
          "at": 0.5,
-         "show": "bill",
+         "show": "a",
          "packet": [
-          "hist",
-          "bill"
-         ],
-         "n": 4,
+          "r",
+          "a"
+         ]
+        },
+        {
+         "at": 0.6,
+         "dim": "a"
+        },
+        {
+         "at": 0.8,
+         "show": "b",
+         "packet": [
+          "r",
+          "b"
+         ]
+        },
+        {
+         "at": 0.95,
          "chip": {
-          "text": "Bill doubles",
-          "tone": "red",
-          "icon": "alert"
+          "text": "Outage does not stop the company",
+          "tone": "teal",
+          "icon": "shield"
          }
         }
        ]
       }
-     },
-     {
-      "say": "The fix is incremental: score only new or changed rows, keep a stable key so reruns do not duplicate, and compute the average over a recent window, like the last thirty days.",
-      "show": {
-       "t": "points",
-       "title": "The fix",
-       "items": [
-        "Score only new or changed rows",
-        "Stable key so reruns do not duplicate",
-        "Average over a recent window"
-       ]
-      }
      }
     ],
     "check": {
-     "q": "A nightly job re-scores all history with a paid model. What is the best fix?",
+     "q": "What is the main benefit of a central gateway over direct provider calls from each team?",
      "opts": [
-      "Use a bigger machine",
-      "Score only new or changed rows, using a stable key",
-      "Run the job less often and accept stale data"
+      "Shared keys, quotas, budgets, tracing and failover are handled in one place",
+      "It removes provider rate limits, since the gateway has unlimited capacity",
+      "It guarantees the cheapest model answers every request without routing",
+      "It lets each team set its own policies and never coordinate spend"
      ],
-     "ans": 1,
-     "why": "Incremental processing makes cost follow the amount of change, not the size of history, and a stable key keeps reruns safe."
+     "ans": 0,
+     "why": "A gateway keeps keys out of teams' hands and centralises quotas, budgets, redaction, caching, routing, tracing and failover. It does not remove provider limits or choose models without a router."
     },
     "work": [
-     "Find any job that rewrites or re-scores everything each run.",
-     "Add a stable key and a changed-since filter.",
-     "Define the window the business actually wants."
+     "Give each team a quota and budget and report spend per team from traces.",
+     "Set up failover to a second provider and test it with a simulated outage."
     ],
     "part": "2 of 2"
-   },
-   {
-    "title": "When to refuse the multi-agent design",
-    "level": "Architect",
-    "beats": [
-     {
-      "say": "When would you refuse to split one agent into five?",
-      "show": {
-       "t": "big",
-       "text": "One into five?",
-       "sub": "When to say no"
-      }
-     },
-     {
-      "say": "When steps depend on each other. If step two needs step one's answer, parallel agents just wait, and you pay to pass context between them.",
-      "show": {
-       "t": "flow",
-       "title": "Dependent steps gain nothing",
-       "nodes": [
-        {
-         "id": "s1",
-         "label": "Step one"
-        },
-        {
-         "id": "s2",
-         "label": "Step two"
-        },
-        {
-         "id": "s3",
-         "label": "Step three"
-        }
-       ],
-       "edges": [
-        [
-         "s1",
-         "s2"
-        ],
-        [
-         "s2",
-         "s3"
-        ]
-       ]
-      }
-     },
-     {
-      "say": "Cost grows too. Five agents can mean five times the tokens, and the slowest one sets your latency. Errors compound: if each is right nine times in ten, a chain of five is right about six in ten.",
-      "show": {
-       "t": "bars",
-       "title": "Chance a chain is fully right",
-       "unit": "percent",
-       "items": [
-        [
-         "One agent",
-         90,
-         ""
-        ],
-        [
-         "Chain of five",
-         59,
-         "0.9 to the power 5"
-        ]
-       ]
-      }
-     },
-     {
-      "say": "So start with one agent, measure on your evaluation set, and split only when the gain in quality or speed beats the cost. Keep a person approving any write.",
-      "show": {
-       "t": "points",
-       "title": "Architect's rule",
-       "items": [
-        "Start with one agent",
-        "Measure on an evaluation set",
-        "Split only if the gain beats the cost",
-        "Human approves writes"
-       ]
-      }
-     }
-    ],
-    "check": {
-     "q": "Five chained agents are each right 90 percent of the time. Roughly how often is the whole chain right?",
-     "opts": [
-      "About 90 percent",
-      "About 59 percent",
-      "About 50 percent exactly, regardless of accuracy"
-     ],
-     "ans": 1,
-     "why": "Probabilities multiply along a chain: 0.9 five times is about 0.59, so errors compound with each extra agent."
-    },
-    "work": [
-     "Draw your task as a dependency graph and split only independent branches.",
-     "Estimate tokens and latency for single versus multi agent designs.",
-     "Require evaluation results before approving a multi-agent design."
-    ]
    }
   ]
  },
@@ -5843,6 +6158,2206 @@
      "In every design, write the rate number next to each component you add and say why it is needed.",
      "State the load multiple at which your design would need to change."
     ]
+   }
+  ]
+ },
+ "10.3 Capacity arithmetic at staff scale": {
+  "hash": "8c711d964aea",
+  "sec": "10.3",
+  "reels": [
+   {
+    "title": "A day of events is just a tap",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "A company gets one hundred billion events a day. Is that huge, or just a busy tap?",
+      "show": {
+       "t": "big",
+       "text": "100 billion a day",
+       "sub": "scary, or just a busy tap?"
+      }
+     },
+     {
+      "say": "Here is the trick. A day has about eighty-six thousand seconds, so call it one hundred thousand. Divide the day's total by that, and you get a rate per second. One hundred billion becomes about a million a second.",
+      "show": {
+       "t": "scene",
+       "title": "Day total to *per second*",
+       "nodes": [
+        {
+         "id": "day",
+         "label": "Per day",
+         "sub": "100 billion",
+         "x": 50,
+         "y": 18,
+         "tone": "blue"
+        },
+        {
+         "id": "div",
+         "label": "Divide by 86,400",
+         "sub": "seconds in a day",
+         "x": 50,
+         "y": 45,
+         "tone": "grey"
+        },
+        {
+         "id": "sec",
+         "label": "Per second",
+         "sub": "about 1 million",
+         "x": 50,
+         "y": 72,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "day",
+         "div"
+        ],
+        [
+         "div",
+         "sec"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "day"
+        },
+        {
+         "at": 0.4,
+         "show": "div",
+         "packet": [
+          "day",
+          "div"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "sec",
+         "packet": [
+          "div",
+          "sec"
+         ],
+         "n": 3,
+         "chip": {
+          "text": "1.2 million a second",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Think of a tap filling a bath. The tap is the rate per second. The bath is the total stored. Pipes must handle the tap, and the bath size sets your storage bill.",
+      "show": {
+       "t": "scene",
+       "title": "Tap and *bath*",
+       "nodes": [
+        {
+         "id": "tap",
+         "label": "Tap",
+         "sub": "rate per second",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "bath",
+         "label": "Bath",
+         "sub": "total stored",
+         "x": 75,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "pipe",
+         "label": "Pipes",
+         "sub": "must fit the tap",
+         "x": 25,
+         "y": 65,
+         "tone": "teal"
+        },
+        {
+         "id": "bill",
+         "label": "Storage bill",
+         "sub": "set by the bath",
+         "x": 75,
+         "y": 65,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "tap",
+         "bath"
+        ],
+        [
+         "tap",
+         "pipe"
+        ],
+        [
+         "bath",
+         "bill"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "tap",
+          "pipe"
+         ]
+        },
+        {
+         "at": 0.5,
+         "show": [
+          "bath",
+          "bill"
+         ],
+         "packet": [
+          "tap",
+          "bath"
+         ],
+         "n": 3
+        }
+       ]
+      }
+     },
+     {
+      "say": "Once you have those two numbers, everything else is multiplying. Size of one event times the rate gives the flow. Flow times time gives storage.",
+      "show": {
+       "t": "points",
+       "title": "Everything else is *multiplying*",
+       "items": [
+        "Event size times rate gives flow",
+        "Flow times time gives storage",
+        "Storage times price gives the bill"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "A system gets 100 billion events a day. About what rate must it handle each second?",
+     "opts": [
+      "About 1.2 million events per second",
+      "About 100 million events per second",
+      "About 12,000 events per second"
+     ],
+     "ans": 0,
+     "why": "A day has about 86,400 seconds, so 100 billion divided by that is roughly 1.2 million per second. The other answers are off by factors of about a hundred."
+    },
+    "work": [
+     "Convert any daily volume into per second by dividing by about 100,000 before you design anything.",
+     "Write down event size, rate and retention, then multiply them to get flow and storage."
+    ]
+   },
+   {
+    "title": "One million events a second, sized",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "A million events a second. How many Kafka partitions is that?",
+      "show": {
+       "t": "big",
+       "text": "1,000,000 / second",
+       "sub": "how many partitions?"
+      }
+     },
+     {
+      "say": "At one kilobyte each, that is one gigabyte a second, or about eighty-six terabytes a day raw. One partition takes roughly four megabytes a second. So one gigabyte divided by four megabytes is two hundred fifty partitions. Plan three to five hundred for peak and headroom.",
+      "show": {
+       "t": "scene",
+       "title": "Rate to *partitions*",
+       "nodes": [
+        {
+         "id": "ev",
+         "label": "Events",
+         "sub": "1M/s x 1 KB",
+         "x": 50,
+         "y": 16,
+         "tone": "blue"
+        },
+        {
+         "id": "flow",
+         "label": "1 GB/s",
+         "sub": "86 TB a day raw",
+         "x": 50,
+         "y": 42,
+         "tone": "amber"
+        },
+        {
+         "id": "part",
+         "label": "Partitions",
+         "sub": "250 at 4 MB/s each",
+         "x": 50,
+         "y": 70,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "ev",
+         "flow"
+        ],
+        [
+         "flow",
+         "part"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "ev"
+        },
+        {
+         "at": 0.35,
+         "show": "flow",
+         "packet": [
+          "ev",
+          "flow"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.6,
+         "show": "part",
+         "packet": [
+          "flow",
+          "part"
+         ],
+         "n": 3,
+         "count": {
+          "key": "p",
+          "label": "partitions planned",
+          "to": 400,
+          "unit": "",
+          "tone": "teal"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Replication factor three triples the writes, so the cluster writes about three gigabytes a second to disk. Brokers take a few hundred megabytes a second each, so you need at least ten brokers.",
+      "show": {
+       "t": "bars",
+       "title": "Disk writes with *replication*",
+       "unit": "GB/s",
+       "items": [
+        [
+         "Incoming",
+         1,
+         "one copy"
+        ],
+        [
+         "Replication factor 3",
+         3,
+         "three copies on disk"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "Stored as Parquet, ten times smaller, it is about ten terabytes a day. That is three point six petabytes a year, around eighty thousand dollars a month of standard storage.",
+      "show": {
+       "t": "bars",
+       "title": "Raw versus *Parquet* per day",
+       "unit": "TB",
+       "items": [
+        [
+         "Raw JSON",
+         86,
+         ""
+        ],
+        [
+         "Parquet",
+         10,
+         "3.6 PB a year, about $80k a month"
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Ingest is 1 GB/s and one partition takes about 4 MB/s. What is a sensible partition plan?",
+     "opts": [
+      "About 300 to 500 partitions, for headroom",
+      "About 25 partitions, since Kafka is fast",
+      "About 4,000 partitions, one per MB of flow"
+     ],
+     "ans": 0,
+     "why": "One gigabyte divided by four megabytes is 250. Add headroom for peaks of two to three times and growth, giving 300 to 500. Twenty-five is far too few, and 4,000 is wasteful."
+    },
+    "work": [
+     "Do the partition division out loud in design reviews: total MB/s over per-partition MB/s.",
+     "Multiply replication factor into disk and network estimates, not just the incoming rate."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Turn per terabyte into per month",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "How much do your dashboards cost per month? Most people never turn a price per terabyte into a monthly bill.",
+      "show": {
+       "t": "big",
+       "text": "$ per TB scanned",
+       "sub": "what is that per month?"
+      }
+     },
+     {
+      "say": "Two thousand queries an hour, each scanning fifty gigabytes. That is one hundred terabytes an hour. At five dollars a terabyte, that is five hundred dollars an hour.",
+      "show": {
+       "t": "scene",
+       "title": "Scan cost *per hour*",
+       "nodes": [
+        {
+         "id": "q",
+         "label": "Dashboards",
+         "sub": "2,000 queries/hour",
+         "x": 50,
+         "y": 16,
+         "tone": "blue"
+        },
+        {
+         "id": "scan",
+         "label": "100 TB scanned",
+         "sub": "50 GB each",
+         "x": 50,
+         "y": 42,
+         "tone": "amber"
+        },
+        {
+         "id": "cost",
+         "label": "$500 an hour",
+         "sub": "at $5 per TB",
+         "x": 50,
+         "y": 70,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "q",
+         "scan"
+        ],
+        [
+         "scan",
+         "cost"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "q"
+        },
+        {
+         "at": 0.4,
+         "show": "scan",
+         "packet": [
+          "q",
+          "scan"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "cost",
+         "packet": [
+          "scan",
+          "cost"
+         ],
+         "n": 3
+        }
+       ]
+      }
+     },
+     {
+      "say": "Over a month that is about three hundred sixty thousand dollars.",
+      "show": {
+       "t": "big",
+       "text": "$360,000",
+       "sub": "per month, from one table"
+      }
+     },
+     {
+      "say": "Now partition by date and cluster by the filter column, so each query reads one gigabyte. That is fifty times less. A daily summary table that dashboards read instead cuts it again. Always say the monthly number out loud.",
+      "show": {
+       "t": "bars",
+       "title": "Monthly cost after *pruning*",
+       "unit": "$ thousand",
+       "items": [
+        [
+         "Unpartitioned",
+         360,
+         ""
+        ],
+        [
+         "Partitioned and clustered",
+         7.2,
+         "50x less scanned"
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Dashboards scan 50 GB per query on an unpartitioned table in a pay-per-TB warehouse. What is the best first fix?",
+     "opts": [
+      "Partition by date and cluster by the filter column",
+      "Buy a bigger warehouse so each query finishes faster",
+      "Cache the results in the browser for each user"
+     ],
+     "ans": 0,
+     "why": "Cost follows bytes scanned, so cutting the bytes each query reads cuts the bill. A faster warehouse does not reduce bytes scanned, and browser caching does not help most queries."
+    },
+    "work": [
+     "Translate every per-TB price into dollars per month before approving a query pattern.",
+     "Check bytes scanned per dashboard query and add partition filters or a daily aggregate table."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Where the numbers bite: S3 and peaks",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "You write twenty thousand objects a second to S3 and many requests fail. Why?",
+      "show": {
+       "t": "big",
+       "text": "20,000 writes / s",
+       "sub": "and requests get throttled"
+      }
+     },
+     {
+      "say": "S3 allows about thirty-five hundred writes a second per prefix, a prefix being the key path before the file name. Twenty thousand under one prefix gets throttled. Spread keys over at least six prefixes, and more for headroom.",
+      "show": {
+       "t": "scene",
+       "title": "Rate limit *per prefix*",
+       "nodes": [
+        {
+         "id": "w",
+         "label": "Writers",
+         "sub": "20,000/s",
+         "x": 50,
+         "y": 16,
+         "tone": "blue"
+        },
+        {
+         "id": "one",
+         "label": "One prefix",
+         "sub": "limit 3,500/s",
+         "x": 25,
+         "y": 50,
+         "tone": "red"
+        },
+        {
+         "id": "many",
+         "label": "Eight prefixes",
+         "sub": "28,000/s total",
+         "x": 75,
+         "y": 50,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "w",
+         "one"
+        ],
+        [
+         "w",
+         "many"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "w"
+        },
+        {
+         "at": 0.4,
+         "show": "one",
+         "packet": [
+          "w",
+          "one"
+         ],
+         "n": 3,
+         "chip": {
+          "text": "throttled",
+          "tone": "red",
+          "icon": "x"
+         }
+        },
+        {
+         "at": 0.7,
+         "show": "many",
+         "packet": [
+          "w",
+          "many"
+         ],
+         "n": 3,
+         "chip": {
+          "text": "spread the keys",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Small files hurt too. Millions of tiny files mean millions of requests, at five dollars per million writes, and slow query planning. Aim for one hundred twenty-eight megabytes to one gigabyte per file.",
+      "show": {
+       "t": "points",
+       "title": "Aim for *big* files",
+       "items": [
+        "Target 128 MB to 1 GB per file",
+        "Millions of tiny files mean millions of requests",
+        "Query planning slows as file counts grow"
+       ]
+      }
+     },
+     {
+      "say": "And always plan for peak. Average is not enough. Size for two to three times the average, or a spike will back up your pipeline.",
+      "show": {
+       "t": "bars",
+       "title": "Plan for *peak*",
+       "unit": "million/s",
+       "items": [
+        [
+         "Average",
+         1,
+         ""
+        ],
+        [
+         "Peak plan",
+         3,
+         "2 to 3 times"
+        ]
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "20,000 object writes a second all go under one S3 prefix. What happens and what is the fix?",
+     "opts": [
+      "Writes beyond about 3,500 a second throttle; spread keys over more prefixes",
+      "S3 scales one prefix without limit; add more writer threads",
+      "Writes slow only for large files; compact files into bigger ones"
+     ],
+     "ans": 0,
+     "why": "Each prefix supports roughly 3,500 writes a second, so extra writes get throttled. More prefixes add more rate. Adding threads or compacting does not raise the per-prefix limit."
+    },
+    "work": [
+     "Compute requests per second per prefix before choosing a key layout for high-volume writes.",
+     "Compact small files to 128 MB or more and size capacity for two to three times average load."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Losing a region: RPO and RTO",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "If a whole region dies, how much data do you lose?",
+      "show": {
+       "t": "big",
+       "text": "Region down",
+       "sub": "how much do we lose?"
+      }
+     },
+     {
+      "say": "Two numbers answer that. RPO is how much data you can lose, measured in time. RTO is how long you can be down. Say them first, before drawing anything.",
+      "show": {
+       "t": "points",
+       "title": "State the *targets* first",
+       "items": [
+        "RPO: how much data loss is acceptable, in time",
+        "RTO: how long an outage is acceptable",
+        "Agree both before drawing the design"
+       ]
+      }
+     },
+     {
+      "say": "Asynchronous replication between regions adds fifty to one hundred fifty milliseconds plus any backlog. So RPO is seconds, never zero. Zero needs synchronous writes, which pay that delay on every single write.",
+      "show": {
+       "t": "scene",
+       "title": "Replication and *RPO*",
+       "nodes": [
+        {
+         "id": "a",
+         "label": "Region A",
+         "sub": "takes writes",
+         "x": 25,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "b",
+         "label": "Region B",
+         "sub": "copy arrives late",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        },
+        {
+         "id": "lag",
+         "label": "50 to 150 ms + backlog",
+         "sub": "RPO is seconds",
+         "x": 50,
+         "y": 68,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "a",
+         "b"
+        ],
+        [
+         "b",
+         "lag"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "a",
+          "b"
+         ],
+         "packet": [
+          "a",
+          "b"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.6,
+         "show": "lag",
+         "chip": {
+          "text": "zero RPO needs sync writes",
+          "tone": "amber",
+          "icon": "clock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Two regions taking writes also conflict. Pin each key to a home region, or use last writer wins with trusted clocks, or counters that merge safely. And replicating ten terabytes a day costs about two hundred dollars a day.",
+      "show": {
+       "t": "points",
+       "title": "Resolve *conflicts*",
+       "items": [
+        "Home region per key, users pinned",
+        "Last writer wins, only with trusted clocks",
+        "CRDTs for counters that merge",
+        "10 TB a day across regions costs about $200"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Two regions replicate asynchronously and one fails. What is true about data loss?",
+     "opts": [
+      "Recent writes still in the replication backlog may be lost",
+      "No data is lost, since both regions hold every write",
+      "Only data older than the last daily backup is lost"
+     ],
+     "ans": 0,
+     "why": "Asynchronous replication lags by network delay plus backlog, so the newest writes may not have arrived. Zero loss needs synchronous writes. Daily backups are not what limits loss here."
+    },
+    "work": [
+     "Write RPO and RTO numbers into every multi-region design before choosing the technology.",
+     "Pick a conflict rule per dataset, such as a home region per key, and cost the inter-region transfer."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Backfill: pay per terabyte or run your own",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Reprocessing three years of data. Pay per terabyte, or run your own cluster?",
+      "show": {
+       "t": "big",
+       "text": "7.5 PB to reprocess",
+       "sub": "which engine?"
+      }
+     },
+     {
+      "say": "Seven and a half petabytes raw is about one and a half as Parquet. Scanned at five dollars a terabyte, that is seven thousand five hundred dollars a pass, and a bug means paying again.",
+      "show": {
+       "t": "scene",
+       "title": "The *per-TB* route",
+       "nodes": [
+        {
+         "id": "raw",
+         "label": "Raw",
+         "sub": "7.5 PB",
+         "x": 25,
+         "y": 30,
+         "tone": "grey"
+        },
+        {
+         "id": "pq",
+         "label": "Parquet",
+         "sub": "1.5 PB",
+         "x": 75,
+         "y": 30,
+         "tone": "blue"
+        },
+        {
+         "id": "bill",
+         "label": "$7,500 a pass",
+         "sub": "at $5 per TB",
+         "x": 50,
+         "y": 68,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "raw",
+         "pq"
+        ],
+        [
+         "pq",
+         "bill"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "raw",
+          "pq"
+         ],
+         "packet": [
+          "raw",
+          "pq"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.6,
+         "show": "bill",
+         "chip": {
+          "text": "a bug means paying again",
+          "tone": "red",
+          "icon": "x"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Your own Spark reads about fifty megabytes a second per core. That is roughly eight thousand three hundred core-hours. About four hundred dollars on demand, or one hundred forty on spot.",
+      "show": {
+       "t": "bars",
+       "title": "Cost of one *backfill pass*",
+       "unit": "$",
+       "items": [
+        [
+         "Pay per TB scanned",
+         7500,
+         ""
+        ],
+        [
+         "Own cluster, on demand",
+         400,
+         ""
+        ],
+        [
+         "Own cluster, spot",
+         140,
+         ""
+        ]
+       ]
+      }
+     },
+     {
+      "say": "So compute is cheap, and per terabyte scanning is not. Make the backfill idempotent and run it partition by partition on spot, because a reclaimed machine then just reruns one slice.",
+      "show": {
+       "t": "points",
+       "title": "Design the *backfill*",
+       "items": [
+        "Compute is cheap, per-TB scanning is not",
+        "Idempotent, partition by partition",
+        "Spot nodes can vanish, so reruns must be safe",
+        "Spread S3 keys over prefixes for writes"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "You must recompute 1.5 PB of Parquet and may need to rerun after bugs. What is the best choice?",
+     "opts": [
+      "Own Spark on spot, with idempotent partition-by-partition jobs",
+      "A pay-per-TB engine, since it needs no cluster to run",
+      "Own Spark on demand only, since spot is too risky"
+     ],
+     "ans": 0,
+     "why": "Own compute costs hundreds of dollars a pass against thousands for per-TB scanning. Idempotent partition jobs make lost spot machines harmless. On demand costs about three times more with no gain."
+    },
+    "work": [
+     "Estimate a backfill both ways, per-TB scan versus vCPU-hours, before choosing an engine.",
+     "Make jobs idempotent by partition so spot loss and reruns are cheap."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Let the numbers justify the design",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Three thousand events a second. Do you really need Kafka?",
+      "show": {
+       "t": "big",
+       "text": "3,000 events / s",
+       "sub": "do you need Kafka?"
+      }
+     },
+     {
+      "say": "Three thousand a second at one kilobyte is three megabytes a second. One database can take that write load, so Kafka adds machines and on-call work for nothing.",
+      "show": {
+       "t": "scene",
+       "title": "Small rate, *simple* design",
+       "nodes": [
+        {
+         "id": "src",
+         "label": "Events",
+         "sub": "3 MB/s",
+         "x": 25,
+         "y": 35,
+         "tone": "blue"
+        },
+        {
+         "id": "db",
+         "label": "One database",
+         "sub": "takes the writes",
+         "x": 75,
+         "y": 35,
+         "tone": "teal"
+        }
+       ],
+       "edges": [
+        [
+         "src",
+         "db"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "src"
+        },
+        {
+         "at": 0.4,
+         "show": "db",
+         "packet": [
+          "src",
+          "db"
+         ],
+         "n": 3,
+         "chip": {
+          "text": "Kafka adds cost, not value",
+          "tone": "amber",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Now a million a second. That is a gigabyte a second, so you need hundreds of partitions, and a single database cannot absorb it. Here Kafka earns its place.",
+      "show": {
+       "t": "bars",
+       "title": "Rate decides the *tool*",
+       "unit": "MB/s",
+       "items": [
+        [
+         "3,000 events/s",
+         3,
+         "one database"
+        ],
+        [
+         "1M events/s",
+         1000,
+         "hundreds of partitions"
+        ]
+       ]
+      }
+     },
+     {
+      "say": "The interviewer rarely checks your arithmetic. They check that you did it, and that your design follows from it.",
+      "show": {
+       "t": "points",
+       "title": "Show the *method*",
+       "items": [
+        "State rate, size and retention",
+        "Multiply to flow, storage and cost",
+        "Pick the design the numbers justify"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "At 3,000 events per second, what should you say about proposing Kafka?",
+     "opts": [
+      "Justify it, since one database could take that load",
+      "Use it, since every pipeline needs a message queue",
+      "Avoid it, since Kafka tops out below 10,000 events a second"
+     ],
+     "ans": 0,
+     "why": "Three MB/s is within one database's reach, so Kafka needs a reason such as replay or many consumers. Kafka is not mandatory, and it scales far beyond 10,000 events a second."
+    },
+    "work": [
+     "Open every design answer with rate, event size and retention, then show the multiplication.",
+     "For each component you add, name the number that forces it."
+    ],
+    "part": "2 of 2"
+   }
+  ]
+ },
+ "10.6 Twelve designs": {
+  "hash": "6135d3654bf6",
+  "sec": "10.6",
+  "reels": [
+   {
+    "title": "Fast lane, final lane",
+    "level": "New to it",
+    "beats": [
+     {
+      "say": "Why does one company keep two sets of numbers for the same ad click?",
+      "show": {
+       "t": "big",
+       "text": "Two answers, one click",
+       "sub": "fast now, exact later"
+      }
+     },
+     {
+      "say": "Think of a restaurant. The waiter shouts a rough count of tonight's diners so the chef can plan. That is the fast lane. It is quick, but it can be wrong.",
+      "show": {
+       "t": "scene",
+       "title": "The *fast* lane",
+       "nodes": [
+        {
+         "id": "ev",
+         "label": "Events",
+         "sub": "diners arrive",
+         "x": 50,
+         "y": 15,
+         "tone": "grey"
+        },
+        {
+         "id": "st",
+         "label": "Stream",
+         "sub": "rough count now",
+         "x": 50,
+         "y": 50,
+         "tone": "amber"
+        },
+        {
+         "id": "dash",
+         "label": "Dashboard",
+         "sub": "plan the kitchen",
+         "x": 50,
+         "y": 82,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "ev",
+         "st"
+        ],
+        [
+         "st",
+         "dash"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "ev",
+          "st"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "ev",
+          "st"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "dash"
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Quick but rough",
+          "tone": "amber",
+          "icon": "zap"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Next morning the accountant counts every receipt, including the late ones. That is the slow lane. It is final, so the bill uses it.",
+      "show": {
+       "t": "scene",
+       "title": "The *slow* lane",
+       "nodes": [
+        {
+         "id": "ev",
+         "label": "Receipts",
+         "sub": "all of them",
+         "x": 50,
+         "y": 15,
+         "tone": "grey"
+        },
+        {
+         "id": "ba",
+         "label": "Daily batch",
+         "sub": "exact count",
+         "x": 50,
+         "y": 50,
+         "tone": "teal"
+        },
+        {
+         "id": "bill",
+         "label": "Billing",
+         "sub": "final numbers",
+         "x": 50,
+         "y": 82,
+         "tone": "plum"
+        }
+       ],
+       "edges": [
+        [
+         "ev",
+         "ba"
+        ],
+        [
+         "ba",
+         "bill"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "ev",
+          "ba"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "ev",
+          "ba"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "bill"
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Slow but final",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "Most big data designs are just this: a fast rough answer now, and a slow exact one later.",
+      "show": {
+       "t": "points",
+       "title": "The pattern",
+       "items": [
+        "Stream: fast, rough",
+        "Batch: slow, exact",
+        "Money uses the exact one"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why do many designs keep both a streaming and a batch result?",
+     "opts": [
+      "Streaming gives a quick view and batch gives the final, corrected numbers",
+      "Batch is needed because streaming cannot store any data at all",
+      "Two copies are required so that either one can be deleted later",
+      "Streaming is always exact, and batch only exists as a backup"
+     ],
+     "ans": 0,
+     "why": "Streaming answers quickly but may miss late data. Batch re-counts everything later, so it is the one you trust for billing."
+    },
+    "work": [
+     "List the numbers your team publishes and mark each as fast-rough or final-exact.",
+     "Tell dashboard users which figures can still change and for how long."
+    ]
+   },
+   {
+    "title": "Sizing the ads join",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "Fifty billion ad impressions a day. How many arrive every second?",
+      "show": {
+       "t": "big",
+       "text": "50 billion a day",
+       "sub": "per second?"
+      }
+     },
+     {
+      "say": "Divide by eighty-six thousand four hundred seconds in a day. That is about six hundred thousand a second.",
+      "show": {
+       "t": "scene",
+       "title": "About *600,000* a second",
+       "nodes": [
+        {
+         "id": "imp",
+         "label": "Impressions",
+         "sub": "50 billion a day",
+         "x": 50,
+         "y": 20,
+         "tone": "blue"
+        },
+        {
+         "id": "k",
+         "label": "Kafka",
+         "sub": "keyed by impression id",
+         "x": 50,
+         "y": 75,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "imp",
+         "k"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "imp",
+          "k"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "imp",
+          "k"
+         ],
+         "n": 5
+        },
+        {
+         "at": 0.7,
+         "count": {
+          "key": "rate",
+          "label": "impressions per second",
+          "to": 600000,
+          "unit": "/s",
+          "tone": "blue"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "A click must find its impression. So the stream job keeps each impression in memory for a day, keyed by impression id.",
+      "show": {
+       "t": "scene",
+       "title": "Click meets *impression*",
+       "nodes": [
+        {
+         "id": "imp",
+         "label": "Impressions",
+         "sub": "arrive first",
+         "x": 25,
+         "y": 20,
+         "tone": "blue"
+        },
+        {
+         "id": "clk",
+         "label": "Clicks",
+         "sub": "500 million a day",
+         "x": 75,
+         "y": 20,
+         "tone": "teal"
+        },
+        {
+         "id": "job",
+         "label": "Join job",
+         "sub": "one day of state",
+         "x": 50,
+         "y": 65,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "imp",
+         "job"
+        ],
+        [
+         "clk",
+         "job"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "imp",
+          "clk",
+          "job"
+         ]
+        },
+        {
+         "at": 0.3,
+         "packet": [
+          "imp",
+          "job"
+         ],
+         "n": 4
+        },
+        {
+         "at": 0.6,
+         "packet": [
+          "clk",
+          "job"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "glow": "job"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Six hundred thousand a second, times a day, times a hundred bytes, is about five terabytes of state. That is huge to hold and recover.",
+      "show": {
+       "t": "scene",
+       "title": "State grows to *5 TB*",
+       "nodes": [
+        {
+         "id": "job",
+         "label": "Join state",
+         "sub": "600k x 1 day x 100 B",
+         "x": 50,
+         "y": 35,
+         "tone": "red"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "job"
+        },
+        {
+         "at": 0.5,
+         "count": {
+          "key": "tb",
+          "label": "join state",
+          "to": 5,
+          "unit": "TB",
+          "tone": "red"
+         }
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Slow to recover",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So keep only keys of clicked impressions, or do the join in batch.",
+      "show": {
+       "t": "points",
+       "title": "Shrink it",
+       "items": [
+        "Keep keys, not full rows",
+        "Or join in daily batch"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why is the day-long impression state in the click join a problem?",
+     "opts": [
+      "It reaches terabytes, so it is costly to hold and slow to recover",
+      "Impressions and clicks cannot share a key in the same system",
+      "Kafka deletes any impression older than a few seconds",
+      "Clicks arrive before impressions, so nothing can ever match"
+     ],
+     "ans": 0,
+     "why": "At about 600,000 a second for a day, state is around 5 TB. That is expensive to store and slow to rebuild after failure, so trim it or join in batch."
+    },
+    "work": [
+     "Do the back-of-envelope: rate times retention times bytes per record before choosing a stream join.",
+     "Ask whether you can keep only keys or only the records likely to match."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Why a deleted row lingers",
+    "level": "How it works",
+    "beats": [
+     {
+      "say": "You delete a user's row. Is their data gone?",
+      "show": {
+       "t": "big",
+       "text": "Deleted, but gone?",
+       "sub": "in a petabyte lake"
+      }
+     },
+     {
+      "say": "Not in a lake. Table formats like Iceberg keep old files for time travel, so an old snapshot still holds the person.",
+      "show": {
+       "t": "scene",
+       "title": "Old files *remember*",
+       "nodes": [
+        {
+         "id": "t",
+         "label": "Table",
+         "sub": "user id in every row",
+         "x": 50,
+         "y": 20,
+         "tone": "blue"
+        },
+        {
+         "id": "old",
+         "label": "Old snapshot",
+         "sub": "still has the user",
+         "x": 50,
+         "y": 70,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "t",
+         "old"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "t",
+          "old"
+         ]
+        },
+        {
+         "at": 0.5,
+         "glow": "old"
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Still readable",
+          "tone": "red",
+          "icon": "alert"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So a weekly job does four things. It reads the deletion log of user ids. It marks those rows deleted in one batch. Compaction rewrites the files without them. Then snapshot expiry removes the old files.",
+      "show": {
+       "t": "flow",
+       "title": "Weekly deletion",
+       "steps": [
+        {
+         "label": "Deletion log"
+        },
+        {
+         "label": "Mark rows deleted"
+        },
+        {
+         "label": "Compact files"
+        },
+        {
+         "label": "Expire snapshots"
+        }
+       ]
+      }
+     },
+     {
+      "say": "Batching matters. Rewriting one percent of a petabyte is ten terabytes of reads and writes. Do it once a week, not per request.",
+      "show": {
+       "t": "scene",
+       "title": "Rewrite *once* a week",
+       "nodes": [
+        {
+         "id": "w",
+         "label": "Weekly rewrite",
+         "sub": "1% of 1 PB",
+         "x": 50,
+         "y": 35,
+         "tone": "amber"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": "w"
+        },
+        {
+         "at": 0.5,
+         "count": {
+          "key": "tb",
+          "label": "read and written",
+          "to": 10,
+          "unit": "TB",
+          "tone": "amber"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "After a delete runs on an Iceberg table, what must still happen for the data to truly vanish?",
+     "opts": [
+      "Compact the files and expire the old snapshots that hold the rows",
+      "Wait for Kafka topics to be rebuilt from the lake each night",
+      "Run the same delete a second time so it replaces the first",
+      "Nothing, because the delete removes all old file versions"
+     ],
+     "ans": 0,
+     "why": "A delete only creates a new snapshot. Old files remain until compaction rewrites them and snapshot expiry removes the previous versions."
+    },
+    "work": [
+     "Check your snapshot expiry age is shorter than your deletion deadline.",
+     "Keep a short list of tables that hold user ids so deletes target only them."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "Timeouts in fraud scoring",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "A payment scorer times out after one hundred milliseconds. Do you approve the payment or block it?",
+      "show": {
+       "t": "big",
+       "text": "100 ms, no answer",
+       "sub": "approve or block?"
+      }
+     },
+     {
+      "say": "That is fail-open versus fail-closed. Fail-open approves, so customers are happy, but fraud may slip through. Fail-closed blocks, so you are safe but you lose real sales.",
+      "show": {
+       "t": "scene",
+       "title": "*Open* or closed",
+       "nodes": [
+        {
+         "id": "pay",
+         "label": "Payment",
+         "sub": "waiting",
+         "x": 50,
+         "y": 15,
+         "tone": "grey"
+        },
+        {
+         "id": "op",
+         "label": "Fail-open",
+         "sub": "approve, risk fraud",
+         "x": 25,
+         "y": 65,
+         "tone": "amber"
+        },
+        {
+         "id": "cl",
+         "label": "Fail-closed",
+         "sub": "block, lose sales",
+         "x": 75,
+         "y": 65,
+         "tone": "red"
+        }
+       ],
+       "edges": [
+        [
+         "pay",
+         "op"
+        ],
+        [
+         "pay",
+         "cl"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "pay"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "op",
+          "cl"
+         ]
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "pay",
+          "op"
+         ],
+         "n": 2
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "pay",
+          "cl"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "Either way, a fallback rule decides fast, because payments must not wait on a slow model.",
+      "show": {
+       "t": "points",
+       "title": "Fallback",
+       "items": [
+        "Simple rule, instant",
+        "Never block on the model"
+       ]
+      }
+     },
+     {
+      "say": "Another trap is features. Counts like transactions in the last ten minutes need a stream processor keeping a fast store fresh. Slower features can be batch.",
+      "show": {
+       "t": "scene",
+       "title": "Fresh *features*",
+       "nodes": [
+        {
+         "id": "tx",
+         "label": "Transactions",
+         "sub": "stream",
+         "x": 25,
+         "y": 20,
+         "tone": "blue"
+        },
+        {
+         "id": "fs",
+         "label": "Feature store",
+         "sub": "10-minute counts",
+         "x": 75,
+         "y": 20,
+         "tone": "teal"
+        },
+        {
+         "id": "sc",
+         "label": "Scorer",
+         "sub": "reads features",
+         "x": 50,
+         "y": 70,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "tx",
+         "fs"
+        ],
+        [
+         "fs",
+         "sc"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "tx",
+          "fs"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "tx",
+          "fs"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "sc"
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "fs",
+          "sc"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "And chargebacks arrive weeks later, so your training labels are always late.",
+      "show": {
+       "t": "big",
+       "text": "Labels arrive weeks late",
+       "sub": "chargebacks"
+      }
+     }
+    ],
+    "check": {
+     "q": "The fraud scorer times out. What is the safest design choice for the payment path?",
+     "opts": [
+      "Use a fast fallback rule so the payment never waits on the model",
+      "Hold the payment until the model finally answers, however long",
+      "Retry the model again and again until one call succeeds",
+      "Always reject the payment since any timeout looks suspicious"
+     ],
+     "ans": 0,
+     "why": "Payments have a latency budget. A simple fallback rule decides at once, and you choose open or closed deliberately based on the cost of fraud versus lost sales."
+    },
+    "work": [
+     "Write down the fail-open or fail-closed decision per payment type, with an owner.",
+     "Log every decision and its features so you can audit and retrain later."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Late sales and restated days",
+    "level": "Inside and caveats",
+    "beats": [
+     {
+      "say": "A sale arrives six days after the ad click. Was yesterday's revenue number wrong?",
+      "show": {
+       "t": "big",
+       "text": "Six days late",
+       "sub": "was the number wrong?"
+      }
+     },
+     {
+      "say": "Yes, and that is by design. Advertisers report conversions up to seven days late.",
+      "show": {
+       "t": "scene",
+       "title": "Late *conversions*",
+       "nodes": [
+        {
+         "id": "clk",
+         "label": "Click",
+         "sub": "day 0",
+         "x": 25,
+         "y": 25,
+         "tone": "blue"
+        },
+        {
+         "id": "cv",
+         "label": "Conversion",
+         "sub": "up to day 7",
+         "x": 75,
+         "y": 25,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "clk",
+         "cv"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "clk",
+          "cv"
+         ]
+        },
+        {
+         "at": 0.5,
+         "packet": [
+          "clk",
+          "cv"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Up to 7 days late",
+          "tone": "amber",
+          "icon": "clock"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "So a daily batch re-runs last-click attribution over a seven-day lookback and restates every affected day.",
+      "show": {
+       "t": "flow",
+       "title": "Daily restate",
+       "steps": [
+        {
+         "label": "Read 7 days"
+        },
+        {
+         "label": "Last-click attribution"
+        },
+        {
+         "label": "Overwrite affected days"
+        }
+       ]
+      }
+     },
+     {
+      "say": "The stream gives a quick dashboard view, but it never sees those late sales. Billing uses the batch numbers.",
+      "show": {
+       "t": "scene",
+       "title": "Who uses *what*",
+       "nodes": [
+        {
+         "id": "s",
+         "label": "Stream",
+         "sub": "dashboards",
+         "x": 25,
+         "y": 30,
+         "tone": "amber"
+        },
+        {
+         "id": "b",
+         "label": "Batch",
+         "sub": "billing",
+         "x": 75,
+         "y": 30,
+         "tone": "teal"
+        }
+       ],
+       "edges": [],
+       "steps": [
+        {
+         "at": 0.2,
+         "show": [
+          "s",
+          "b"
+         ]
+        },
+        {
+         "at": 0.6,
+         "glow": "b"
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "Bill from batch",
+          "tone": "teal",
+          "icon": "check"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "say": "The gotcha is duplicates. Click fraud and retries can count one click twice, so deduplicate by event id before you join or bill.",
+      "show": {
+       "t": "points",
+       "title": "Deduplicate",
+       "items": [
+        "Same event id counts once",
+        "Do it before join and billing"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why does billing use the daily batch numbers instead of the stream?",
+     "opts": [
+      "Batch includes late conversions and restates affected days",
+      "Streams cannot count more than a few thousand events",
+      "Batch jobs always run faster than a stream job",
+      "Billing needs numbers that never change after they are shown"
+     ],
+     "ans": 0,
+     "why": "Conversions can arrive up to seven days late. Only the batch looks back over that window and corrects earlier days, so it is the figure to bill from."
+    },
+    "work": [
+     "Define the lookback window from the real lateness distribution of your data.",
+     "Show users a 'may be restated' marker on recent days."
+    ],
+    "part": "2 of 2"
+   },
+   {
+    "title": "One user table, many tests",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Thousands of experiments run at once. Why not join raw events for each one?",
+      "show": {
+       "t": "big",
+       "text": "Thousands of tests",
+       "sub": "billions of events a day"
+      }
+     },
+     {
+      "say": "Because billions of events a day, scanned once per experiment, would cost thousands of full scans.",
+      "show": {
+       "t": "scene",
+       "title": "The *naive* way",
+       "nodes": [
+        {
+         "id": "raw",
+         "label": "Raw events",
+         "sub": "billions a day",
+         "x": 50,
+         "y": 15,
+         "tone": "red"
+        },
+        {
+         "id": "e1",
+         "label": "Test 1",
+         "sub": "full scan",
+         "x": 20,
+         "y": 70,
+         "tone": "grey"
+        },
+        {
+         "id": "e2",
+         "label": "Test 2",
+         "sub": "full scan",
+         "x": 50,
+         "y": 70,
+         "tone": "grey"
+        },
+        {
+         "id": "e3",
+         "label": "Test N",
+         "sub": "full scan",
+         "x": 80,
+         "y": 70,
+         "tone": "grey"
+        }
+       ],
+       "edges": [
+        [
+         "raw",
+         "e1"
+        ],
+        [
+         "raw",
+         "e2"
+        ],
+        [
+         "raw",
+         "e3"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": "raw"
+        },
+        {
+         "at": 0.4,
+         "show": [
+          "e1",
+          "e2",
+          "e3"
+         ]
+        },
+        {
+         "at": 0.7,
+         "packet": [
+          "raw",
+          "e1"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.75,
+         "packet": [
+          "raw",
+          "e2"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "raw",
+          "e3"
+         ],
+         "n": 3
+        }
+       ]
+      }
+     },
+     {
+      "say": "Instead, build one per-user metric table daily. Each experiment then joins only its assigned users to that small table.",
+      "show": {
+       "t": "scene",
+       "title": "Compute *once*, reuse",
+       "nodes": [
+        {
+         "id": "raw",
+         "label": "Raw events",
+         "sub": "scan once",
+         "x": 50,
+         "y": 15,
+         "tone": "blue"
+        },
+        {
+         "id": "pu",
+         "label": "Per-user metrics",
+         "sub": "one table a day",
+         "x": 50,
+         "y": 50,
+         "tone": "teal"
+        },
+        {
+         "id": "ex",
+         "label": "All experiments",
+         "sub": "cheap joins",
+         "x": 50,
+         "y": 85,
+         "tone": "amber"
+        }
+       ],
+       "edges": [
+        [
+         "raw",
+         "pu"
+        ],
+        [
+         "pu",
+         "ex"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "raw",
+          "pu"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "raw",
+          "pu"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "ex"
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "pu",
+          "ex"
+         ],
+         "n": 3
+        }
+       ]
+      }
+     },
+     {
+      "say": "Assignment is a hash of user and experiment id, so no lookup service is needed. Always check sample ratio mismatch, which shows when assignment is broken. For a single test, a custom query is simpler.",
+      "show": {
+       "t": "points",
+       "title": "Guardrails",
+       "items": [
+        "Hash assignment, no lookup",
+        "Sample ratio mismatch check",
+        "One-off test: just query it"
+       ]
+      }
+     }
+    ],
+    "check": {
+     "q": "Why precompute a per-user metric table for an experimentation platform?",
+     "opts": [
+      "Every experiment reuses it, avoiding a raw event scan for each test",
+      "It removes the need to randomise users into variants at all",
+      "It lets each test choose its own metric definitions freely",
+      "It makes the sample ratio mismatch check unnecessary"
+     ],
+     "ans": 0,
+     "why": "The expensive part is scanning billions of events. Doing it once per user per day and reusing it across thousands of tests is what makes the platform scale."
+    },
+    "work": [
+     "Find metrics that several analyses recompute from raw events and move them into one shared table.",
+     "Add an automatic sample ratio mismatch alert to every experiment."
+    ],
+    "part": "1 of 2"
+   },
+   {
+    "title": "Lineage: coverage over scale",
+    "level": "Architect",
+    "beats": [
+     {
+      "say": "Fifty thousand tables and ten thousand jobs a day. Is a lineage graph hard to scale?",
+      "show": {
+       "t": "big",
+       "text": "50,000 tables",
+       "sub": "10,000 jobs a day"
+      }
+     },
+     {
+      "say": "No. That is a small graph. One database and a search index handle it.",
+      "show": {
+       "t": "scene",
+       "title": "A *small* graph",
+       "nodes": [
+        {
+         "id": "k",
+         "label": "Lineage events",
+         "sub": "via Kafka",
+         "x": 50,
+         "y": 15,
+         "tone": "amber"
+        },
+        {
+         "id": "g",
+         "label": "Graph service",
+         "sub": "datasets and jobs",
+         "x": 50,
+         "y": 50,
+         "tone": "teal"
+        },
+        {
+         "id": "s",
+         "label": "Search index",
+         "sub": "who uses this column?",
+         "x": 50,
+         "y": 85,
+         "tone": "blue"
+        }
+       ],
+       "edges": [
+        [
+         "k",
+         "g"
+        ],
+        [
+         "g",
+         "s"
+        ]
+       ],
+       "steps": [
+        {
+         "at": 0.1,
+         "show": [
+          "k",
+          "g"
+         ]
+        },
+        {
+         "at": 0.4,
+         "packet": [
+          "k",
+          "g"
+         ],
+         "n": 3
+        },
+        {
+         "at": 0.7,
+         "show": "s"
+        },
+        {
+         "at": 0.8,
+         "packet": [
+          "g",
+          "s"
+         ],
+         "n": 2
+        }
+       ]
+      }
+     },
+     {
+      "say": "The hard part is coverage. When jobs emit lineage events themselves, that is push, and every engine must be wired up. One silent engine leaves a hole in the graph.",
+      "show": {
+       "t": "points",
+       "title": "Push needs coverage",
+       "items": [
+        "Every engine must emit",
+        "One silent engine, one hole"
+       ]
+      }
+     },
+     {
+      "say": "Pull means scraping logs and guessing. It reaches more engines but is less accurate.",
+      "show": {
+       "t": "points",
+       "title": "Pull",
+       "items": [
+        "Scrape logs",
+        "Wider but guessier"
+       ]
+      }
+     },
+     {
+      "say": "Then trust. Without owners, descriptions and tests, nobody believes the graph. Choose push, and spend your effort on coverage and owners, not servers.",
+      "show": {
+       "t": "big",
+       "text": "Spend on coverage and owners",
+       "sub": "not on servers"
+      }
+     }
+    ],
+    "check": {
+     "q": "At 50,000 tables, what is the main risk in a lineage platform?",
+     "opts": [
+      "Gaps in coverage and weak ownership make the graph untrusted",
+      "The graph is too large to fit in any database",
+      "Search cannot answer questions about single columns",
+      "Kafka cannot carry lineage events from many jobs"
+     ],
+     "ans": 0,
+     "why": "The graph itself is small. It fails when engines do not emit events or datasets have no owner, so people stop trusting it."
+    },
+    "work": [
+     "Measure what share of jobs emit lineage events and chase the missing engines.",
+     "Require an owner and description before a table is marked certified."
+    ],
+    "part": "2 of 2"
    }
   ]
  }
