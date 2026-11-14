@@ -2631,7 +2631,7 @@
       }
      },
      {
-      "say": "Databricks Real-Time Mode, generally available for Spark Declarative Pipelines since October 2026, changes execution. All stages run at once, and each row is passed on as soon as it is produced.",
+      "say": "Databricks Real-Time Mode changes execution. It became generally available for Structured Streaming in early 2026, and for Declarative Pipelines in October. All stages run at once, and each row is passed on as soon as it is produced.",
       "show": {
        "t": "scene",
        "title": "All stages run *at once*",
@@ -2708,7 +2708,7 @@
       }
      },
      {
-      "say": "Before, every row waited for the whole batch to finish. That wait made the seconds. Removing it gives milliseconds, but processors stay busy all the time, so it costs more.",
+      "say": "Before, every row waited for the whole batch to finish. That wait made the seconds. Removing it gives milliseconds, but processors stay busy all the time, and Photon is not supported, so it costs more.",
       "show": {
        "t": "points",
        "title": "The trade",
@@ -2716,7 +2716,7 @@
         "Old: rows wait for the whole batch",
         "New: rows move as produced",
         "Gain: milliseconds",
-        "Cost: always-on compute"
+        "Cost: always-on compute, no Photon"
        ]
       }
      },
@@ -2781,9 +2781,9 @@
     "check": {
      "q": "A Kafka Streams instance dies and a new one starts. How does it get its state back?",
      "opts": [
-      "It replays the backing Kafka topic into a new local store",
-      "It reads a Flink savepoint",
-      "It starts empty and ignores history"
+      "It replays the backing topic into a new store",
+      "It loads the latest Flink savepoint from S3 storage",
+      "It starts empty and ignores every past event"
      ],
      "ans": 0,
      "why": "Local stores are backed by Kafka topics, so a replacement replays that topic, which takes longer with large state."
@@ -4786,7 +4786,7 @@
       }
      },
      {
-      "say": "A topic is split into partitions. Say it has six. Inside one consumer group, each partition is read by exactly one consumer.",
+      "say": "A topic is split into partitions. Say it has six. In a classic consumer group, each partition is read by exactly one consumer.",
       "show": {
        "t": "scene",
        "title": "One partition, one *reader*",
@@ -4865,27 +4865,27 @@
       }
      },
      {
-      "say": "So six consumers is the ceiling. A seventh sits idle. Choose the partition count with growth in mind.",
+      "say": "So six consumers is the ceiling, and a seventh sits idle. Kafka 4.2 made share groups generally available: many consumers take records from one partition, like a queue, acknowledging each one. The catch is that order within a key is lost.",
       "show": {
        "t": "bars",
        "title": "Busy consumers, 6 partitions",
        "unit": "busy",
        "items": [
         [
-         "6 consumers",
-         6,
-         ""
-        ],
-        [
-         "9 consumers",
+         "Group, 9 consumers",
          6,
          "3 idle"
+        ],
+        [
+         "Share group, 9",
+         9,
+         "no order per key"
         ]
        ]
       }
      },
      {
-      "say": "Messages with the same key land on the same partition, which keeps their order. But if one customer sends half the traffic, that partition is hot, and its consumer falls behind while the others sit bored.",
+      "say": "Keys keep order because the same key lands on one partition. But if one customer sends half the traffic, that partition is hot, and its consumer falls behind.",
       "show": {
        "t": "scene",
        "title": "A *hot* key",
@@ -4937,18 +4937,19 @@
      }
     ],
     "check": {
-     "q": "A topic has 4 partitions and one group has 8 consumers. What happens?",
+     "q": "A topic has 4 partitions and one classic consumer group has 8 consumers. What happens?",
      "opts": [
       "All 8 share the work evenly",
       "4 consumers work and 4 stay idle",
-      "The topic adds partitions automatically"
+      "Kafka adds 4 partitions to fit"
      ],
      "ans": 1,
-     "why": "Each partition goes to one consumer in a group, so at most 4 can be active."
+     "why": "In a classic group each partition goes to one consumer, so at most 4 are active. A share group could use all 8, giving up per-key order."
     },
     "work": [
      "Check the largest key's share of traffic on your busiest topic.",
-     "Pick partition counts for the load you expect in a year, not today."
+     "Pick partition counts for the load you expect in a year, not today.",
+     "Use a share group only for work where order does not matter."
     ],
     "part": "2 of 2"
    },
@@ -5398,7 +5399,7 @@
       }
      },
      {
-      "say": "Kafka earns its place when many producers write once and many consumers replay at their own pace. Unlike SQS or RabbitMQ, reading does not delete, so new teams can replay history.",
+      "say": "Kafka earns its place when many producers write once and many consumers replay at their own pace. Unlike SQS or RabbitMQ, reading does not delete, so new teams can replay history. Since Kafka 4.2, share groups also give queue-style work sharing on the same log.",
       "show": {
        "t": "points",
        "title": "Why Kafka",
@@ -5410,7 +5411,7 @@
       }
      },
      {
-      "say": "Against Kinesis or Pub/Sub you gain Connect, Debezium, Flink and Schema Registry, and no per-shard limits. The price is running it, or paying Confluent or MSK.",
+      "say": "Against Kinesis or Pub/Sub you gain Connect, Debezium, Flink and Schema Registry. The price is running it, or paying Confluent or MSK.",
       "show": {
        "t": "scene",
        "title": "Ecosystem versus *effort*",
@@ -5473,9 +5474,9 @@
     "check": {
      "q": "Which need is the strongest reason to pick Kafka over SQS?",
      "opts": [
-      "One worker processing each task once",
-      "Several teams replaying the same stream",
-      "Synchronous request and reply"
+      "One worker handling each task once",
+      "Several teams replaying one stream",
+      "A quick synchronous request and reply"
      ],
      "ans": 1,
      "why": "Kafka keeps messages after reads, so many consumers can read and replay the same stream independently."
@@ -6168,7 +6169,7 @@
     "level": "Inside and caveats",
     "beats": [
      {
-      "say": "Where does a streaming job keep a hundred gigabytes of memory?",
+      "say": "Where does a streaming job keep a hundred gigabytes of state?",
       "show": {
        "t": "big",
        "text": "Huge state",
@@ -6196,7 +6197,7 @@
       }
      },
      {
-      "say": "Flink 2.0 went further with disaggregated state: the main copy lives in object storage, and local disk is only a cache. Checkpoints and rescaling get much faster.",
+      "say": "Flink 2.0 added disaggregated state, called ForSt: the main copy lives in object storage and local disk is only a cache, so checkpoints and rescaling get faster. It is still marked experimental, and it only works with the new asynchronous state API.",
       "show": {
        "t": "scene",
        "title": "State in *object storage*",
@@ -6241,11 +6242,19 @@
          "n": 3
         },
         {
-         "at": 0.8,
+         "at": 0.7,
          "chip": {
           "text": "Fast rescale",
           "tone": "teal",
           "icon": "⇉"
+         }
+        },
+        {
+         "at": 0.88,
+         "chip": {
+          "text": "Still experimental",
+          "tone": "amber",
+          "icon": "!"
          }
         }
        ]
@@ -6261,18 +6270,19 @@
      }
     ],
     "check": {
-     "q": "What did Flink 2.0's disaggregated state change?",
+     "q": "What does Flink 2.0's disaggregated state change?",
      "opts": [
-      "State is kept only on the job manager",
-      "The primary copy of state lives in object storage",
-      "State is no longer checkpointed at all"
+      "State is held only on the job manager",
+      "The main copy of state lives in object storage",
+      "State is never checkpointed at all anymore"
      ],
      "ans": 1,
-     "why": "ForSt keeps state in remote storage with local disk as a cache, speeding checkpoints and rescaling."
+     "why": "ForSt keeps state in remote storage with local disk as a cache. It is experimental and needs the asynchronous state API."
     },
     "work": [
      "Chart state size per operator over a week.",
-     "Add a TTL to any join or window keyed by user or session."
+     "Add a TTL to any join or window keyed by user or session.",
+     "Keep RocksDB for production until disaggregated state leaves experimental."
     ],
     "part": "2 of 3"
    },

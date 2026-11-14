@@ -106,6 +106,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.36.36: Reel review: Kafka 4.2 share groups (queue-style, no per-key order), Spark 4 ANSI on by default, Arrow Python UDFs in Spark 4.2, Iceberg v3 deletion vectors and position versus equality deletes, Flink 2.0 disaggregated state still experimental, Real-Time Mode GA dates and no Photon, managed Iceberg (S3 Tables).
 - 1.36.35: Reel review: TLS turns off Kafka zero-copy, Kafka 4 opt-in consumer protocol, Parquet row-group size by writer, free-threaded Python 3.14, new reel on linearizable versus serializable.
 - 1.36.34: A cast you get to know, and case files after a full set (ENGAGE 6, 9).
 - 1.36.33: Episodes frame the work, the weekend finale with a rematch, the season map (ENGAGE 2, 4, 5).
