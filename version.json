@@ -1,11 +1,10 @@
 {
-  "version": "1.36.36",
+  "version": "1.36.37",
   "date": "2026-11-14",
   "notes": [
-    "Reel review (15 reels, 9 rewritten): Kafka 4.2 share groups are production-ready (queue-style, no per-key order)",
-    "Spark 4 turns ANSI mode on by default, so bad casts fail instead of returning null; Spark 4.2 sends Python UDFs over Arrow by default",
-    "Iceberg: position versus equality deletes, format v3 deletion vectors, managed Iceberg such as S3 Tables",
-    "Flink 2.0 disaggregated state is still experimental; Databricks Real-Time Mode GA dates, no Photon",
-    "All changed beats recorded in the Heart voice (Kokoro)"
+    "New in Reliability (9.6): rolling out a change safely: stages by percent and region, a cost and latency check at each stage (a watch-only rule still burns CPU on all traffic), automatic rollback and a kill switch.",
+    "A new simulator challenge, A config push saturates CPU everywhere, with a Staged rollout box that fixes it.",
+    "A new interview question: one change took down the platform; how do you ship changes safely?",
+    "1490 of 1490 reels now play in the natural Heart voice."
   ]
 }
