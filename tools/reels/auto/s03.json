@@ -2889,10 +2889,10 @@
     "check": {
      "q": "In the moving analogy, what does an executor correspond to?",
      "opts": [
-      "A truck holding several workers and their space",
-      "One box of data",
-      "The deadline",
-      "The warehouse"
+      "A truck with several workers",
+      "One box of data being carried",
+      "The deadline set for the job",
+      "The warehouse being emptied"
      ],
      "ans": 0,
      "why": "An executor is a process with a few cores (workers) and its own memory (space). Partitions are the batches of boxes it carries."
@@ -2915,7 +2915,7 @@
       }
      },
      {
-      "say": "Start with partitions. One terabyte at about 128 megabytes each is roughly 8,000 partitions in the widest stage. Each partition becomes one task.",
+      "say": "Start with partitions. Spark reads input in splits of about 128 megabytes, so one terabyte is roughly 8,000 tasks. After a shuffle, the count comes from shuffle partitions, two hundred by default, which adaptive execution merges toward about 64 megabytes each.",
       "show": {
        "t": "scene",
        "title": "8,000 *partitions*",
@@ -2931,7 +2931,7 @@
         {
          "id": "p",
          "label": "8,000 tasks",
-         "sub": "128 MB each",
+         "sub": "128 MB input splits",
          "x": 75,
          "y": 30,
          "tone": "teal"
@@ -2969,6 +2969,14 @@
           "to": 8000,
           "unit": "",
           "tone": "teal"
+         }
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "After a shuffle: AQE aims for 64 MB",
+          "tone": "amber",
+          "icon": "!"
          }
         }
        ]
@@ -3033,7 +3041,7 @@
       }
      },
      {
-      "say": "Pack four or five cores per executor, so about 160 to 200 executors. More and threads fight over disk and garbage collection. If a task needs four times its partition, that is 512 megabytes, so five tasks need about 2.5 gigabytes plus headroom.",
+      "say": "Pack four or five cores per executor, so about 160 to 200 executors. More and threads fight over disk and garbage collection. If a task needs four times its split, that is 512 megabytes, so five tasks need about 2.5 gigabytes plus headroom.",
       "show": {
        "t": "points",
        "title": "Per executor",
@@ -3144,13 +3152,14 @@
       }
      },
      {
-      "say": "The fix is keeping shuffle data alive without the executor. Use an external shuffle service, or shuffle tracking, which refuses to remove executors that still hold needed shuffle data.",
+      "say": "The fix is keeping shuffle data alive without the executor. Use an external shuffle service, or shuffle tracking, which refuses to remove executors that still hold needed shuffle data. With graceful decommissioning, a leaving executor, or a spot node being reclaimed, first copies its shuffle blocks to a peer.",
       "show": {
        "t": "points",
        "title": "Two safe ways",
        "items": [
         "External shuffle service serves files after removal",
-        "Shuffle tracking keeps executors that hold live data"
+        "Shuffle tracking keeps executors that hold live data",
+        "Decommissioning moves blocks off a leaving node"
        ]
       }
      },
@@ -3170,10 +3179,10 @@
     "check": {
      "q": "Why does dynamic allocation need an external shuffle service or shuffle tracking?",
      "opts": [
-      "To speed up the driver",
-      "Because removed executors would take their shuffle files with them",
-      "To increase cores per executor",
-      "To avoid using partitions"
+      "To make the driver process faster",
+      "Removed executors take shuffle files",
+      "To raise the cores in each executor",
+      "To avoid using any partitions at all"
      ],
      "ans": 1,
      "why": "Executors store shuffle output that later stages read. Without a service or tracking, scaling down deletes that data and forces recompute or failure."
@@ -3304,9 +3313,9 @@
     "check": {
      "q": "A stage waits on one task that is 25 times slower than the rest. What is the best first move?",
      "opts": [
-      "Double the executors",
-      "Switch to client mode",
-      "Fix the skew in the data",
+      "Double the number of executors",
+      "Switch the job to client mode",
+      "Fix the skew in the data first",
       "Raise cores per executor to ten"
      ],
      "ans": 2,

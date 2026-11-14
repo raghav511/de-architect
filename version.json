@@ -1,11 +1,12 @@
 {
-  "version": "1.36.36",
+  "version": "1.36.37",
   "date": "2026-11-14",
   "notes": [
-    "Reel review (15 reels, 9 rewritten): Kafka 4.2 share groups are production-ready (queue-style, no per-key order)",
-    "Spark 4 turns ANSI mode on by default, so bad casts fail instead of returning null; Spark 4.2 sends Python UDFs over Arrow by default",
-    "Iceberg: position versus equality deletes, format v3 deletion vectors, managed Iceberg such as S3 Tables",
-    "Flink 2.0 disaggregated state is still experimental; Databricks Real-Time Mode GA dates, no Photon",
-    "All changed beats recorded in the Heart voice (Kokoro)"
+    "Reel review (15 reels, 13 changed): Hadoop J1.7, Spark job sizing 3.8, business layer M3.4",
+    "HDFS: erasure coding (about 1.5x) for cold data versus 3x replicas, and why it makes small files worse; Hadoop is almost twenty years old, not ten",
+    "Spark sizing: 128 MB is the input split; after a shuffle the count comes from shuffle partitions, which AQE merges toward 64 MB; graceful decommissioning moves shuffle blocks off a leaving node",
+    "Lakehouse files: Iceberg's writer targets 512 MB; schedule compaction for streaming writers",
+    "Check options evened out so the right answer is never the longest (11 checks)",
+    "Changed beats recorded in the Heart voice (Kokoro)"
   ]
 }
