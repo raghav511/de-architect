@@ -141,6 +141,20 @@ Every change goes through the same path.
 
 Jobs are packaged as **container images**, so the same code and dependencies run in CI and production. On **Kubernetes**, a container runs inside a pod. A pod declares resource *requests*, which the scheduler reserves, and *limits*, which the container may not exceed. A container that exceeds its memory limit is killed. Airflow can run each task as its own pod, and Spark can run its driver and executors as pods.
 
+### Rolling out a change safely
+
+Most large outages start with a change, and many of them with a change that was *correct*: a new firewall rule, a feature flag, a config value. One well-known CDN outage came from a single rule that ran in a "watch only" mode. It blocked nothing, but its pattern match still ran on every request and used up the CPU of every server at once. The lesson: test what a change **costs**, not only whether it is right, and never ship it everywhere at the same moment.
+
+Ship config and rules the way you ship code.
+
+1. **Stages.** A small canary first (1–5% of traffic or one cell), then one region, then the rest. Each stage waits long enough to see real traffic.
+2. **A gate at each stage.** Compare the canary with the rest on error rate, p99 latency, **CPU and memory per request**, and cost. A rule that doubles CPU fails the gate even if every answer it gives is right. Shadow or watch-only mode still costs resources, so it goes through the same gate.
+3. **Automatic rollback.** When the gate fails, the system puts the previous version back on its own, in seconds. A person reads the alert afterwards.
+4. **A kill switch.** Every risky rule or flag can be turned off everywhere with one action that does not depend on the thing that is broken (not through the overloaded fleet's own deploy path).
+5. **Limit the blast radius.** Cells or shards that fail alone, and config changes that cannot reach every region in one push.
+
+For data platforms the same applies to a new Spark config, a dbt macro used by 400 models, a quality rule on every table or a Kafka client setting: run it on one job or one domain first, compare its run time and cost, then widen. Practise it in the simulator challenge "A config push saturates CPU everywhere": the push takes down the fleet until a Staged rollout with a cost gate stands in front of it.
+
 ## 9.7 Responding to an incident
 
 When something does fail, the order of work matters.
@@ -662,6 +676,10 @@ assert validate(good[:1], c) == ["min_rows"]
 -->
 
 @@interview
+Q: One change took down the platform: how do you ship changes safely?
+TAG: arch
+A: **Stop it first:** roll back or flip the kill switch, through a path that does not depend on the broken fleet, then tell people. **Then change how changes ship.** Config, rules, flags and shared code go out in stages: a 1–5% canary or one cell, then one region, then the rest. Each stage has a gate that compares the canary with the rest on errors, p99, **CPU and memory per request** and cost, and rolls back by itself in seconds when it fails. A rule in watch-only or shadow mode still runs on every request, so it goes through the same gate: test what a change costs, not only whether it is right. Keep a kill switch for every risky rule, limit the blast radius with cells and per-region pushes, and give config an owner, review and tests like code. Close with a blameless postmortem that fixes the process gap. In data terms: a new Spark setting, a dbt macro used by hundreds of models or a quality rule on every table goes to one job or domain first, with run time and cost compared, before it goes everywhere.
+---
 Q: How do you ensure data quality across teams?
 SRC: Confluent, 5–6 YOE
 TAG: cloud
