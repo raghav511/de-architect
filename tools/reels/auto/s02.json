@@ -5441,83 +5441,83 @@
     "part": "1 of 2"
    },
    {
-    "title": "Copy-on-write or merge-on-read",
+    "title": "Position or equality deletes",
     "level": "Inside and caveats",
     "beats": [
      {
-      "say": "You change one row inside a ten gigabyte file. Do you rewrite ten gigabytes?",
+      "say": "Two ways to say a row is gone. One is cheap to read, the other is cheap to write. Which does your streaming job use?",
       "show": {
        "t": "big",
-       "text": "One row, ten gigabytes",
-       "sub": "Rewrite or mark?"
+       "text": "Two kinds of delete",
+       "sub": "Cheap to read or cheap to write"
       }
      },
      {
-      "say": "With copy-on-write, yes. Every data file holding a changed row is rewritten. Writes are expensive, but reads stay fast because files are clean.",
+      "say": "A position delete says: file seven, row 1,042 is dead. The writer must first find that row, but readers just skip it. Spark merges usually write these.",
       "show": {
        "t": "bars",
-       "title": "Copy-on-write cost",
+       "title": "Position delete",
        "unit": "relative",
        "items": [
         [
          "Write cost",
-         90,
-         "rewrites files"
+         50,
+         "find the row first"
         ],
         [
          "Read cost",
-         10,
-         "files are clean"
+         15,
+         "skip known rows"
         ]
        ]
       }
      },
      {
-      "say": "With merge-on-read, no. Iceberg writes a small delete file marking removed rows, plus the new rows. Writes are cheap. But every read must merge those deletes until compaction cleans them up.",
+      "say": "An equality delete says: drop any row where order id is 55. The writer does not look anything up, so streaming writers like Flink use it. But every reader must compare each row against every such rule.",
       "show": {
        "t": "bars",
-       "title": "Merge-on-read cost",
+       "title": "Equality delete",
        "unit": "relative",
        "items": [
         [
          "Write cost",
          10,
-         "small delete file"
+         "no lookup"
         ],
         [
          "Read cost",
-         60,
-         "merges deletes"
+         80,
+         "check every row"
         ]
        ]
       }
      },
      {
-      "say": "So pick by pattern. Occasional batch changes, read all day: copy-on-write. Frequent small changes, like a change data capture feed: merge-on-read, with compaction scheduled. Skip compaction and reads slowly decay.",
+      "say": "So equality deletes from a busy CDC feed make reads decay fast. Compact often, and let compaction turn them into plain clean files.",
       "show": {
        "t": "points",
        "title": "Choose by pattern",
        "items": [
-        "Batch changes, heavy reads: copy-on-write",
-        "Frequent small changes: merge-on-read",
-        "Always schedule compaction"
+        "Streaming upserts write equality deletes",
+        "Reads slow as they pile up",
+        "Compact often to clear them"
        ]
       }
      }
     ],
     "check": {
-     "q": "A change data capture feed updates thousands of rows every minute. Which mode fits best?",
+     "q": "A Flink CDC job writes equality deletes to an Iceberg table. What gets slower over time?",
      "opts": [
-      "Copy-on-write",
-      "Merge-on-read with scheduled compaction",
-      "Neither, rewrite the table nightly"
+      "Reads, as each row is checked against delete rules",
+      "Writes, because each delete must look up the old row",
+      "Commits, because the catalog stores every deleted key"
      ],
-     "ans": 1,
-     "why": "Frequent small changes make copy-on-write rewrites too costly; delete files are cheap, and compaction keeps reads fast."
+     "ans": 0,
+     "why": "Equality deletes are cheap to write but every reader must match rows against them until compaction removes them."
     },
     "work": [
-     "Check which mode each of your update-heavy tables uses.",
-     "Add a compaction job and alert on delete file counts."
+     "Count equality delete files on your streaming tables.",
+     "Schedule compaction often enough that reads stay flat."
     ],
     "part": "2 of 2"
    },
@@ -6429,7 +6429,7 @@
       }
      },
      {
-      "say": "Merge-on-read writes a tiny delete file instead, naming the rows to drop. Writes are cheap, but every query must merge those deletes, and reads slow down as they pile up.",
+      "say": "Merge-on-read writes a small delete marker instead. In format v2 these were delete files that piled up, many per data file. Format v3 keeps one deletion vector per data file, a compact bitmap of dead rows, so reads stay much faster.",
       "show": {
        "t": "scene",
        "title": "Merge-on-*read*",
@@ -6445,11 +6445,11 @@
         },
         {
          "id": "x",
-         "label": "Delete file",
+         "label": "Deletion vector",
          "x": 75,
          "y": 25,
          "tone": "red",
-         "sub": "a few rows"
+         "sub": "one bitmap, v3"
         },
         {
          "id": "q",
@@ -6457,7 +6457,7 @@
          "x": 50,
          "y": 62,
          "tone": "plum",
-         "sub": "merges both"
+         "sub": "skips dead rows"
         }
        ],
        "edges": [
@@ -6501,16 +6501,16 @@
         {
          "at": 0.85,
          "chip": {
-          "text": "Cheap write, costlier read",
-          "tone": "amber",
-          "icon": "!"
+          "text": "v3: one vector per file",
+          "tone": "teal",
+          "icon": "✓"
          }
         }
        ]
       }
      },
      {
-      "say": "Pick copy-on-write for tables read all day and changed in nightly batches. Pick merge-on-read for constant small changes, like a CDC feed, and compact on a schedule.",
+      "say": "Pick copy-on-write for tables read all day and changed in nightly batches. Pick merge-on-read for constant small changes, like a CDC feed, and still compact on a schedule.",
       "show": {
        "t": "points",
        "title": "Choose by workload",
@@ -6523,17 +6523,18 @@
      }
     ],
     "check": {
-     "q": "A table gets CDC updates every minute and is read a few times an hour. Which mode fits?",
+     "q": "What does Iceberg format v3 change for merge-on-read deletes?",
      "opts": [
-      "Merge-on-read with scheduled compaction",
-      "Copy-on-write",
-      "Neither: CDC cannot go into Iceberg"
+      "One small bitmap per data file replaces piles of delete files",
+      "Every single delete now rewrites the whole data file at once",
+      "Deleted rows are kept only in the catalog and never in storage"
      ],
      "ans": 0,
-     "why": "Frequent small changes make copy-on-write rewrite huge files constantly; merge-on-read keeps writes cheap and compaction keeps reads healthy."
+     "why": "v3 stores deleted row positions as one bitmap per data file, so readers merge one small vector instead of many delete files."
     },
     "work": [
      "Check the delete file count on your merge-on-read tables.",
+     "Check that every engine reading a table supports v3 before you upgrade it.",
      "Set the write mode per table, not one default for all."
     ],
     "part": "2 of 3"
@@ -6707,7 +6708,7 @@
       }
      },
      {
-      "say": "Compare honestly. Delta is smoothest inside Databricks. Hudi shines at heavy record upserts. A warehouse table needs no maintenance from you. Plain Parquet with Hive has no atomic commits.",
+      "say": "Compare honestly. Delta is smoothest inside Databricks. Hudi shines at heavy record upserts. A warehouse table needs no maintenance from you. Managed Iceberg, such as S3 Tables, runs compaction and snapshot expiry for a fee.",
       "show": {
        "t": "scene",
        "title": "The *alternatives*",
@@ -6788,7 +6789,7 @@
       }
      },
      {
-      "say": "Push back for small data one warehouse handles well, for row by row transactions, and when nobody will own compaction, snapshot expiry and the catalog.",
+      "say": "Push back for small data one warehouse handles well, for row by row transactions, and when nobody will own maintenance and the catalog.",
       "show": {
        "t": "points",
        "title": "Push back when",

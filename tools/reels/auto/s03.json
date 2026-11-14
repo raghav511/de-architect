@@ -3971,14 +3971,14 @@
     "part": "1 of 2"
    },
    {
-    "title": "Spark 2 to 3: what really breaks",
+    "title": "Spark upgrades: what really breaks",
     "level": "Inside and caveats",
     "beats": [
      {
-      "say": "Adaptive execution gets the headline, but where do Spark 2 to 3 migrations actually break?",
+      "say": "Adaptive execution gets the headline, but where do Spark upgrades actually break?",
       "show": {
        "t": "big",
-       "text": "Where do migrations break?",
+       "text": "Where do upgrades break?",
        "sub": "Not where you expect"
       }
      },
@@ -4058,19 +4058,19 @@
       }
      },
      {
-      "say": "The breakage is stricter behaviour. Spark 3 changed date and timestamp parsing, so a pattern that quietly worked before may now throw an error or return different values. ANSI mode, strict about bad casts and overflow, raises errors instead of returning null.",
+      "say": "The breakage is stricter behaviour. Spark 3 changed date and timestamp parsing. Spark 4 goes further and turns ANSI mode on by default, so a bad cast or an overflow that used to return null now fails the job.",
       "show": {
        "t": "points",
        "title": "Where it breaks",
        "items": [
-        "Stricter date and timestamp parsing",
-        "ANSI mode errors on bad casts",
-        "Overflow fails instead of null"
+        "Spark 3: stricter date parsing",
+        "Spark 4: ANSI mode on by default",
+        "Bad casts fail instead of null"
        ]
       }
      },
      {
-      "say": "Rerun old jobs side by side and diff the outputs before you cut over.",
+      "say": "Rerun old jobs side by side and diff the outputs. Turning ANSI off buys time, but fix the queries it catches.",
       "show": {
        "t": "big",
        "text": "Run side by side",
@@ -4079,18 +4079,18 @@
      }
     ],
     "check": {
-     "q": "What is the most common source of migration breakage from Spark 2 to 3?",
+     "q": "A Spark 3 job that cast messy strings to numbers fails after moving to Spark 4. Why?",
      "opts": [
-      "Adaptive execution picking a worse plan",
-      "Stricter SQL and date parsing behaviour",
-      "Dynamic partition pruning dropping rows"
+      "ANSI mode is on, so bad casts raise errors",
+      "Adaptive execution picked a different join plan",
+      "Dynamic pruning skipped rows the job needed"
      ],
-     "ans": 1,
-     "why": "The performance features rarely change results, but stricter parsing and ANSI-style behaviour can change values or raise errors in old queries."
+     "ans": 0,
+     "why": "Spark 4 enables ANSI mode by default: invalid casts and overflows raise errors instead of quietly returning null."
     },
     "work": [
-     "Run old and new Spark versions side by side on real data and diff the results.",
-     "Grep your code for date format patterns and casts that relied on lenient parsing."
+     "Run one job on Spark 4 with ANSI on and list every error it raises.",
+     "Replace casts on messy input with try_cast and decide what a bad value should become."
     ],
     "part": "2 of 2"
    },
@@ -7561,7 +7561,7 @@
       }
      },
      {
-      "say": "A Python UDF is a black box to both. Filters cannot pass through it, and rows must leave the binary format. Prefer built in functions, or pandas UDFs over Arrow.",
+      "say": "A Python UDF is a black box to both. Filters cannot pass through it, and rows must travel to a Python process. Spark 4.2 ships them over Arrow by default, which cuts the transfer cost, but the optimizer still cannot see inside. Prefer built in functions.",
       "show": {
        "t": "code",
        "title": "Codegen in explain",
@@ -7572,12 +7572,12 @@
     "check": {
      "q": "Why does a plain Python UDF slow a Spark query?",
      "opts": [
-      "Catalyst cannot see inside it and rows must be converted for Python",
-      "It forces a shuffle",
-      "It disables the driver"
+      "Spark cannot see inside it, and rows go to Python",
+      "It always forces a full shuffle of all the input rows",
+      "It makes the driver process every single row itself"
      ],
      "ans": 0,
-     "why": "The UDF is opaque to the optimizer and breaks the binary row format and code generation."
+     "why": "The UDF is opaque to Catalyst and breaks code generation; rows must be shipped to a Python worker, even when Arrow makes that cheaper."
     },
     "work": [
      "Run explain on a slow query and look for operators without a star.",
@@ -7707,9 +7707,9 @@
     "check": {
      "q": "A daily job reads 40 GB and needs results in an hour. What is often the cheaper choice?",
      "opts": [
-      "A large Spark cluster",
-      "A single-node engine such as DuckDB or Polars",
-      "Flink"
+      "A large autoscaling Spark cluster",
+      "One machine running DuckDB or Polars",
+      "A Flink job with frequent checkpoints"
      ],
      "ans": 1,
      "why": "Data that fits on one machine is usually faster and cheaper without a cluster."

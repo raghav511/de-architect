@@ -1,12 +1,11 @@
 {
-  "version": "1.36.35",
-  "date": "2026-11-08",
+  "version": "1.36.36",
+  "date": "2026-11-14",
   "notes": [
-    "Kafka reels: zero-copy works only on plain connections; with TLS the broker encrypts in its own memory.",
-    "Kafka rebalance reel: Kafka 4's new consumer protocol is opt-in (group.protocol=consumer).",
-    "Parquet reels: row-group size depends on the writer (128 MB in Spark; PyArrow and DuckDB cap by rows).",
-    "Python GIL reels: the free-threaded build is officially supported since 3.14, still a separate install.",
-    "New reel: linearizable is not serializable; Spanner reel now says strictly serializable.",
-    "Fairer quick checks: wrong options reworded to the same length as the right one in 12 reels."
+    "Reel review (15 reels, 9 rewritten): Kafka 4.2 share groups are production-ready (queue-style, no per-key order)",
+    "Spark 4 turns ANSI mode on by default, so bad casts fail instead of returning null; Spark 4.2 sends Python UDFs over Arrow by default",
+    "Iceberg: position versus equality deletes, format v3 deletion vectors, managed Iceberg such as S3 Tables",
+    "Flink 2.0 disaggregated state is still experimental; Databricks Real-Time Mode GA dates, no Photon",
+    "All changed beats recorded in the Heart voice (Kokoro)"
   ]
 }
