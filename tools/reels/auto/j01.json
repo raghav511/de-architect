@@ -2509,7 +2509,7 @@
     "level": "New to it",
     "beats": [
      {
-      "say": "Why do so many big companies still run a cluster design from over ten years ago?",
+      "say": "Why do so many big companies still run a cluster design that is almost twenty years old?",
       "show": {
        "t": "big",
        "text": "Why is Hadoop still everywhere?",
@@ -2683,9 +2683,9 @@
     "check": {
      "q": "In the library picture, what does the NameNode do?",
      "opts": [
-      "Stores every chunk itself",
-      "Keeps the index of where each chunk lives",
-      "Hands out reading desks to jobs"
+      "Stores every single chunk on its disks",
+      "Keeps the index of where chunks live",
+      "Hands out the reading desks to jobs"
      ],
      "ans": 1,
      "why": "The NameNode holds metadata only: which chunks exist and where. The data sits on data nodes, and YARN hands out the desks."
@@ -2708,7 +2708,7 @@
       }
      },
      {
-      "say": "HDFS cuts the file into 128 megabyte blocks, about eight thousand of them. Each block is copied to three data nodes. The NameNode keeps the block map in memory. When a node dies, the NameNode notices and re-copies the missing blocks.",
+      "say": "HDFS cuts the file into 128 megabyte blocks, about eight thousand of them. Each block is copied to three data nodes, so a terabyte costs three terabytes of disk. The NameNode keeps the block map in memory. When a node dies, it re-copies the missing blocks. For cold data, Hadoop 3 can use erasure coding instead: parity blocks, about one and a half times the space.",
       "show": {
        "t": "scene",
        "title": "Blocks copied *three* times",
@@ -2798,11 +2798,19 @@
          "glow": "d3"
         },
         {
-         "at": 0.9,
+         "at": 0.75,
          "chip": {
           "text": "Lost copies are re-made",
           "tone": "teal",
           "icon": "repair"
+         }
+        },
+        {
+         "at": 0.92,
+         "chip": {
+          "text": "Cold data: erasure coding, 1.5x not 3x",
+          "tone": "amber",
+          "icon": "!"
          }
         }
        ]
@@ -2884,9 +2892,9 @@
     "check": {
      "q": "A node holding some blocks dies. What keeps the data safe?",
      "opts": [
-      "The NameNode re-copies blocks from the surviving replicas",
-      "YARN restarts the file",
-      "Spark rebuilds the blocks from the query"
+      "NameNode re-copies from live replicas",
+      "YARN restarts the file from its start",
+      "Spark rebuilds the blocks from a query"
      ],
      "ans": 0,
      "why": "Each block has three replicas. The NameNode sees the lost copies and orders new ones from the surviving nodes."
@@ -3012,9 +3020,9 @@
     "check": {
      "q": "Why is Hive's directory-based partitioning unsafe for concurrent writers?",
      "opts": [
-      "Partitions are stored in memory",
-      "Readers can see half-written files because there is no atomic snapshot",
-      "The metastore only allows one engine"
+      "Partitions are kept only in driver memory",
+      "No atomic snapshot, so half-writes show",
+      "The metastore lets only one engine connect"
      ],
      "ans": 1,
      "why": "Directories have no atomic commit, so readers may see partial output. Iceberg snapshots make a commit all-or-nothing."
@@ -3038,7 +3046,7 @@
       }
      },
      {
-      "say": "Every file and every block is an object in the NameNode's memory. Millions of tiny files use up that memory long before the disks fill, and each file also spawns its own slow task. The fix is compaction: merge them into files near 128 megabytes.",
+      "say": "Every file and every block is an object in the NameNode's memory, roughly 150 bytes each. Millions of tiny files use up that memory long before the disks fill, and each file also spawns its own slow task. Erasure coding makes it worse, since even a tiny file gets parity blocks. The fix is compaction: merge them into files near 128 megabytes.",
       "show": {
        "t": "scene",
        "title": "Tiny files eat *NameNode* memory",
@@ -3143,9 +3151,9 @@
     "check": {
      "q": "A Spark executor on YARN is killed though its heap never overflowed. Most likely cause?",
      "opts": [
-      "Heap plus memoryOverhead exceeded the container size",
-      "The NameNode ran out of blocks",
-      "Data locality was lost"
+      "Heap plus overhead beat the container",
+      "The NameNode ran out of free blocks now",
+      "Data locality was lost for all its tasks"
      ],
      "ans": 0,
      "why": "YARN counts off-heap memory too. When the total passes the container size, it kills the container, even if the heap was fine."
@@ -3270,9 +3278,9 @@
     "check": {
      "q": "What is the cheapest safe way to bring existing Parquet data into Iceberg?",
      "opts": [
-      "Copy everything to a new bucket first",
-      "Register the existing files in Iceberg metadata without copying",
-      "Rewrite every job in MapReduce"
+      "Copy everything into a new bucket first",
+      "Register files in Iceberg without copy",
+      "Rewrite every single job in MapReduce"
      ],
      "ans": 1,
      "why": "Zero-copy registration points Iceberg metadata at the existing files, so you avoid a costly copy and can dual-run safely."

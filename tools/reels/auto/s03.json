@@ -199,8 +199,8 @@
     "check": {
      "q": "In the restaurant picture, what does Catalyst do?",
      "opts": [
-      "Cooks the food quickly",
-      "Reads and tidies the order before cooking",
+      "Cooks the food very quickly",
+      "Reads and tidies the order first",
       "Carries items to another kitchen"
      ],
      "ans": 1,
@@ -367,9 +367,9 @@
     "check": {
      "q": "Why does pushing a filter toward the scan help?",
      "opts": [
-      "Fewer rows are read and carried through later steps",
-      "It adds more partitions",
-      "It converts the query to an RDD"
+      "Fewer rows are read and carried",
+      "It adds more partitions to the job",
+      "It turns the query into an RDD"
      ],
      "ans": 0,
      "why": "Filtering early means less data is read and moved, which cuts work in every later step."
@@ -490,8 +490,8 @@
     "check": {
      "q": "A plan shows FileScan with empty PartitionFilters and empty PushedFilters, though your query has a where clause. What is likely?",
      "opts": [
-      "Spark is reading the whole dataset",
-      "The query is already optimal",
+      "Spark reads the whole dataset",
+      "The query is already fully optimal",
       "A broadcast join was chosen"
      ],
      "ans": 0,
@@ -516,7 +516,7 @@
       }
      },
      {
-      "say": "Catalyst treats a Python UDF as a black box. It cannot push a filter past it or prune columns around it. And Tungsten's compiled loop is broken: each row is serialised, sent to a Python process, computed, and sent back.",
+      "say": "Catalyst treats a Python UDF as a black box. It cannot push a filter past it or prune columns around it. Tungsten's compiled loop is broken too: rows leave the Java process, go to Python, and come back.",
       "show": {
        "t": "scene",
        "title": "The *round trip* per row",
@@ -577,7 +577,7 @@
       }
      },
      {
-      "say": "Fix one: use built-in functions, which Catalyst can see. Fix two: if you need Python, use a pandas UDF. It moves data in batches, so the transfer cost is paid once per batch, not once per row.",
+      "say": "Fix one: use built-in functions, which Catalyst can see. Fix two: move data in batches. Older Spark pickled one row at a time; since Spark 4.2, plain Python UDFs use Arrow batches by default, and pandas UDFs always did. Batching cuts the transfer cost, but the optimizer is still blind.",
       "show": {
        "t": "points",
        "title": "Cheaper options",
@@ -641,14 +641,14 @@
      }
     ],
     "check": {
-     "q": "Why is a pandas UDF cheaper than a plain Python UDF?",
+     "q": "In Spark 4.2, plain Python UDFs move data in Arrow batches. What do they still cost?",
      "opts": [
-      "Catalyst can optimise inside it",
-      "It moves data to Python in batches",
-      "It avoids using Python at all"
+      "Catalyst can now optimise inside them",
+      "The optimizer still cannot see inside",
+      "Every row is still pickled one by one"
      ],
      "ans": 1,
-     "why": "Batching spreads the transfer cost over many rows. Catalyst still cannot see inside it, and it still uses Python."
+     "why": "Arrow batching makes the transfer cheaper, but Catalyst still cannot push filters past the function or prune around it, and data still leaves the JVM."
     },
     "work": [
      "Search your code for udf and mark each one that a built-in function could replace.",
@@ -742,7 +742,7 @@
       }
      },
      {
-      "say": "On UDFs, choose in order: built-in function, then pandas UDF, then plain Python UDF last. Use a plain one only when logic is truly irregular. Otherwise you pay serialisation on every row and blind the optimizer.",
+      "say": "On UDFs, choose in order: built-in function first, then a vectorised pandas or Arrow UDF, and a row by row Python function last. Even batched, any Python function moves data out of Java and blinds the optimizer, so check the Spark version and settings before you trust its speed.",
       "show": {
        "t": "flow",
        "steps": [
@@ -765,9 +765,9 @@
     "check": {
      "q": "A refactor makes a job slower. Which finding in the plan best explains it?",
      "opts": [
-      "AdaptiveSparkPlan at the top",
-      "A new Exchange and empty PushedFilters",
-      "HashAggregate appearing twice"
+      "AdaptiveSparkPlan shown at the top",
+      "A new Exchange, empty filters",
+      "HashAggregate shown twice"
      ],
      "ans": 1,
      "why": "An extra shuffle and lost filter pushdown both mean more data read and moved. Adaptive execution and two aggregates are normal and often helpful."
@@ -2889,10 +2889,10 @@
     "check": {
      "q": "In the moving analogy, what does an executor correspond to?",
      "opts": [
-      "A truck holding several workers and their space",
-      "One box of data",
-      "The deadline",
-      "The warehouse"
+      "A truck with several workers",
+      "One box of data being carried",
+      "The deadline set for the job",
+      "The warehouse being emptied"
      ],
      "ans": 0,
      "why": "An executor is a process with a few cores (workers) and its own memory (space). Partitions are the batches of boxes it carries."
@@ -2915,7 +2915,7 @@
       }
      },
      {
-      "say": "Start with partitions. One terabyte at about 128 megabytes each is roughly 8,000 partitions in the widest stage. Each partition becomes one task.",
+      "say": "Start with partitions. Spark reads input in splits of about 128 megabytes, so one terabyte is roughly 8,000 tasks. After a shuffle, the count comes from shuffle partitions, two hundred by default, which adaptive execution merges toward about 64 megabytes each.",
       "show": {
        "t": "scene",
        "title": "8,000 *partitions*",
@@ -2931,7 +2931,7 @@
         {
          "id": "p",
          "label": "8,000 tasks",
-         "sub": "128 MB each",
+         "sub": "128 MB input splits",
          "x": 75,
          "y": 30,
          "tone": "teal"
@@ -2969,6 +2969,14 @@
           "to": 8000,
           "unit": "",
           "tone": "teal"
+         }
+        },
+        {
+         "at": 0.8,
+         "chip": {
+          "text": "After a shuffle: AQE aims for 64 MB",
+          "tone": "amber",
+          "icon": "!"
          }
         }
        ]
@@ -3033,7 +3041,7 @@
       }
      },
      {
-      "say": "Pack four or five cores per executor, so about 160 to 200 executors. More and threads fight over disk and garbage collection. If a task needs four times its partition, that is 512 megabytes, so five tasks need about 2.5 gigabytes plus headroom.",
+      "say": "Pack four or five cores per executor, so about 160 to 200 executors. More and threads fight over disk and garbage collection. If a task needs four times its split, that is 512 megabytes, so five tasks need about 2.5 gigabytes plus headroom.",
       "show": {
        "t": "points",
        "title": "Per executor",
@@ -3144,13 +3152,14 @@
       }
      },
      {
-      "say": "The fix is keeping shuffle data alive without the executor. Use an external shuffle service, or shuffle tracking, which refuses to remove executors that still hold needed shuffle data.",
+      "say": "The fix is keeping shuffle data alive without the executor. Use an external shuffle service, or shuffle tracking, which refuses to remove executors that still hold needed shuffle data. With graceful decommissioning, a leaving executor, or a spot node being reclaimed, first copies its shuffle blocks to a peer.",
       "show": {
        "t": "points",
        "title": "Two safe ways",
        "items": [
         "External shuffle service serves files after removal",
-        "Shuffle tracking keeps executors that hold live data"
+        "Shuffle tracking keeps executors that hold live data",
+        "Decommissioning moves blocks off a leaving node"
        ]
       }
      },
@@ -3170,10 +3179,10 @@
     "check": {
      "q": "Why does dynamic allocation need an external shuffle service or shuffle tracking?",
      "opts": [
-      "To speed up the driver",
-      "Because removed executors would take their shuffle files with them",
-      "To increase cores per executor",
-      "To avoid using partitions"
+      "To make the driver process faster",
+      "Removed executors take shuffle files",
+      "To raise the cores in each executor",
+      "To avoid using any partitions at all"
      ],
      "ans": 1,
      "why": "Executors store shuffle output that later stages read. Without a service or tracking, scaling down deletes that data and forces recompute or failure."
@@ -3304,9 +3313,9 @@
     "check": {
      "q": "A stage waits on one task that is 25 times slower than the rest. What is the best first move?",
      "opts": [
-      "Double the executors",
-      "Switch to client mode",
-      "Fix the skew in the data",
+      "Double the number of executors",
+      "Switch the job to client mode",
+      "Fix the skew in the data first",
       "Raise cores per executor to ten"
      ],
      "ans": 2,
