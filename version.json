@@ -1,10 +1,7 @@
 {
-  "version": "1.36.37",
-  "date": "2026-11-14",
+  "version": "1.36.38",
+  "date": "2026-11-15",
   "notes": [
-    "New in Reliability (9.6): rolling out a change safely: stages by percent and region, a cost and latency check at each stage (a watch-only rule still burns CPU on all traffic), automatic rollback and a kill switch.",
-    "A new simulator challenge, A config push saturates CPU everywhere, with a Staged rollout box that fixes it.",
-    "A new interview question: one change took down the platform; how do you ship changes safely?",
-    "1490 of 1490 reels now play in the natural Heart voice."
+    "What is new (15 November): Claude Fable 5.2 prices and the stricter prefix check, self-hosted Claude Managed Agents, Databricks' always-on Genie and Genie Ontology GA, Claude Data for dashboards; A3.6 updated to match."
   ]
 }

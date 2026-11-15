@@ -81,12 +81,11 @@ Evaluation: inject 10 known failures (schema change, OOM, late upstream, bad cre
 
 The field moves weekly, so this section is refreshed by the program's weekly research update. Concepts worth knowing now, with reports to read:
 
-- **Server-side conversation threads.** The Claude API's message threads (beta) keep the conversation on the server, so each agent turn sends only new messages. Threads expire after 5 idle minutes: a long-running agent still keeps its own log. (Claude Platform docs)
-- **Network limits on agent keys.** Claude Console IP allowlisting (beta) refuses API requests from outside up to 1,000 listed addresses or ranges, so a leaked key only works from your own runners. (Claude Platform docs)
-- **Agents as background jobs.** Snowflake's Async Agent API and scheduled CoCo Automations are GA; always-on bots that act with the user's rights and ask only for sign-off are coming in preview. (Snowflake)
-- **Self-healing pipelines.** Snowflake's coding agent traces a pipeline failure's likely cause and proposes a fix for review: the on-call agent of A3.5 as a product. Score it on your own injected failures. (iTWire)
-- **Routing in the gateway.** Cortex AI Gateway's automatic model tiers (private preview) pick a model per request; trust a router only after your eval set says the cheap tier holds up. (Snowflake)
-- **Streaming context without brokers.** Snowflake Datastream takes Kafka-protocol producers with no cluster to run, and Snowpipe Streaming reaches 20 GB a second, fresh in about three seconds. (iTWire)
+- **Cheaper tokens, stricter prefixes.** Claude Fable 5.2 costs 20% less per token, and editing earlier turns before sending back a thinking block now returns an error: keep the prefix stable so the cache keeps paying. (Claude Platform docs)
+- **Agent state on your own servers.** Self-hosted Claude Managed Agents keep agents, sessions and history on your infrastructure; only model calls leave. Agent memory becomes an ordinary data-residency decision. (Claude Platform docs)
+- **Always-on agents with sub-agents.** Databricks' second-generation Genie runs in the background on its own compute, fans work out to sub-agents and stays inside Unity Catalog permissions and gateway budgets. (SD Times)
+- **Context layers decide accuracy.** Genie Ontology is GA; Databricks reports 91% pass rate at about half the tokens of two frontier agents on its own benchmark. Test the claim on your eval set. (Databricks)
+- **Agents build the dashboards.** Claude Data turns company data into dashboards and stories for Claude Enterprise; the data team's job becomes the certified layer underneath. (AI Business)
 
 How to judge any new development: what problem does it remove, what does it cost per successful task, can you evaluate it on your own eval set within a day, and what new risk does it add?
 

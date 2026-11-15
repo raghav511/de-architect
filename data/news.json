@@ -1,66 +1,56 @@
 {
- "updated": "2026-11-08",
+ "updated": "2026-11-15",
  "note": "Refreshed every week by the program's research task. Each item says what changed, why it matters to a data engineer or architect, and how to test the claim yourself.",
  "items": [
   {
-   "title": "Claude API: message threads keep the conversation on the server, so each turn sends only the new messages (beta)",
-   "summary": "Released on 2 November 2026 in beta behind the message-threads-2026-08-12 header. The Messages API can keep a conversation on Anthropic's side; later requests send only the new messages. A thread expires 5 minutes after its last request and is deleted no more than an hour after last use. Available on the Claude API, Claude Platform on AWS, Claude models on Google Cloud and Microsoft Foundry.",
-   "why": "An agent loop resends its whole history every turn, so request size and latency grow with every tool call. Server-side threads shrink the payload, but the 5-minute expiry means a long-running agent still needs its own durable record of the run, the same split between hot state and a log you design for any pipeline.",
-   "try": "In projects/ai-foundations/labs/lab1_loop.py, log the request size in bytes per turn for a 10-turn run. Write down how the curve would change with server-side threads, and what your harness must persist itself so a run that pauses longer than 5 minutes can resume.",
-   "url": "https://platform.claude.com/docs/en/build-with-claude/message-threads",
+   "title": "Claude Fable 5.2: 20% cheaper per token, and editing earlier turns before sending back a thinking block now fails",
+   "summary": "Released on 9 November 2026. Claude Fable 5.2 (and Mythos 5.2 for verified organizations) has a 1M-token context window, 128k max output and always-on adaptive thinking, at $8 per million input and $40 per million output tokens (5.1 was $10 and $50). A fast mode gives up to 2.5x output tokens per second at $16 and $80. The prefix check is now enforced on every account: changing the system prompt, tools or earlier messages and then sending back a thinking block returns a 400. Both models need 30-day data retention.",
+   "why": "Price per token fell, but the bigger cost lever is still the cache: a harness that rewrites its history (trims old tool results, reorders tools) now breaks loudly instead of silently missing the cache. Fast mode doubles the price for speed, so it belongs only on the latency-critical path, chosen by your gateway, not by default.",
+   "try": "In projects/ai-foundations/labs/lab7_optimise.py, price one agent run at 5.1 and 5.2 rates, then at 5.2 fast mode. Then make lab1_loop.py trim an old tool result between turns and note which turn would now be refused; move the trimming to the end of the context so the prefix stays intact.",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "source": "Claude Platform docs",
    "mid": "a01",
    "sec": "A1.6"
   },
   {
-   "title": "Claude Console: IP allowlisting limits where a leaked API key works (beta)",
-   "summary": "Released on 5 November 2026 in beta. An organization can list up to 1,000 IPv4 or IPv6 addresses or CIDR ranges; API requests from anywhere else are refused. The same release lets the Admin API sign an Enterprise member out of Claude everywhere while keeping them in the organization.",
-   "why": "Agents and pipelines hold long-lived API keys on schedulers and CI runners. An allowlist turns a leaked key from 'usable from anywhere' into 'usable only from our egress IPs', the same network control you already put on a warehouse or a database.",
-   "try": "For the on-call agent in lab10_oncall.py, list every place its API key lives (laptop, CI, scheduler) and the egress IP of each. Decide which ranges go on the allowlist and what breaks first when a runner's IP changes.",
-   "url": "https://platform.claude.com/docs/en/manage-claude/ip-allowlist",
+   "title": "Self-hosted Claude Managed Agents: the whole agent service, sessions and history run on your own infrastructure",
+   "summary": "Launched on 12 November 2026. The customer runs the entire Managed Agents service, not only the sandboxes, on its own infrastructure, and agents, sessions and session history are stored there. Model requests go to the provider you choose, Anthropic by default. Access is requested through the account team.",
+   "why": "Session history of a data agent holds query results, table names and sometimes customer rows. Keeping the agent's state inside your own network turns 'where does agent memory live' into a normal data-residency and retention decision, owned like any other store, while only model calls leave.",
+   "try": "For the on-call agent in lab10_oncall.py, list everything a session stores (prompts, tool calls, query results, decisions). Mark which fields could hold customer data, then write the retention rule and the store you would keep each in if the agent ran self-hosted.",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
    "source": "Claude Platform docs",
-   "mid": "a02",
-   "sec": "A2.7"
-  },
-  {
-   "title": "Snowflake: background agents with an Async Agent API and scheduled CoCo Automations (GA), bots in preview",
-   "summary": "Announced at Snowflake Expedition 2026 on 3 November 2026. CoCo Automations and the Async Agent API for scheduled and long-running agent work are generally available, as is sharing of skills and plugins. CoCo and CoWork Bots, always-on agents that act with the user's own access rights and check in only for decisions or sign-off, are coming in private preview.",
-   "why": "Long-running agents move from a chat window to a job you schedule, monitor and pay for like any pipeline. Acting with the user's rights keeps governance in the warehouse's roles, but it also means an agent can do anything its owner can, so the sign-off points are the guardrail.",
-   "try": "Turn lab10_oncall.py into an asynchronous job: start it, return a run id at once, poll for the result. Write down which steps need a human sign-off and what the agent may do without one.",
-   "url": "https://www.snowflake.com/en/news/press-releases/expedition-2026-coco-cowork/",
-   "source": "Snowflake press release",
    "mid": "a03",
    "sec": "A3.1"
   },
   {
-   "title": "Snowflake: self-healing pipelines trace a failure's likely cause and propose a fix for an engineer to review",
-   "summary": "Announced on 5 November 2026 at Snowflake Expedition. Scheduled runs of Snowflake's coding agent trace the likely cause of a pipeline failure and propose a fix for an engineer's review; the agent can run in a Snowflake-managed isolated container after you log off. Snowflake also announced a visual Pipeline Builder and Write-Audit-Publish on Iceberg tables.",
-   "why": "This is the on-call data agent you build in A3.5, now a vendor feature. The design questions stay yours: what evidence the agent must cite, which actions need approval, and how you score it on failures you injected yourself.",
-   "try": "Run lab11_eval.py against your on-call agent, then score a 'propose only, never apply' version on the same 10 injected failures. Compare correct cause, unsafe actions and cost per incident.",
-   "url": "https://itwire.com/business-it-news/data/snowflake-delivers-the-foundation-for-autonomous-data-engineering-powering-the-agentic-enterprise-with-trusted-live-data",
-   "source": "iTWire",
+   "title": "Databricks: an always-on Genie that works in the background, splits work across sub-agents and stays inside Unity Catalog permissions",
+   "summary": "Announced on 11 November 2026 as the second generation of Genie. It runs in the background on its own compute, delegates to sub-agents in parallel, and surfaces items needing attention in a priority inbox. Genie Search uses 100+ connectors: it indexes content in place, ingests through Lakeflow Connect, or queries live through MCP. Actions stay within Unity Catalog permissions and Unity Gateway approval rules and budgets.",
+   "why": "A background agent with its own compute is a job you schedule, cap and audit. The design choice worth naming in an interview is the governance boundary: permissions come from the catalog the agent queries, and spend and approvals from the gateway, not from the prompt.",
+   "try": "Split lab10_oncall.py into a planner and two sub-agents (logs, lineage) that run in parallel. Give the run a token budget and an approval list of actions; run lab11_eval.py and compare minutes and cost per incident with the single-agent version.",
+   "url": "https://sdtimes.com/data/databricks-launches-new-always-on-genie-autonomous-ai-for-complex-enterprise-work/",
+   "source": "SD Times",
    "mid": "a03",
-   "sec": "A3.5"
+   "sec": "A3.3"
   },
   {
-   "title": "Snowflake Cortex AI Gateway: automatic model tiers route each request to a model (private preview)",
-   "summary": "Announced on 3 November 2026. Auto model tiers with dynamic model routing for Snowflake's coding agent, part of Cortex AI Gateway, are in private preview. Cortex Training, serverless reinforcement learning and fine-tuning of open-weight models, is in public preview; Snowflake claims up to 61% lower cost than existing serverless training options.",
-   "why": "Routing cheap requests to a small model is the biggest cost lever after caching, and it is moving into the platform gateway. A router is only as good as the eval that says the cheap tier holds up for your tasks.",
-   "try": "In lab7_optimise.py, route each task to a small or a large model by a simple rule (input length or task type). Run lab5_evals.py on both and report pass rate and cost per passed task for routed versus always-large.",
-   "url": "https://www.snowflake.com/en/news/press-releases/expedition-2026-coco-cowork/",
-   "source": "Snowflake press release",
-   "mid": "a01",
-   "sec": "A1.6"
+   "title": "Databricks Genie Ontology is generally available: a context layer that Databricks says doubles agent pass rates at half the tokens",
+   "summary": "Announced on 11 November 2026. Genie Ontology is GA, with Genie Search, Ontology Snippets, organizational directories (Workday first) and Unity Catalog domains, subdomains and pages. External knowledge sources (Power BI) and SharePoint search are in beta. On Databricks' own benchmark Genie passed 91% of tasks against 45% and 58% for two unnamed frontier agents, using 432K tokens a run against 889K and 1.05M.",
+   "why": "The claim is that context, not the model, decides a data agent's accuracy and cost: definitions, owners and trusted tables cut both wrong answers and tokens. It is a vendor benchmark against unnamed agents, so treat it as a hypothesis to test on your own questions.",
+   "try": "In lab5_evals.py, run 10 data questions twice: once with only table schemas in context, once with a short ontology (metric definitions, owners, the trusted table for each). Report pass rate and tokens per question for both.",
+   "url": "https://www.databricks.com/blog/announcing-ga-genie-ontology",
+   "source": "Databricks blog",
+   "mid": "a04",
+   "sec": "A4.3"
   },
   {
-   "title": "Snowflake Datastream: Kafka-compatible ingestion with no brokers to run, and Snowpipe Streaming up to 20 GB a second",
-   "summary": "Announced on 5 November 2026. Snowflake Datastream accepts Kafka-protocol producers with no brokers or connectors to manage. Snowpipe Streaming with Elastic Channels reaches up to 20 GB a second with data ready in a median of three seconds; Streaming Transformations apply SQL to data in motion, and Interactive Analytics targets sub-second queries for apps and agents.",
-   "why": "Fresh features and context for agents usually means a Kafka cluster plus a connector. A Kafka-compatible endpoint inside the warehouse removes that hop, but you give up the topic as a shared, replayable log for other consumers, which is a trade-off to name in a design interview.",
-   "try": "Using the 5.9 lens table, compare a Kafka cluster with Connect into the warehouse against a Kafka-compatible warehouse endpoint for one agent's feature feed: who can replay, who else can consume, and what each costs at 50 MB a second.",
-   "url": "https://itwire.com/business-it-news/data/snowflake-delivers-the-foundation-for-autonomous-data-engineering-powering-the-agentic-enterprise-with-trusted-live-data",
-   "source": "iTWire",
-   "mid": "s05",
-   "sec": "5.9"
+   "title": "Anthropic: Claude Data, Meetings, Sheets and Whiteboards for Claude Enterprise, with Adobe, Atlassian and HubSpot connectors",
+   "summary": "Launched on 10 November 2026 for Claude Enterprise. Claude Data turns company data into dashboards, data stories and videos; Claude Meetings joins a video call and starts work during it; Claude Sheets and Whiteboards let teams build with the agent on shared spreadsheets and boards. New connectors cover Adobe, Atlassian and HubSpot.",
+   "why": "When business users get dashboards straight from an agent, the data team's product becomes the governed layer underneath: certified tables, metric definitions and access rules that any agent reads. A wrong number now spreads in a meeting, not a ticket.",
+   "try": "Pick three metrics from your lab data and write, for each, the definition, owner and trusted table an agent must use. Expose them through lab9_mcp_server.py as a describe_metric tool and check with lab9_client.py that an answer cites it.",
+   "url": "https://aibusiness.com/generative-ai/anthropic-launches-new-ai-models",
+   "source": "AI Business",
+   "mid": "a04",
+   "sec": "A4.2"
   }
  ]
 }
