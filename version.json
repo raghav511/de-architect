@@ -1,7 +1,13 @@
 {
-  "version": "1.36.38",
+  "version": "1.36.39",
   "date": "2026-11-15",
   "notes": [
-    "What is new (15 November): Claude Fable 5.2 prices and the stricter prefix check, self-hosted Claude Managed Agents, Databricks' always-on Genie and Genie Ontology GA, Claude Data for dashboards; A3.6 updated to match."
+    "Reel review (31 reels, 2 days): lands the unshipped 2026-11-14 review (Hadoop J1.7, Spark sizing 3.8, business layer M3.4) plus 16 reels today (Delta 8.2, shared Iceberg tables 8.5, Spark plans 3.2)",
+    "Spark 4.2 sends plain Python UDFs over Arrow batches by default; Catalyst still cannot see inside them",
+    "Delta: row-level concurrency with deletion vectors or liquid clustering, predictive optimization runs OPTIMIZE and VACUUM, CLUSTER BY AUTO, deletion vectors often on by default and old readers then fail",
+    "Iceberg sharing: every writer goes through one catalog; Snowflake catalog-linked databases can now write Unity Catalog Iceberg tables",
+    "HDFS erasure coding, Spark input splits versus shuffle partitions, Iceberg's 512 MB write target (from 2026-11-14)",
+    "Check options evened out so the right answer is never the longest (13 checks today)",
+    "Changed beats recorded in the Heart voice (Kokoro)"
   ]
 }

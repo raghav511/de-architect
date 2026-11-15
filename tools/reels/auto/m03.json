@@ -2600,9 +2600,9 @@
      "q": "Which analogy best fits an aggregate table?",
      "opts": [
       "A pantry with labeled shelves",
-      "A menu board of totals copied from the receipts",
-      "A ready meal tray holding every detail",
-      "A single receipt"
+      "A menu board of copied totals",
+      "A ready meal tray of every detail",
+      "A single receipt from one sale"
      ],
      "ans": 1,
      "why": "An aggregate stores precomputed summaries at a coarser grain, such as city by day, derived from the base records."
@@ -2787,9 +2787,9 @@
      "q": "Why is a wide table cheap to scan on a columnar engine?",
      "opts": [
       "It stores fewer rows than the fact",
-      "Only the requested columns are read, so extra columns cost little",
-      "It never needs to be rebuilt",
-      "It compresses rows into one file"
+      "Only the requested columns are read",
+      "It never needs to be rebuilt again",
+      "It packs all its rows into one file"
      ],
      "ans": 1,
      "why": "Columnar storage reads just the columns a query touches, so width adds little scan cost while removing the join."
@@ -2896,7 +2896,7 @@
       }
      },
      {
-      "say": "Aim for files of about 128 megabytes to one gigabyte. Ten thousand tiny files mean ten thousand opens and listings, and that slows every query.",
+      "say": "Aim for files of about 128 megabytes to one gigabyte. Iceberg's writer targets 512 megabytes by default. Ten thousand tiny files mean ten thousand opens and listings, and that slows every query. A streaming writer makes them all day, so schedule compaction.",
       "show": {
        "t": "bars",
        "title": "File opens for 1 GB",
@@ -2931,10 +2931,10 @@
     "check": {
      "q": "A lakehouse fact has millions of 100 KB files. What is the main problem?",
      "opts": [
-      "Too many columns",
-      "Per-file open and listing overhead slows queries",
+      "Too many columns in each file",
+      "Per-file open and listing overhead",
       "Partitioning by date is impossible",
-      "Dimensions cannot join"
+      "Dimensions can no longer join"
      ],
      "ans": 1,
      "why": "Small files multiply metadata and open costs. Compact into files of roughly 128 MB to 1 GB."
@@ -3103,10 +3103,10 @@
     "check": {
      "q": "After joining trips to payments, summed fares are too high. Most likely cause?",
      "opts": [
-      "Missing partition",
-      "One-to-many join duplicated trip rows",
-      "Files too large",
-      "Wrong sort key"
+      "A partition was left out",
+      "One-to-many join doubled trips",
+      "The files grew far too large",
+      "The sort key on disk was wrong"
      ],
      "ans": 1,
      "why": "A trip with several payments repeats on each payment row, so its fare is summed more than once."
@@ -3219,9 +3219,9 @@
      "q": "Why do analysts need an as-of join on a history-tracking dimension?",
      "opts": [
       "To speed up partition pruning",
-      "To match each fact to the dimension version valid on the event date",
+      "To match the version valid then",
       "To avoid fan-out from payments",
-      "To compress the dimension"
+      "To compress the dimension table"
      ],
      "ans": 1,
      "why": "With several versions per rider, a plain key join would match all of them or the latest, giving wrong history."
@@ -3352,9 +3352,9 @@
     "check": {
      "q": "Best architecture for many teams plus a few very hot dashboards?",
      "opts": [
-      "Only one big table",
-      "Star core, with generated wide tables and aggregates for hot paths",
-      "Only hand-built aggregates",
+      "Only one big table for everyone",
+      "Star core, generated hot tables",
+      "Only hand-built aggregate tables",
       "Raw files queried directly"
      ],
      "ans": 1,

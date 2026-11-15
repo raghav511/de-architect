@@ -3606,7 +3606,7 @@
       }
      },
      {
-      "say": "One rule matters. Only one cook may write in the book. Everyone else just reads. Otherwise two people edit at once and pages get mangled. And each kitchen still keeps its own lock on who may see which page.",
+      "say": "One rule matters. Every writer must check in at the same front desk, called the catalog, which keeps the one true list of pages. Two desks with two lists means two cooks overwrite each other. And each kitchen still keeps its own lock on who may see which page.",
       "show": {
        "t": "points",
        "title": "Two house rules",
@@ -3619,14 +3619,14 @@
      }
     ],
     "check": {
-     "q": "Why give each shared table only one writing engine?",
+     "q": "Why must every engine that writes a shared table use the same catalog?",
      "opts": [
-      "Readers are slower than writers",
-      "Two writers can overwrite each other and mangle the table",
-      "Iceberg only supports one user"
+      "Readers become much slower when there are two",
+      "Two catalogs keep two lists, so writes clash",
+      "Iceberg lets only one user in at any time"
      ],
      "ans": 1,
-     "why": "Concurrent writers through different routes cannot see each other's changes, so one can silently overwrite the other. Readers are safe because they do not change anything."
+     "why": "The catalog holds the pointer to the table's current state. Two catalogs mean two pointers, so one writer silently overwrites the other."
     },
     "work": [
      "List the tables your two platforms both copy today and note the cost of each copy.",
@@ -3726,7 +3726,7 @@
       }
      },
      {
-      "say": "Engines find that metadata through a catalog. Snowflake can manage Iceberg tables in your bucket, or read ones from a catalog like AWS Glue. Databricks can publish Delta tables with Iceberg metadata, served through Unity Catalog's Iceberg REST interface.",
+      "say": "Engines find that metadata through a catalog that speaks the Iceberg REST protocol. Unity Catalog serves its Iceberg tables that way to any engine. Since late 2025, Snowflake can link a database to such a catalog and both read and write those tables, not just read them.",
       "show": {
        "t": "scene",
        "title": "The *catalog* is the front door",
@@ -3843,9 +3843,9 @@
     "check": {
      "q": "What does the Iceberg metadata tell a reading engine?",
      "opts": [
-      "Which Parquet files make up the table right now",
-      "Which users may see which columns",
-      "How to rewrite the table in its own format"
+      "The Parquet files that form the table now",
+      "Which users may see which of the columns",
+      "How to convert the table to its own format"
      ],
      "ans": 0,
      "why": "Iceberg metadata lists the current data files. Access rules are not part of it, which is why governance has to be set separately on each platform."
@@ -4067,8 +4067,8 @@
      "q": "A column mask is set in Unity Catalog. Snowflake reads the same Iceberg table. What is true?",
      "opts": [
       "Snowflake inherits the mask automatically",
-      "Snowflake ignores the mask unless you define its own policy",
-      "The table becomes unreadable in Snowflake"
+      "Snowflake needs its own policy defined",
+      "The table cannot be read from Snowflake"
      ],
      "ans": 1,
      "why": "Iceberg carries data file lists, not access policies. Each platform must enforce its own rules, ideally generated from one definition."
@@ -4210,9 +4210,9 @@
     "check": {
      "q": "What is the main cost of sharing one Iceberg table across two platforms?",
      "opts": [
-      "Doubled storage bills",
-      "Coupling to one catalog and one writer, plus duplicated policy work",
-      "Loss of Parquet support"
+      "Doubled storage costs for every shared table",
+      "One shared catalog plus duplicate policies",
+      "Losing Parquet support on the reader"
      ],
      "ans": 1,
      "why": "Storage drops because there is one copy. The new costs are dependence on a shared catalog and writer, and keeping access policies consistent on every platform."
@@ -5539,9 +5539,9 @@
     "check": {
      "q": "In the warehouse analogy, what tells you what the table contains today?",
      "opts": [
-      "The boxes on the shelves",
-      "The notebook read from the top",
-      "The newest box only"
+      "The boxes sitting on the shelves",
+      "The notebook, read from the top",
+      "The newest box on its own"
      ],
      "ans": 1,
      "why": "Shelves may hold crossed-out boxes. The notebook, the log, says which files count right now."
@@ -5663,7 +5663,7 @@
       }
      },
      {
-      "say": "Readers replay the log, adds minus removes. A checkpoint every ten commits saves that state, so a reader loads one checkpoint and a few small files, not thousands.",
+      "say": "Readers replay the log, adds minus removes. Every so many commits, ten by default in open source Delta, a checkpoint saves that state. So a reader loads one checkpoint and a few small files, not thousands. The interval is a table property you can tune.",
       "show": {
        "t": "scene",
        "title": "Checkpoint *shortcut*",
@@ -5735,9 +5735,9 @@
     "check": {
      "q": "A writer is refused commit eleven because another writer got it first. What happens next?",
      "opts": [
-      "It overwrites commit eleven",
-      "It checks for conflicts, then retries as twelve or fails",
-      "It waits for a lock to be released"
+      "It overwrites commit eleven regardless",
+      "It checks for clashes, then retries or fails",
+      "It waits until the other writer's lock frees"
      ],
      "ans": 1,
      "why": "Only one writer can create a given number. The loser compares the winner's changes with its own and either retries on top or fails."
@@ -5941,7 +5941,7 @@
       }
      },
      {
-      "say": "Optimize leaves the old files behind, marked removed. VACUUM deletes them for real, once they are older than the retention period. The default is seven days.",
+      "say": "Optimize leaves the old files behind, marked removed. VACUUM deletes them for real, once they are older than the retention period, seven days by default. On Databricks managed tables, predictive optimization can run both for you, billed as serverless compute.",
       "show": {
        "t": "points",
        "title": "Vacuum rules",
@@ -5964,9 +5964,9 @@
     "check": {
      "q": "You run OPTIMIZE and storage use does not drop. Why?",
      "opts": [
-      "Optimize failed silently",
-      "The old files are still kept until VACUUM removes them",
-      "Z order increases file size"
+      "Optimize failed without an error",
+      "Old files stay until VACUUM runs",
+      "Z order makes every file bigger"
      ],
      "ans": 1,
      "why": "Optimize only marks the small files as removed in the log. They stay on disk for time travel until vacuum deletes them."
@@ -5990,7 +5990,7 @@
       }
      },
      {
-      "say": "By default, yes. That is copy on write. With deletion vectors, Delta writes a tiny side file that marks the row as gone, and readers skip it. That is merge on read: cheap writes, slightly costlier reads until the next rewrite.",
+      "say": "Without help, yes. That is copy on write. With deletion vectors, Delta writes a tiny side file that marks the row as gone, and readers skip it. That is merge on read: cheap writes, slightly costlier reads until the next rewrite. On Databricks, a workspace setting often turns them on for new tables, and older readers that do not understand them cannot read the table at all.",
       "show": {
        "t": "scene",
        "title": "Mark it, don't *rewrite* it",
@@ -6063,7 +6063,7 @@
       }
      },
      {
-      "say": "Change Data Feed goes further. It exposes row level inserts, updates and deletes between two versions, so a downstream job reads only what changed, not the whole table.",
+      "say": "Change Data Feed exposes row level inserts, updates and deletes between two versions, so a downstream job reads only what changed.",
       "show": {
        "t": "flow",
        "title": "Incremental downstream",
@@ -6084,7 +6084,7 @@
       }
      },
      {
-      "say": "One gotcha: the feed only records changes made after you switch it on. It cannot rebuild earlier history.",
+      "say": "One gotcha: the feed only records changes after you switch it on.",
       "show": {
        "t": "big",
        "text": "Turn it on early",
@@ -6095,9 +6095,9 @@
     "check": {
      "q": "What do deletion vectors trade away to make deletes cheap?",
      "opts": [
-      "Atomicity of the commit",
-      "Slightly slower reads until files are rewritten",
-      "The ability to time travel"
+      "Atomicity of every single commit",
+      "Slightly slower reads until rewrite",
+      "The ability to time travel to old versions"
      ],
      "ans": 1,
      "why": "Readers must apply the side file to skip deleted rows. This is merge on read, so reads cost a little more until a rewrite folds the deletes in."
@@ -6165,7 +6165,7 @@
       }
      },
      {
-      "say": "Liquid clustering is the current advice. Name your filter columns with CLUSTER BY. It clusters incrementally, and you can change those columns later without rewriting the table.",
+      "say": "Liquid clustering is the current advice. Name your filter columns with CLUSTER BY, or say CLUSTER BY AUTO and let the platform pick them from your queries. It clusters incrementally, and you can change those columns later without rewriting the table.",
       "show": {
        "t": "scene",
        "title": "*Liquid* clustering",
@@ -6344,7 +6344,7 @@
       }
      },
      {
-      "say": "Reduce clashes by making writers touch different files, through clustering or partitions that match each job. Funnel small writes into fewer, larger commits. Deletion vectors also shrink what an update touches.",
+      "say": "Reduce clashes by making writers touch different files, and funnel small writes into fewer, larger commits. On Databricks, tables with deletion vectors or liquid clustering get row level concurrency: two updates to different rows in the same file no longer clash. Partitioned tables do not get it.",
       "show": {
        "t": "points",
        "title": "Reduce clashes",
@@ -6384,9 +6384,9 @@
     "check": {
      "q": "Many jobs keep failing with conflicts on one table. What is the best first fix?",
      "opts": [
-      "Add more retries",
-      "Make jobs write to disjoint files and batch their commits",
-      "Raise the vacuum retention"
+      "Add more retries to every single job",
+      "Write disjoint files, batch commits",
+      "Raise the vacuum retention period"
      ],
      "ans": 1,
      "why": "Conflicts occur when writers touch the same files. Separating them and committing less often cuts the clashes. More retries only burns compute."
