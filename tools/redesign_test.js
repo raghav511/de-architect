@@ -1,5 +1,5 @@
 /* Redesign 2026-11 (canvas: tools/redesign/README.md): one group of cases per screen, written before the screen is built.
-   node tools/redesign_test.js [baseUrl] [group]   groups: today, path, practice (more join as each screen is rebuilt)
+   node tools/redesign_test.js [baseUrl] [group]   groups: today, path, practice, interview (more join as each screen is rebuilt)
    Runs on Chromium at iPhone size (390 x 844) and desktop size (1440 x 900). */
 const { chromium } = require(process.env.PW || 'playwright');
 const { blockExternal } = require('./testnet');
@@ -15,6 +15,7 @@ async function page(b, vp) {
 }
 async function path(p) { await p.goto(BASE + '#/path'); await p.waitForSelector('main, #page', { timeout: 60000 }); await p.waitForTimeout(800); }
 async function practice(p) { await p.goto(BASE + '#/practice'); await p.waitForSelector('#page h1, .tabs', { timeout: 60000 }); await p.waitForTimeout(900); }
+async function ihub(p) { await p.goto(BASE + '#/interview'); await p.waitForSelector('#page h1, #page h2', { timeout: 60000 }); await p.waitForTimeout(900); }
 async function today(p) { await p.goto(BASE + '#/today'); await p.waitForSelector('.plan', { timeout: 60000 }); await p.waitForTimeout(600); }
 function T(group, name, fn) { return { group, name, fn }; }
 
@@ -179,6 +180,60 @@ const CASES = [
     if (!r.back) throw new Error('no Practice tab back to the hub');
     await p.click('.tabs [data-f=home]'); await p.waitForTimeout(600);
     if (!await p.$('.ladderhero')) throw new Error('the Practice tab did not open the hub');
+    if (p.errs.length) throw new Error('page errors: ' + p.errs.join(' | '));
+  }),
+  /* ---------- Interview: today's mock, the ladder and the loop ---------- */
+  T('interview', 'I1 the Interview tab opens the hub, with today\'s live mock and Start on the first iPhone screen', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await today(p);
+    const tab = await p.evaluate(() => { const a = [...document.querySelectorAll('.tabbar a')].find(x => /Interview/.test(x.textContent)); return a && a.getAttribute('href'); });
+    if (tab !== '#/interview') throw new Error('the Interview tab opens ' + tab);
+    await ihub(p);
+    const h = await p.evaluate(() => { const c = document.querySelector('.livehero'); if (!c) return null; const go = c.querySelector('.lv-start'), r = go && go.getBoundingClientRect(), tb = document.querySelector('.tabbar'), k = iso(new Date()), m = liveMode(k);
+      return { kicker: (c.querySelector('.lv-kicker') || {}).textContent || '', mode: (c.querySelector('.lv-mode') || {}).textContent || '', want: m === 'boss' ? /7 questions/ : m === 'full' ? /5 questions/ : /1 question/, href: go && go.getAttribute('href'), k, bottom: r ? r.bottom : 9999, limit: innerHeight - (tb ? tb.getBoundingClientRect().height : 0) }; });
+    if (!h) throw new Error('no .livehero');
+    if (!/Today's live mock/.test(h.kicker)) throw new Error('kicker: ' + h.kicker);
+    if (!/question/.test(h.mode)) throw new Error('mode line: ' + h.mode);
+    if (h.href !== '#/live/' + h.k) throw new Error('Start opens ' + h.href);
+    if (h.bottom > h.limit) throw new Error('Start is below the first screen');
+  }),
+  T('interview', 'I2 the week strip shows Monday to Sunday with today marked, the full mock on Saturday and the boss round on Sunday', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await ihub(p);
+    const w = await p.evaluate(() => [...document.querySelectorAll('.wkmock .wd')].map(d => ({ n: (d.querySelector('b') || {}).textContent, v: (d.querySelector('span') || {}).textContent, today: d.classList.contains('today') })));
+    if (w.length !== 7 || w[0].n !== 'Mon' || w[6].n !== 'Sun') throw new Error('days: ' + w.map(d => d.n).join());
+    if (w.filter(d => d.today).length !== 1) throw new Error('today is not marked once');
+    const sat = w[5], sun = w[6];
+    if (!sat.today && sat.v !== '5 q') throw new Error('Saturday says ' + sat.v);
+    if (!sun.today && sun.v !== 'Boss') throw new Error('Sunday says ' + sun.v);
+  }),
+  T('interview', 'I3 the ladder card names your level and the next, with XP and what promotion needs', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await ihub(p);
+    const r = await p.evaluate(() => { const c = document.querySelector('.laddercard'); if (!c) return null; const L = gameLevel(gameXP()), nx = LADDER[Math.min(L.i + 1, LADDER.length - 1)];
+      return { txt: c.textContent, cur: LADDER[L.i][0], next: nx[0], xp: gameXP(), need: nx[1] }; });
+    if (!r) throw new Error('no .laddercard');
+    if (!r.txt.includes(r.cur) || !r.txt.includes(r.next)) throw new Error('ladder: ' + r.txt.slice(0, 120));
+    if (!r.txt.includes(r.xp.toLocaleString('en-US') + ' / ' + r.need.toLocaleString('en-US') + ' XP')) throw new Error('no XP line in ' + r.txt.slice(0, 160));
+  }),
+  T('interview', 'I4 the loop lists nine rounds with readiness from real work, each opening its round', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await ihub(p); await p.waitForSelector('.lround', { timeout: 30000 });
+    const r = await p.evaluate(async () => { const D = await loopData(), rd = loopReady(D); return [...document.querySelectorAll('.lround')].map(a => ({ href: a.getAttribute('href'), pct: (a.querySelector('.lr-pct') || {}).textContent, want: rd[a.dataset.r] + '%' })); });
+    if (r.length !== 9) throw new Error(r.length + ' rounds');
+    for (const x of r) { if (!/^#\/loop\/r[1-9]$/.test(x.href)) throw new Error('round opens ' + x.href); if (x.pct !== x.want) throw new Error(x.href + ' says ' + x.pct + ', want ' + x.want); }
+  }),
+  T('interview', 'I5 a company chip shows that company\'s loop in its order, and All rounds brings the nine back', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await ihub(p); await p.waitForSelector('.cochips button', { timeout: 30000 });
+    const co = await p.evaluate(async () => (await loopData()).companies[0]);
+    await p.click('.cochips button[data-co="' + co[0] + '"]'); await p.waitForTimeout(300);
+    const r = await p.evaluate(() => ({ ids: [...document.querySelectorAll('.lround')].map(a => a.dataset.r), pressed: document.querySelector('.cochips button[aria-pressed=true]').dataset.co }));
+    if (r.ids.join() !== co[2].join() || r.pressed !== co[0]) throw new Error(co[0] + ' shows ' + r.ids.join() + ', want ' + co[2].join());
+    await p.click('.cochips button[data-co=all]'); await p.waitForTimeout(300);
+    if (await p.$$eval('.lround', a => a.length) !== 9) throw new Error('All rounds did not bring nine back');
+  }),
+  T('interview', 'I6 the hub links recall, asked this week and the coach; module interview sets still open; desktop has no errors', async b => {
+    const p = await page(b, { width: 1440, height: 900 }); await ihub(p);
+    const hs = await p.evaluate(() => [...document.querySelectorAll('.alsotoday a')].map(a => a.getAttribute('href')));
+    for (const h of ['#/recall', '#/recent', '#/coach']) if (!hs.includes(h)) throw new Error('missing ' + h + ' in ' + hs.join());
+    await p.goto(BASE + '#/interview/s05'); await p.waitForTimeout(1500);
+    if (!/Interview set/.test(await p.textContent('body'))) throw new Error('the module interview set no longer opens');
     if (p.errs.length) throw new Error('page errors: ' + p.errs.join(' | '));
   })
 ];

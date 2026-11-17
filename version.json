@@ -1,9 +1,9 @@
 {
-  "version": "1.40.0",
+  "version": "1.41.0",
   "date": "2026-11-18",
   "notes": [
-    "Practice opens on your next ladder problem, with reviews due under it.",
-    "DSA, Python, SQL and PySpark tiles show how many you have solved and the easy, medium and hard mix.",
-    "The simulator, design problems, projects, Git labs and the terminal are one tap away."
+    "The Interview tab opens on today's live mock, with the week's mocks under it.",
+    "Your level, the next one and what promotion needs sit beside it.",
+    "The nine loop rounds show how ready you are; a company chip shows that company's loop."
   ]
 }
