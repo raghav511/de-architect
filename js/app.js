@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.39.0';
+const VERSION = '1.40.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -268,7 +268,7 @@ function route() {
     else if (r === 'recent') vRecent();
     else if (r === 'dsa' || r === 'sql' || r === 'spark' || r === 'py') vWork(r, p[1], p[2]);
     else if (r === 'test') vWork('test', midOf(p[1]) + '/' + p[2]);
-    else if (r === 'practice') vPractice(p[1] || 'all');
+    else if (r === 'practice') vPractice(p[1] || 'home');
     else if (r === 'design') vDesign(p[1]);
     else if (r === 'sim') vSim(p[1], p[2], p[3]);
     else if (r === 'loop') vLoop(p[1], p[2]);
@@ -730,10 +730,39 @@ function icebergDiagram() {
 }
 
 /* ---------------- Practice list ---------------- */
+/* Redesign (Practice hub): the next ladder problem as a hero, reviews due today, the four banks as tiles with solved counts and
+   their easy, medium and hard mix, and Build and design. The filtered lists stay at #/practice/<filter>. tools/redesign_test.js practice */
+function ladderNext() { for (let i = 0; i < 84 * 2; i++) { const x = dayProblems(i).find(y => !y.auto); if (x) return x; } return null; }
+function vPracticeHub() {
+  const nx = ladderNext(), due = revDue();
+  const hero = el('section', { class: 'ladderhero', 'aria-label': 'Next on the ladder' }, nx ? [
+    el('div', { class: 'row', style: { gap: '8px' } }, [el('span', { class: 'lh-kicker', text: 'Next on the ladder' }), el('span', { class: 'grow' }), el('span', { class: 'lh-meta', text: nx.mins + ' min' })]),
+    el('h2', { class: 'lh-title', text: nx.t }), el('span', { class: 'lh-sub', text: nx.sub }),
+    el('div', { class: 'row fh-acts' }, [el('a', { class: 'btn lh-start', href: nx.href }, [el('span', { text: 'Start' }), svg(I.fwd, 18)]), el('a', { class: 'btn lh-all', href: '#/practice/all', text: 'All problems' })])]
+    : [el('span', { class: 'lh-kicker', text: 'Next on the ladder' }), el('h2', { class: 'lh-title', text: 'You have solved the whole ladder' })]);
+  const rk = id => kindOf(id);
+  const rev = el('section', { class: 'card pad stack revdue' }, [el('h2', { text: due.length ? 'Reviews due · ' + due.length : 'Reviews' }),
+    due.length ? el('div', { class: 'list' }, due.map(x => el('a', { class: 'item revrow', href: '#/' + rk(x.id) + '/' + x.id + '/review' }, [chip(rk(x.id)), el('span', { class: 'grow' }, [el('span', { class: 't', text: x.t }), el('br'), el('span', { class: 's', text: 'From a blank editor · ' + revText(S.rev[x.id]) })])])))
+      : el('p', { class: 'muted', style: { margin: 0 }, text: 'Nothing due today. A problem comes back 3, 7 and 21 days after you needed help with it.' })]);
+  const B = [['dsa', 'DSA', 'Patterns and algorithms'], ['py', 'Python', 'The Python track'], ['sql', 'SQL', 'Write and optimize'], ['spark', 'PySpark', 'Write and optimize']];
+  const lvOf = x => { const l = String(x.lv || '').toLowerCase(); return l.startsWith('h') ? 2 : l.startsWith('m') ? 1 : 0; };
+  const tiles = el('div', { class: 'banks' }, B.filter(([k]) => DATA[k]).map(([k, n, d]) => { const xs = DATA[k], sv = xs.filter(x => S.solved[x.id]).length, mix = [0, 0, 0]; xs.forEach(x => mix[lvOf(x)]++);
+    return el('a', { class: 'banktile card', href: '#/practice/' + k, 'data-bank': k, 'aria-label': n + ': ' + sv + ' of ' + xs.length + ' solved' }, [
+      el('div', { class: 'row' }, [chip(k), el('span', { class: 'grow' })]), el('b', { class: 'bt-name', text: n }), el('span', { class: 'bt-n', text: sv + ' / ' + xs.length }), el('span', { class: 's', text: d }),
+      el('span', { class: 'mix', 'aria-hidden': 'true' }, mix.map((c, i) => el('i', { class: 'm' + i, style: { flex: String(Math.max(c, 1)) } }))),
+      el('span', { class: 's', text: mix[0] + ' easy · ' + mix[1] + ' medium · ' + mix[2] + ' hard' })]); }));
+  const L = [['#/sim', 'Design simulator', 'sim', 'Draw, run and break a data system'], ['#/design', 'Design problems', 'pen', 'One per module, at real scale'], ['#/projects', 'Projects', 'proj', 'Build it end to end'], ['#/git', 'Git labs', 'git', '16 labs in the in-app Linux'], ['#/terminal', 'Terminal', 'term', 'A real shell in the browser'], ['#/practice/tests', 'Coding tests', 'check2', 'Timed, with hidden tests']];
+  const build = el('section', { class: 'card pad stack' }, [el('h2', { text: 'Build and design' }), el('div', { class: 'buildlinks' }, L.map(([h, t, ic, d]) => el('a', { class: 'item', href: h }, [el('span', { class: 'bl-ic' }, svg(I[ic], 20)), el('span', { class: 'grow' }, [el('span', { class: 't', text: t }), el('br'), el('span', { class: 's', text: d })]), svg(I.fwd, 18)])))]);
+  const solved = Object.keys(S.solved || {}).length;
+  shell('Practice', solved + ' problems solved · reviews come back on 3, 7 and 21 days', [pTabs('home'), el('div', { class: 'grid2' }, [el('div', { class: 'stack', style: { gap: '16px' } }, [hero, rev, el('h2', { text: 'Coding' }), tiles]), el('div', { class: 'stack', style: { gap: '16px' } }, [build])])]);
+}
+function pTabs(f) { const nDue = revDue().length; const tabs = [['home', 'Practice'], ['all', 'All'], ['review', 'Review' + (nDue ? ' (' + nDue + ' due)' : '')], ['py', 'Python'], ['model', 'Module exercises'], ['dsa', 'DSA'], ['sql', 'SQL'], ['spark', 'PySpark'], ['opt', 'Optimize only'], ['tests', 'Coding tests']];
+  return el('div', { class: 'tabs', role: 'tablist' }, tabs.map(([k, n]) => el('button', { role: 'tab', 'data-f': k, 'aria-selected': String(k === f), onclick: () => { location.hash = k === 'home' ? '#/practice' : '#/practice/' + k; }, text: n }))); }
 async function vPractice(f) {
+  if (!f || f === 'home') return vPracticeHub();
   const nDue = revDue().length;
   const tabs = [['all', 'All'], ['review', 'Review' + (nDue ? ' (' + nDue + ' due)' : '')], ['py', 'Python'], ['model', 'Module exercises'], ['dsa', 'DSA'], ['sql', 'SQL'], ['spark', 'PySpark'], ['opt', 'Optimize only'], ['tests', 'Coding tests']];
-  const tb = el('div', { class: 'tabs', role: 'tablist' }, tabs.map(([k, n]) => el('button', { role: 'tab', 'aria-selected': String(k === f), onclick: () => { location.hash = '#/practice/' + k; }, text: n })));
+  const tb = pTabs(f);
   const body = el('div', { class: 'stack' });
   shell('Coding practice', 'Python · DSA · SQL · PySpark · coding tests · separate from the daily hour', [tb, body]);
   const item = (k, x, sub) => el('a', { class: 'item', href: '#/' + k + '/' + x.id + (sub === 'review' ? '/review' : '') }, [chip(k), el('span', { class: 'grow' }, [el('span', { class: 't', text: x.t }), el('br'), el('span', { class: 's', text: sub && sub !== 'review' ? sub : (x.k ? (x.k === 'O' ? 'Optimize · ' : 'Write · ') : '') + x.lv + (sub === 'review' ? ' · ' + revText(S.rev[x.id]) : '') })]), S.solved[x.id] && sub !== 'review' ? el('span', { class: 'ok', text: '✓' }) : sub === 'review' ? el('span', { class: 's', text: 'Review ›' }) : null]);

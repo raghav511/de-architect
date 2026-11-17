@@ -1,5 +1,5 @@
 /* Redesign 2026-11 (canvas: tools/redesign/README.md): one group of cases per screen, written before the screen is built.
-   node tools/redesign_test.js [baseUrl] [group]   groups: today, path (more join as each screen is rebuilt)
+   node tools/redesign_test.js [baseUrl] [group]   groups: today, path, practice (more join as each screen is rebuilt)
    Runs on Chromium at iPhone size (390 x 844) and desktop size (1440 x 900). */
 const { chromium } = require(process.env.PW || 'playwright');
 const { blockExternal } = require('./testnet');
@@ -14,6 +14,7 @@ async function page(b, vp) {
   return p;
 }
 async function path(p) { await p.goto(BASE + '#/path'); await p.waitForSelector('main, #page', { timeout: 60000 }); await p.waitForTimeout(800); }
+async function practice(p) { await p.goto(BASE + '#/practice'); await p.waitForSelector('#page h1, .tabs', { timeout: 60000 }); await p.waitForTimeout(900); }
 async function today(p) { await p.goto(BASE + '#/today'); await p.waitForSelector('.plan', { timeout: 60000 }); await p.waitForTimeout(600); }
 function T(group, name, fn) { return { group, name, fn }; }
 
@@ -126,6 +127,58 @@ const CASES = [
     await p.click('.stage.now .prow[data-mid="' + mid + '"]'); await p.waitForTimeout(600);
     const h = await p.evaluate(() => location.hash);
     if (h !== '#/path/' + mid) throw new Error('row opened ' + h);
+    if (p.errs.length) throw new Error('page errors: ' + p.errs.join(' | '));
+  }),
+  /* ---------- Practice: the ladder, reviews, four banks, build and design ---------- */
+  T('practice', 'PR1 Practice opens on the next unsolved ladder problem with Start on the first iPhone screen', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await practice(p);
+    const h = await p.evaluate(() => { const c = document.querySelector('.ladderhero'); if (!c) return null;
+      let nx = null; for (let i = 0; i < 168 && !nx; i++) nx = dayProblems(i).find(x => !x.auto) || null;
+      const go = c.querySelector('.lh-start'), r = go && go.getBoundingClientRect(), tb = document.querySelector('.tabbar');
+      return { kicker: (c.querySelector('.lh-kicker') || {}).textContent || '', title: (c.querySelector('.lh-title') || {}).textContent, want: nx && nx.t, href: go && go.getAttribute('href'), wantHref: nx && nx.href, bottom: r ? r.bottom : 9999, limit: innerHeight - (tb ? tb.getBoundingClientRect().height : 0) }; });
+    if (!h) throw new Error('no .ladderhero');
+    if (!/Next on the ladder/i.test(h.kicker)) throw new Error('kicker: ' + h.kicker);
+    if (h.title !== h.want || h.href !== h.wantHref) throw new Error('ladder hero shows ' + h.title + ' ' + h.href + ', want ' + h.want + ' ' + h.wantHref);
+    if (h.bottom > h.limit) throw new Error('Start is below the first screen');
+  }),
+  T('practice', 'PR2 reviews due today are listed under the ladder, each opening its review; none due says so', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await practice(p);
+    const none = await p.evaluate(() => ({ n: document.querySelectorAll('.revdue a.revrow').length, txt: (document.querySelector('.revdue') || {}).textContent || '' }));
+    if (none.n !== 0 || !/Nothing due/i.test(none.txt)) throw new Error('with nothing due: ' + JSON.stringify(none));
+    const id = await p.evaluate(() => { const x = DATA.dsa[0]; S.rev = S.rev || {}; S.rev[x.id] = { box: 0, due: iso(new Date()) }; save(); route(); return x.id; });
+    await p.waitForTimeout(500);
+    const r = await p.evaluate(() => ({ rows: [...document.querySelectorAll('.revdue a.revrow')].map(a => a.getAttribute('href')), head: (document.querySelector('.revdue h2') || {}).textContent || '' }));
+    if (r.rows.length !== 1 || r.rows[0] !== '#/dsa/' + id + '/review') throw new Error('due rows: ' + JSON.stringify(r.rows));
+    if (!/Reviews due · 1/.test(r.head)) throw new Error('heading: ' + r.head);
+  }),
+  T('practice', 'PR3 four bank tiles show solved of total from the banks, an easy/medium/hard mix, and open their lists', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await practice(p);
+    const t = await p.evaluate(() => [...document.querySelectorAll('.banktile')].map(a => ({ bank: a.dataset.bank, href: a.getAttribute('href'), n: (a.querySelector('.bt-n') || {}).textContent || '', mix: a.querySelectorAll('.mix i').length,
+      want: DATA[a.dataset.bank] ? DATA[a.dataset.bank].filter(x => S.solved[x.id]).length + ' / ' + DATA[a.dataset.bank].length : '?' })));
+    if (t.map(x => x.bank).join() !== 'dsa,py,sql,spark') throw new Error('tiles: ' + t.map(x => x.bank).join());
+    for (const x of t) { if (x.n !== x.want) throw new Error(x.bank + ' says ' + x.n + ', want ' + x.want); if (x.href !== '#/practice/' + x.bank) throw new Error(x.bank + ' opens ' + x.href); if (x.mix !== 3) throw new Error(x.bank + ' mix has ' + x.mix + ' parts'); }
+  }),
+  T('practice', 'PR4 solving the ladder problem moves the hero on and counts on its tile', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await practice(p);
+    const a = await p.evaluate(() => ({ t: document.querySelector('.ladderhero .lh-title').textContent, n: document.querySelector('.banktile[data-bank=dsa] .bt-n').textContent }));
+    await p.evaluate(() => { let nx = null; for (let i = 0; i < 168 && !nx; i++) nx = dayProblems(i).find(x => !x.auto) || null; S.solved[nx.id] = Date.now(); save(); route(); });
+    await p.waitForTimeout(500);
+    const c = await p.evaluate(() => ({ t: document.querySelector('.ladderhero .lh-title').textContent, all: [...document.querySelectorAll('.banktile .bt-n')].map(e => e.textContent).join() }));
+    if (c.t === a.t) throw new Error('the hero still shows the solved problem');
+    if (!/^1 \//.test(c.all.split(',').find(x => /^1 \//.test(x)) || '')) throw new Error('no tile counted the solve: ' + c.all);
+  }),
+  T('practice', 'PR5 Build and design links the simulator, design problems, projects, Git labs and the terminal', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await practice(p);
+    const hs = await p.evaluate(() => [...document.querySelectorAll('.buildlinks a')].map(a => a.getAttribute('href')));
+    for (const h of ['#/sim', '#/design', '#/projects', '#/git', '#/terminal']) if (!hs.some(x => x === h || x.startsWith(h + '/'))) throw new Error('missing ' + h + ' in ' + hs.join());
+  }),
+  T('practice', 'PR6 a bank list still opens with its filters and a way back to Practice; desktop has no page errors', async b => {
+    const p = await page(b, { width: 1440, height: 900 }); await p.goto(BASE + '#/practice/sql'); await p.waitForSelector('.tabs', { timeout: 60000 }); await p.waitForTimeout(600);
+    const r = await p.evaluate(() => ({ items: document.querySelectorAll('a.item').length, back: !!document.querySelector('.tabs [role=tab][data-f=home]') }));
+    if (!r.items) throw new Error('the SQL list is empty');
+    if (!r.back) throw new Error('no Practice tab back to the hub');
+    await p.click('.tabs [data-f=home]'); await p.waitForTimeout(600);
+    if (!await p.$('.ladderhero')) throw new Error('the Practice tab did not open the hub');
     if (p.errs.length) throw new Error('page errors: ' + p.errs.join(' | '));
   })
 ];

@@ -1,10 +1,9 @@
 {
-  "version": "1.39.0",
+  "version": "1.40.0",
   "date": "2026-11-18",
   "notes": [
-    "Path opens on where you are, with Continue to your next step.",
-    "The whole course is grouped into seven stages; finished stages fold to one line and the current one says Now.",
-    "Track chips show just Python, AI, modelling, data engineering, systems, leadership or Claude Code.",
-    "Up next shows Updated or New when a step changed."
+    "Practice opens on your next ladder problem, with reviews due under it.",
+    "DSA, Python, SQL and PySpark tiles show how many you have solved and the easy, medium and hard mix.",
+    "The simulator, design problems, projects, Git labs and the terminal are one tap away."
   ]
 }
