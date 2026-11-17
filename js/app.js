@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.40.0';
+const VERSION = '1.41.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -207,12 +207,13 @@ function chip(k) { const c = chipFor(k); return el('span', { class: 'chip ' + c[
 /* ---------------- shell ---------------- */
 const NAV = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/playbook', 'My playbook', 'mark'], ['#/story', 'Meridian series', 'mark'], ['#/path', 'Path', 'path'], ['#/learn/0', 'Lessons', 'book'], ['#/practice', 'Coding practice', 'term'], ['#/projects', 'Projects', 'proj'], ['#/design', 'System design', 'pen'], ['#/sim', 'Design simulator', 'sim'], ['#/loop', 'Interview loop', 'loop'], ['#/git', 'Git lessons', 'git'], ['#/terminal', 'Terminal', 'term'], ['#/news', 'What is new in AI', 'news'], ['#/recent', 'Asked this week', 'ask'], ['#/quiz/0', 'Quizzes', 'check2'], ['#/mock', 'Mock interview', 'doc'], ['#/recall', 'Daily recall', 'cards'], ['#/coach', 'Coach', 'spark'], ['#/progress', 'Progress', 'prog']];
 /* the sidebar and the More sheet group every section under Learn, Practice, Interview and You (Today stays on top) */
-const NAV_GROUPS = [['learn', 'Learn', ['#/path', '#/story', '#/reels', '#/learn/0', '#/quiz/0']], ['practice', 'Practice', ['#/practice', '#/projects', '#/design', '#/sim', '#/git', '#/terminal']], ['interview', 'Interview', ['#/loop', '#/live', '#/recall', '#/recent', '#/mock', '#/coach']], ['you', 'You', ['#/progress', '#/playbook', '#/news']]];
+const NAV_GROUPS = [['learn', 'Learn', ['#/path', '#/story', '#/reels', '#/learn/0', '#/quiz/0']], ['practice', 'Practice', ['#/practice', '#/projects', '#/design', '#/sim', '#/git', '#/terminal']], ['interview', 'Interview', ['#/interview', '#/loop', '#/live', '#/recall', '#/recent', '#/mock', '#/coach']], ['you', 'You', ['#/progress', '#/playbook', '#/news']]];
 const NAV_LIVE = ['#/live', 'Live mock', 'mic'];
-const navItem = h => h === '#/live' ? NAV_LIVE : NAV.find(x => x[0] === h);
+const NAV_IHUB = ['#/interview', 'Interview', 'mic'];
+const navItem = h => h === '#/live' ? NAV_LIVE : h === '#/interview' ? NAV_IHUB : NAV.find(x => x[0] === h);
 const navGroupOf = r => (NAV_GROUPS.find(g => g[2].some(h => h.split('/')[1] === r)) || [])[0];
 /* phone tab bar: Today, Reels, then one tab per group (its first page), then More */
-const TABS = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/path', 'Learn', 'book', 'learn'], ['#/practice', 'Practice', 'term', 'practice'], ['#/live', 'Interview', 'mic', 'interview']];
+const TABS = [['#/today', 'Today', 'today'], ['#/reels', 'Reels', 'reel'], ['#/path', 'Learn', 'book', 'learn'], ['#/practice', 'Practice', 'term', 'practice'], ['#/interview', 'Interview', 'mic', 'interview']];
 function shell(title, eyebrow, body, opts) {
   opts = opts || {};
   const route = location.hash.split('/')[1] || 'today';
@@ -273,7 +274,7 @@ function route() {
     else if (r === 'sim') vSim(p[1], p[2], p[3]);
     else if (r === 'loop') vLoop(p[1], p[2]);
     else if (r === 'quiz') vQuiz(p[1]);
-    else if (r === 'interview') vInterview(p[1], p[2]);
+    else if (r === 'interview') (p[1] ? vInterview(p[1], p[2]) : vInterviewHub());
     else if (r === 'compare') vCompare(p[1]);
     else if (r === 'story') vStory();
     else if (r === 'progress') vProgress();
@@ -915,6 +916,39 @@ async function vQuiz(m) {
 }
 
 /* ---------------- Interview ---------------- */
+/* Redesign (Interview hub): today's live mock with the week, the honest ladder, the nine loop rounds with readiness from real
+   work and company chips, and what else is due. Module interview sets stay at #/interview/<module>. tools/redesign_test.js interview */
+let ihubCo = 'all';
+async function vInterviewHub() {
+  const k = iso(new Date()), mode = liveMode(k), live = (S.live || {})[k] || {};
+  const d0 = new Date(); d0.setHours(0, 0, 0, 0); d0.setDate(d0.getDate() - ((d0.getDay() + 6) % 7));
+  const week = el('div', { class: 'wkmock', 'aria-label': 'This week\'s mocks' }, [0, 1, 2, 3, 4, 5, 6].map(i => { const d = new Date(d0); d.setDate(d0.getDate() + i); const dk = iso(d), m = (S.live || {})[dk], md = liveMode(dk);
+    const v = dk === k ? 'Today' : m && m.done ? 'Done' : md === 'boss' ? 'Boss' : md === 'full' ? '5 q' : '1 q';
+    return el('span', { class: 'wd' + (dk === k ? ' today' : '') + (m && m.done ? ' ok' : '') }, [el('b', { text: DN[i].slice(0, 3) }), el('span', { text: v })]); }));
+  const hero = el('section', { class: 'livehero', 'aria-label': 'Today\'s live mock' }, [
+    el('div', { class: 'row', style: { gap: '8px' } }, [el('span', { class: 'lv-kicker', text: 'Today\'s live mock' }), el('span', { class: 'grow' }), el('span', { class: 'lv-mode', text: mode === 'boss' ? 'Boss round · 7 questions' : mode === 'full' ? 'Full mock · 5 questions' : '1 question · about 8 min' })]),
+    el('h2', { class: 'lv-title', text: live.done ? 'Done for today' : mode === 'boss' ? 'The Sunday boss round' : mode === 'full' ? 'The Saturday full mock' : 'One question from this week' }),
+    el('span', { class: 'lv-sub', text: 'Speak or type. An interviewer asks one follow-up, then scores correct, depth, trade-offs and clear.' }),
+    el('div', { class: 'row fh-acts' }, [el('a', { class: 'btn lv-start', href: '#/live/' + k }, [el('span', { text: live.done ? 'See the scorecard' : 'Start' }), svg(I.fwd, 18)]), el('a', { class: 'btn lv-written', href: '#/mock', text: 'Written instead' })]), week]);
+  const xp = gameXP(), L = gameLevel(xp), cur = LADDER[L.i], nx = LADDER[Math.min(L.i + 1, LADDER.length - 1)], pct = nx[1] > cur[1] ? Math.min(100, Math.round(100 * (xp - cur[1]) / (nx[1] - cur[1]))) : 100;
+  const ladder = el('section', { class: 'card pad stack laddercard' }, [el('div', { class: 'row' }, [el('span', { class: 'bl-ic' }, svg(I.prog, 20)), el('div', { class: 'grow stack', style: { gap: '0' } }, [el('b', { style: { fontSize: '16px' }, text: cur[0] + ' to ' + nx[0] }), el('span', { class: 'muted', style: { fontSize: '13px' }, text: xp.toLocaleString('en-US') + ' / ' + nx[1].toLocaleString('en-US') + ' XP' + (nx[2] ? ' · and a boss round at ' + nx[2].toFixed(1) : '') })])]),
+    el('div', { class: 'bar' }, el('i', { style: { width: pct + '%' } })), typeof gameGateText === 'function' && gameGateText(L) ? el('span', { class: 'muted', style: { fontSize: '13px' }, text: gameGateText(L) }) : el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'A self-marked answer still gives XP but never promotes.' }), el('a', { class: 'tlink', href: '#/progress', style: { fontWeight: 600, fontSize: '14px' }, text: 'See your progress ›' })]);
+  const loopBox = el('section', { class: 'stack', style: { gap: '10px' } }, [el('h2', { text: 'The loop · 9 rounds' }), el('p', { class: 'muted', text: 'Loading the rounds…' })]);
+  const also = el('section', { class: 'card pad stack alsotoday' }, [el('h2', { text: 'Also today' }), el('div', { class: 'list' }, [['#/recall', 'Recall', 'cards', 'Interview answers and quiz items, 1, 3, 7, 21 days'], ['#/recent', 'Asked this week', 'ask', 'Real company questions on your modules'], ['#/coach', 'Coach', 'spark', 'Last night\'s note and what to fix']].map(([h, t, ic, d]) => el('a', { class: 'item', href: h }, [el('span', { class: 'bl-ic' }, svg(I[ic], 20)), el('span', { class: 'grow' }, [el('span', { class: 't', text: t }), el('br'), el('span', { class: 's', text: d })]), svg(I.fwd, 18)])))]);
+  shell('Interview', 'A live mock every day · readiness comes only from real work', [el('div', { class: 'grid2' }, [el('div', { class: 'stack', style: { gap: '16px' } }, [hero, loopBox]), el('div', { class: 'stack', style: { gap: '16px' } }, [ladder, also])])]);
+  let D; try { D = await loopData(); } catch (e) { loopBox.lastChild.textContent = 'The loop could not load. Connect once and try again.'; return; }
+  loopState(); const rd = loopReady(D);
+  const band = n => n >= 65 ? 'hi' : n >= 45 ? 'mid' : 'lo';
+  const paint = () => {
+    const co = D.companies.find(c => c[0] === ihubCo), ids = co ? co[2] : D.rounds.map(r => r.id), avg = Math.round(ids.reduce((a, id) => a + rd[id], 0) / ids.length);
+    loopBox.textContent = '';
+    loopBox.append(el('div', { class: 'row' }, [el('h2', { class: 'grow', text: 'The loop · ' + ids.length + ' rounds' }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: (co ? co[0] + ' loop · ' : '') + avg + '% ready' })]),
+      el('div', { class: 'cochips trackchips', role: 'group', 'aria-label': 'Typical loop by company' }, [['all', 'All rounds']].concat(D.companies.map(c => [c[0], c[0]])).map(([c, n]) => el('button', { class: 'tchip', 'data-co': c, 'aria-pressed': String(ihubCo === c), onclick: () => { ihubCo = c; paint(); }, text: n }))),
+      el('div', { class: 'card lrounds' }, ids.map(id => { const R = D.rounds.find(r => r.id === id), v = rd[id];
+        return el('a', { class: 'lround', href: '#/loop/' + id, 'data-r': id }, [el('span', { class: 'lr-n b-' + band(v), text: String(R.n) }), el('span', { class: 'grow stack', style: { gap: '5px' } }, [el('span', { class: 'row' }, [el('b', { class: 'grow', text: R.t }), el('span', { class: 'lr-pct t-' + band(v), text: v + '%' })]), el('span', { class: 'pbar' }, el('i', { class: 'f-' + band(v), style: { width: v + '%' } }))])]); })));
+  };
+  paint();
+}
 async function vInterview(m, focus) {
   m = MOD[midOf(m)] ? midOf(m) : curMid(); const w = qk(m);
   shell('Interview set', 'Module ' + modLabel(m) + ' · past questions with model answers', [el('p', { class: 'muted', text: 'Loading…' })], { back: '#/today' });

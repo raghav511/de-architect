@@ -878,3 +878,25 @@ svg .f{fill:none}
 .buildlinks .item{min-height:56px}
 .bl-ic{width:38px;height:38px;flex:none;border-radius:11px;display:flex;align-items:center;justify-content:center;background:var(--teal-l);color:var(--teal-d)}
 @media (min-width:1024px){.banks{grid-template-columns:repeat(4,minmax(0,1fr))}.lh-title{font-size:32px}}
+/* ---- Redesign: Interview hub (tools/redesign_test.js interview) ---- */
+.livehero{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:10px;padding:20px;border-radius:22px;color:#fff;background:linear-gradient(135deg,var(--hero-a),var(--hero-m) 62%,var(--hero-b))}
+.livehero::after{content:"";position:absolute;right:-60px;top:-70px;width:190px;height:190px;border-radius:50%;border:2px solid rgba(255,255,255,.22);pointer-events:none}
+.livehero>*{position:relative;z-index:1}
+.lv-kicker{font-size:11.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:var(--hero-btn);color:var(--hero-btn-ink)}
+.lv-mode,.lv-sub{font-size:14px;color:rgba(255,255,255,.9)}
+.lv-title{font-family:var(--display);font-size:26px;font-weight:800;line-height:1.15;color:#fff;margin:0}
+.livehero .lv-start{flex:1;min-height:52px;border-radius:14px;border:0;background:var(--hero-btn);font-weight:800;font-size:16px}
+:root .livehero a.lv-start,:root .livehero a.lv-start:hover{color:var(--hero-btn-ink)}
+.livehero .lv-written{min-height:52px;border-radius:14px;background:transparent;border:1px solid rgba(255,255,255,.45);font-weight:700}
+:root .livehero a.lv-written,:root .livehero a.lv-written:hover{color:#fff}
+.wkmock{display:flex;gap:5px}
+.wkmock .wd{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;border-radius:10px;font-size:11.5px;color:rgba(255,255,255,.85)}
+.wkmock .wd b{color:#fff}.wkmock .wd.today{background:rgba(255,255,255,.18);outline:2px solid var(--hero-btn)}.wkmock .wd.ok span{color:var(--hero-btn)}
+.lrounds{padding:0;overflow:hidden;display:flex;flex-direction:column}
+.lround{display:flex;align-items:center;gap:12px;min-height:58px;padding:8px 14px;border-top:1px solid var(--line);color:var(--ink);text-decoration:none}
+.lround:first-child{border-top:0}.lround:hover{background:var(--teal-xl)}
+.lr-n{width:30px;height:30px;flex:none;border-radius:15px;border:2px solid currentColor;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+.lr-pct{font-size:12.5px;font-weight:700}
+.b-hi,.t-hi{color:var(--teal-d)}.b-mid,.t-mid{color:var(--amber-d)}.b-lo,.t-lo{color:var(--red-d)}
+.pbar i.f-hi{background:var(--teal)}.pbar i.f-mid{background:var(--amber-b)}.pbar i.f-lo{background:var(--red)}
+@media (min-width:1024px){.lv-title{font-size:32px}}
