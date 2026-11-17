@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.45.0';
+const VERSION = '1.46.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -1069,6 +1069,17 @@ function saveSettings(body) {
 }
 /* Profile: the three things you do most are one tap at the top; everything else sits in short tabs that save as you change them */
 var profileTab = 'sync'; /* var: route() can run before this line during start-up */
+const SWATCH = { electric: ['#4325E0', '#C6F432', '#E6E0FF'], calm: ['#12202F', '#0B7A67', '#DDF1EA'], sunset: ['#C2351D', '#FFB020', '#FFE1D8'], ocean: ['#0052D6', '#4FE3F0', '#DCE9FF'] };
+function themeSwatches() {
+  const cur = paletteOf(), hid = el('input', { type: 'hidden', id: 'st_palette', value: cur });
+  const btns = PALETTES.map(([k, t]) => { const [n, d] = t.split(': '), c = SWATCH[k];
+    return el('button', { type: 'button', role: 'radio', class: 'swatch', 'data-palette': k, 'aria-checked': String(k === cur), 'aria-label': t, onclick: e => {
+      hid.value = k; btns.forEach(b => b.setAttribute('aria-checked', String(b.dataset.palette === k)));
+      e.currentTarget.closest('section').dispatchEvent(new Event('change', { bubbles: true })); } }, [
+      el('span', { class: 'sw-bar' }, [el('i', { style: { background: c[0], flex: '2' } }), el('i', { style: { background: c[1] } }), el('i', { style: { background: c[2] } })]),
+      el('b', { text: n }), el('span', { class: 's', text: d })]); });
+  return el('div', { class: 'field' }, [el('span', { class: 'lbl', text: 'Colour theme' }), el('div', { class: 'themes', role: 'radiogroup', 'aria-label': 'Colour theme' }, btns), hid]);
+}
 function vProfile() {
   const f = (id, label, val, type, ph) => el('div', { class: 'field' }, [el('label', { for: id, class: 'lbl', text: label }), el('input', { id, type: type || 'text', value: val || '', placeholder: ph || '', autocomplete: 'off' })]);
   const sel = (id, label, cur, opts) => el('div', { class: 'field' }, [el('label', { for: id, class: 'lbl', text: label }), el('select', { id, class: 'btn' }, opts.map(([v, t]) => el('option', { value: v, selected: cur === v ? 'selected' : null, text: t })))]);
@@ -1085,7 +1096,7 @@ function vProfile() {
   const panels = {
     sync: [f('st_sync', 'Sync URL (Apps Script, ends in ?k=your key)', S.settings.syncUrl, 'url', 'https://script.google.com/macros/s/…/exec?k=…'), f('st_gcid', 'Google client ID (for Sign in with Google; not a secret)', S.settings.googleClientId || '', 'text', '…apps.googleusercontent.com'), note('Your plan, minutes and AI choices sync across devices. Theme, keys and this URL stay on this device.'),
       el('label', { class: 'row', style: { gap: '10px', fontSize: '14.5px' } }, [el('input', { type: 'checkbox', id: 'st_notify', checked: S.settings.notifyUpdates ? 'checked' : null, style: { width: '22px', height: '22px' } }), 'Notify me when an app update is available'])],
-    look: [sel('st_palette', 'Colour theme', paletteOf(), PALETTES), f('st_name', 'Your name (used in the greeting)', S.settings.name || '', 'text', (typeof authGet === 'function' && (authGet() || {}).name) || 'Your first name'), sel('st_fun', 'Celebrations (confetti when a module ships or a warm-up goes well)', S.settings.fun === false ? 'off' : 'on', [['on', 'On'], ['off', 'Off']]), sel('st_story', 'Meridian story (a short scene each day and tomorrow\'s hook)', S.settings.story === 'off' ? 'off' : 'on', [['on', 'On'], ['off', 'Off: recall and plans only']]), sel('st_sound', 'Sounds in the warm-up', S.settings.sound ? 'on' : 'off', [['off', 'Off'], ['on', 'On']])],
+    look: [themeSwatches(),  f('st_name', 'Your name (used in the greeting)', S.settings.name || '', 'text', (typeof authGet === 'function' && (authGet() || {}).name) || 'Your first name'), sel('st_fun', 'Celebrations (confetti when a module ships or a warm-up goes well)', S.settings.fun === false ? 'off' : 'on', [['on', 'On'], ['off', 'Off']]), sel('st_story', 'Meridian story (a short scene each day and tomorrow\'s hook)', S.settings.story === 'off' ? 'off' : 'on', [['on', 'On'], ['off', 'Off: recall and plans only']]), sel('st_sound', 'Sounds in the warm-up', S.settings.sound ? 'on' : 'off', [['off', 'Off'], ['on', 'On']])],
     plan: [f('st_start', 'Week 1 starts (pick any day in that week)', S.start, 'date'), el('div', { class: 'tri' }, [sel('st_set', 'Daily set', S.settings.setSize === 'double' ? 'double' : 'smallest', [['smallest', 'Smallest: one item per section'], ['double', 'Double: two items per section']]), f('st_time', 'Study time', S.settings.studyTime || '07:00', 'time')]), el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'There is no daily time limit: each day holds one item from every section of Learn, Practice and Interview, and XP decides when the module moves on. Minutes are shown as a guide.' })],
     ai: [sel('st_ai', 'AI features', S.settings.ai === false ? 'off' : 'on', [['on', 'On: instant grading, practice runs and the Claude Code track'], ['off', 'Off: study without AI (self-check with model answers)']]),
       el('div', { class: 'duo' }, [sel('st_coach', 'Coach answers with', S.settings.coachVia || 'mac', [['mac', 'Claude Code on my Mac'], ['hints', 'Hints only (no AI)']]), sel('st_grade', 'Grading model', S.settings.gradeModel || 'auto', [['auto', 'Automatic'], ['haiku', 'Haiku (cheapest)'], ['sonnet', 'Sonnet (most thorough)']])]),
@@ -1096,10 +1107,14 @@ function vProfile() {
   const panelEls = T.map(([k]) => el('div', { class: 'stack', role: 'tabpanel', id: 'pp_' + k, 'aria-labelledby': 'pt_' + k, hidden: k === profileTab ? null : 'hidden' }, panels[k]));
   /* switching tabs changes nothing else on screen, so the page never jumps */
   function pick(k, focusId) { profileTab = k; tabBtns.forEach(b => { const on = b.id === 'pt_' + k; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; }); panelEls.forEach(p => { p.hidden = p.id !== 'pp_' + k; }); if (focusId) { const x = document.getElementById(focusId); if (x) x.focus(); } }
-  const form = el('section', { class: 'card pad stack', onchange: () => { if (saveSettings(form)) { document.querySelectorAll('.avatar span, .avatar.big').forEach(a => { a.textContent = (userName().slice(0, 1).toUpperCase() || 'Me'); }); } } }, [tablist].concat(panelEls, [note('Changes save as you make them.')]));
+  const saved = el('span', { class: 'savedpill', role: 'status', 'aria-live': 'polite', text: '' });
+  const showSaved = t => { saved.textContent = '✓ ' + (t || 'Saved'); saved.classList.add('on'); };
+  const form = el('section', { class: 'card pad stack', onchange: () => { showSaved(); if (saveSettings(form)) { document.querySelectorAll('.avatar span, .avatar.big').forEach(a => { a.textContent = (userName().slice(0, 1).toUpperCase() || 'Me'); }); } } }, [tablist].concat(panelEls, [note('Changes save as you make them.')]));
   const body = el('div', { class: 'stack profile' }, [
-    el('section', { class: 'card pad row phero' }, [el('span', { class: 'avatar big', 'aria-hidden': 'true', text: (userName().slice(0, 1).toUpperCase() || 'Me') }), el('div', { class: 'grow stack', style: { gap: '2px', minWidth: 0 } }, [el('h1', { text: userName() || 'Your profile' }), el('span', { class: 'muted', text: 'Week ' + weekOf(sc.today) + ' · ' + done + ' of ' + sc.units.length + ' steps' + (last ? ' · ends ' + shortDate(last) : '') })])]),
-    typeof authCard === 'function' ? authCard() : null, quick, form]);
+    /* Redesign (Profile): a hero in the colour theme with your level and streak and the quick actions inside it; colour themes as
+       swatches; Saved shows as you change things. tools/redesign_test.js profile */
+    el('section', { class: 'phero' }, [el('div', { class: 'row', style: { gap: '14px' } }, [el('span', { class: 'avatar big', 'aria-hidden': 'true', text: (userName().slice(0, 1).toUpperCase() || 'Me') }), el('div', { class: 'grow stack', style: { gap: '2px', minWidth: 0 } }, [el('h1', { text: userName() || 'Your profile' }), el('span', { class: 'ph-sub', text: LADDER[gameLevel(gameXP()).i][0] + ' · ' + gameXP().toLocaleString('en-US') + ' XP · ' + gameStreak().n + '-day streak' }), el('span', { class: 'ph-sub', text: 'Week ' + weekOf(sc.today) + ' · ' + done + ' of ' + sc.units.length + ' steps' + (last ? ' · ends ' + shortDate(last) : '') })]), saved]), quick]),
+    typeof authCard === 'function' ? authCard() : null, form]);
   shell('Profile', 'Sync, updates, theme, AI and settings', body);
 }
 async function doSync() {

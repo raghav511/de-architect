@@ -1,5 +1,5 @@
 /* Redesign 2026-11 (canvas: tools/redesign/README.md): one group of cases per screen, written before the screen is built.
-   node tools/redesign_test.js [baseUrl] [group]   groups: today, path, practice, interview, module, quiz, live, progress (more join as each screen is rebuilt)
+   node tools/redesign_test.js [baseUrl] [group]   groups: today, path, practice, interview, module, quiz, live, progress, profile (every screen of the redesign as each screen is rebuilt)
    Runs on Chromium at iPhone size (390 x 844) and desktop size (1440 x 900). */
 const { chromium } = require(process.env.PW || 'playwright');
 const { blockExternal } = require('./testnet');
@@ -20,6 +20,7 @@ async function learn(p, path) { await p.goto(BASE + '#/today'); await p.waitForF
 async function quiz(p) { await p.goto(BASE + '#/quiz/s05'); await p.waitForSelector('.opt, .qtop', { timeout: 60000 }); await p.waitForTimeout(900); }
 async function live(p) { await p.addInitScript(() => { window.macCall = async () => ({ text: '{}' }); }); await p.goto(BASE + '#/live'); await p.waitForSelector('#page .card, #page section', { timeout: 60000 }); await p.waitForTimeout(1500); }
 async function prog(p) { await p.goto(BASE + '#/progress'); await p.waitForSelector('#page section', { timeout: 60000 }); await p.waitForTimeout(1000); }
+async function prof(p) { await p.goto(BASE + '#/profile'); await p.waitForSelector('#pt_look', { timeout: 60000 }); await p.waitForTimeout(800); }
 async function today(p) { await p.goto(BASE + '#/today'); await p.waitForSelector('.plan', { timeout: 60000 }); await p.waitForTimeout(600); }
 function T(group, name, fn) { return { group, name, fn }; }
 
@@ -369,6 +370,34 @@ const CASES = [
     const p = await page(b, { width: 1440, height: 900 }); await prog(p);
     const r = await p.evaluate(() => ({ shown: (document.querySelector('.st-n') || {}).textContent || '', want: gameStreak().n }));
     if (!new RegExp('^' + r.want + '-day streak').test(r.shown)) throw new Error('streak says "' + r.shown + '", want ' + r.want);
+    if (p.errs.length) throw new Error('page errors: ' + p.errs.join(' | '));
+  }),
+  /* ---------- Profile: a hero with your level and the quick actions, colour themes as swatches, Saved as you go ---------- */
+  T('profile', 'F1 the Profile hero shows your level and streak, with Sync, Update and Mode inside it', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await prof(p);
+    const r = await p.evaluate(() => { const h = document.querySelector('.phero'); if (!h) return null; const L = gameLevel(gameXP());
+      return { bg: getComputedStyle(h).backgroundImage, txt: h.textContent, lvl: LADDER[L.i][0], st: gameStreak().n + '-day streak', sync: !!h.querySelector('#syncBtn'), mode: !!h.querySelector('.qmode'), upd: !!h.querySelector('.qa .ver') }; });
+    if (!r) throw new Error('no .phero');
+    if (!/gradient/.test(r.bg)) throw new Error('the hero has no theme gradient');
+    if (!r.txt.includes(r.lvl) || !r.txt.includes(r.st)) throw new Error('hero text: ' + r.txt.slice(0, 120));
+    if (!r.sync || !r.mode || !r.upd) throw new Error('quick actions not in the hero: ' + JSON.stringify(r));
+  }),
+  T('profile', 'F2 Look shows four colour themes as swatches; picking Ocean recolours the app, saves, and survives a reload', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await prof(p);
+    await p.click('#pt_look'); await p.waitForTimeout(200);
+    const names = await p.$$eval('.themes button[role=radio]', bs => bs.map(x => x.dataset.palette));
+    if (names.join() !== 'electric,calm,sunset,ocean') throw new Error('swatches: ' + names.join());
+    await p.click('.themes button[data-palette=ocean]'); await p.waitForTimeout(400);
+    const r = await p.evaluate(() => ({ root: document.documentElement.dataset.palette, saved: S.settings.palette, checked: document.querySelector('.themes button[data-palette=ocean]').getAttribute('aria-checked') }));
+    if (r.root !== 'ocean' || r.saved !== 'ocean' || r.checked !== 'true') throw new Error(JSON.stringify(r));
+    await p.reload(); await p.waitForTimeout(1500);
+    if (await p.evaluate(() => document.documentElement.dataset.palette) !== 'ocean') throw new Error('the theme did not survive a reload');
+  }),
+  T('profile', 'F3 a change shows Saved at once, and the page has no errors on desktop', async b => {
+    const p = await page(b, { width: 1440, height: 900 }); await prof(p);
+    await p.click('#pt_look'); await p.click('.themes button[data-palette=sunset]'); await p.waitForTimeout(400);
+    const t = await p.evaluate(() => (document.querySelector('.savedpill') || {}).textContent || '');
+    if (!/Saved/.test(t)) throw new Error('saved note: ' + t);
     if (p.errs.length) throw new Error('page errors: ' + p.errs.join(' | '));
   })
 ];
