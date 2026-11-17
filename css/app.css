@@ -746,3 +746,44 @@ select.btn{max-width:100%;text-overflow:ellipsis} /* a long module title never m
 .storymap{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin:4px 0 10px}.storytile{display:flex;flex-direction:column;gap:3px;min-height:64px;padding:8px 10px;border:1px solid var(--line2);border-radius:10px;color:var(--ink);text-decoration:none;font-size:13.5px}.storytile.done{background:var(--teal-l);border-color:#7CC7B0}.storytile.now{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal)}.storytile .bar{height:4px}
 .storygo[hidden]{display:none}
 .casefile summary{cursor:pointer;list-style:none}.casefile summary::-webkit-details-marker{display:none}.casefile .casehead{font-weight:700;font-size:16.5px}.lasker,.linterviewer{font-size:14.5px}
+
+/* ---- Redesign 2026-11-17: colour themes, icons and button feel ---- */
+:root{--link:#0B6B5B;--link-h:#074D41;--hero-a:#12202F;--hero-m:#1E3F8F;--hero-b:#0B7A67;--hero-lbl:#9FD8C8;--hero-btn:#fff;--hero-btn-ink:#12202F}
+a{color:var(--link)}a:hover{color:var(--link-h)}
+.hero{background:linear-gradient(120deg,var(--hero-a),var(--hero-m) 60%,var(--hero-b))}
+.hero .lbl{color:var(--hero-lbl)}.hero .btn{background:var(--hero-btn);color:var(--hero-btn-ink);border-color:var(--hero-btn)}
+:is(:root[data-theme=dark]) a{color:var(--link)}
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]) a{color:var(--link)}}
+:root[data-theme=dark]{--link:#6FD3BE;--link-h:#9FE3D3}
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]){--link:#6FD3BE;--link-h:#9FE3D3}}
+
+:root[data-palette=electric]{--bg:#F4F2FF;--teal:#4325E0;--teal-d:#2A1696;--teal-l:#E6E0FF;--teal-xl:#F1EDFF;--navy:#1E1466;--navy2:#2E2190;--link:#4325E0;--link-h:#2A1696;--hero-a:#2A1696;--hero-m:#4325E0;--hero-b:#5B3DF5;--hero-lbl:#C6F432;--hero-btn:#C6F432;--hero-btn-ink:#12202F}
+:root[data-palette=electric][data-theme=dark]{--bg:#0E1620;--teal:#9C8CFF;--teal-d:#C9C0FF;--teal-l:#2A2457;--teal-xl:#1B1838;--navy:#15102E;--navy2:#241C4A;--link:#B3A8FF;--link-h:#C9C0FF}
+@media (prefers-color-scheme: dark){:root[data-palette=electric]:not([data-theme=light]){--bg:#0E1620;--teal:#9C8CFF;--teal-d:#C9C0FF;--teal-l:#2A2457;--teal-xl:#1B1838;--navy:#15102E;--navy2:#241C4A;--link:#B3A8FF;--link-h:#C9C0FF}}
+:root[data-palette=sunset]{--bg:#FFF5F0;--teal:#B5321B;--teal-d:#7D2312;--teal-l:#FFE1D8;--teal-xl:#FFF0EA;--navy:#3D150C;--navy2:#5A2215;--link:#A82D18;--link-h:#7D2312;--hero-a:#7D2312;--hero-m:#C2351D;--hero-b:#B5321B;--hero-lbl:#FFD27A;--hero-btn:#FFB020;--hero-btn-ink:#12202F}
+:root[data-palette=sunset][data-theme=dark]{--bg:#0E1620;--teal:#FF8A70;--teal-d:#FFC2B2;--teal-l:#3D201A;--teal-xl:#2A1712;--navy:#2A120C;--navy2:#3D1C14;--link:#FF9F88;--link-h:#FFC2B2}
+@media (prefers-color-scheme: dark){:root[data-palette=sunset]:not([data-theme=light]){--bg:#0E1620;--teal:#FF8A70;--teal-d:#FFC2B2;--teal-l:#3D201A;--teal-xl:#2A1712;--navy:#2A120C;--navy2:#3D1C14;--link:#FF9F88;--link-h:#FFC2B2}}
+:root[data-palette=ocean]{--bg:#F0F6FF;--teal:#0052D6;--teal-d:#003A99;--teal-l:#DCE9FF;--teal-xl:#EAF2FF;--navy:#0A2350;--navy2:#123570;--link:#0052D6;--link-h:#003A99;--hero-a:#003A99;--hero-m:#0052D6;--hero-b:#0060C8;--hero-lbl:#A8F3F9;--hero-btn:#4FE3F0;--hero-btn-ink:#12202F}
+:root[data-palette=ocean][data-theme=dark]{--bg:#0E1620;--teal:#6AA8FF;--teal-d:#B5D2FF;--teal-l:#172A47;--teal-xl:#111F35;--navy:#0B1A33;--navy2:#14294B;--link:#86B9FF;--link-h:#B5D2FF}
+@media (prefers-color-scheme: dark){:root[data-palette=ocean]:not([data-theme=light]){--bg:#0E1620;--teal:#6AA8FF;--teal-d:#B5D2FF;--teal-l:#172A47;--teal-xl:#111F35;--navy:#0B1A33;--navy2:#14294B;--link:#86B9FF;--link-h:#B5D2FF}}
+/* text on the primary colour: dark themes use a light primary, so its text goes dark */
+:root[data-palette][data-theme=dark] .btn.pri{color:#0E1116}
+@media (prefers-color-scheme: dark){:root[data-palette]:not([data-theme=light]) .btn.pri{color:#0E1116}}
+:root[data-palette] .side a.nav[aria-current=page]{background:var(--teal-l);color:var(--teal-d)}
+/* icons: one line weight, a soft fill on the current item */
+svg .f{fill:none}
+[aria-current=page] svg .f,[aria-pressed=true] svg .f,[aria-selected=true] svg .f{fill:currentColor;fill-opacity:.22}
+@media (max-width:1023px){
+  .tabbar a svg,.tabbar .tabmore svg{box-sizing:content-box;padding:4px 18px;border-radius:16px;transition:background-color .2s ease}
+  .tabbar a[aria-current=page] svg{background:var(--teal-l)}
+  .tabbar a[aria-current=page]{color:var(--teal-d);font-weight:700}
+}
+/* buttons: a press you can feel, a ring you can see */
+.btn,.tabbar a,.side a.nav,button{-webkit-tap-highlight-color:transparent}
+.btn,.side a.nav{transition:transform .12s ease,box-shadow .18s ease,filter .18s ease,background-color .18s ease,border-color .18s ease}
+.btn:not([disabled]):active,.tabbar a:active{transform:scale(.97)}
+.btn.pri{box-shadow:0 10px 22px -12px var(--teal)}
+.btn.pri:not([disabled]):hover{filter:brightness(1.07)}
+:focus-visible{outline:3px solid var(--amber-b);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){.btn,.side a.nav,.tabbar a svg{transition:none}.btn:active,.tabbar a:active{transform:none}}
+

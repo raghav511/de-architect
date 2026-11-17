@@ -191,8 +191,8 @@ async function T(name, fn, opt) {
     const y = await p.evaluate(() => scrollY); await p.click('#pt_ai');
     ok(await p.isVisible('#st_ai') && !(await p.isVisible('#st_sync')) && (await p.evaluate(() => scrollY)) === y, 'AI tab did not open in place');
     await p.keyboard.press('ArrowRight'); ok(await p.evaluate(() => document.activeElement.id === 'pt_data') && await p.isVisible('#pp_data'), 'arrow keys do not move between tabs');
-    await p.click('#pt_look'); await p.selectOption('#st_accent', 'plum'); await p.waitForTimeout(300);
-    ok(await p.evaluate(() => document.documentElement.dataset.accent === 'plum' && JSON.parse(localStorage.getItem('keystone:v1')).settings.accent === 'plum'), 'accent not applied and saved');
+    await p.click('#pt_look'); await p.selectOption('#st_palette', 'sunset'); await p.waitForTimeout(300);
+    ok(await p.evaluate(() => document.documentElement.dataset.palette === 'sunset' && JSON.parse(localStorage.getItem('keystone:v1')).settings.palette === 'sunset'), 'colour theme not applied and saved');
     await setField(p, '#st_name', 'Asha'); ok((await text(p, '.top .avatar')).trim() === 'A', 'avatar letter did not follow the name');
     await go(p, '#/today'); ok(/Asha/.test(await text(p, 'h1')), 'greeting does not use the name');
   });

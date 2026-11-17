@@ -1,12 +1,9 @@
 {
-  "version": "1.36.40",
+  "version": "1.37.0",
   "date": "2026-11-17",
   "notes": [
-    "Reel review (15 reels): Python track P1.1 cost before you run, P1.2 names and objects, P1.3 lists and tuples, and the PySpark UDF reel (P1.8)",
-    "Spark 4.2 sends plain Python UDFs in Arrow batches by default; built-ins still win because the optimizer cannot see inside a UDF",
-    "New gotcha: a list default argument is made once and shared by every call; default to None",
-    "Set lookups are O(1) on average, and the memory example now says string ids",
-    "Check options evened out so the right answer is never the longest (10 checks)",
-    "Changed beats recorded in the Heart voice (Kokoro)"
+    "New colour themes in Profile \u203a Look: Electric (violet and lime), Calm (the old look), Sunset and Ocean, each in light, dark or match device.",
+    "New icons in the tab bar and side menu; the page you are on is filled in.",
+    "Buttons press down when tapped and show a clear ring with the keyboard."
   ]
 }
