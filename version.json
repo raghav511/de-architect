@@ -1,9 +1,8 @@
 {
-  "version": "1.44.0",
+  "version": "1.45.0",
   "date": "2026-11-18",
   "notes": [
-    "The live mock opens on who is asking, how long it takes and how it is scored, with Start right there.",
-    "Dots show which question you are on.",
-    "The scorecard opens with your average and level, and says when AI scored it."
+    "Progress opens on your career ladder: tap any level to see what it takes.",
+    "Four weeks of your streak sit beside it, with full, repaired and missed days."
   ]
 }

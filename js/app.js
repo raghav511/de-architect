@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.44.0';
+const VERSION = '1.45.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -987,6 +987,31 @@ async function vInterview(m, focus) {
 }
 
 /* ---------------- Progress ---------------- */
+/* Redesign (Progress): the career ladder as a hero (tap a level to see what it takes) and four weeks of streak in a calendar.
+   tools/redesign_test.js progress */
+let progLv = null;
+function progHero() {
+  const xp = gameXP(), L = gameLevel(xp), sel = progLv == null ? L.i : progLv, lv = LADDER[sel], nx = LADDER[Math.min(L.i + 1, LADDER.length - 1)];
+  const gate = sel <= L.i ? (sel === L.i ? 'You are here. ' + (L.i + 1 < LADDER.length ? nx[0] + ' is next: tap it to see what it takes.' : 'The top of the ladder.') : 'Reached. Levels stay earned; XP is counted from your work each time.')
+    : 'To ' + lv[0] + ': ' + xp.toLocaleString('en-US') + ' / ' + lv[1].toLocaleString('en-US') + ' XP' + (lv[2] ? ', and a Sunday boss round averaging ' + lv[2].toFixed(1) + ', scored by AI. A self-marked answer still gives XP but never promotes.' : '.');
+  const pct = sel <= L.i ? 100 : Math.min(100, Math.round(100 * xp / lv[1]));
+  const box = el('section', { class: 'proghero', 'aria-label': 'Career ladder' }, [
+    el('div', { class: 'row' }, [el('span', { class: 'ls-kicker', text: 'Career ladder' }), el('span', { class: 'grow' }), el('span', { class: 'pg-xp', text: xp.toLocaleString('en-US') + ' XP' })]),
+    el('h2', { class: 'pg-level', text: LADDER[L.i][0] }),
+    el('div', { class: 'lvdots', role: 'radiogroup', 'aria-label': 'Levels' }, LADDER.map((x, j) => el('button', { role: 'radio', 'aria-checked': String(j === sel), class: (j <= L.i ? 'got' : j === L.i + 1 ? 'next' : ''), onclick: () => { progLv = j; vProgress(); } }, [el('i'), el('span', { text: x[0] })]))),
+    el('div', { class: 'lv-gate' }, [el('b', { text: sel === L.i ? LADDER[L.i][0] + ' · you are here' : (sel < L.i ? lv[0] + ' · reached' : 'To ' + lv[0]) }), el('span', { class: 'pg-bar' }, el('i', { style: { width: pct + '%' } })), el('span', { text: gate })])]);
+  return box;
+}
+function streakCal() {
+  const st = gameStreak(), days = gameDays(), rep = gameRepaired(), today = iso(new Date()), first = typeof dayFirst === 'function' ? dayFirst() : null;
+  const d0 = new Date(); d0.setHours(0, 0, 0, 0); d0.setDate(d0.getDate() - ((d0.getDay() + 6) % 7) - 21);
+  const cells = []; for (let i = 0; i < 28; i++) { const d = new Date(d0); d.setDate(d0.getDate() + i); const k = iso(d), ds = (S.dayset || {})[k];
+    const cls = k > today ? 'future' : k === today ? 'today' : S.start && k < S.start ? 'pre' : rep.has(k) ? 'rep' : ds && ds.full ? 'full' : days.has(k) ? 'full' : 'miss';
+    cells.push(el('span', { class: 'day ' + cls + (k === today && ds && ds.full ? ' full' : ''), 'data-k': k, title: shortDate(k), text: String(d.getDate()) })); }
+  return el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('span', { class: 'st-flame', 'aria-hidden': 'true' }, svg('<path d="M12 3c1 3 4 5 4 9a4 4 0 0 1-8 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 0-8z" fill="currentColor"/>', 20)), el('div', { class: 'grow stack', style: { gap: '0' } }, [el('b', { class: 'st-n', style: { fontSize: '17px' }, text: st.n + '-day streak' }), el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'A full set is a streak day; one missed day a week is frozen' })])]),
+    el('div', { class: 'streakcal', role: 'img', 'aria-label': 'The last four weeks of daily sets' }, ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(x => el('b', { class: 'dow', text: x })).concat(cells)),
+    el('div', { class: 'streaklegend' }, [['full', 'Full set'], ['rep', 'Repaired'], ['miss', 'Missed']].map(([c, t]) => el('span', {}, [el('i', { class: c }), t])))]);
+}
 function vProgress() {
   const pct = arr => arr.length ? Math.round(100 * arr.filter(x => S.solved[x.id]).length / arr.length) : 0;
   const sqlW = DATA.sql.filter(x => x.k === 'W' && !x.m), sqlO = DATA.sql.filter(x => x.k === 'O'), spW = DATA.spark.filter(x => x.k === 'W'), spO = DATA.spark.filter(x => x.k === 'O');
@@ -1000,7 +1025,7 @@ function vProgress() {
   const rg = recentGrades(14), kinds = { answer: 'Answers', code: 'Code', design: 'Design', cc: 'Claude Code' };
   const gradeCard = rg.length ? el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('span', { class: 'lbl grow', text: 'Instant grades · last 14 days' })].concat(Object.keys(kinds).filter(k => rg.some(g => g.kind === k)).map(k => { const xs = rg.filter(g => g.kind === k); return el('span', { class: 'chip c-test', text: kinds[k] + ' ' + (xs.reduce((a, g) => a + g.score, 0) / xs.length).toFixed(1) + ' / 5' }); }))),
     el('div', { class: 'stack', style: { gap: '6px' } }, rg.slice(0, 8).map(g => el('div', { class: 'row', style: { alignItems: 'flex-start' } }, [scoreBadge(g.score), el('div', { class: 'grow' }, [el('b', { style: { fontSize: '14px' }, html: mdi(g.q || g.key) }), el('div', { class: 'muted', style: { fontSize: '13px' }, html: mdi(g.improve || '') })])])))]) : null;
-  shell('Progress', 'Program, readiness and sync', [gameStrip(), programCard(), skillMap(), gradeCard,
+  shell('Progress', 'XP comes from real work only and is never bought', [el('div', { class: 'grid2' }, [progHero(), streakCal()]), gameStrip(), programCard(), skillMap(), gradeCard,
     el('div', { class: 'grid2' }, [
       el('section', { class: 'card pad stack' }, [el('span', { class: 'lbl', text: 'Readiness by interview round' })].concat(rows.map(([n, p, c]) => el('div', { style: { display: 'grid', gridTemplateColumns: '140px minmax(0,1fr) 44px', gap: '10px', alignItems: 'center' } }, [el('span', { style: { fontWeight: 600 }, text: n }), el('div', { class: 'bar' }, el('i', { style: { width: p + '%', background: c } })), el('b', { style: { textAlign: 'right' }, text: p + '%' })])))),
       el('section', { class: 'card pad stack' }, [el('div', { class: 'row' }, [el('span', { class: 'lbl grow', text: 'DSA ladder · 84 days' }), el('b', { text: DATA.dsa.filter(x => S.solved[x.id]).length + ' solved' })]), grid, el('span', { class: 'muted', style: { fontSize: '13px' }, text: 'Each row is two weeks. Tap a square to open that problem.' })])]),

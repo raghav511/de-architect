@@ -1,5 +1,5 @@
 /* Redesign 2026-11 (canvas: tools/redesign/README.md): one group of cases per screen, written before the screen is built.
-   node tools/redesign_test.js [baseUrl] [group]   groups: today, path, practice, interview, module, quiz, live (more join as each screen is rebuilt)
+   node tools/redesign_test.js [baseUrl] [group]   groups: today, path, practice, interview, module, quiz, live, progress (more join as each screen is rebuilt)
    Runs on Chromium at iPhone size (390 x 844) and desktop size (1440 x 900). */
 const { chromium } = require(process.env.PW || 'playwright');
 const { blockExternal } = require('./testnet');
@@ -19,6 +19,7 @@ async function ihub(p) { await p.goto(BASE + '#/interview'); await p.waitForSele
 async function learn(p, path) { await p.goto(BASE + '#/today'); await p.waitForFunction(() => typeof MOD !== 'undefined' && MOD.s05 && DATA.sprints && DATA.sprints.s05, null, { timeout: 60000 }); await p.goto(BASE + '#/learn/' + path); await p.waitForSelector('.modhead, #page h1', { timeout: 60000 }); await p.waitForTimeout(1500); }
 async function quiz(p) { await p.goto(BASE + '#/quiz/s05'); await p.waitForSelector('.opt, .qtop', { timeout: 60000 }); await p.waitForTimeout(900); }
 async function live(p) { await p.addInitScript(() => { window.macCall = async () => ({ text: '{}' }); }); await p.goto(BASE + '#/live'); await p.waitForSelector('#page .card, #page section', { timeout: 60000 }); await p.waitForTimeout(1500); }
+async function prog(p) { await p.goto(BASE + '#/progress'); await p.waitForSelector('#page section', { timeout: 60000 }); await p.waitForTimeout(1000); }
 async function today(p) { await p.goto(BASE + '#/today'); await p.waitForSelector('.plan', { timeout: 60000 }); await p.waitForTimeout(600); }
 function T(group, name, fn) { return { group, name, fn }; }
 
@@ -336,6 +337,38 @@ const CASES = [
     if (!r) throw new Error('no .lsc-hero');
     if (r.avg !== want) throw new Error('average ' + r.avg + ', want ' + want);
     if (!/of 4/.test(r.txt) || !/can be wrong/i.test(r.txt)) throw new Error('hero text: ' + r.txt);
+    if (p.errs.length) throw new Error('page errors: ' + p.errs.join(' | '));
+  }),
+  /* ---------- Progress: the ladder as a hero you can tap, and four weeks of streak ---------- */
+  T('progress', 'G1 the ladder hero names your level, shows all seven levels, and a tap on a level says what it takes', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await prog(p);
+    const r = await p.evaluate(() => { const c = document.querySelector('.proghero'); if (!c) return null; const L = gameLevel(gameXP());
+      return { name: (c.querySelector('.pg-level') || {}).textContent, want: LADDER[L.i][0], n: c.querySelectorAll('.lvdots button').length, want7: LADDER.length, cur: [...c.querySelectorAll('.lvdots button')].findIndex(x => x.getAttribute('aria-checked') === 'true'), i: L.i }; });
+    if (!r) throw new Error('no .proghero');
+    if (r.name !== r.want) throw new Error('level ' + r.name + ', want ' + r.want);
+    if (r.n !== r.want7) throw new Error(r.n + ' level buttons');
+    if (r.cur !== r.i) throw new Error('selected ' + r.cur + ', want ' + r.i);
+    await p.click('.lvdots button >> nth=4'); await p.waitForTimeout(200);
+    const g = await p.evaluate(() => ({ txt: (document.querySelector('.lv-gate') || {}).textContent || '', need: LADDER[4][1].toLocaleString('en-US'), boss: LADDER[4][2] }));
+    if (!g.txt.includes(g.need) || (g.boss && !g.txt.includes(g.boss.toFixed(1)))) throw new Error('gate for ' + 'level 5: ' + g.txt);
+  }),
+  T('progress', 'G2 four weeks of streak: 28 days from Monday, today outlined, later days empty, a full set marked', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await prog(p);
+    await p.evaluate(() => { const k = iso(new Date()); S.dayset = S.dayset || {}; const y = dayAdd(k, -1); S.dayset[y] = Object.assign({}, S.dayset[y] || { items: [] }, { full: Date.now() }); save(); route(); });
+    await p.waitForTimeout(600);
+    const r = await p.evaluate(() => { const ds = [...document.querySelectorAll('.streakcal .day')], k = iso(new Date()), y = dayAdd(k, -1);
+      return { n: ds.length, today: ds.filter(d => d.classList.contains('today')).map(d => d.dataset.k), future: ds.filter(d => d.dataset.k > k).every(d => d.classList.contains('future')), y: (ds.find(d => d.dataset.k === y) || { className: '' }).className, mon: new Date((ds[0] || {}).dataset ? ds[0].dataset.k + 'T00:00:00' : 0).getDay(), legend: !!document.querySelector('.streaklegend') }; });
+    if (r.n !== 28) throw new Error(r.n + ' days');
+    if (r.mon !== 1) throw new Error('the calendar does not start on a Monday');
+    if (r.today.length !== 1) throw new Error('today marked ' + r.today.length + ' times');
+    if (!r.future) throw new Error('later days are not empty');
+    if (!/\bfull\b/.test(r.y)) throw new Error('yesterday (a full set) shows as ' + r.y);
+    if (!r.legend) throw new Error('no legend');
+  }),
+  T('progress', 'G3 the streak number matches the streak rules, and the page has no errors on desktop', async b => {
+    const p = await page(b, { width: 1440, height: 900 }); await prog(p);
+    const r = await p.evaluate(() => ({ shown: (document.querySelector('.st-n') || {}).textContent || '', want: gameStreak().n }));
+    if (!new RegExp('^' + r.want + '-day streak').test(r.shown)) throw new Error('streak says "' + r.shown + '", want ' + r.want);
     if (p.errs.length) throw new Error('page errors: ' + p.errs.join(' | '));
   })
 ];
