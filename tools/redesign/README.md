@@ -9,7 +9,7 @@ Each screen ships on its own, test first: write its cases in `tools/redesign_tes
 | 1 | Colour themes, icons, buttons | (flows `settings`, a11y) | 1.37.0 |
 | 2 | Today: Focus home (hero Up next, part bars, module card beside it on desktop) | `today` | 1.38.0 |
 | 3 | Path: You are here, track chips, seven stages and the Claude Code track (`stagesOf`, `STAGES`, `PTRACKS`) | `path` | 1.39.0 |
-| 4 | Practice | `practice` | |
+| 4 | Practice hub: next ladder problem, reviews due, four bank tiles, Build and design (`vPracticeHub`, `ladderNext`, `pTabs`) | `practice` | 1.40.0 |
 | 5 | Interview | `interview` | |
 | 6 | Module page | `module` | |
 | 7 | Quiz | `quiz` | |
