@@ -900,3 +900,17 @@ svg .f{fill:none}
 .b-hi,.t-hi{color:var(--teal-d)}.b-mid,.t-mid{color:var(--amber-d)}.b-lo,.t-lo{color:var(--red-d)}
 .pbar i.f-hi{background:var(--teal)}.pbar i.f-mid{background:var(--amber-b)}.pbar i.f-lo{background:var(--red)}
 @media (min-width:1024px){.lv-title{font-size:32px}}
+/* ---- Redesign: module page (tools/redesign_test.js module) ---- */
+.modhead{gap:10px}
+.mh-title{font-family:var(--display);font-size:28px;font-weight:800;line-height:1.15;margin:0}
+.mh-steps{font-size:13.5px;color:var(--muted);white-space:nowrap}
+.modtabs{display:flex;gap:8px;overflow-x:auto;margin:2px -4px 0;padding:2px 4px 4px;scrollbar-width:none}
+.mtab{flex:none;display:inline-flex;align-items:center;gap:5px;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line2);background:var(--card);color:var(--ink);font-weight:700;font-size:14px;text-decoration:none}
+.mtab.tdone{color:var(--teal-d);border-color:var(--teal)}
+.mtab[aria-current=page]{background:var(--teal);border-color:var(--teal);color:#fff}
+:root[data-palette][data-theme=dark] .mtab[aria-current=page]{color:#0E1116}
+@media (prefers-color-scheme: dark){:root[data-palette]:not([data-theme=light]) .mtab[aria-current=page]{color:#0E1116}}
+.modcta{position:sticky;bottom:12px;z-index:20;display:flex;justify-content:flex-end;pointer-events:none;margin-top:4px}
+.modcta .btn{pointer-events:auto;min-height:52px;border-radius:14px;font-size:16px;font-weight:800;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.modcta .btn span{overflow:hidden;text-overflow:ellipsis}
+@media (max-width:1023px){.modcta{position:fixed;left:12px;right:12px;bottom:calc(66px + env(safe-area-inset-bottom));margin:0}.modcta .btn{flex:1;box-shadow:0 10px 26px -8px rgba(0,0,0,.35)}#page:has(.modcta){padding-bottom:80px}}

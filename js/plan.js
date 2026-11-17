@@ -490,10 +490,21 @@ async function vLearn(m, tab, range) {
   const sc = schedule();
   /* opened without a tab (the module's Read link): land on the first tab you have not finished */
   if (!TABS2.some(t => t[0] === tab)) tab = (TABS2.find(t => !tabDone(m, t[0], sc)) || TABS2[0])[0];
-  const tabs = el('div', { class: 'tabs', role: 'tablist' }, TABS2.map(([k, n]) => { const dn = tabDone(m, k, sc); return el('button', { role: 'tab', class: dn ? 'tdone' : null, 'aria-selected': String(k === tab), 'aria-label': n + (dn ? ', finished' : ''), onclick: () => { location.hash = '#/learn/' + m + '/' + k; } }, [dn ? svg(I.check, 14) : null, n]); }));
+  /* Redesign (module page): a header with the module's progress, one row of tabs from Read to Interview, and Continue to the
+     module's next open step always on screen. tools/redesign_test.js module */
+  const TN = { chapter: 'Read' }, sp = sc.span[m] || { n: 0, done: 0 };
+  const mt = (h, n, dn, cur) => el('a', { href: h, class: 'mtab' + (dn ? ' tdone' : ''), 'aria-current': cur ? 'page' : null, 'aria-label': n + (dn ? ', finished' : '') }, [dn ? svg('<path d="M5 12l5 5 9-10"/>', 14) : null, el('span', { text: n })]);
+  const tabs = el('nav', { class: 'modtabs', 'aria-label': 'This module' }, TABS2.map(([k, n]) => mt('#/learn/' + m + '/' + k, TN[k] || n, tabDone(m, k, sc), k === tab))
+    .concat([mt('#/quiz/' + m, 'Quiz', !!((S.quiz || {})[qk(m)] || {}).sub, false), mt('#/interview/' + m, 'Interview', false, false)]));
   const sel = el('select', { class: 'btn sm', 'aria-label': 'Module', onchange: e => { location.hash = '#/learn/' + e.target.value + '/' + tab; } }, MODS.map(x => el('option', { value: x, selected: x === m ? 'selected' : null, text: modLabel(x) + ' · ' + modTitle(x) })));
+  const head = el('section', { class: 'card pad stack modhead' }, [
+    el('div', { class: 'row wrap', style: { gap: '8px' } }, [el('span', { class: 'chip ' + modColor(m), text: 'Module ' + modLabel(m) }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: weeksText(sp) }), el('span', { class: 'grow' }), sel]),
+    el('h1', { class: 'mh-title', text: modTitle(m) }), typeof storyFrame === 'function' ? storyFrame(m, { short: true }) : null,
+    el('div', { class: 'row' }, [el('div', { class: 'bar grow' }, el('i', { style: { width: (sp.n ? Math.round(100 * sp.done / sp.n) : 0) + '%' } })), el('span', { class: 'mh-steps', text: sp.done + ' of ' + sp.n + ' steps' })]), tabs]);
+  const nxu = sc.units.find(u => u.mid === m && !u.isDone);
+  const cta = el('div', { class: 'modcta' }, el('a', { class: 'btn pri', href: nxu ? nxu.href : '#/quiz/' + m }, [el('span', { text: nxu ? 'Continue: ' + nxu.title : 'Take the quiz' }), svg(I.fwd, 18)]));
   const body = el('div', { class: 'stack' });
-  shell(modTitle(m), 'Module ' + modLabel(m) + ' · ' + (TABS2.find(t => t[0] === tab) || ['', 'Chapter'])[1], [el('div', { class: 'row wrap' }, [sel, tabs]), body], { back: '#/today' });
+  shell('Module ' + modLabel(m), (TABS2.find(t => t[0] === tab) || ['', 'Chapter'])[1], [head, body, cta], { back: '#/path' });
   const s = DATA.sprints[m];
   const rg = /^(\d+)-(\d+)$/.exec(range || ''), a = rg ? +rg[1] : 0, b = rg ? +rg[2] : 999;
   const src = tab === 'chapter' ? s.raw.chapter : tab === 'readings' ? s.raw.readings : tab === 'lab' ? s.raw.lab : s.raw.practice;

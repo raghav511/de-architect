@@ -151,10 +151,10 @@ async function T(name, fn, opt) {
 
   await T('schedule: skipped days roll steps forward (clock +3 days)', async (p, c) => {
     await go(p, '#/today');
-    const first = await text(p, '.unit .t');
+    const first = await text(p, '.focushero .fh-title');
     const d = new Date(); d.setDate(d.getDate() + 3); d.setHours(9, 0, 0, 0);
     await p.clock.setFixedTime(d); await p.reload(); await p.waitForTimeout(900);
-    ok((await text(p, '.unit .t')) === first, 'undone first step should roll to the new today');
+    ok((await text(p, '.focushero .fh-title')) === first, 'undone first step should roll to the new today');
   });
 
   await T('schedule: no daily time limit; old minute settings are kept and change nothing on Today', async p => {
@@ -652,12 +652,12 @@ async function T(name, fn, opt) {
 
   await T('learn: a finished tab turns green, Done next ticks today\'s part, and the module opens on the first unfinished tab', async p => {
     await go(p, '#/learn/s01/chapter', 900);
-    ok(!(await p.$('.tabs button.tdone')), 'a tab is green before anything is done');
+    ok(!(await p.$('.modtabs a.tdone')), 'a tab is green before anything is done');
     await p.click('button:has-text("Done, next: Readings")'); await p.waitForTimeout(700);
     ok(/\/readings$/.test(p.url()), 'did not move to Readings: ' + p.url());
-    ok(await p.evaluate(() => document.querySelector('.tabs button.tdone') && /Chapter/.test(document.querySelector('.tabs button.tdone').textContent)), 'Chapter tab is not green');
+    ok(await p.evaluate(() => document.querySelector('.modtabs a.tdone') && /Read/.test(document.querySelector('.modtabs a.tdone').textContent)), 'Read tab is not green');
     await go(p, '#/learn/s01', 900);
-    ok(await p.evaluate(() => /Readings/.test(document.querySelector('.tabs [aria-selected=true]').textContent)), 'module did not open on Readings');
+    ok(await p.evaluate(() => /Readings/.test(document.querySelector('.modtabs [aria-current=page]').textContent)), 'module did not open on Readings');
     await go(p, '#/learn/s02/chapter/0-1', 900);
     const uid = await p.evaluate(() => (schedule().units.find(u => u.href === '#/learn/s02/chapter/0-1') || {}).uid);
     await p.click('button:has-text("Done, next")'); await p.waitForTimeout(600);
@@ -697,7 +697,7 @@ async function T(name, fn, opt) {
     ok(!(await state(p)).done[uid], 'the interview step stayed done after new questions were added');
     ok(await p.evaluate(u => !!S.archive.done[u], uid), 'old completion not archived');
     await go(p, '#/learn/s01/chapter', 900);
-    ok(!(await p.$('.tabs button.tdone')), 'a tab finished on old text is still green');
+    ok(!(await p.$('.modtabs a.tdone')), 'a tab finished on old text is still green');
    }, { serviceWorkers: 'block' });
 
   await T('screen atlas (iPhone): coach button off quizzes, quiet Submit at question 1, wide coach box, folded practice sets, plan start, 44px header', async p => {
