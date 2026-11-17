@@ -1,5 +1,5 @@
 /* Redesign 2026-11 (canvas: tools/redesign/README.md): one group of cases per screen, written before the screen is built.
-   node tools/redesign_test.js [baseUrl] [group]   groups: today (more join as each screen is rebuilt)
+   node tools/redesign_test.js [baseUrl] [group]   groups: today, path (more join as each screen is rebuilt)
    Runs on Chromium at iPhone size (390 x 844) and desktop size (1440 x 900). */
 const { chromium } = require(process.env.PW || 'playwright');
 const { blockExternal } = require('./testnet');
@@ -13,6 +13,7 @@ async function page(b, vp) {
   const p = await c.newPage(); p.errs = []; p.on('pageerror', e => p.errs.push(e.message));
   return p;
 }
+async function path(p) { await p.goto(BASE + '#/path'); await p.waitForSelector('main, #page', { timeout: 60000 }); await p.waitForTimeout(800); }
 async function today(p) { await p.goto(BASE + '#/today'); await p.waitForSelector('.plan', { timeout: 60000 }); await p.waitForTimeout(600); }
 function T(group, name, fn) { return { group, name, fn }; }
 
@@ -76,7 +77,57 @@ const CASES = [
     if (!r) throw new Error('missing .focushero or .todaymod');
     if (!r.sameRow) throw new Error('the module card is not beside the hero');
     if (p.errs.length) throw new Error('page errors: ' + p.errs.join(' | '));
+  }),,
+/* ---------- Path: the whole course in seven stages ---------- */
+  T('path', 'P1 You are here: the current module, its steps done, and Continue to the next step on the first iPhone screen', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await path(p);
+    const h = await p.evaluate(() => { const c = document.querySelector('.pathhero'); if (!c) return null; const sc = schedule(), nx = sc.units.find(u => u.mid === sc.cur && !u.isDone), go = c.querySelector('.ph-go'), r = go && go.getBoundingClientRect(), tb = document.querySelector('.tabbar');
+      return { title: (c.querySelector('.ph-title') || {}).textContent, want: modTitle(sc.cur), steps: (c.querySelector('.ph-steps') || {}).textContent || '', href: go && go.getAttribute('href'), next: nx && nx.href, bottom: r ? r.bottom : 9999, limit: innerHeight - (tb ? tb.getBoundingClientRect().height : 0) }; });
+    if (!h) throw new Error('no .pathhero');
+    if (h.title !== h.want) throw new Error('hero shows "' + h.title + '", want "' + h.want + '"');
+    if (!/^\d+ of \d+ steps$/.test(h.steps)) throw new Error('steps: ' + h.steps);
+    if (h.href !== h.next) throw new Error('Continue goes to ' + h.href + ', want ' + h.next);
+    if (h.bottom > h.limit) throw new Error('Continue is below the first screen');
   }),
+  T('path', 'P2 seven stages (and the Claude Code track beside them) hold every module once, and the stage with the current module is open and marked Now', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await path(p);
+    const r = await p.evaluate(() => ({ stages: document.querySelectorAll('.stage').length, rows: [...document.querySelectorAll('.stage .prow')].map(a => a.dataset.mid), mods: MODS.slice(), cur: schedule().cur,
+      now: [...document.querySelectorAll('.stage.now')].map(s => ({ open: s.querySelector('.stage-h').getAttribute('aria-expanded'), has: !!s.querySelector('.prow[data-mid="' + schedule().cur + '"]'), tag: /Now/.test(s.querySelector('.stage-h').textContent) })) }));
+    if (r.stages !== 7 + (r.mods.some(m => /^c/.test(m)) ? 1 : 0)) throw new Error(r.stages + ' stages, want 7 and the Claude Code track');
+    const miss = r.mods.filter(m => r.rows.filter(x => x === m).length !== 1);
+    if (miss.length) throw new Error('modules not listed exactly once: ' + miss.join(', '));
+    if (r.now.length !== 1 || r.now[0].open !== 'true' || !r.now[0].has || !r.now[0].tag) throw new Error('current stage: ' + JSON.stringify(r.now));
+  }),
+  T('path', 'P3 a finished stage folds to one line that says Done, and opens again on a tap', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await path(p);
+    await p.evaluate(() => { const d = iso(new Date()), st = document.querySelector('.stage'), ms = [...st.querySelectorAll('.prow')].map(a => a.dataset.mid); schedule().units.filter(u => ms.includes(u.mid)).forEach(u => { S.done[u.uid] = d; }); save(); route(); });
+    await p.waitForTimeout(600);
+    const a = await p.evaluate(() => { const st = document.querySelector('.stage'), h = st.querySelector('.stage-h'), body = st.querySelector('.stage-b'); return { exp: h.getAttribute('aria-expanded'), done: /Done/.test(h.textContent), hidden: !body || body.hidden }; });
+    if (a.exp !== 'false' || !a.done || !a.hidden) throw new Error('finished stage: ' + JSON.stringify(a));
+    await p.click('.stage .stage-h'); await p.waitForTimeout(200);
+    const o = await p.evaluate(() => { const st = document.querySelector('.stage'); return st.querySelector('.stage-h').getAttribute('aria-expanded') === 'true' && !st.querySelector('.stage-b').hidden; });
+    if (!o) throw new Error('a tap did not open the finished stage');
+  }),
+  T('path', 'P4 track chips filter the modules, and All shows them all again', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await path(p);
+    await p.click('.trackchips button[data-track="python"]'); await p.waitForTimeout(300);
+    const r = await p.evaluate(() => { const vis = [...document.querySelectorAll('.stage .prow')].filter(a => !a.hidden).map(a => a.dataset.mid);
+      return { vis, want: MODS.filter(m => trackOf(m) === 'python'), pressed: document.querySelector('.trackchips button[data-track="python"]').getAttribute('aria-pressed') }; });
+    if (r.pressed !== 'true') throw new Error('Python chip not pressed');
+    if (r.vis.join() !== r.want.join()) throw new Error('Python shows ' + r.vis.join() + ', want ' + r.want.join());
+    await p.click('.trackchips button[data-track="all"]'); await p.waitForTimeout(300);
+    const n = await p.evaluate(() => [...document.querySelectorAll('.stage .prow')].filter(a => !a.hidden).length === MODS.length);
+    if (!n) throw new Error('All did not bring every module back');
+  }),
+  T('path', 'P5 a module row opens that module, and desktop Path has no page errors', async b => {
+    const p = await page(b, { width: 1440, height: 900 }); await path(p);
+    const mid = await p.evaluate(() => { const a = document.querySelector('.stage.now .prow'); return a && a.dataset.mid; });
+    if (!mid) throw new Error('no module rows');
+    await p.click('.stage.now .prow[data-mid="' + mid + '"]'); await p.waitForTimeout(600);
+    const h = await p.evaluate(() => location.hash);
+    if (h !== '#/path/' + mid) throw new Error('row opened ' + h);
+    if (p.errs.length) throw new Error('page errors: ' + p.errs.join(' | '));
+  })
 ];
 
 (async () => {

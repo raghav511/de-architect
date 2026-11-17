@@ -1,9 +1,10 @@
 {
-  "version": "1.38.0",
+  "version": "1.39.0",
   "date": "2026-11-18",
   "notes": [
-    "Today opens on one big card for what is next: the part, minutes and XP, a Start button and a tick.",
-    "The Learn, Practice and Interview tabs show a bar for each item, filled as you finish them.",
-    "On a computer, the module card sits beside it."
+    "Path opens on where you are, with Continue to your next step.",
+    "The whole course is grouped into seven stages; finished stages fold to one line and the current one says Now.",
+    "Track chips show just Python, AI, modelling, data engineering, systems, leadership or Claude Code.",
+    "Up next shows Updated or New when a step changed."
   ]
 }
