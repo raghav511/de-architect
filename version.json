@@ -1,9 +1,9 @@
 {
-  "version": "1.43.0",
+  "version": "1.44.0",
   "date": "2026-11-18",
   "notes": [
-    "The quiz shows a bar for each question, and Revisit later marks one to come back to.",
-    "Tap the question number to jump anywhere.",
-    "Results open with your score, then only the questions you missed, with the right answer and why."
+    "The live mock opens on who is asking, how long it takes and how it is scored, with Start right there.",
+    "Dots show which question you are on.",
+    "The scorecard opens with your average and level, and says when AI scored it."
   ]
 }

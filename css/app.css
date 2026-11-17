@@ -935,3 +935,16 @@ svg .f{fill:none}
 .qmiss .yours,.qmiss .right{display:flex;gap:8px;padding:8px 10px;border-radius:10px;font-size:14.5px}
 .qmiss .yours{background:var(--red-l)}.qmiss .yours b{color:var(--red-d)}.qmiss .yours span{text-decoration:line-through}
 .qmiss .right{background:var(--teal-l)}.qmiss .right b{color:var(--teal-d)}
+/* ---- Redesign: live mock (tools/redesign_test.js live) ---- */
+.livestart,.lsc-hero{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:10px;padding:20px;border-radius:22px;color:#fff;background:linear-gradient(135deg,var(--hero-a),var(--hero-m) 62%,var(--hero-b))}
+.livestart::after,.lsc-hero::after{content:"";position:absolute;right:-60px;top:-70px;width:190px;height:190px;border-radius:50%;border:2px solid rgba(255,255,255,.22);pointer-events:none}
+.livestart>*,.lsc-hero>*{position:relative;z-index:1}
+.ls-kicker{align-self:flex-start;font-size:11.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:var(--hero-btn);color:var(--hero-btn-ink)}
+.ls-title{font-family:var(--display);font-size:24px;font-weight:800;line-height:1.2;color:#fff;margin:0}
+.ls-who,.lsc-note,.lsc-of{font-size:14.5px;color:rgba(255,255,255,.9)}
+.livestart .ls-start{min-height:52px;border-radius:14px;border:0;background:var(--hero-btn);color:var(--hero-btn-ink);font-weight:800;font-size:16px}
+.lsc-avg{font-family:var(--display);font-size:46px;line-height:1;color:#fff}
+.lsteps{display:flex;gap:6px;justify-content:center;align-items:center;padding:2px 0 4px}
+.lsteps i{width:8px;height:8px;border-radius:4px;background:var(--line2);transition:width .2s ease}
+.lsteps i.ok{background:var(--teal)}.lsteps i.cur{width:22px;background:var(--ink)}
+.lhow{gap:8px}

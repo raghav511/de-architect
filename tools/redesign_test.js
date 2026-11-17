@@ -1,5 +1,5 @@
 /* Redesign 2026-11 (canvas: tools/redesign/README.md): one group of cases per screen, written before the screen is built.
-   node tools/redesign_test.js [baseUrl] [group]   groups: today, path, practice, interview, module, quiz (more join as each screen is rebuilt)
+   node tools/redesign_test.js [baseUrl] [group]   groups: today, path, practice, interview, module, quiz, live (more join as each screen is rebuilt)
    Runs on Chromium at iPhone size (390 x 844) and desktop size (1440 x 900). */
 const { chromium } = require(process.env.PW || 'playwright');
 const { blockExternal } = require('./testnet');
@@ -16,8 +16,9 @@ async function page(b, vp) {
 async function path(p) { await p.goto(BASE + '#/path'); await p.waitForSelector('main, #page', { timeout: 60000 }); await p.waitForTimeout(800); }
 async function practice(p) { await p.goto(BASE + '#/practice'); await p.waitForSelector('#page h1, .tabs', { timeout: 60000 }); await p.waitForTimeout(900); }
 async function ihub(p) { await p.goto(BASE + '#/interview'); await p.waitForSelector('#page h1, #page h2', { timeout: 60000 }); await p.waitForTimeout(900); }
-async function learn(p, path) { await p.goto(BASE + '#/learn/' + path); await p.waitForSelector('.modhead, #page h1', { timeout: 60000 }); await p.waitForTimeout(1500); }
+async function learn(p, path) { await p.goto(BASE + '#/today'); await p.waitForFunction(() => typeof MOD !== 'undefined' && MOD.s05 && DATA.sprints && DATA.sprints.s05, null, { timeout: 60000 }); await p.goto(BASE + '#/learn/' + path); await p.waitForSelector('.modhead, #page h1', { timeout: 60000 }); await p.waitForTimeout(1500); }
 async function quiz(p) { await p.goto(BASE + '#/quiz/s05'); await p.waitForSelector('.opt, .qtop', { timeout: 60000 }); await p.waitForTimeout(900); }
+async function live(p) { await p.addInitScript(() => { window.macCall = async () => ({ text: '{}' }); }); await p.goto(BASE + '#/live'); await p.waitForSelector('#page .card, #page section', { timeout: 60000 }); await p.waitForTimeout(1500); }
 async function today(p) { await p.goto(BASE + '#/today'); await p.waitForSelector('.plan', { timeout: 60000 }); await p.waitForTimeout(600); }
 function T(group, name, fn) { return { group, name, fn }; }
 
@@ -307,6 +308,34 @@ const CASES = [
     if (!/\d+\s*\/\s*\d+/.test(r.ring)) throw new Error('score ring: ' + r.ring);
     if (r.miss.length < 1 || !r.miss.every(m => m.y && m.r)) throw new Error('misses: ' + JSON.stringify(r.miss));
     if (!r.recall || !r.retake) throw new Error('recall note ' + r.recall + ', retake ' + r.retake);
+    if (p.errs.length) throw new Error('page errors: ' + p.errs.join(' | '));
+  }),
+  /* ---------- Live mock: a start screen that says who asks and how it is scored, step dots, a scorecard that leads with the average ---------- */
+  T('live', 'L1 the start screen is a hero: today\'s live mock, Start on the first iPhone screen, and how it is scored', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await live(p);
+    const h = await p.evaluate(() => { const c = document.querySelector('.livestart'); if (!c) return null; const go = c.querySelector('.ls-start'), r = go && go.getBoundingClientRect(), tb = document.querySelector('.tabbar');
+      return { kicker: (c.querySelector('.ls-kicker') || {}).textContent || '', bottom: r ? r.bottom : 9999, limit: innerHeight - (tb ? tb.getBoundingClientRect().height : 0), how: (document.querySelector('.lhow') || {}).textContent || '' }; });
+    if (!h) throw new Error('no .livestart');
+    if (!/live mock/i.test(h.kicker)) throw new Error('kicker ' + h.kicker);
+    if (h.bottom > h.limit) throw new Error('Start is below the first screen');
+    for (const w of ['Correct', 'Depth', 'Trade-offs', 'Clear', 'rejected']) if (!h.how.includes(w)) throw new Error('how it is scored misses ' + w + ': ' + h.how);
+  }),
+  T('live', 'L2 after Start, step dots show one per question plus the scorecard, the first one current', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await live(p);
+    await p.click('.ls-start'); await p.waitForTimeout(800);
+    const r = await p.evaluate(() => { const m = S.live[iso(new Date())]; return { n: m.qs.length + 1, dots: document.querySelectorAll('.lsteps i').length, cur: [...document.querySelectorAll('.lsteps i')].findIndex(i => i.classList.contains('cur')) }; });
+    if (r.dots !== r.n) throw new Error(r.dots + ' dots, want ' + r.n);
+    if (r.cur !== 0) throw new Error('current dot ' + r.cur);
+  }),
+  T('live', 'L3 the scorecard leads with the average of 4 and the level, and says AI can be wrong', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await live(p);
+    const want = await p.evaluate(() => { const m = S.live[iso(new Date())]; m.qs.forEach((q, i) => { m.ans[i] = { sc: { correct: 4, depth: 3, trade: 3, clear: 3 }, fb: 'Name the limit.', by: 'ai', checks: { rejected: true } }; }); m.i = m.qs.length; m.done = true; save(); route();
+      const av = m.qs.map((q, i) => liveAvg(m.ans[i])); return (av.reduce((a, b) => a + b, 0) / av.length).toFixed(1); });
+    await p.waitForTimeout(800);
+    const r = await p.evaluate(() => { const c = document.querySelector('.lsc-hero'); return c && { avg: (c.querySelector('.lsc-avg') || {}).textContent, txt: c.textContent }; });
+    if (!r) throw new Error('no .lsc-hero');
+    if (r.avg !== want) throw new Error('average ' + r.avg + ', want ' + want);
+    if (!/of 4/.test(r.txt) || !/can be wrong/i.test(r.txt)) throw new Error('hero text: ' + r.txt);
     if (p.errs.length) throw new Error('page errors: ' + p.errs.join(' | '));
   })
 ];
