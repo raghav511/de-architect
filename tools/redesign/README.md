@@ -14,7 +14,7 @@ Each screen ships on its own, test first: write its cases in `tools/redesign_tes
 | 6 | Module page: header with steps done, one row of tabs Read to Interview, Continue always on screen (in `vLearn`) | `module` | 1.42.0 |
 | 7 | Quiz: a segment per question, Revisit later (`st.flag`), the picker as a sheet (`.qpos`, `.qsheet`), results with a score ring, Retake and the misses first (`.qscore`, `.qmiss`) | `quiz` | 1.43.0 |
 | 8 | Live mock: a start hero (who asks, how long, Start), How it is scored, step dots (`liveSteps`), a scorecard that leads with the average (`.lsc-hero`) | `live` | 1.44.0 |
-| 9 | Progress | `progress` | |
+| 9 | Progress: the ladder as a hero (tap a level for what it takes; `progHero`) and four weeks of streak (`streakCal`) | `progress` | 1.45.0 |
 | 10 | Profile tabs | `profile` | |
 
 Run: `node tools/redesign_test.js http://localhost:8811/ today`.
