@@ -11,7 +11,7 @@ Each screen ships on its own, test first: write its cases in `tools/redesign_tes
 | 3 | Path: You are here, track chips, seven stages and the Claude Code track (`stagesOf`, `STAGES`, `PTRACKS`) | `path` | 1.39.0 |
 | 4 | Practice hub: next ladder problem, reviews due, four bank tiles, Build and design (`vPracticeHub`, `ladderNext`, `pTabs`) | `practice` | 1.40.0 |
 | 5 | Interview hub: today's live mock and the week, the ladder, nine loop rounds with company chips, also today (`vInterviewHub`; the Interview tab opens `#/interview`) | `interview` | 1.41.0 |
-| 6 | Module page | `module` | |
+| 6 | Module page: header with steps done, one row of tabs Read to Interview, Continue always on screen (in `vLearn`) | `module` | 1.42.0 |
 | 7 | Quiz | `quiz` | |
 | 8 | Live mock | `live` | |
 | 9 | Progress | `progress` | |

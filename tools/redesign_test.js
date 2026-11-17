@@ -1,5 +1,5 @@
 /* Redesign 2026-11 (canvas: tools/redesign/README.md): one group of cases per screen, written before the screen is built.
-   node tools/redesign_test.js [baseUrl] [group]   groups: today, path, practice, interview (more join as each screen is rebuilt)
+   node tools/redesign_test.js [baseUrl] [group]   groups: today, path, practice, interview, module (more join as each screen is rebuilt)
    Runs on Chromium at iPhone size (390 x 844) and desktop size (1440 x 900). */
 const { chromium } = require(process.env.PW || 'playwright');
 const { blockExternal } = require('./testnet');
@@ -16,6 +16,7 @@ async function page(b, vp) {
 async function path(p) { await p.goto(BASE + '#/path'); await p.waitForSelector('main, #page', { timeout: 60000 }); await p.waitForTimeout(800); }
 async function practice(p) { await p.goto(BASE + '#/practice'); await p.waitForSelector('#page h1, .tabs', { timeout: 60000 }); await p.waitForTimeout(900); }
 async function ihub(p) { await p.goto(BASE + '#/interview'); await p.waitForSelector('#page h1, #page h2', { timeout: 60000 }); await p.waitForTimeout(900); }
+async function learn(p, path) { await p.goto(BASE + '#/learn/' + path); await p.waitForSelector('.modhead, #page h1', { timeout: 60000 }); await p.waitForTimeout(1500); }
 async function today(p) { await p.goto(BASE + '#/today'); await p.waitForSelector('.plan', { timeout: 60000 }); await p.waitForTimeout(600); }
 function T(group, name, fn) { return { group, name, fn }; }
 
@@ -234,6 +235,41 @@ const CASES = [
     for (const h of ['#/recall', '#/recent', '#/coach']) if (!hs.includes(h)) throw new Error('missing ' + h + ' in ' + hs.join());
     await p.goto(BASE + '#/interview/s05'); await p.waitForTimeout(1500);
     if (!/Interview set/.test(await p.textContent('body'))) throw new Error('the module interview set no longer opens');
+    if (p.errs.length) throw new Error('page errors: ' + p.errs.join(' | '));
+  }),
+  /* ---------- Module page: header, one row of tabs, Continue always on screen ---------- */
+  T('module', 'M1 a module page opens with its header: label, title, the Meridian line and steps done', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await learn(p, 's05');
+    const h = await p.evaluate(() => { const c = document.querySelector('.modhead'); if (!c) return null; const sp = schedule().span.s05;
+      return { title: (c.querySelector('.mh-title') || {}).textContent, want: modTitle('s05'), chip: (c.querySelector('.chip') || {}).textContent || '', steps: (c.querySelector('.mh-steps') || {}).textContent || '', wantSteps: sp.done + ' of ' + sp.n + ' steps' }; });
+    if (!h) throw new Error('no .modhead');
+    if (h.title !== h.want) throw new Error('title ' + h.title);
+    if (!/Module 5/.test(h.chip) && !/5/.test(h.chip)) throw new Error('chip ' + h.chip);
+    if (h.steps !== h.wantSteps) throw new Error('steps "' + h.steps + '", want "' + h.wantSteps + '"');
+  }),
+  T('module', 'M2 one row of tabs: Read, Readings, Labs, Warm-ups, Quiz and Interview, the current one marked', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await learn(p, 's05/readings');
+    const t = await p.evaluate(() => [...document.querySelectorAll('.modtabs a')].map(a => ({ n: a.textContent.trim(), href: a.getAttribute('href'), cur: a.getAttribute('aria-current') })));
+    const names = t.map(x => x.n.replace(/\s.*$/, ''));
+    for (const n of ['Read', 'Readings', 'Labs', 'Warm-ups', 'Quiz', 'Interview']) if (!names.includes(n)) throw new Error('missing tab ' + n + ' in ' + names.join());
+    const q = t.find(x => /^Quiz/.test(x.n)), iv = t.find(x => /^Interview/.test(x.n)), cur = t.filter(x => x.cur === 'page');
+    if (q.href !== '#/quiz/s05' || iv.href !== '#/interview/s05') throw new Error('quiz ' + q.href + ' interview ' + iv.href);
+    if (cur.length !== 1 || !/^Readings/.test(cur[0].n)) throw new Error('current tab: ' + JSON.stringify(cur));
+  }),
+  T('module', 'M3 Continue is always on screen and opens the module\'s next open step', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await learn(p, 's05');
+    await p.evaluate(() => scrollTo(0, document.body.scrollHeight)); await p.waitForTimeout(300);
+    const c = await p.evaluate(() => { const a = document.querySelector('.modcta a'); if (!a) return null; const r = a.getBoundingClientRect(), nx = schedule().units.find(u => u.mid === 's05' && !u.isDone);
+      return { href: a.getAttribute('href'), want: nx ? nx.href : '#/quiz/s05', vis: r.top >= 0 && r.bottom <= innerHeight, txt: a.textContent }; });
+    if (!c) throw new Error('no Continue bar');
+    if (c.href !== c.want) throw new Error('Continue opens ' + c.href + ', want ' + c.want);
+    if (!c.vis) throw new Error('Continue is off screen after scrolling');
+  }),
+  T('module', 'M4 when every step is done, Continue says Take the quiz; the desktop page has no errors', async b => {
+    const p = await page(b, { width: 1440, height: 900 }); await learn(p, 's05');
+    await p.evaluate(() => { const d = iso(new Date()); schedule().units.filter(u => u.mid === 's05').forEach(u => { S.done[u.uid] = d; }); save(); route(); }); await p.waitForTimeout(800);
+    const c = await p.evaluate(() => { const a = document.querySelector('.modcta a'); return a && { href: a.getAttribute('href'), txt: a.textContent }; });
+    if (!c || c.href !== '#/quiz/s05' || !/quiz/i.test(c.txt)) throw new Error('Continue: ' + JSON.stringify(c));
     if (p.errs.length) throw new Error('page errors: ' + p.errs.join(' | '));
   })
 ];

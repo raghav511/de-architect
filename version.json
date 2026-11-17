@@ -1,9 +1,8 @@
 {
-  "version": "1.41.0",
+  "version": "1.42.0",
   "date": "2026-11-18",
   "notes": [
-    "The Interview tab opens on today's live mock, with the week's mocks under it.",
-    "Your level, the next one and what promotion needs sit beside it.",
-    "The nine loop rounds show how ready you are; a company chip shows that company's loop."
+    "A module opens with its progress at the top and one row of tabs: Read, Readings, Labs, Warm-ups, Quiz and Interview.",
+    "Continue stays on screen and takes you to the module's next step, or to the quiz once every step is done."
   ]
 }
