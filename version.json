@@ -1,8 +1,9 @@
 {
-  "version": "1.45.0",
+  "version": "1.46.0",
   "date": "2026-11-18",
   "notes": [
-    "Progress opens on your career ladder: tap any level to see what it takes.",
-    "Four weeks of your streak sit beside it, with full, repaired and missed days."
+    "Profile opens on your level, XP and streak, with Sync, Update and Mode right there.",
+    "Pick a colour theme from four swatches; it changes the app at once.",
+    "A Saved note shows every time a setting changes."
   ]
 }

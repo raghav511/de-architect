@@ -15,6 +15,8 @@ Each screen ships on its own, test first: write its cases in `tools/redesign_tes
 | 7 | Quiz: a segment per question, Revisit later (`st.flag`), the picker as a sheet (`.qpos`, `.qsheet`), results with a score ring, Retake and the misses first (`.qscore`, `.qmiss`) | `quiz` | 1.43.0 |
 | 8 | Live mock: a start hero (who asks, how long, Start), How it is scored, step dots (`liveSteps`), a scorecard that leads with the average (`.lsc-hero`) | `live` | 1.44.0 |
 | 9 | Progress: the ladder as a hero (tap a level for what it takes; `progHero`) and four weeks of streak (`streakCal`) | `progress` | 1.45.0 |
-| 10 | Profile tabs | `profile` | |
+| 10 | Profile: a hero with level, XP, streak and the quick actions inside; colour themes as swatches (`themeSwatches`, a hidden `#st_palette`); Saved as you go (`.savedpill`) | `profile` | 1.46.0 |
 
 Run: `node tools/redesign_test.js http://localhost:8811/ today`.
+
+All ten phases are live as of 1.46.0. `node tools/redesign_test.js BASE` runs every group (40 cases).

@@ -974,3 +974,38 @@ svg .f{fill:none}
 .streaklegend span{display:flex;align-items:center;gap:5px}.streaklegend i{width:11px;height:11px;border-radius:3px}
 .streaklegend .full{background:var(--teal)}.streaklegend .rep{background:var(--teal-l);box-shadow:inset 0 0 0 2px var(--teal)}.streaklegend .miss{background:var(--soft);box-shadow:inset 0 0 0 1px var(--line2)}
 .streakcal .pre{color:var(--muted)}
+/* ---- Redesign: Profile (tools/redesign_test.js profile) ---- */
+.phero{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:16px;padding:20px;border-radius:22px;color:#fff;background:linear-gradient(135deg,var(--hero-a),var(--hero-m) 62%,var(--hero-b))}
+.phero::after{content:"";position:absolute;right:-60px;top:-70px;width:190px;height:190px;border-radius:50%;border:2px solid rgba(255,255,255,.22);pointer-events:none}
+.phero>*{position:relative;z-index:1}
+.phero h1{color:#fff}.phero .ph-sub{font-size:14px;color:rgba(255,255,255,.9)}
+.phero .avatar.big{background:var(--hero-btn);color:var(--hero-btn-ink);border-color:var(--hero-btn)}
+.phero .pquick .qa{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.4);color:#fff}
+.phero .pquick .qa svg{color:var(--hero-btn)}.phero .pquick .qa .s{color:rgba(255,255,255,.85)}
+.phero .pquick button.qa:hover{border-color:var(--hero-btn)}
+.phero .pquick .seg{background:rgba(0,0,0,.18)}.phero .pquick .seg button{color:#fff}
+.phero .pquick .seg button[aria-pressed=true]{background:var(--hero-btn);color:var(--hero-btn-ink)}
+.savedpill{align-self:flex-start;font-size:13px;font-weight:700;padding:5px 10px;border-radius:999px;background:var(--hero-btn);color:var(--hero-btn-ink);opacity:0;transition:opacity .2s ease}
+.savedpill.on{opacity:1}
+.themes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.swatch{display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:14px;border:1px solid var(--line2);background:var(--card);color:var(--ink);text-align:left;cursor:pointer;font:inherit}
+.swatch[aria-checked=true]{border:2px solid var(--teal);padding:9px}
+.swatch .sw-bar{display:flex;height:34px;border-radius:9px;overflow:hidden}.swatch .sw-bar i{flex:1}
+.swatch .s{font-size:12.5px;color:var(--muted)}
+@media (min-width:1024px){.themes{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:560px){
+  .phero{padding:14px;gap:10px;border-radius:18px}
+  .phero h1{font-size:22px}.phero .ph-sub{font-size:13px}.phero .ph-sub+.ph-sub{display:none}
+  .phero .avatar.big{width:44px;height:44px;font-size:18px}
+  .phero .pquick{gap:8px}.phero .pquick .qa{min-height:0;padding:8px 10px;flex-direction:row;align-items:center;gap:8px}
+  .phero .pquick .qa .s{display:none}
+  .phero .savedpill{position:absolute;right:0;top:0}
+}
+@media (max-width:560px){
+  .phero .pquick{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.5fr)}
+  .phero .pquick .qmode{grid-column:auto;flex-direction:column;align-items:stretch;padding:6px}
+  .phero .pquick .qmode>b{display:none}.phero .pquick .qmode .seg{margin:0;width:100%}.phero .pquick .qmode .seg button{min-width:0;padding:0 4px;font-size:12.5px}
+  .phero .pquick .qa svg{display:none}.phero .pquick .qa{justify-content:center;min-height:44px}.phero .pquick .qa .t{font-size:13.5px}
+}
+:root .phero .avatar.big,:root .phero .avatar.big span{color:var(--hero-btn-ink);background:var(--hero-btn)}
+:root .phero .avatar.big{color:var(--hero-btn-ink)!important}
