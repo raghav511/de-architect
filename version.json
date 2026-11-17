@@ -1,12 +1,8 @@
 {
-  "version": "1.36.40",
+  "version": "1.36.41",
   "date": "2026-11-17",
   "notes": [
-    "Reel review (15 reels): Python track P1.1 cost before you run, P1.2 names and objects, P1.3 lists and tuples, and the PySpark UDF reel (P1.8)",
-    "Spark 4.2 sends plain Python UDFs in Arrow batches by default; built-ins still win because the optimizer cannot see inside a UDF",
-    "New gotcha: a list default argument is made once and shared by every call; default to None",
-    "Set lookups are O(1) on average, and the memory example now says string ids",
-    "Check options evened out so the right answer is never the longest (10 checks)",
-    "Changed beats recorded in the Heart voice (Kokoro)"
+    "What is new: 6 items from this week's release notes on Databricks (Genie ZeroOps, views over the Iceberg REST catalog, Postgres CDC), Snowflake (expiring role grants, semantic views) and Confluent (OAuth key rotation).",
+    "No new interview questions this time: none reported in the last 7 days could be confirmed."
   ]
 }
