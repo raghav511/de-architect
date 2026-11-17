@@ -1,5 +1,5 @@
 /* Redesign 2026-11 (canvas: tools/redesign/README.md): one group of cases per screen, written before the screen is built.
-   node tools/redesign_test.js [baseUrl] [group]   groups: today, path, practice, interview, module (more join as each screen is rebuilt)
+   node tools/redesign_test.js [baseUrl] [group]   groups: today, path, practice, interview, module, quiz (more join as each screen is rebuilt)
    Runs on Chromium at iPhone size (390 x 844) and desktop size (1440 x 900). */
 const { chromium } = require(process.env.PW || 'playwright');
 const { blockExternal } = require('./testnet');
@@ -17,6 +17,7 @@ async function path(p) { await p.goto(BASE + '#/path'); await p.waitForSelector(
 async function practice(p) { await p.goto(BASE + '#/practice'); await p.waitForSelector('#page h1, .tabs', { timeout: 60000 }); await p.waitForTimeout(900); }
 async function ihub(p) { await p.goto(BASE + '#/interview'); await p.waitForSelector('#page h1, #page h2', { timeout: 60000 }); await p.waitForTimeout(900); }
 async function learn(p, path) { await p.goto(BASE + '#/learn/' + path); await p.waitForSelector('.modhead, #page h1', { timeout: 60000 }); await p.waitForTimeout(1500); }
+async function quiz(p) { await p.goto(BASE + '#/quiz/s05'); await p.waitForSelector('.opt, .qtop', { timeout: 60000 }); await p.waitForTimeout(900); }
 async function today(p) { await p.goto(BASE + '#/today'); await p.waitForSelector('.plan', { timeout: 60000 }); await p.waitForTimeout(600); }
 function T(group, name, fn) { return { group, name, fn }; }
 
@@ -270,6 +271,42 @@ const CASES = [
     await p.evaluate(() => { const d = iso(new Date()); schedule().units.filter(u => u.mid === 's05').forEach(u => { S.done[u.uid] = d; }); save(); route(); }); await p.waitForTimeout(800);
     const c = await p.evaluate(() => { const a = document.querySelector('.modcta a'); return a && { href: a.getAttribute('href'), txt: a.textContent }; });
     if (!c || c.href !== '#/quiz/s05' || !/quiz/i.test(c.txt)) throw new Error('Continue: ' + JSON.stringify(c));
+    if (p.errs.length) throw new Error('page errors: ' + p.errs.join(' | '));
+  }),
+  /* ---------- Quiz: one question at a time, a flag to revisit, results that lead with the score and the misses ---------- */
+  T('quiz', 'Q1 a strip shows one segment per question: the current one marked, answered ones filled', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await quiz(p);
+    await p.click('.opt'); await p.waitForTimeout(300);
+    const r = await p.evaluate(() => { const qs = DATA.sprints.s05.quiz; return { n: qs.length, segs: document.querySelectorAll('.qsegs i').length, cur: document.querySelectorAll('.qsegs i.cur').length, ans: document.querySelectorAll('.qsegs i.ans').length }; });
+    if (r.segs !== r.n) throw new Error(r.segs + ' segments for ' + r.n + ' questions');
+    if (r.cur !== 1 || r.ans < 1) throw new Error('current ' + r.cur + ', answered ' + r.ans);
+  }),
+  T('quiz', 'Q2 Revisit later flags a question, is kept, and shows on the question picker', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await quiz(p);
+    await p.click('.qflag'); await p.waitForTimeout(300);
+    const r = await p.evaluate(() => ({ pressed: document.querySelector('.qflag').getAttribute('aria-pressed'), kept: !!((S.quiz[qk('s05')].flag || {})[S.quiz[qk('s05')].i]) }));
+    if (r.pressed !== 'true' || !r.kept) throw new Error('flag: ' + JSON.stringify(r));
+    await p.click('.qpos'); await p.waitForTimeout(300);
+    if (!await p.$('.qsheet .pal button.flag')) throw new Error('the picker does not show the flag');
+  }),
+  T('quiz', 'Q3 on a phone the picker opens from "n / total" as a sheet, and a number jumps to that question', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await quiz(p);
+    const pos = await p.textContent('.qpos');
+    if (!/^1 \/ \d+$/.test(pos.trim())) throw new Error('position button says ' + pos);
+    await p.click('.qpos'); await p.waitForTimeout(300);
+    if (!await p.$('.qsheet[role=dialog]')) throw new Error('no picker sheet');
+    await p.click('.qsheet .pal button:nth-child(3)'); await p.waitForTimeout(300);
+    if ((await p.textContent('.qpos')).trim().split(' ')[0] !== '3') throw new Error('did not jump to question 3');
+    if (await p.$('.qsheet')) throw new Error('the sheet stayed open');
+  }),
+  T('quiz', 'Q4 results lead with a score ring, then only the misses with your answer, the right one and why, going to recall', async b => {
+    const p = await page(b, { width: 390, height: 844 }); await quiz(p);
+    await p.evaluate(() => { const w = qk('s05'), qs = DATA.sprints.s05.quiz, st = S.quiz[w]; qs.forEach((q, k) => { if (q.TYPE === 'mcq') st.a[k] = k === 0 ? q.opts.find(o => o[0] !== q.ANS)[0] : q.ANS; }); st.sub = true; save(); route(); });
+    await p.waitForTimeout(800);
+    const r = await p.evaluate(() => ({ ring: (document.querySelector('.qscore') || {}).textContent || '', miss: [...document.querySelectorAll('.qmiss .qm')].map(m => ({ y: !!m.querySelector('.yours'), r: !!m.querySelector('.right') })), recall: /recall/i.test((document.querySelector('.qmiss') || {}).textContent || ''), retake: !!document.querySelector('.qretake') }));
+    if (!/\d+\s*\/\s*\d+/.test(r.ring)) throw new Error('score ring: ' + r.ring);
+    if (r.miss.length < 1 || !r.miss.every(m => m.y && m.r)) throw new Error('misses: ' + JSON.stringify(r.miss));
+    if (!r.recall || !r.retake) throw new Error('recall note ' + r.recall + ', retake ' + r.retake);
     if (p.errs.length) throw new Error('page errors: ' + p.errs.join(' | '));
   })
 ];

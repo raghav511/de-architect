@@ -1,8 +1,9 @@
 {
-  "version": "1.42.0",
+  "version": "1.43.0",
   "date": "2026-11-18",
   "notes": [
-    "A module opens with its progress at the top and one row of tabs: Read, Readings, Labs, Warm-ups, Quiz and Interview.",
-    "Continue stays on screen and takes you to the module's next step, or to the quiz once every step is done."
+    "The quiz shows a bar for each question, and Revisit later marks one to come back to.",
+    "Tap the question number to jump anywhere.",
+    "Results open with your score, then only the questions you missed, with the right answer and why."
   ]
 }

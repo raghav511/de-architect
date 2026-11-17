@@ -500,7 +500,7 @@ async function T(name, fn, opt) {
     const idx = await p.evaluate(() => DATA.sprints.s02.quiz.findIndex(x => x.TYPE === 'fill' && /time travel/.test(x.ANS)));
     await p.click('.pal button >> nth=' + idx); await p.fill('#page input[type=text]', 'Time-Travel'); await p.waitForTimeout(100);
     await p.click('button:has-text("Submit")'); await p.click('.dialog button:has-text("Submit")'); await p.waitForTimeout(400);
-    const badge = await p.$$eval('#page section', (ss, i) => ss[i + 1] ? ss[i + 1].querySelector('.badge').textContent : '', idx);
+    const badge = await p.$$eval('#page section', (ss, i) => { const x = ss.find(s => { const l = s.querySelector('.lbl'); return l && l.textContent.trim() === 'Q' + (i + 1) && s.querySelector('.badge'); }); return x ? x.querySelector('.badge').textContent : ''; }, idx);
     ok(badge === 'Right', 'variant answer graded ' + badge);
   });
 
