@@ -1009,3 +1009,4 @@ svg .f{fill:none}
 }
 :root .phero .avatar.big,:root .phero .avatar.big span{color:var(--hero-btn-ink);background:var(--hero-btn)}
 :root .phero .avatar.big{color:var(--hero-btn-ink)!important}
+.phero{align-items:stretch}.phero>.row{width:100%}

@@ -1,9 +1,7 @@
 {
-  "version": "1.46.0",
+  "version": "1.46.1",
   "date": "2026-11-18",
   "notes": [
-    "Profile opens on your level, XP and streak, with Sync, Update and Mode right there.",
-    "Pick a colour theme from four swatches; it changes the app at once.",
-    "A Saved note shows every time a setting changes."
+    "The Profile header now starts at the left edge on every screen size."
   ]
 }
