@@ -5,8 +5,10 @@
    cdn.jsdelivr.net stays reachable: Pyodide and marked are real files the coding tests run. */
 const LOCAL = new Set(['127.0.0.1', 'localhost', '[::1]', '::1']);
 const REAL = ['cdn.jsdelivr.net'];
+/* the site under test is never blocked: a run against the live site (node tools/smoke.js https://raghav511.github.io/…) must reach it */
+const BASE_HOSTS = process.argv.filter(a => /^https?:\/\//.test(a)).map(a => { try { return new URL(a).hostname; } catch (e) { return ''; } }).filter(Boolean);
 async function blockExternal(ctx, allow) {
-  const ok = new Set(REAL.concat(allow || []));
+  const ok = new Set(REAL.concat(BASE_HOSTS, allow || []));
   await ctx.route(u => /^https?:$/.test(u.protocol) && !LOCAL.has(u.hostname) && !ok.has(u.hostname), r => r.abort('internetdisconnected'));
   return ctx;
 }
