@@ -914,3 +914,24 @@ svg .f{fill:none}
 .modcta .btn{pointer-events:auto;min-height:52px;border-radius:14px;font-size:16px;font-weight:800;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .modcta .btn span{overflow:hidden;text-overflow:ellipsis}
 @media (max-width:1023px){.modcta{position:fixed;left:12px;right:12px;bottom:calc(66px + env(safe-area-inset-bottom));margin:0}.modcta .btn{flex:1;box-shadow:0 10px 26px -8px rgba(0,0,0,.35)}#page:has(.modcta){padding-bottom:80px}}
+/* ---- Redesign: quiz (tools/redesign_test.js quiz) ---- */
+.qsegs{display:flex;gap:3px;align-items:center}
+.qsegs i{flex:1;height:6px;border-radius:3px;background:var(--line2)}
+.qsegs i.ans{background:var(--teal)}.qsegs i.cur{background:var(--ink)}
+.qpos{font-weight:800;min-width:64px}
+.qflag[aria-pressed=true]{background:var(--amber-xl);border-color:var(--amber-b);color:var(--amber-d)}
+.pal button.flag{position:relative}.pal button.flag::after{content:"";position:absolute;top:4px;right:5px;width:7px;height:7px;border-radius:4px;background:var(--amber-b)}
+.qsheet{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;justify-content:flex-end}
+.qsheet-bg{position:absolute;inset:0;border:0;background:rgba(8,12,18,.5);cursor:pointer}
+.qsheet-p{position:relative;background:var(--card);border-radius:22px 22px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom));max-width:640px;width:100%;margin:0 auto;box-sizing:border-box}
+@media (min-width:1024px){.qsheet{justify-content:center}.qsheet-p{border-radius:22px}}
+.qscore{position:relative;overflow:hidden;display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:20px;border-radius:22px;color:#fff;background:linear-gradient(135deg,var(--hero-a),var(--hero-m) 62%,var(--hero-b))}
+.qring-w{position:relative;width:104px;height:104px;flex:none}.qring svg{width:104px;height:104px;display:block}
+.qring-w b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:24px;font-weight:800;color:#fff}
+.qverdict{font-family:var(--display);font-size:22px;color:#fff}
+.qscore .qretake{margin-left:auto;background:var(--hero-btn);color:var(--hero-btn-ink);border:0;min-height:48px;border-radius:14px;font-weight:800}
+.qmiss .qm{gap:6px;padding-top:12px;border-top:1px solid var(--line)}
+.qmiss .qm:first-of-type{border-top:0;padding-top:0}
+.qmiss .yours,.qmiss .right{display:flex;gap:8px;padding:8px 10px;border-radius:10px;font-size:14.5px}
+.qmiss .yours{background:var(--red-l)}.qmiss .yours b{color:var(--red-d)}.qmiss .yours span{text-decoration:line-through}
+.qmiss .right{background:var(--teal-l)}.qmiss .right b{color:var(--teal-d)}
