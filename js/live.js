@@ -152,9 +152,24 @@ async function vLive(k) {
   liveQuestion(page, k, m);
 }
 
+function liveSteps(m, cur) { return el('div', { class: 'lsteps', 'aria-label': cur < 0 ? 'Not started' : cur >= m.qs.length ? 'Scorecard' : 'Question ' + (cur + 1) + ' of ' + m.qs.length }, m.qs.map((q, i) => el('i', { class: i === cur ? 'cur' : i < cur ? 'ok' : null })).concat([el('i', { class: 'sc' + (cur >= m.qs.length ? ' cur' : '') })])); }
 function liveStart(page, k, m) {
   const via = liveRouteName();
   const lv = el('div', { class: 'tabs', role: 'radiogroup', 'aria-label': 'Level' }, [['senior', 'Senior'], ['staff', 'Staff']].map(([v, t]) => el('button', { role: 'radio', 'aria-checked': String(m.level === v), 'aria-selected': String(m.level === v), onclick: () => { m.level = v; S.settings.liveLevel = v; save(); route(); }, text: t })));
+  /* Redesign (live mock): a hero that says who asks, how long and how it is scored, with Start on the first screen; step dots
+     while you answer; a scorecard that leads with the average. tools/redesign_test.js live */
+  const who = typeof storyInterviewer === 'function' && storyInterviewer(m) ? storyInterviewer(m).line : 'Your interviewer asks, then one follow-up';
+  const go = () => { m.i = 0; m.started = Date.now(); save(); route(); };
+  page.appendChild(liveSteps(m, -1));
+  page.appendChild(el('section', { class: 'livestart', 'aria-label': 'Today\'s live mock' }, [
+    el('span', { class: 'ls-kicker', text: (m.kind === 'we' ? 'Boss round' : 'Today\'s live mock') + ' · ' + new Date(k + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long' }) }),
+    el('h2', { class: 'ls-title', text: m.qs.length + (m.qs.length === 1 ? ' question' : ' questions') + ', one follow-up each, about ' + m.mins + ' minutes' }),
+    el('span', { class: 'ls-who', text: who }),
+    el('button', { class: 'btn pri ls-start', onclick: go }, [el('span', { text: 'Start' }), svg(I.fwd, 18)])]));
+  page.appendChild(el('section', { class: 'card pad stack lhow' }, [el('h3', { text: 'How it is scored' }),
+    el('div', { class: 'row' }, [el('span', { class: 'grow', text: 'Correct, Depth, Trade-offs, Clear' }), el('b', { text: '1 to 4 each' })]),
+    el('span', { text: 'Staff checks: what you rejected, the limits, how you would run it' }),
+    el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'AI scores can be wrong, and a round you mark yourself counts for practice, not promotion.' })]));
   page.appendChild(el('section', { class: 'card pad stack live' }, [
     el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Live mock · ' + new Date(k + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short' }) }), el('b', { text: m.mins + ' min' })]),
     el('span', { class: 'muted', text: 'Built from this week: ' + m.week.map(x => modLabel(x)).join(', ') + (m.style ? ' · ' + m.style + '-style round' : '') }),
@@ -162,12 +177,12 @@ function liveStart(page, k, m) {
     el('ol', { class: 'lslots' }, m.qs.map(q => el('li', {}, [el('b', { text: q.label }), q.carried ? el('span', { class: 'chip c-ai', text: 'from ' + shortDate(q.carried) }) : null, el('span', { class: 'muted', text: ' · ' + q.q.replace(/\*\*|`/g, '').slice(0, 70) + (q.q.length > 70 ? '…' : '') })]))),
     el('div', { class: 'row wrap' }, [el('span', { class: 'lbl', text: 'Level' }), lv]),
     el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: via === 'mac' ? 'Follow-ups and scores come from Claude Code on your Mac (it must be awake).' : 'AI features are off: after each answer you compare with the model answer and mark yourself. Self-marked rounds count for practice and XP; promotions past Senior on the ladder need AI scoring.' }),
-    el('button', { class: 'btn pri', onclick: () => { m.i = 0; m.started = Date.now(); save(); route(); } }, 'Start'),
     el('a', { href: '#/mock/' + k, class: 'muted tlink', style: { fontSize: '14px' }, text: 'Prefer writing long answers? Take the written mock instead' })]));
 }
 
 function liveQuestion(page, k, m) {
   const i = m.i, q = m.qs[i], x = m.ans[i] = m.ans[i] || {}, via = liveRouteName();
+  page.appendChild(liveSteps(m, i));
   x.secs = x.secs || 0;
   const clock = el('b', { class: 'mono' }), paint = () => { const left = m.per * 60 - x.secs; clock.textContent = (left < 0 ? '+' : '') + Math.floor(Math.abs(left) / 60) + ':' + String(Math.abs(left) % 60).padStart(2, '0'); clock.style.color = left < 0 ? 'var(--red-d)' : ''; };
   let stage = x.sc ? 'scored' : x.fu !== undefined && x.fu !== '' ? 'followup' : x.self ? 'self' : 'answer';
@@ -235,6 +250,10 @@ function liveCard(page, k, m) {
   const dim = LIVE_DIMS.map(([d, t]) => { const v = done.map(([, a]) => a.sc && +a.sc[d]).filter(Boolean); return [t, v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0]; });
   const weakest = dim.slice().sort((a, b) => a[1] - b[1])[0], weak = done.filter(([, a]) => a.skipped || liveAvg(a) < 2.5).length;
   const checks = LIVE_CHECKS.map(([c, t]) => [t, done.filter(([, a]) => a.checks && a.checks[c]).length]);
+  page.appendChild(liveSteps(m, m.qs.length));
+  page.appendChild(el('section', { class: 'lsc-hero', 'aria-label': 'Average ' + all.toFixed(1) + ' of 4' }, [el('span', { class: 'ls-kicker', text: 'Scorecard · ' + shortDate(k) }),
+    el('div', { class: 'row', style: { gap: '10px', alignItems: 'baseline' } }, [el('b', { class: 'lsc-avg', text: all.toFixed(1) }), el('span', { class: 'lsc-of', text: 'of 4 · ' + liveHire(all, m) })]),
+    el('span', { class: 'lsc-note', text: done.some(([, a]) => liveBy(a) === 'self') ? 'Some answers were marked by you: this round counts for practice and XP, not promotion.' : 'Scored by AI on your Mac. AI can be wrong: check each answer against the model answer below.' })]));
   page.appendChild(el('section', { class: 'card pad stack live' }, [
     el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Scorecard · ' + shortDate(k) }), el('b', { text: all.toFixed(1) + ' of 4' })]),
     el('div', { class: 'lhire', text: liveHire(all, m) }),
