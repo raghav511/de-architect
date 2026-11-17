@@ -106,6 +106,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- 1.36.40: Reel review (p01 P1.1 to P1.3 and the PySpark UDF reel, 15 reels): Spark 4.2 Arrow UDF default in the Python track too, the mutable default argument trap, hash lookups O(1) on average, string ids in set memory; 10 checks evened out.
 - 1.36.39: Reel review (also lands the unshipped 2026-11-14 review): Spark 4.2 Python UDFs batch over Arrow by default but stay opaque to Catalyst, Databricks row-level concurrency, predictive optimization and CLUSTER BY AUTO, deletion vectors often on by default (old readers break), Snowflake writes to Unity Catalog Iceberg tables through catalog-linked databases, one catalog per shared table.
 - 1.36.37: Reel review: HDFS erasure coding (about 1.5x for cold data) and small files, Spark input splits versus shuffle partitions and AQE's 64 MB target, graceful decommissioning, Iceberg's 512 MB write target; check options evened out on the Hadoop, Spark sizing and business-layer reels.
 - 1.36.36: Reel review: Kafka 4.2 share groups (queue-style, no per-key order), Spark 4 ANSI on by default, Arrow Python UDFs in Spark 4.2, Iceberg v3 deletion vectors and position versus equality deletes, Flink 2.0 disaggregated state still experimental, Real-Time Mode GA dates and no Photon, managed Iceberg (S3 Tables).
@@ -122,7 +123,6 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 - 1.36.25: Module O5: the capstone data foundation blueprint.
 - 1.36.24: Module A6 part 2: choosing the approach and the model, guardrails and governance; ML system design basics in a06 (A6.12, SOURCES G9); Module O4: running the data platform as a product.
 - 1.36.23: iPhone Safari pass: reel icons, mic refusal, coach button, end card; Daily set scored in XP, no daily time limit (F9).
-- 1.36.22: s10 10.6: five classic data designs (top-K, metrics, crawler, ID generator, ledger) and two simulator challenges; RAG at scale (A5.7, A5.8) and the RAG and vector store lens (A5.9); Tests: the platform and leadership journey follows the real module order.
 - 1.36.21: AI data engineer project and role (SOURCES G7); Reels data per module: the Reels tab opens in about half a second on a return visit.
 - 1.36.20: Module 7 lab runs in the app: the cloud batch path.
 - 1.36.19: AI system design round: four worked designs, challenges and walkthroughs; Module A6: AI engineering in production (serving, cost, gateways, evals and traces); Module O3: data governance; Tests: test browsers refuse outside hosts they do not stub.

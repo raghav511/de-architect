@@ -134,9 +134,9 @@
     "check": {
      "q": "What does saying the Big-O before running your code help you catch?",
      "opts": [
-      "Typing mistakes in variable names",
+      "Typos in variable names before the code runs",
       "Code that will get very slow as the data grows",
-      "Whether the output is formatted nicely"
+      "Whether the printed output will look tidy enough"
      ],
      "ans": 1,
      "why": "Big-O describes how work grows with the amount of data, so it warns you about slow approaches before you spend time running them."
@@ -215,7 +215,7 @@
       }
      },
      {
-      "say": "Version two keeps a set. A set turns the id into a number, called a hash, and jumps straight to that slot. One check is about one step, so a million events cost about a million steps.",
+      "say": "Version two keeps a set. A set turns the id into a number, called a hash, and jumps straight to that slot. One check is about one step on average, so a million events cost about a million steps.",
       "show": {
        "t": "bars",
        "title": "Total steps",
@@ -246,12 +246,12 @@
     "check": {
      "q": "Why is checking membership in a set faster than in a list?",
      "opts": [
-      "A set sorts its items first",
+      "A set keeps its items sorted, so it can binary search",
       "A set hashes the value and jumps straight to its slot",
-      "A set stores fewer items"
+      "A set stores fewer items, so there is less to scan"
      ],
      "ans": 1,
-     "why": "Hashing lets a set go directly to where the value would live, so a check is about one step. A list must compare against items one by one."
+     "why": "Hashing lets a set go straight to where the value would live, so a check is about one step on average. A list compares item by item. Hashing a long string still costs its length."
     },
     "work": [
      "Replace any 'if x in some_list' inside a loop with a set built once before the loop.",
@@ -347,9 +347,9 @@
     "check": {
      "q": "A test says expected 3 rows, got 4. What is the best first step?",
      "opts": [
-      "Rewrite the whole function",
-      "Compare the extra row with the expected ones to see why it slipped through",
-      "Rerun the test until it passes"
+      "Rewrite the whole function from scratch to be safe",
+      "Look at the extra row to see which rule let it in",
+      "Rerun the test a few times until it finally passes"
      ],
      "ans": 1,
      "why": "The expected and got difference localizes the bug. Inspecting the extra row tells you which rule failed, so you fix one thing instead of guessing."
@@ -441,9 +441,9 @@
     "check": {
      "q": "Why can a tuple of strings go in a set but a list cannot?",
      "opts": [
-      "Tuples are shorter",
+      "Tuples are shorter, so they fit in the set's slots",
       "A tuple cannot change, so its hash stays stable",
-      "Lists are always too large"
+      "Lists are always too large for Python to hash"
      ],
      "ans": 1,
      "why": "Hashable objects must keep the same hash for life. Tuples of immutable values qualify, while lists can change and so are refused."
@@ -467,7 +467,7 @@
       }
      },
      {
-      "say": "A set holds every id in memory. In Python, one hundred million ids can take eight gigabytes or more. At a billion events the job simply dies. Then you sort and compare neighbours, or let PySpark shuffle rows by key across machines.",
+      "say": "A set holds every id in memory. In Python, one hundred million string ids can take eight gigabytes or more. At a billion events the job simply dies. Then you sort and compare neighbours, or let PySpark shuffle rows by key across machines.",
       "show": {
        "t": "bars",
        "title": "Approx memory for ids in a Python set",
@@ -508,9 +508,9 @@
     "check": {
      "q": "You must dedupe five billion payment events exactly. What fits best?",
      "opts": [
-      "A Python set on one machine",
-      "A Bloom filter",
-      "A distributed dedupe that shuffles by key"
+      "A Python set held on one big machine",
+      "A Bloom filter sized for five billion",
+      "A distributed dedupe shuffled by key"
      ],
      "ans": 2,
      "why": "The ids will not fit in one machine's memory, and a Bloom filter gives false positives that would drop real payments. A shuffle by key is exact and scales out."
@@ -1111,14 +1111,14 @@
       }
      },
      {
-      "say": "Functions bite the same way. Pass a list in, append inside, and the caller's list grows. Return a new list instead. And use is only for None, never to compare values.",
+      "say": "Defaults bite the same way. An empty list default is built once, when the function is defined, so every call that skips it appends to that same list. Default to None, and build a new list inside.",
       "show": {
        "t": "points",
-       "title": "Gotchas",
+       "title": "The *default* trap",
        "items": [
-        "Appending to an argument changes the caller's list",
-        "Return a new list instead of mutating",
-        "Use is only for None checks"
+        "A list default is made once, at def time",
+        "Every call shares that one list",
+        "Default to None, build the list inside"
        ]
       }
      }
@@ -1135,7 +1135,8 @@
     },
     "work": [
      "Review functions that append to or edit a passed-in list, and return a new one instead.",
-     "Use copy.deepcopy only where nested data is truly edited, and measure its cost."
+     "Use copy.deepcopy only where nested data is truly edited, and measure its cost.",
+     "Search function signatures for list or dict defaults and switch them to None."
     ]
    },
    {
@@ -1209,9 +1210,9 @@
     "check": {
      "q": "A function receives a large list and must not alter the caller's data. What is the best approach?",
      "opts": [
-      "Deepcopy it on every call, always",
-      "Build and return a new list, copying only if it must edit",
-      "Use is to check the list first"
+      "Deepcopy the full input on every single call to be safe",
+      "Return a new list, copying only what it must edit",
+      "Check the list with is before touching it at all"
      ],
      "ans": 1,
      "why": "Returning a new object avoids side effects without paying for a full deep copy. Copy once at the boundary only when mutation is needed."
@@ -1352,9 +1353,9 @@
     "check": {
      "q": "You store a map point as latitude and longitude, and want to file trip counts under each point. What fits best?",
      "opts": [
-      "A list for each point",
+      "A two-item list for each point",
       "A tuple for each point",
-      "Neither can work"
+      "Neither one can be a key"
      ],
      "ans": 1,
      "why": "A tuple cannot change, so it is safe as a filing label. A list can change, so it cannot be one."
@@ -1495,9 +1496,9 @@
     "check": {
      "q": "Why is xs.insert(0, v) O(n) on a list?",
      "opts": [
-      "Python must sort the list afterwards",
+      "Python must sort the whole list again afterwards",
       "Every existing item shifts one slot to make room",
-      "The list is copied to a bigger array every time"
+      "The whole list is copied to a new array each time"
      ],
      "ans": 1,
      "why": "Items sit side by side, so opening slot zero means moving all n items one place along."
@@ -1673,9 +1674,9 @@
     "check": {
      "q": "What happens if you use the tuple (1, [2, 3]) as a dict key?",
      "opts": [
-      "It works, since tuples are immutable",
-      "It raises an error, because the inner list is not hashable",
-      "It works but the list is copied"
+      "It works, because every tuple is always immutable",
+      "It fails, because the list inside cannot be hashed",
+      "It works, but Python quietly copies the list first"
      ],
      "ans": 1,
      "why": "A tuple's hash depends on its contents. A list inside cannot be hashed, so the whole tuple cannot be a key."
@@ -1758,9 +1759,9 @@
     "check": {
      "q": "A job checks whether each of 5 million IDs is in a 1 million item list. What is the best fix?",
      "opts": [
-      "Sort the list before every check",
-      "Load the IDs into a set once, then check against it",
-      "Use a tuple instead of a list"
+      "Sort the list again before each of the 5 million checks",
+      "Load the list into a set once, then check each ID",
+      "Store the list as a tuple, which scans much faster"
      ],
      "ans": 1,
      "why": "A list check scans, so this is about n times m work. A set check is constant time on average, so the job drops to roughly 5 million cheap lookups."
@@ -4496,10 +4497,10 @@
       }
      },
      {
-      "say": "Spark runs on the JVM. For a plain Python UDF, rows are serialised out of the JVM, sent over a socket to a Python worker, unpickled, and your function runs once per row. Results travel back the same way.",
+      "say": "Spark runs on the JVM. A plain Python UDF ships rows out of the JVM to a separate Python worker, runs your function there, and ships the results back.",
       "show": {
        "t": "scene",
-       "title": "The *round trip* per row",
+       "title": "The *round trip* to Python",
        "nodes": [
         {
          "id": "jvm",
@@ -4552,7 +4553,7 @@
       }
      },
      {
-      "say": "Worse, the optimizer cannot see inside your function, so it cannot push filters past it.",
+      "say": "Older Spark pickled one row at a time. Since Spark 4.2, plain Python UDFs travel in Arrow batches by default, which cuts that cost. But the optimizer still cannot see inside your function, so a filter on its result cannot reach the scan.",
       "show": {
        "t": "scene",
        "title": "A *black box* to the optimizer",
@@ -4582,6 +4583,14 @@
        ],
        "steps": [
         {
+         "at": 0.25,
+         "chip": {
+          "text": "Arrow batches by default in 4.2",
+          "tone": "teal",
+          "icon": "✓"
+         }
+        },
+        {
          "at": 0.3,
          "show": [
           "opt",
@@ -4589,9 +4598,9 @@
          ]
         },
         {
-         "at": 0.6,
+         "at": 0.7,
          "chip": {
-          "text": "No filter pushdown",
+          "text": "Still a black box: no pushdown",
           "tone": "red",
           "icon": "x"
          }
@@ -4600,45 +4609,50 @@
       }
      },
      {
-      "say": "A pandas UDF sends whole column batches in Arrow format, and runs vectorised. Fastest is a built-in from pyspark dot sql dot functions, which never leaves the JVM.",
+      "say": "A pandas UDF also runs your code on whole columns, vectorised. Fastest of all is a built-in from pyspark dot sql dot functions, which never leaves the JVM.",
       "show": {
        "t": "bars",
-       "title": "Typical speed order (higher is faster)",
+       "title": "Typical speed order (illustrative)",
        "unit": "relative",
        "items": [
         [
-         "Python UDF",
+         "Row by row Python UDF",
          1,
-         ""
+         "older Spark"
+        ],
+        [
+         "Arrow Python UDF",
+         4,
+         "4.2 default"
         ],
         [
          "pandas UDF",
          10,
-         ""
+         "vectorised"
         ],
         [
          "Built-in function",
          30,
-         ""
+         "stays in the JVM"
         ]
        ]
       }
      }
     ],
     "check": {
-     "q": "Why are pandas (Arrow) UDFs faster than plain Python UDFs?",
+     "q": "Even with Arrow batches on by default, why is a built-in still faster than a Python UDF?",
      "opts": [
-      "They run inside the JVM",
-      "They ship column batches in Arrow and run vectorised instead of row by row",
-      "They skip serialisation entirely",
-      "They use the GPU"
+      "Built-ins stay in the JVM where the optimizer sees them",
+      "Arrow batches are switched off again for every Python UDF",
+      "Python UDFs always run on the driver, not on executors",
+      "Built-ins skip the shuffle that every Python UDF adds"
      ],
-     "ans": 1,
-     "why": "Arrow batches avoid per-row conversion and let your code run vectorised, though data still crosses to Python workers."
+     "ans": 0,
+     "why": "Arrow cuts the transfer cost, but rows still cross to Python workers and the optimizer treats the UDF as a black box. A built-in avoids both."
     },
     "work": [
      "Replace UDFs with pyspark.sql.functions built-ins where possible.",
-     "Where Python is unavoidable, switch to a pandas UDF.",
+     "After moving to Spark 4.2, retest Python UDF outputs: Arrow batches can convert types differently.",
      "Check query plans to confirm filters still push down."
     ],
     "part": "1 of 2"
