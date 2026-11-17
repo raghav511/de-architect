@@ -1,8 +1,9 @@
 {
-  "version": "1.36.41",
+  "version": "1.37.0",
   "date": "2026-11-17",
   "notes": [
-    "What is new: 6 items from this week's release notes on Databricks (Genie ZeroOps, views over the Iceberg REST catalog, Postgres CDC), Snowflake (expiring role grants, semantic views) and Confluent (OAuth key rotation).",
-    "No new interview questions this time: none reported in the last 7 days could be confirmed."
+    "New colour themes in Profile \u203a Look: Electric (violet and lime), Calm (the old look), Sunset and Ocean, each in light, dark or match device.",
+    "New icons in the tab bar and side menu; the page you are on is filled in.",
+    "Buttons press down when tapped and show a clear ring with the keyboard."
   ]
 }
