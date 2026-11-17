@@ -13,7 +13,7 @@ const ENGINES = arg('--engine') ? [arg('--engine')] : ['chromium', 'webkit'];
 const RUNS = +arg('--runs', 3), ONLY = arg('--only', 'load,actions,memory').split(','), SWIPE_MIN = +arg('--swipe-min', 5);
 const med = a => { const s = a.filter(x => x != null).sort((x, y) => x - y); return s.length ? s[Math.floor((s.length - 1) / 2)] : null; };
 const within = (pr, ms) => Promise.race([pr.catch(() => {}), new Promise(r => setTimeout(r, ms))]); /* a step that hangs never stalls the whole run */
-const UPNEXT = '.upnext .unit a.btn.pri';
+const UPNEXT = '.focushero .fh-start';
 const kind = u => { const p = new URL(u).pathname; return /\.js$/.test(p) ? 'js' : /\.css$/.test(p) ? 'css' : /\/data\/reels\.json$/.test(p) ? 'reels' : /\/data\/|\.json$|\.txt$/.test(p) ? 'data' : /fonts\.g/.test(u) ? 'fonts' : 'other'; };
 
 async function main() {

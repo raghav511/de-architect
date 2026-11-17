@@ -48,8 +48,8 @@ async function run(engine) {
 
   await S('Today: ticking Up next is kept after a reload, and the Coding tab shows the coding track', async p => {
     await boot(p);
-    const id = await p.$eval('.upnext .unit', e => e.innerText.split('\n').find(l => l.length > 12));
-    await p.click('.upnext .unit .check'); await p.waitForTimeout(500); await p.reload(); await p.waitForSelector('h1'); await p.waitForTimeout(600);
+    const id = await p.$eval('.focushero .fh-title', e => e.innerText.trim());
+    await p.click('.focushero .fh-done'); await p.waitForTimeout(500); await p.reload(); await p.waitForSelector('h1'); await p.waitForTimeout(600);
     ok(await p.evaluate(t => [...document.querySelectorAll('.unit.done')].some(u => u.innerText.includes(t)), id), 'the tick was lost: ' + id);
     if (await p.$('#tab-grp-coding')) { await p.click('#tab-grp-coding'); await p.waitForTimeout(200); ok(/Coding/.test(await txt(p, '.plan')), 'Coding tab did not show the coding track'); }
   });
