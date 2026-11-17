@@ -12,19 +12,19 @@ const BASE = process.argv[2] || 'http://localhost:8811/';
   const ok = (c, m) => { if (!c) out.push(m); };
   await p.goto(BASE + '#/today'); await p.waitForSelector('.plan', { timeout: 60000 }); await p.waitForTimeout(800);
   /* 1. day one: no cold open, Up next first */
-  ok(!(await p.$('.storyopen')) && await p.$('.upnext .unit.cur'), 'day one shows a cold open or no Up next');
+  ok(!(await p.$('.storyopen')) && await p.$('.focushero'), 'day one shows a cold open or no Up next');
   /* 2. from the second day: Previously on, with the scene, before the plan; Skip brings Up next back */
   await p.evaluate(() => { const t = iso(new Date()), y = dayAdd(t, -1); S.dayset[y] = { items: [] }; S.story = { [y]: { m: S.story && S.story[t] && S.story[t].m || 's00', i: 0 } }; save(); route(); });
   await p.waitForSelector('.storyopen', { timeout: 10000 }).catch(() => {}); await p.waitForTimeout(800);
-  const op = await p.evaluate(() => ({ card: !!document.querySelector('.storyopen'), up: !!document.querySelector('.upnext .unit.cur'), tag: (document.querySelector('.storyopen .storytag') || {}).textContent || '', scene: (document.querySelector('.storyopen .storyscene') || {}).textContent || '' }));
+  const op = await p.evaluate(() => ({ card: !!document.querySelector('.storyopen'), up: !!document.querySelector('.focushero'), tag: (document.querySelector('.storyopen .storytag') || {}).textContent || '', scene: (document.querySelector('.storyopen .storyscene') || {}).textContent || '' }));
   ok(op.card && !op.up, 'the cold open is not shown first on day two: ' + JSON.stringify(op));
   ok(/Previously on Meridian · S\d · E\d+/.test(op.tag) && op.scene.split(' ').length >= 15, 'no episode tag or scene: ' + JSON.stringify(op));
   await p.click('.storyopen button'); await p.waitForTimeout(500);
-  ok(!(await p.$('.storyopen')) && await p.$('.upnext .unit.cur'), 'Skip or Start did not bring Up next back');
+  ok(!(await p.$('.storyopen')) && await p.$('.focushero'), 'Skip or Start did not bring Up next back');
   /* 3. the finished set: Tomorrow on Meridian, a plan for tomorrow, nothing plays next */
   await p.evaluate(() => { const t = iso(new Date()); S.xdone = S.xdone || {}; S.xdone[t] = S.xdone[t] || {}; daySet(t).forEach(x => { if (x.unit) S.done[x.unit.uid] = t; else S.xdone[t][x.id] = Date.now(); }); save(); route(); });
   await p.waitForSelector('.storycliff', { timeout: 10000 }).catch(() => {}); await p.waitForTimeout(800);
-  const cl = await p.evaluate(() => ({ text: (document.querySelector('.storycliff') || {}).innerText || '', up: !!document.querySelector('.upnext .unit.cur') }));
+  const cl = await p.evaluate(() => ({ text: (document.querySelector('.storycliff') || {}).innerText || '', up: !!document.querySelector('.focushero') }));
   ok(/Tomorrow on Meridian|finale/.test(cl.text) && /Nothing plays next/.test(cl.text) && !cl.up, 'no cliffhanger or an Up next after the set: ' + cl.text.slice(0, 200));
   const dl = p.waitForEvent('download', { timeout: 5000 }).catch(() => null);
   await p.click('.storycliff button:has-text("Plan tomorrow")'); const f = await dl; await p.waitForTimeout(300);

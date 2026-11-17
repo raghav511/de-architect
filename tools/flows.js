@@ -59,7 +59,7 @@ async function T(name, fn, opt) {
     await go(p, '#/today', 1200);
     await seed(p, () => { delete S.cv; S.updates = []; S.done['s00:S001'] = iso(new Date()); });
     await p.waitForSelector('.whatsnew');
-    const b = await p.$eval('.unit.cur .acts .btn.pri', e => [e.getBoundingClientRect().bottom, document.querySelector('.tabbar').getBoundingClientRect().top]);
+    const b = await p.$eval('.focushero .fh-start', e => [e.getBoundingClientRect().bottom, document.querySelector('.tabbar').getBoundingClientRect().top]);
     ok(b[0] <= b[1], 'the note pushes Up next below the tab bar: ' + b);
   }, { viewport: { width: 390, height: 664 }, isMobile: true, hasTouch: true });
   await T('updates: a finished step whose content changed comes back as Updated; the old completion is kept', async p => {
@@ -88,7 +88,7 @@ async function T(name, fn, opt) {
     ok(!(await p.$('.behind')), 'a catching-up note is still shown');
     const r = await p.evaluate(() => { const t = iso(new Date()), per = {}; daySet(t).filter(x => !x.carried && !x.more).forEach(x => { per[x.s] = (per[x.s] || 0) + 1; }); return { per, first: schedule().units.find(u => !isCC(u.mid)).title }; });
     ok(Object.values(r.per).every(n => n === 1), 'a section holds more than one new item: ' + JSON.stringify(r.per));
-    ok((await text(p, '.unit.cur .t')) === r.first, 'Up next is not the program\'s first step');
+    ok((await text(p, '.focushero .fh-title')) === r.first, 'Up next is not the program\'s first step');
   });
 
   await T('today: a new user who starts mid-week is not told they missed days', async p => {
@@ -115,13 +115,13 @@ async function T(name, fn, opt) {
 
   await T('today: tick a step updates progress, up next, sidebar and persists', async p => {
     await go(p, '#/today');
-    const first = await text(p, '.unit .t');
+    const first = await text(p, '.focushero .fh-title');
     ok(!(await p.$('.hero')), 'the Up next banner should be folded into the plan while steps are open');
-    ok((await text(p, '.unit.cur .t')) === first, 'the first step should be the expanded Up next card');
-    ok(/Up next/i.test(await text(p, '.unit.cur')) && /· \d+ min$/.test(await text(p, '.unit.cur .acts .btn.pri')), 'Up next label or timed main button missing');
-    await p.click('.unit .check'); await p.waitForTimeout(400);
+    ok(first && !(await p.$$eval('.plan .unit .t', ts => ts.map(t => t.textContent))).includes(first), 'Up next should be the hero, not repeated in the list');
+    ok(/Up next/i.test(await text(p, '.focushero .fh-kicker')) && /\d+ min · \+\d+ XP/.test(await text(p, '.focushero .fh-meta')), 'Up next label or minutes and XP missing');
+    await p.click('.focushero .fh-done'); await p.waitForTimeout(400);
     ok(await p.$('.unit.done'), 'first unit not marked done');
-    const cur2 = await text(p, '.unit.cur .t'); ok(cur2 && cur2 !== first, 'Up next did not move to the next step');
+    const cur2 = await text(p, '.focushero .fh-title'); ok(cur2 && cur2 !== first, 'Up next did not move to the next step');
     const side = await text(p, '.side .week'); ok(/Today: [1-9]\d* of/.test(side), 'sidebar minutes not updated: ' + side);
     const s = await state(p); ok(Object.values(s.done).some(v => /^\d{4}-\d\d-\d\d$/.test(v)), 'done not saved with a date');
     await p.reload(); await p.waitForTimeout(800); ok(await p.$('.unit.done'), 'done lost after reload');
@@ -507,7 +507,7 @@ async function T(name, fn, opt) {
   await T('today: later steps fold to a row and open in place', async p => {
     await go(p, '#/today');
     const n = await p.$$eval('.plan .unit', us => us.length); ok(n >= 1, 'need a later step today, got ' + n);
-    ok(await p.$$eval('.unit.cur', us => us.length) === 1 && await p.$('.upnext .unit.cur'), 'exactly one Up next card expected, first on the page');
+    ok(await p.$$eval('.focushero', us => us.length) === 1 && await p.$('.focushero'), 'exactly one Up next card expected, first on the page');
     const row = p.locator('.plan .unit.folded').first();
     ok(!(await row.locator('.goal').isVisible()), 'folded row should hide its details');
     const btn = row.locator('.unfold'); ok((await btn.getAttribute('aria-expanded')) === 'false', 'toggle should start collapsed');
@@ -524,8 +524,8 @@ async function T(name, fn, opt) {
   await T('today on iPhone at 200% text: after missed days the Up next button stays on screen', async p => {
     await go(p, '#/today', 900);
     await p.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 3); S.start = iso(d); S.since = null; S.done = {}; save(); }); await p.waitForTimeout(400);
-    await p.reload(); await p.waitForSelector('.unit.cur', { timeout: 30000 });
-    const b = await p.$eval('.unit.cur .acts .btn.pri', e => { const r = e.getBoundingClientRect(); return { bottom: r.bottom, tab: document.querySelector('.tabbar').getBoundingClientRect().top }; });
+    await p.reload(); await p.waitForSelector('.focushero', { timeout: 30000 });
+    const b = await p.$eval('.focushero .fh-start', e => { const r = e.getBoundingClientRect(); return { bottom: r.bottom, tab: document.querySelector('.tabbar').getBoundingClientRect().top }; });
     ok(b.bottom <= b.tab, 'Up next button pushed behind the tab bar: ' + JSON.stringify(b));
   }, { viewport: { width: 390, height: 664 }, isMobile: true, hasTouch: true });
 
@@ -538,7 +538,7 @@ async function T(name, fn, opt) {
 
   await T('today on iPhone: the Up next step and its button show without scrolling', async p => {
     await go(p, '#/today', 900);
-    const b = await p.$eval('.unit.cur .acts .btn.pri', e => { const r = e.getBoundingClientRect(); const tb = document.querySelector('.tabbar').getBoundingClientRect(); return { bottom: r.bottom, tab: tb.top }; });
+    const b = await p.$eval('.focushero .fh-start', e => { const r = e.getBoundingClientRect(); const tb = document.querySelector('.tabbar').getBoundingClientRect(); return { bottom: r.bottom, tab: tb.top }; });
     ok(b.bottom <= b.tab, 'Up next button hidden behind the tab bar: ' + JSON.stringify(b));
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'page scrolls sideways');
   }, { viewport: { width: 390, height: 664 }, isMobile: true, hasTouch: true }); /* Safari's visible area on an iPhone 13 */
@@ -982,7 +982,7 @@ async function T(name, fn, opt) {
     await go(p, '#/today', 1500); await p.waitForSelector('.gmini');
     ok(await p.evaluate(() => !document.querySelector('#page .gstrip') && getComputedStyle(document.querySelector('.gmini')).display !== 'none'), 'Today should show the level chip, not the full strip');
     await go(p, '#/progress', 1000); ok(/Intern|Junior|Mid-level|Senior|Staff/.test(await text(p, '.gstrip')) && /XP/.test(await text(p, '.gstrip')), 'level strip missing on Progress'); await go(p, '#/today', 1200);
-    const ub = await p.$eval('.unit.cur .acts .btn.pri', e => [Math.round(e.getBoundingClientRect().bottom), Math.round(document.querySelector('.tabbar').getBoundingClientRect().top)]); ok(ub[0] <= ub[1], 'Up next is pushed below the tab bar: ' + ub);
+    const ub = await p.$eval('.focushero .fh-start', e => [Math.round(e.getBoundingClientRect().bottom), Math.round(document.querySelector('.tabbar').getBoundingClientRect().top)]); ok(ub[0] <= ub[1], 'Up next is pushed below the tab bar: ' + ub);
     await p.waitForSelector('.gcard', { timeout: 5000 }); ok(true, '');
     await go(p, '#/warm', 1500); await p.waitForSelector('.gwarm .gq-q');
     for (let n = 0; n < 3; n++) { if (await p.$('.gwarm .gopt')) await p.click('.gwarm .gopt'); else { await p.fill('.gwarm input', 'x'); await p.click('.gwarm button.pri'); } await p.waitForTimeout(2000); }
@@ -1620,7 +1620,7 @@ async function T(name, fn, opt) {
     await go(p, '#/sim', 1400);
     const w = await p.evaluate(() => [document.documentElement.scrollWidth, innerWidth]); ok(w[0] <= w[1], 'page scrolls sideways: ' + w);
     const b = await p.$eval('.simplay', e => [e.getBoundingClientRect().bottom, document.querySelector('.tabbar').getBoundingClientRect().top]); ok(b[0] <= b[1], 'Run traffic hidden under the tab bar: ' + b);
-    await go(p, '#/today', 1200); const u = await p.$('.unit.cur .acts .btn.pri');
+    await go(p, '#/today', 1200); const u = await p.$('.focushero .fh-start');
     if (u) { const y = await u.evaluate(e => [e.getBoundingClientRect().bottom, document.querySelector('.tabbar').getBoundingClientRect().top]); ok(y[0] <= y[1], 'Up next pushed below the tab bar'); }
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 

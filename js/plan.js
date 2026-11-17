@@ -254,16 +254,33 @@ function interviewItems(off, k, cur) {
   return { iv: now.filter(x => x.id === 'mock' || x.id === 'recall' || x.id.startsWith('loop:') || x.id.startsWith('rq:')), coach: now.filter(x => x.id.startsWith('coach')), later, laterQ: later.filter(x => x.id.startsWith('rq:')).length, laterC: later.filter(x => x.id.startsWith('coach')).length };
 }
 function xDone(k, x) { return x.auto || +(((S.xdone || {})[k] || {})[x.id] || 0) > 0; } /* a tick is its time, an untick minus its time, so sync keeps the later one */
+/* tick a daily-set row that is not a plan step (kept per day in S.xdone); rows that tick themselves say so */
+function xTick(k, x) {
+  if (x.auto) { toast('This one ticks itself when you solve or submit it.'); return; }
+  if (x.lock) { toast('Tick this question on its page when you can answer it out loud.'); location.hash = x.href; return; }
+  const m = (S.xdone = S.xdone || {})[k] = S.xdone[k] || {}; m[x.id] = +(m[x.id] || 0) > 0 ? -Date.now() : Date.now(); save(); route();
+}
+/* Redesign (Focus home): the next item as one hero card in the colour theme: which part, minutes and XP, the title, one line
+   on why, a big Start and a tick. tools/redesign_test.js group today. */
+function focusHero(cur, k, from) {
+  const u = cur.unit, x = cur.x || {}, part = (DAY_TABS.find(t => t[0] === cur.tab) || [, 'Learn'])[1], sec = (DAY_SECS.find(z => z[1] === cur.s) || [, , ''])[2];
+  const title = u ? u.title : x.t, href = u ? u.href : x.href, why = u ? (u.goal || '') : (x.sub || '');
+  return el('section', { class: 'upnext focushero', 'aria-label': 'Up next' }, [
+    el('div', { class: 'row fh-top' }, [el('span', { class: 'fh-kicker', text: 'Up next · ' + part }), el('span', { class: 'grow' }), el('span', { class: 'fh-meta', text: cur.mins + ' min · +' + cur.xp + ' XP' })]),
+    el('h2', { class: 'fh-title', text: title }),
+    why ? el('p', { class: 'fh-pitch', text: why }) : null,
+    el('div', { class: 'row fh-acts' }, [
+      el('a', { class: 'btn fh-start', href }, [el('span', { text: u ? u.cta : 'Start' }), svg(I.fwd, 18)]),
+      el('button', { class: 'fh-done', 'data-uid': u ? u.uid : null, 'aria-pressed': 'false', 'aria-label': 'Mark done: ' + title, onclick: () => u ? toggleUnit(u) : xTick(k, x) }, svg('<path d="M5 12l5 5 9-10"/>', 22))]),
+    el('span', { class: 'fh-mod', text: [sec, u ? 'Module ' + modLabel(u.mid) : '', from ? 'from ' + from : ''].filter(Boolean).join(' · ') })]);
+}
 function xGroup(k, title, note, items, id, extra, foot) {
   const mins = items.reduce((a, x) => a + x.mins, 0), dm = items.filter(x => xDone(k, x)).reduce((a, x) => a + x.mins, 0);
   return el('div', { class: 'xgroup stack', id, style: { gap: '8px' } }, [
     title ? el('div', { class: 'row wrap xghead' }, [el('h3', { class: 'grow', text: title }), items.length ? el('span', { class: 'muted', style: { fontSize: '14px' }, text: dm + ' / ' + mins + ' min' }) : null]) : null,
     note ? el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: note }) : null, extra || null]
     .concat(items.map(x => { const dn = xDone(k, x); return el('div', { class: 'xit' + (dn ? ' done' : '') }, [
-      el('button', { class: 'check', 'aria-pressed': String(dn), 'aria-label': (dn ? 'Mark not done: ' : 'Mark done: ') + x.t, onclick: () => {
-        if (x.auto) { toast('This one ticks itself when you solve or submit it.'); return; }
-        if (x.lock) { toast('Tick this question on its page when you can answer it out loud.'); location.hash = x.href; return; }
-        const m = (S.xdone = S.xdone || {})[k] = S.xdone[k] || {}; m[x.id] = +(m[x.id] || 0) > 0 ? -Date.now() : Date.now(); save(); route(); } }, dn ? svg(I.check, 16) : null),
+      el('button', { class: 'check', 'aria-pressed': String(dn), 'aria-label': (dn ? 'Mark not done: ' : 'Mark done: ') + x.t, onclick: () => xTick(k, x) }, dn ? svg(I.check, 16) : null),
       el('a', { class: 'grow xlink', href: x.href }, [el('span', { class: 'row wrap', style: { gap: '6px' } }, [chip(x.chip), x.from ? el('span', { class: 'chip c-ai', text: 'from ' + x.from }) : null, el('span', { class: 't', text: x.t })]), el('span', { class: 's', text: x.mins + ' min · ' + x.sub })]),
       el('a', { class: 'btn sm', href: x.href, text: dn ? 'Open' : 'Start' })]); }), foot ? [foot] : []));
 }
@@ -300,7 +317,7 @@ function vToday(off) {
   const hr = new Date().getHours();
   const fromTxt = x => x.carried ? shortDate(x.carried).slice(0, 3) : '';
   const row = x => x.unit ? unitCard(x.unit, { fold: true, cur: false, from: fromTxt(x) }) : xGroup(k, '', '', [Object.assign({}, x.x, { from: fromTxt(x), sub: x.x.sub + ' · +' + x.xp + ' XP' })]);
-  const upNext = cur && !pre ? el('section', { class: 'upnext' }, [cur.unit ? unitCard(cur.unit, { cur: true, from: fromTxt(cur) }) : el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'upn', text: 'Up next · ' + (DAY_SECS.find(s => s[1] === cur.s) || [, , ''])[2] }), xGroup(k, '', '', [Object.assign({}, cur.x, { sub: cur.x.sub + ' · +' + cur.xp + ' XP' })])])]) : null;
+  const upNext = cur && !pre ? focusHero(cur, k, fromTxt(cur)) : null;
   const nav = el('div', { class: 'row wrap daynav', style: { gap: '8px' } }, [
     el('a', { class: 'btn icon sm', href: '#/today/' + (off - 1), 'aria-label': 'Previous day' }, svg(I.back, 18)),
     el('b', { style: { fontSize: '17px' }, text: (off === 0 ? 'Today · ' : off === 1 ? 'Tomorrow · ' : off === -1 ? 'Yesterday · ' : '') + dayName(k) + ' ' + shortDate(k).slice(4) }),
@@ -326,24 +343,27 @@ function vToday(off) {
     el('div', { class: 'row planhead wrap' }, [ring, el('div', { class: 'grow stack', style: { gap: '0' } }, [el('div', { class: 'row', style: { gap: '8px' } }, [el('h2', { text: off === 0 ? 'Today' : pre ? 'Before your plan starts' : dayName(k) })]), pre ? null : el('span', { class: 'muted', style: { fontSize: '14px' }, text: all.xpd + ' of ' + all.xp + ' XP · about ' + fmt(all.m) + ' (' + fmt(all.md) + ' done)' })]),
       pre ? null : el('div', { class: 'row wrap daysum', role: 'tablist', 'aria-label': 'This day in parts' }, PARTS.map(([id, n, xs]) => {
         const z = sum(xs), dn = xs.every(x => x.done);
-        return el('button', { class: 'dsum' + (dn ? ' done' : ''), role: 'tab', id: 'tab-' + id, 'aria-selected': String(id === tabNow), 'aria-controls': id, 'aria-label': n + ': ' + z.xpd + ' of ' + z.xp + ' XP, ' + z.m + ' minutes' + (dn ? ', finished' : ''), onclick: () => { todayTab = id; document.querySelectorAll('.plan .dsum').forEach(b => b.setAttribute('aria-selected', String(b.id === 'tab-' + id))); PARTS.forEach(([g]) => { const s = document.getElementById(g); if (s) s.hidden = g !== id; }); const s = document.getElementById(id); if (s) { const r = s.getBoundingClientRect(); if (r.top < 0 || r.top > innerHeight - 120) s.scrollIntoView({ block: 'start', behavior: 'smooth' }); } } }, [dn ? svg(I.check, 14) : null, el('b', { text: n }), el('span', { text: z.xpd + '/' + z.xp + ' XP · ' + z.m + ' min' })]); }))]),
+        return el('button', { class: 'dsum' + (dn ? ' done' : ''), role: 'tab', id: 'tab-' + id, 'aria-selected': String(id === tabNow), 'aria-controls': id, 'aria-label': n + ': ' + z.xpd + ' of ' + z.xp + ' XP, ' + z.m + ' minutes' + (dn ? ', finished' : ''), onclick: () => { todayTab = id; document.querySelectorAll('.plan .dsum').forEach(b => b.setAttribute('aria-selected', String(b.id === 'tab-' + id))); PARTS.forEach(([g]) => { const s = document.getElementById(g); if (s) s.hidden = g !== id; }); const s = document.getElementById(id); if (s) { const r = s.getBoundingClientRect(); if (r.top < 0 || r.top > innerHeight - 120) s.scrollIntoView({ block: 'start', behavior: 'smooth' }); } } }, [el('span', { class: 'row dsum-h' }, [dn ? svg(I.check, 14) : null, el('b', { text: n }), el('span', { class: 'dsum-x', text: z.xpd + '/' + z.xp + ' XP · ' + z.m + ' min' })]), el('span', { class: 'segs', 'aria-hidden': 'true' }, xs.map(x => el('i', { class: x.done ? 'on' : null }))), el('span', { class: 'dsum-n', text: xs.filter(x => x.done).length + ' of ' + xs.length + ' done' })]); }))]),
     nav,
     pre ? el('p', { style: { margin: 0 }, text: 'Your plan starts ' + shortDate(S.start) + '.' }) : null,
     off > 0 && !pre ? el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'A preview: the set is chosen on the morning of the day, from what is still open then.' }) : null,
     off === 0 && !pre && typeof repairHint === 'function' && repairHint(k) ? el('div', { class: 'hint quiet', role: 'status' }, [repairHint(k)]) : null,
     !pre && items.length ? el('div', { class: 'hint' + (full ? '' : ' quiet'), role: 'status' }, full ? [el('b', { text: 'Daily set done · +' + DAY_BONUS + ' XP. ' }), 'It counts for your streak.'] : ['Finish all ' + items.length + ' for +' + DAY_BONUS + ' XP and a streak day. No time limit: the minutes are only a guide.' + (off === 0 && typeof caseHint === 'function' ? caseHint(k) : '')]) : null].concat(PARTS.map(paneOf)));
   const D = DATA.design[m];
-  const modCard = el('section', { class: 'card pad stack' }, [
+  const modCard = el('section', { class: 'card pad stack todaymod' }, [
     el('div', { class: 'row wrap', style: { gap: '6px' } }, [el('span', { class: 'chip ' + modColor(m), text: 'Module ' + modLabel(m) }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: weeksText(sp) })]),
     el('b', { style: { fontSize: '18px' }, text: M ? M.title : '' }), typeof storyFrame === 'function' ? storyFrame(m, { short: true, season: true }) : null, el('span', { style: { fontSize: '14.5px' }, text: M ? M.goal : '' }),
     el('div', { class: 'row' }, [el('div', { class: 'bar grow' }, el('i', { style: { width: (sp ? Math.round(100 * sp.done / sp.n) : 0) + '%' } })), el('b', { text: modXP(m) })]),
     el('details', { class: 'modmenu' }, [el('summary', { class: 'btn', text: 'Open module' }), el('div', { class: 'stack', style: { gap: '10px', marginTop: '10px' } }, [modLinks(m), D ? el('a', { class: 'tlink', href: '#/design/' + m, style: { fontWeight: 600, fontSize: '14px' }, text: 'Design problem: ' + D.title + ' ›' }) : null, el('a', { class: 'tlink', href: '#/path/' + m, style: { fontWeight: 600, fontSize: '14px' }, text: 'See every step of this module ›' })])])]);
+  /* the first row: the Meridian cold open, else Up next (or Tomorrow on Meridian once the set is done); on a wide screen the module card sits beside it */
+  const topCard = off === 0 && !pre && typeof storyColdOpen === 'function' && storyColdOpen(k) || (off === 0 && !pre && full && typeof storyCliff === 'function' ? storyCliff(k) : upNext);
+  const wide = !!topCard && window.matchMedia && matchMedia('(min-width: 1024px)').matches;
   shell(off === 0 ? 'Today' : 'Plan · ' + shortDate(k), 'Module ' + modLabel(m), [
     el('div', { class: 'row greet' }, [el('div', { class: 'grow stack', style: { gap: '2px' } }, [el('h1', { text: (hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + (userName() ? ', ' + userName() : '') }), pre ? null : el('span', { class: 'muted', style: { fontSize: '14px' }, text: dayName(k) + ' ' + shortDate(k).slice(4) + ' · ' + all.xpd + ' of ' + all.xp + ' XP' })]), off === 0 ? gameMini() : null]),
-    off === 0 && !pre && typeof storyColdOpen === 'function' && storyColdOpen(k) || (off === 0 && !pre && full && typeof storyCliff === 'function' ? storyCliff(k) : upNext), /* the Meridian series (js/story.js): Previously on, then Up next; Tomorrow on, once the set is done */
+    wide ? el('div', { class: 'todaytop' }, [topCard, modCard]) : topCard, /* the Meridian series (js/story.js): Previously on, then Up next; Tomorrow on, once the set is done */
     off === 0 && !pre && full && typeof storyCase === 'function' ? storyCase(k) : null, /* a case file after a full set, Monday to Saturday (ENGAGE 9) */
     off === 0 ? whatsNewCard() : null,
-    el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [modCard, off === 0 ? el('div', { id: 'rtodayslot' }) : null])]),
+    el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [wide ? null : modCard, off === 0 ? el('div', { id: 'rtodayslot' }) : null])]),
     off === 0 ? el('div', { id: 'gcardslot' }) : null,
     el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', style: { minWidth: 'max-content' }, text: 'This week' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'XP earned and minutes · ✓ full set · tap a day to see it' }), el('button', { class: 'btn sm', onclick: exportIcs, text: 'Add to calendar' })]), weekStrip(sc, k)])]);
   if (off === 0) { reelToday().then(c => { const s = document.getElementById('rtodayslot'); if (c && s) s.replaceWith(c); }); gameCard().then(c => { const s = document.getElementById('gcardslot'); if (c && s) s.replaceWith(c); }); gameShipCheck(); }

@@ -64,11 +64,11 @@ async function run(P) {
   /* ---------- everyone: first look at Today ---------- */
   await task('open Today and understand what to do now', async () => {
     await go('#/today'); await probe(p, P, 'Today', notes); await shot('today');
-    const t = await p.evaluate(() => ({ units: document.querySelectorAll('.unit').length, hero: (document.querySelector('.unit.cur .t, .hero b') || {}).innerText || '' /* the plan's Up next card, or the ahead-of-plan banner */, cc: [...document.querySelectorAll('.unit .chip')].some(x => /Claude Code/.test(x.innerText)), load: performance.now() }));
+    const t = await p.evaluate(() => ({ units: document.querySelectorAll('.unit').length, hero: (document.querySelector('.focushero .fh-title, .hero b') || {}).innerText || '' /* the plan's Up next card, or the ahead-of-plan banner */, cc: [...document.querySelectorAll('.unit .chip')].some(x => /Claude Code/.test(x.innerText)), load: performance.now() }));
     if (!t.units) return 'no steps on Today';
     if (!t.hero) note('Today', 'clarity', 'no "start here" step at the top');
     /* round 1 lessons: the Up next button must be reachable without scrolling on phones, and nobody is told they missed days before they began */
-    const g = await p.evaluate(() => { const b = document.querySelector('.unit.cur .acts .btn.pri'), tb = document.querySelector('.tabbar'); const r = b && b.getBoundingClientRect(); return { below: !!(b && r.bottom > (tb && tb.offsetParent ? tb.getBoundingClientRect().top : innerHeight)), note: !!document.querySelector('.behind'), missed: schedule().missed.length }; });
+    const g = await p.evaluate(() => { const b = document.querySelector('.focushero .fh-start'), tb = document.querySelector('.tabbar'); const r = b && b.getBoundingClientRect(); return { below: !!(b && r.bottom > (tb && tb.offsetParent ? tb.getBoundingClientRect().top : innerHeight)), note: !!document.querySelector('.behind'), missed: schedule().missed.length }; });
     if (g.below && (P.ctx.isMobile || P.ctx.hasTouch)) note('Today', 'layout', 'the Up next button is below the fold on first open');
     if (g.note && !P.gap) note('Today', 'clarity', 'a catching-up note shows for someone who has not missed a day');
     return true;
@@ -397,7 +397,7 @@ async function run(P) {
   if (P.id === 'dev') {
     await task('come back after missing days and see what happened', async () => {
       await go('#/today', 1200); await probe(p, P, 'Today after a gap', notes); await shot('gap');
-      const r = await p.evaluate(() => { const sc = schedule(); return { note: (document.querySelector('.behind') || {}).innerText || '', cur: (document.querySelector('.unit.cur .t') || {}).innerText || '', first: (sc.units.find(u => !u.isDone && !isCC(u.mid)) || {}).title }; });
+      const r = await p.evaluate(() => { const sc = schedule(); return { note: (document.querySelector('.behind') || {}).innerText || '', cur: (document.querySelector('.focushero .fh-title') || {}).innerText || '', first: (sc.units.find(u => !u.isDone && !isCC(u.mid)) || {}).title }; });
       if (!/Catching up/.test(r.note)) return 'no word about the missed days';
       return r.cur === r.first || 'Up next is "' + r.cur + '", not the earliest open step "' + r.first + '"';
     });
@@ -412,9 +412,9 @@ async function run(P) {
       return /from (Mon|Tue|Wed|Thu|Fri|Sat|Sun)/.test(s) || /more problems? wait/.test(g) || new Date().getDay() === 1 || 'coding track lost unsolved problems from earlier days (neither shown nor counted): ' + s.slice(0, 120);
     });
     await task('do the first step by touch and see the plan move', async () => {
-      const before = await p.$eval('.unit.cur .t', e => e.innerText);
-      await p.locator('.unit.cur .check').tap(); await p.waitForTimeout(500);
-      const after = await p.$eval('.unit.cur .t', e => e.innerText).catch(() => '');
+      const before = await p.$eval('.focushero .fh-title', e => e.innerText);
+      await p.locator('.focushero .fh-done').tap(); await p.waitForTimeout(500);
+      const after = await p.$eval('.focushero .fh-title', e => e.innerText).catch(() => '');
       return (after && after !== before) || 'Up next did not move on';
     });
     await task('open Path and continue the current module', async () => {

@@ -15,7 +15,7 @@ const BASE = process.argv[2] || 'http://localhost:8811/';
   const before = await p.evaluate(() => location.hash);
   await p.evaluate(() => { const t = iso(new Date()); S.xdone = S.xdone || {}; S.xdone[t] = S.xdone[t] || {}; daySet(t).forEach(x => { if (x.unit) S.done[x.unit.uid] = t; else S.xdone[t][x.id] = Date.now(); }); save(); route(); });
   await p.waitForTimeout(3000);
-  const st = await p.evaluate(() => ({ hash: location.hash, up: !!document.querySelector('.upnext .unit.cur'), done: /Daily set done/.test(document.querySelector('.plan').textContent), more: document.querySelectorAll('.plan button').length && [...document.querySelectorAll('.plan button')].some(x => /One more/.test(x.textContent)), n: daySet(iso(new Date())).length }));
+  const st = await p.evaluate(() => ({ hash: location.hash, up: !!document.querySelector('.focushero'), done: /Daily set done/.test(document.querySelector('.plan').textContent), more: document.querySelectorAll('.plan button').length && [...document.querySelectorAll('.plan button')].some(x => /One more/.test(x.textContent)), n: daySet(iso(new Date())).length }));
   ok(st.hash === before && !st.up && st.done && st.more, 'the finished day is not a hard stop: ' + JSON.stringify(st));
   ok(await p.evaluate(n => daySet(iso(new Date())).length === n, st.n), 'items were added without asking');
   /* 2. today's reels from Today: three, then a stop */

@@ -1,9 +1,9 @@
 {
-  "version": "1.37.0",
-  "date": "2026-11-17",
+  "version": "1.38.0",
+  "date": "2026-11-18",
   "notes": [
-    "New colour themes in Profile \u203a Look: Electric (violet and lime), Calm (the old look), Sunset and Ocean, each in light, dark or match device.",
-    "New icons in the tab bar and side menu; the page you are on is filled in.",
-    "Buttons press down when tapped and show a clear ring with the keyboard."
+    "Today opens on one big card for what is next: the part, minutes and XP, a Start button and a tick.",
+    "The Learn, Practice and Interview tabs show a bar for each item, filled as you finish them.",
+    "On a computer, the module card sits beside it."
   ]
 }
