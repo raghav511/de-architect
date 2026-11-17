@@ -267,6 +267,7 @@ function focusHero(cur, k, from) {
   const title = u ? u.title : x.t, href = u ? u.href : x.href, why = u ? (u.goal || '') : (x.sub || '');
   return el('section', { class: 'upnext focushero', 'aria-label': 'Up next' }, [
     el('div', { class: 'row fh-top' }, [el('span', { class: 'fh-kicker', text: 'Up next · ' + part }), el('span', { class: 'grow' }), el('span', { class: 'fh-meta', text: cur.mins + ' min · +' + cur.xp + ' XP' })]),
+    u && !u.isDone && wasDone(u.uid) ? el('span', { class: 'fh-tag', title: 'You finished an earlier version of this step on ' + shortDate(wasDone(u.uid)) + '. It has changed.', text: 'Updated · finished before ' + shortDate(wasDone(u.uid)).slice(4) }) : u && isNewUnit(u) ? el('span', { class: 'fh-tag', text: 'New' }) : null,
     el('h2', { class: 'fh-title', text: title }),
     why ? el('p', { class: 'fh-pitch', text: why }) : null,
     el('div', { class: 'row fh-acts' }, [
@@ -404,25 +405,49 @@ function topicArt(x, size) { const t = trackOf(x); return el('span', { class: 't
 const ROADMAP_TEXT = 'Setup and the diagnostic first, then the Python track (Python 1–6) woven between the AI modules (AI 1–3), then data modelling (Modelling 1–3), then the data engineering modules, with Systems 1 (distributed systems and storage internals) after DE 4, Platform 1 (Scala, the JVM, Kubernetes and Hadoop) after DE 7 and Leadership 1 (strategy, migrations, cost, influence) after DE 10. A module ends when its steps are done, not on a fixed week. After the last module, new Extra modules arrive every week: big-tech papers and problems, plus fresh questions on earlier topics.';
 function weekOneBtn() { return el('button', { class: 'btn sm', onclick: async () => { const v = await confirmBox('Restart the calendar?', 'Week 1 becomes this week. Your progress is kept; only the week numbers change.', [{ t: 'Make this week 1', cls: 'pri', v: 1 }, { t: 'Cancel', v: null }]); if (v) { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); S.start = iso(d); S.since = iso(new Date()); save(); route(); } }, text: 'Make this week 1' }); }
 /* ---------------- Path: picture cards for every module ---------------- */
+/* Redesign (Path): the whole course as seven stages in program order, the Claude Code track beside them, a You are here
+   card with Continue, and track chips that filter the list. A finished stage folds to one line. tools/redesign_test.js path */
+const STAGES = [['s00', 'Foundations: Python and AI'], ['m01', 'Data modelling'], ['s01', 'Data engineering core'], ['s05', 'Real time, CDC and AI in production'], ['s07', 'Cloud and platforms'], ['o01', 'Org and leadership'], ['s11', 'Capstone']];
+const PTRACKS = [['all', 'All'], ['python', 'Python'], ['ai', 'AI'], ['model', 'Modelling'], ['de', 'Data engineering'], ['sys', 'Systems and platform'], ['org', 'Org and leadership'], ['cc', 'Claude Code']];
+const ptrackOf = x => { const t = trackOf(x); return /^[or]/.test(x) ? 'org' : t === 'systems' || t === 'platform' ? 'sys' : t === 'setup' ? 'de' : t === 'lead' ? 'org' : t; };
+let pathTrack = 'all', pathOpen = {};
+function stagesOf(mods) {
+  const main = mods.filter(m => !isCC(m)), out = STAGES.map(([s, n]) => ({ n, ms: [] }));
+  let k = 0; main.forEach(m => { const j = STAGES.findIndex(st => st[0] === m); if (j >= 0) k = j; out[k].ms.push(m); });
+  const cc = mods.filter(isCC); if (cc.length) out.push({ n: 'Claude Code track', ms: cc, side: true });
+  return out.filter(st => st.ms.length);
+}
 function vPathMap() {
-  const sc = schedule(), cur = sc.cur, i = MODS.indexOf(cur), nx = sc.units.find(u => u.mid === cur && !u.isDone);
-  const cards = MODS.map(x => {
-    const s = sc.span[x] || { n: 0, done: 0 }, fin = s.n > 0 && s.done === s.n, isCur = x === cur, pct = s.n ? Math.round(100 * s.done / s.n) : 0;
-    return el('div', { class: 'pcard' + (isCur ? ' cur' : '') + (fin ? ' fin' : ''), 'data-mid': x }, [
-      el('div', { class: 'band a-' + trackOf(x) }, topicArt(x, isCur ? 96 : 64)),
-      el('div', { class: 'bd' }, [
-        el('div', { class: 'row', style: { gap: '6px' } }, [el('span', { class: 'chip ' + modColor(x), text: modLabel(x) }), fin ? el('span', { class: 'tag', text: '✓ Done' }) : isNewMod(x) ? el('span', { class: 'tag tnew', text: 'New' }) : modUpdated(x) ? el('span', { class: 'tag tupd', text: 'Updated' }) : isCur ? el('span', { class: 'tag', text: 'You are here' }) : null]),
-        el('a', { class: 'pt', href: '#/path/' + x, text: modTitle(x) }),
-        el('div', { class: 'bar', role: 'img', 'aria-label': s.done + ' of ' + s.n + ' steps done' }, el('i', { style: { width: pct + '%' } })),
-        el('span', { class: 's', text: s.done + '/' + s.n + ' steps · ' + weeksText(s.n ? s : null) }),
-        isCur && nx ? el('a', { class: 'btn sm pri go', href: nx.href, text: 'Continue: ' + nx.title }) : null])]);
-  });
-  const road = el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Roadmap' }), weekOneBtn()]),
-    el('span', { class: 'muted', style: { fontSize: '14px' }, text: ROADMAP_TEXT })]);
-  const grid = el('section', { class: 'pgrid', 'aria-label': 'Modules' }, cards);
-  shell('Path', MODS.length + ' modules so far · you are on module ' + (i + 1), [el('div', { class: 'grid2 wide' }, [grid, el('div', { class: 'stack', style: { gap: '18px' } }, [road])])]);
-  /* bring the current module into view when it is further down the page */
-  setTimeout(() => { const c = document.querySelector('.pcard.cur'); if (c && c.getBoundingClientRect().top > innerHeight * .6) c.scrollIntoView({ block: 'center' }); }, 0);
+  const sc = schedule(), cur = sc.cur, nx = sc.units.find(u => u.mid === cur && !u.isDone), sp0 = sc.span[cur] || { n: 0, done: 0 };
+  const fin = x => { const s = sc.span[x]; return !!s && s.n > 0 && s.done === s.n; }, nDone = MODS.filter(fin).length;
+  const hero = el('section', { class: 'pathhero', 'aria-label': 'You are here' }, [
+    el('span', { class: 'ph-kicker', text: 'You are here · ' + modLabel(cur) }),
+    el('h2', { class: 'ph-title', text: modTitle(cur) }),
+    el('div', { class: 'row', style: { gap: '10px' } }, [el('div', { class: 'ph-bar grow', role: 'img', 'aria-label': sp0.done + ' of ' + sp0.n + ' steps done' }, el('i', { style: { width: (sp0.n ? Math.round(100 * sp0.done / sp0.n) : 0) + '%' } })), el('span', { class: 'ph-steps', text: sp0.done + ' of ' + sp0.n + ' steps' })]),
+    nx ? el('span', { class: 'ph-next', text: 'Next: ' + nx.title + ' · ' + nx.mins + ' min' }) : null,
+    el('div', { class: 'row fh-acts' }, [nx ? el('a', { class: 'btn ph-go', href: nx.href }, [el('span', { text: 'Continue' }), svg(I.fwd, 18)]) : null, el('a', { class: 'btn ph-mod', href: '#/path/' + cur, text: 'Module page' })])]);
+  const chips = el('div', { class: 'trackchips', role: 'group', 'aria-label': 'Show a track' }, PTRACKS.filter(([t]) => t === 'all' || MODS.some(m => ptrackOf(m) === t)).map(([t, n]) =>
+    el('button', { class: 'tchip', 'data-track': t, 'aria-pressed': String(pathTrack === t), onclick: () => { pathTrack = t; vPathMap(); }, text: n })));
+  const row = x => { const s = sc.span[x] || { n: 0, done: 0 }, f = fin(x), now = x === cur, wk = s.n && !f && !now && s.first ? 'Week ' + weekOf(s.first) : '';
+    const a = el('a', { class: 'prow' + (now ? ' now' : '') + (f ? ' fin' : ''), href: '#/path/' + x, 'data-mid': x, 'data-track': ptrackOf(x) }, [
+      el('span', { class: 'chip ' + modColor(x), text: modLabel(x) }),
+      el('span', { class: 'grow stack', style: { gap: '4px', minWidth: 0 } }, [el('span', { class: 't', text: modTitle(x) }), s.n && !f ? el('span', { class: 'pbar' }, el('i', { style: { width: Math.round(100 * s.done / s.n) + '%' } })) : null]),
+      el('span', { class: 'ps' + (now ? ' now' : f ? ' ok' : ''), text: now ? 'Now' : f ? '✓ Done' : isNewMod(x) ? 'New' : wk })]);
+    if (pathTrack !== 'all' && ptrackOf(x) !== pathTrack) a.hidden = true;
+    return a; };
+  const stages = stagesOf(MODS).map((st, i) => {
+    const dn = st.ms.filter(fin).length, all = dn === st.ms.length, now = st.ms.includes(cur), key = st.n;
+    const open = key in pathOpen ? pathOpen[key] : !all, shown = st.ms.filter(m => pathTrack === 'all' || ptrackOf(m) === pathTrack).length;
+    const body = el('div', { class: 'stage-b', id: 'stage-b-' + i }, st.ms.map(row)); body.hidden = !open;
+    const h = el('button', { class: 'stage-h', 'aria-expanded': String(open), 'aria-controls': 'stage-b-' + i, onclick: () => { pathOpen[key] = !open; vPathMap(); } }, [
+      all ? el('span', { class: 'sdone', 'aria-hidden': 'true' }, svg('<path d="M5 12l5 5 9-10"/>', 16)) : el('span', { class: 'snum', text: st.side ? 'CC' : String(i + 1) }),
+      el('span', { class: 'grow stack', style: { gap: '2px', minWidth: 0 } }, [el('b', { text: st.n }), el('span', { class: 's', text: all ? 'Done · ' + st.ms.length + ' modules' : dn + ' of ' + st.ms.length + ' done' + (st.side ? ' · alongside the main path' : '') })]),
+      now ? el('span', { class: 'ps now', text: 'Now' }) : null, svg(open ? '<path d="M6 15l6-6 6 6"/>' : '<path d="M6 9l6 6 6-6"/>', 18)]);
+    const sec = el('section', { class: 'stage card' + (now ? ' now' : '') + (all ? ' fin' : '') + (st.side ? ' side' : '') }, [h, body]);
+    if (!shown) sec.hidden = true;
+    return sec; });
+  const road = el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', text: 'Roadmap' }), weekOneBtn()]), el('span', { class: 'muted', style: { fontSize: '14px' }, text: ROADMAP_TEXT })]);
+  shell('Path', MODS.length + ' modules · ' + nDone + ' done · module ' + (MODS.indexOf(cur) + 1) + ' now', [el('div', { class: 'grid2 wide' }, [el('div', { class: 'stack', style: { gap: '14px' } }, [hero, chips].concat(stages)), el('div', { class: 'stack', style: { gap: '18px' } }, [road])])]);
 }
 function vPath(m) {
   if (m == null || m === '') return vPathMap();

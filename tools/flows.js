@@ -51,7 +51,7 @@ async function T(name, fn, opt) {
     const t = await text(p, '.whatsnew'); await p.click('.whatsnew button:has-text("See")'); const t2 = await text(p, '.whatsnew');
     ok(/2 new modules/.test(t) && /LLMs meet the warehouse/.test(t2) && !/Updated/.test(t2), 'note: ' + t2.replace(/\s+/g, ' ').slice(0, 400));
     ok(await p.evaluate(() => !!S.done['s00:S001']), 'progress lost on upgrade');
-    await go(p, '#/path', 900); ok(await p.$('.pcard[data-mid=a04] .tag.tnew'), 'A4 not tagged New on the Path');
+    await go(p, '#/path', 900); ok(/New/.test(await all(p, '.prow[data-mid=a04] .ps')), 'A4 not tagged New on the Path');
     await go(p, '#/today', 900); await p.click('.whatsnew button:has-text("Got it")'); await p.reload(); await p.waitForSelector('h1'); await p.waitForTimeout(500);
     ok(!(await p.$('.whatsnew')), 'Got it did not clear the note');
   });
@@ -447,17 +447,18 @@ async function T(name, fn, opt) {
     await p.click('.tabmore'); await p.click('.sheet a:has-text("Progress")'); await p.waitForTimeout(400); ok(await p.$('.tabmore[aria-current=page]'), 'More tab not highlighted on a page outside the tabs');
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
-  await T('path: every module is a picture card; the current one is larger with Continue', async p => {
+  await T('path: every module is listed once in its stage; You are here has Continue to the next open step', async p => {
     await go(p, '#/path', 1000);
-    const n = await p.evaluate(() => [document.querySelectorAll('.pgrid .pcard').length, MODS.length, document.querySelectorAll('.pgrid .pcard .tart svg').length]);
-    ok(n[0] === n[1] && n[2] === n[1], 'cards ' + n[0] + ', modules ' + n[1] + ', pictures ' + n[2]);
+    const n = await p.evaluate(() => [document.querySelectorAll('.stage .prow').length, MODS.length]);
+    ok(n[0] === n[1], 'rows ' + n[0] + ', modules ' + n[1]);
     ok(!(await p.$('.modpick')), 'old pill rows still shown');
-    const cur = await p.evaluate(() => { const c = document.querySelector('.pcard.cur'); return c && { mid: c.dataset.mid, cur: schedule().cur, tag: c.querySelector('.tag').innerText, go: (c.querySelector('a.go') || {}).getAttribute && c.querySelector('a.go').getAttribute('href'), next: (schedule().units.find(u => u.mid === schedule().cur && !u.isDone) || {}).href }; });
-    ok(cur && cur.mid === cur.cur && /you are here/i.test(cur.tag), 'current module card wrong: ' + JSON.stringify(cur));
+    const cur = await p.evaluate(() => { const c = document.querySelector('.prow.now'), sc = schedule(); return c && { mid: c.dataset.mid, cur: sc.cur, go: document.querySelector('.pathhero .ph-go').getAttribute('href'), next: (sc.units.find(u => u.mid === sc.cur && !u.isDone) || {}).href }; });
+    ok(cur && cur.mid === cur.cur, 'current module row wrong: ' + JSON.stringify(cur));
     ok(cur.go === cur.next, 'Continue should open the next open step: ' + JSON.stringify(cur));
-    ok(await p.$eval('.pcard .bar', e => /steps done/.test(e.getAttribute('aria-label'))), 'progress bar has no label');
-    await p.click('.pcard:nth-child(3) a.pt'); await p.waitForTimeout(500);
-    const mid = await p.evaluate(() => MODS[2]); ok(p.url().endsWith('#/path/' + mid), 'card did not open its module: ' + p.url());
+    ok(await p.$eval('.pathhero .ph-bar', e => /steps done/.test(e.getAttribute('aria-label'))), 'progress bar has no label');
+    const mid = await p.evaluate(() => [...document.querySelectorAll('.stage .prow')].find(a => !a.closest('.stage-b').hidden && a.dataset.mid !== schedule().cur).dataset.mid);
+    await p.click('.prow[data-mid="' + mid + '"]'); await p.waitForTimeout(500);
+    ok(p.url().endsWith('#/path/' + mid), 'row did not open its module: ' + p.url());
   });
 
   await T('path: a module page shows its picture, neighbours and the way back to all modules', async p => {
@@ -465,14 +466,13 @@ async function T(name, fn, opt) {
     ok(await p.$('#page .phead .tart svg'), 'topic picture missing beside the title');
     const near = await text(p, '#page .grid2 > .stack:last-child'); ok(/Module \d+ of \d+/.test(near) && /Previous/.test(near) && /Next/.test(near), 'neighbours missing: ' + near.slice(0, 120));
     await p.click('a:has-text("All modules")'); await p.waitForTimeout(500);
-    ok(await p.$('.pgrid .pcard'), 'All modules did not open the picture cards');
+    ok(await p.$('.stage .prow'), 'All modules did not open the stages');
   });
 
-  await T('path on iPhone: two columns of cards, the current one full width, nothing sideways', async p => {
+  await T('path on iPhone: the current stage and its Continue on screen, nothing sideways', async p => {
     await go(p, '#/path', 1200);
-    const g = await p.evaluate(() => { const cs = [...document.querySelectorAll('.pcard')], c = document.querySelector('.pcard.cur'), o = cs.find(x => x !== c), grid = document.querySelector('.pgrid').getBoundingClientRect(); return { cols: getComputedStyle(document.querySelector('.pgrid')).gridTemplateColumns.split(' ').length, curW: c.getBoundingClientRect().width, gridW: grid.width, oW: o.getBoundingClientRect().width, sx: document.documentElement.scrollWidth - innerWidth }; });
-    ok(g.cols === 2 && g.curW > g.gridW - 2 && g.oW < g.gridW / 2 + 1 && g.sx <= 0, JSON.stringify(g));
-    ok(await p.evaluate(() => { const r = document.querySelector('.pcard.cur').getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; }), 'current module not in view');
+    const g = await p.evaluate(() => ({ sx: document.documentElement.scrollWidth - innerWidth, go: document.querySelector('.pathhero .ph-go').getBoundingClientRect().bottom < innerHeight, now: !!document.querySelector('.stage.now .stage-h[aria-expanded=true]') }));
+    ok(g.sx <= 0 && g.go && g.now, JSON.stringify(g));
   }, { viewport: { width: 390, height: 664 }, isMobile: true, hasTouch: true });
 
   await T('path: make this week 1 asks first and updates week numbers', async p => {
@@ -729,7 +729,7 @@ async function T(name, fn, opt) {
   await T('module O1: data mesh sits after DE 10 for new learners with its chapter, lens, four exercises, design problem, quiz, reels and simulator challenge; an existing learner is told about it and nothing is marked done', async p => {
     await go(p, '#/path', 1500);
     ok(await p.evaluate(() => MODS.indexOf('o01') === MODS.indexOf('s10') + 1 && modLabel('o01') === 'Org 1'), 'O1 is not right after DE 10');
-    ok(await p.$('.pcard[data-mid=o01]') && /Data mesh and data products/.test(await all(p, '.pcard[data-mid=o01]')), 'O1 not on the Path');
+    ok(await p.$('.prow[data-mid=o01]') && /Data mesh and data products/.test(await all(p, '.prow[data-mid=o01]')), 'O1 not on the Path');
     await go(p, '#/learn/o01/chapter', 1500); await p.waitForSelector('.lens');
     ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return document.querySelectorAll('.prose h2').length >= 9 && l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details:not(.fresh)').length === 6 && !!l.querySelector('a[href="#/sim/sc/mesh"]'); }), 'O1 chapter or lens incomplete');
     const r = await p.evaluate(async () => { const s = await sprint('o01'), us = modUnits('o01'), xs = DATA.py.filter(x => x.m === 'o01');
@@ -748,7 +748,7 @@ async function T(name, fn, opt) {
   await T('module A6: AI engineering in production sits right after A5 with chapter (serving to guardrails and governance), lens, its stub-only exercises (numbered without gaps), design problem, quiz, interview set and lens reels; an existing learner is told about it and nothing is marked done', async p => {
     await go(p, '#/path', 1500);
     ok(await p.evaluate(() => MODS.indexOf('a06') === MODS.indexOf('a05') + 1 && modLabel('a06') === 'AI 6'), 'A6 is not right after A5');
-    ok(await p.$('.pcard[data-mid=a06]') && /AI engineering in production/.test(await all(p, '.pcard[data-mid=a06]')), 'A6 not on the Path');
+    ok(await p.$('.prow[data-mid=a06]') && /AI engineering in production/.test(await all(p, '.prow[data-mid=a06]')), 'A6 not on the Path');
     await go(p, '#/learn/a06/chapter', 1500); await p.waitForSelector('.lens');
     ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return document.querySelectorAll('.prose h2').length >= 11 && /LoRA/.test(document.querySelector('.prose').textContent) && /ISO\/IEC 42001/.test(document.querySelector('.prose').textContent) && l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details:not(.fresh)').length === 5 && /KV cache/.test(l.textContent) && /Time to first token|time to first token/.test(document.querySelector('.prose').textContent); }), 'A6 chapter or lens incomplete');
     const r = await p.evaluate(async () => { const s = await sprint('a06'), us = modUnits('a06'), xs = DATA.py.filter(x => x.m === 'a06');
@@ -769,7 +769,7 @@ async function T(name, fn, opt) {
   await T('module O2: golden paths sit right after O1 (or DE 10 before O1 lands) with chapter, lens, four exercises, design problem, quiz and reels; an existing learner is told about it and nothing is marked done', async p => {
     await go(p, '#/path', 1500);
     ok(await p.evaluate(() => MODS.indexOf('o02') === MODS.indexOf(MODS.includes('o01') ? 'o01' : 's10') + 1 && modLabel('o02') === 'Org 2'), 'O2 is not in place');
-    ok(await p.$('.pcard[data-mid=o02]') && /Golden paths and self-serve templates/.test(await all(p, '.pcard[data-mid=o02]')), 'O2 not on the Path');
+    ok(await p.$('.prow[data-mid=o02]') && /Golden paths and self-serve templates/.test(await all(p, '.prow[data-mid=o02]')), 'O2 not on the Path');
     await go(p, '#/learn/o02/chapter', 1500); await p.waitForSelector('.lens');
     ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return document.querySelectorAll('.prose h2').length >= 9 && l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details:not(.fresh)').length === 6 && !!l.querySelector('a[href="#/sim/sc/dlq"]') && !!l.querySelector('a[href="#/sim/sc/schema"]'); }), 'O2 chapter or lens incomplete');
     const r = await p.evaluate(async () => { const s = await sprint('o02'), us = modUnits('o02'), xs = DATA.py.filter(x => x.m === 'o02');
@@ -786,7 +786,7 @@ async function T(name, fn, opt) {
   await T('module O3: governance sits right after O2 with chapter, lens, four exercises, design problem, quiz and reels; an existing learner is told about it and nothing is marked done', async p => {
     await go(p, '#/path', 1500);
     ok(await p.evaluate(() => MODS.indexOf('o03') === MODS.indexOf('o02') + 1 && modLabel('o03') === 'Org 3'), 'O3 is not right after O2');
-    ok(await p.$('.pcard[data-mid=o03]') && /Data governance that teams accept/.test(await all(p, '.pcard[data-mid=o03]')), 'O3 not on the Path');
+    ok(await p.$('.prow[data-mid=o03]') && /Data governance that teams accept/.test(await all(p, '.prow[data-mid=o03]')), 'O3 not on the Path');
     await go(p, '#/learn/o03/chapter', 1500); await p.waitForSelector('.lens');
     ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return document.querySelectorAll('.prose h2').length >= 9 && l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details:not(.fresh)').length === 6 && /legal hold/.test(l.textContent); }), 'O3 chapter or lens incomplete');
     const r = await p.evaluate(async () => { const s = await sprint('o03'), us = modUnits('o03'), xs = DATA.py.filter(x => x.m === 'o03');
@@ -803,7 +803,7 @@ async function T(name, fn, opt) {
   await T('module O4: the platform as a product sits right after O3 with chapter, lens, four exercises, design problem, quiz and reels; an existing learner is told about it and nothing is marked done', async p => {
     await go(p, '#/path', 1500);
     ok(await p.evaluate(() => MODS.indexOf('o04') === MODS.indexOf('o03') + 1 && modLabel('o04') === 'Org 4'), 'O4 is not right after O3');
-    ok(await p.$('.pcard[data-mid=o04]') && /Running the data platform as a product/.test(await all(p, '.pcard[data-mid=o04]')), 'O4 not on the Path');
+    ok(await p.$('.prow[data-mid=o04]') && /Running the data platform as a product/.test(await all(p, '.prow[data-mid=o04]')), 'O4 not on the Path');
     await go(p, '#/learn/o04/chapter', 1500); await p.waitForSelector('.lens');
     ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return document.querySelectorAll('.prose h2').length >= 9 && l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details:not(.fresh)').length === 6 && /burn rate/i.test(l.textContent); }), 'O4 chapter or lens incomplete');
     const r = await p.evaluate(async () => { const s = await sprint('o04'), us = modUnits('o04'), xs = DATA.py.filter(x => x.m === 'o04');
@@ -820,7 +820,7 @@ async function T(name, fn, opt) {
   await T('module O5: the capstone sits right after the review module with chapter, lens, four exercises, design problem, quiz, reels and five capstone steps; the design step ticks only when the foundation challenge passes; nothing is marked done', async p => {
     await go(p, '#/path', 1500);
     ok(await p.evaluate(() => MODS.indexOf('o05') === MODS.indexOf('r01') + 1 && modLabel('o05') === 'Org 5'), 'O5 is not right after r01');
-    ok(await p.$('.pcard[data-mid=o05]') && /foundation blueprint/i.test(await all(p, '.pcard[data-mid=o05]')), 'O5 not on the Path');
+    ok(await p.$('.prow[data-mid=o05]') && /foundation blueprint/i.test(await all(p, '.prow[data-mid=o05]')), 'O5 not on the Path');
     await go(p, '#/learn/o05/chapter', 1500); await p.waitForSelector('.lens');
     ok(await p.evaluate(() => { const l = document.querySelector('.lens'); return document.querySelectorAll('.prose h2').length >= 10 && l.querySelectorAll('tbody tr').length === 7 && l.querySelectorAll('details:not(.fresh)').length === 6 && /strangler/i.test(l.textContent); }), 'O5 chapter or lens incomplete');
     const r = await p.evaluate(async () => { const s = await sprint('o05'), us = modUnits('o05'), xs = DATA.py.filter(x => x.m === 'o05'), rs = await reelsFor('o05');

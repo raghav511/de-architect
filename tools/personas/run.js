@@ -419,9 +419,9 @@ async function run(P) {
     });
     await task('open Path and continue the current module', async () => {
       await go('#/path', 1200); await probe(p, P, 'Path iPad', notes); await shot('path');
-      const href = await p.$eval('.pcard.cur .go', e => e.getAttribute('href')).catch(() => null);
+      const href = await p.$eval('.pathhero .ph-go', e => e.getAttribute('href')).catch(() => null);
       if (!href) return 'no Continue button on the current module';
-      await p.locator('.pcard.cur .go').tap(); await p.waitForTimeout(1200); await probe(p, P, 'Continue target', notes);
+      await p.locator('.pathhero .ph-go').tap(); await p.waitForTimeout(1200); await probe(p, P, 'Continue target', notes);
       return (await p.evaluate(() => (document.querySelector('#page') || {}).innerText.length > 80)) || 'Continue opened an empty page';
     });
     await task('skip ahead to tomorrow and come back', async () => {
