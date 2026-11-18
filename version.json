@@ -1,7 +1,7 @@
 {
-  "version": "1.46.1",
+  "version": "1.46.2",
   "date": "2026-11-18",
   "notes": [
-    "The Profile header now starts at the left edge on every screen size."
+    "Tap the right side of a reel's quick check for the next reel, the left side to go back. A left tap on a reel's first moment opens the previous reel."
   ]
 }

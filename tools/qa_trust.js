@@ -536,7 +536,7 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
   await T('Q55', 'on a reel\'s end card, a tap on the card or the speed sheet keeps the check\'s options where they are (iPhone pass: a tap re-drew the card and reshuffled them)', async p => {
     await boot(p, '#/reels/s05-52-1'); await p.waitForSelector('.rslide .rstart', { timeout: 20000 });
     await p.click('.rslide .rstart'); await p.waitForTimeout(1500);
-    const w = await p.evaluate(() => innerWidth); for (let n = 0; n < 4; n++) { await p.mouse.click(w - 30, 420); await p.waitForTimeout(300); }
+    const w = await p.evaluate(() => innerWidth); for (let n = 0; n < 8 && !(await p.$('.ropt')); n++) { await p.mouse.click(w - 30, 420); await p.waitForTimeout(300); } /* step to the end card only: a right tap there opens the next reel (Q57) */
     await p.waitForSelector('.ropt', { timeout: 10000 });
     const order = () => p.evaluate(() => { const s = [...document.querySelectorAll('.rslide')].find(x => x.querySelector('.ropt')); return [...s.querySelectorAll('.ropt')].map(b => b.dataset.i).join(','); });
     const before = await order();
@@ -547,6 +547,31 @@ const syncNow = async p => { await p.evaluate(() => { S.settings.syncUrl = 'http
     await p.waitForSelector('.rspeed'); await p.click('.rspeed .rvopt >> nth=3'); await p.waitForTimeout(300);
     const after = await order();
     ok(before && before === after, 'the options moved: ' + before + ' became ' + after);
+  }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  await T('Q57', 'tapping the right side of a reel\'s end card opens the next reel, the left side goes back, and a left tap on a first beat opens the previous reel (user request on the Reels design)', async p => {
+    await boot(p, '#/reels/s05-52-1'); await p.waitForSelector('.rslide .rstart', { timeout: 20000 });
+    await p.click('.rslide .rstart'); await p.waitForTimeout(800);
+    const cnt = () => p.evaluate(() => (document.querySelector('.rcount') || {}).textContent || '');
+    const c0 = await cnt(), n0 = +c0.split('/')[0];
+    const w = await p.evaluate(() => innerWidth);
+    for (let n = 0; n < 8 && !(await p.$('.ropt')); n++) { await p.mouse.click(w - 30, 420); await p.waitForTimeout(300); }
+    ok(!!(await p.$('.ropt')), 'never reached the end card');
+    /* tap beside the check's question, not on an option (the options span the card) */
+    const qy = () => p.evaluate(() => { const s = [...document.querySelectorAll('.rslide')].find(x => x.querySelector('.ropt')); const r = s.querySelector('.rq').getBoundingClientRect(); return r.top + r.height / 2; });
+    /* left tap on the end card: back to the reel's last beat, same reel */
+    await p.mouse.click(12, await qy()); await p.waitForTimeout(500);
+    const back = await p.evaluate(() => { return { count: (document.querySelector('.rcount') || {}).textContent, end: !!document.querySelector('.rslide .rendcard .ropt') }; });
+    ok(back.count === c0 && !back.end, 'a left tap on the end card did not go back into the reel: ' + JSON.stringify(back));
+    /* right taps until the end card, then once more: the next reel */
+    for (let n = 0; n < 8 && !(await p.$('.ropt')); n++) { await p.mouse.click(w - 30, 420); await p.waitForTimeout(300); }
+    await p.mouse.click(w - 12, await qy()); await p.waitForTimeout(1500);
+    const c1 = await cnt();
+    ok(+c1.split('/')[0] === n0 + 1, 'a right tap on the end card did not open the next reel: ' + c0 + ' then ' + c1);
+    /* on the first beat of that reel, a left tap opens the previous reel */
+    await p.mouse.click(30, 420); await p.waitForTimeout(1500);
+    const c2 = await cnt();
+    ok(c2 === c0, 'a left tap on the first beat did not open the previous reel: ' + c1 + ' then ' + c2);
   }, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
   await T('Q56', 'when speech input is refused, the live mock says why: iPhone Safari\'s service-not-allowed counts as blocked, not only Chrome\'s not-allowed (iPhone pass)', async p => {
