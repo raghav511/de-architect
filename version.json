@@ -1,7 +1,8 @@
 {
-  "version": "1.46.2",
-  "date": "2026-11-18",
+  "version": "1.46.3",
+  "date": "2026-11-19",
   "notes": [
-    "Tap the right side of a reel's quick check for the next reel, the left side to go back. A left tap on a reel's first moment opens the previous reel."
+    "Python 2 reels on functions, default arguments, closures and comprehensions: quick checks reworded so the right answer no longer stands out by length.",
+    "The comprehension reel adds a Python 3.12 detail: comprehensions now run inline, and the loop variable still stays inside."
   ]
 }
