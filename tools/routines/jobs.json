@@ -1,0 +1,10 @@
+{
+  "note": "The jobs of the one nightly task, in the order they run. every: day or week (with day: mon..sun). clone is relative to ~/.data-architect. branch: {date} is the night's date. minutes is the time budget.",
+  "jobs": [
+    {"id": "coach", "title": "nightly coach", "every": "day", "clone": "repo", "brief": "jobs/coach.md", "minutes": 15},
+    {"id": "refresh", "title": "daily refresh", "every": "day", "clone": "runs/refresh", "branch": "refresh/{date}", "brief": "jobs/refresh.md", "minutes": 90},
+    {"id": "reels", "title": "reel review", "every": "day", "clone": "runs/reels", "branch": "reels-review/{date}", "brief": "jobs/reels.md", "minutes": 90},
+    {"id": "sim", "title": "weekly sim check", "every": "week", "day": "sun", "clone": "runs/sim", "branch": "sim/{date}", "brief": "jobs/sim.md", "minutes": 60},
+    {"id": "review", "title": "weekly review", "every": "week", "day": "fri", "clone": "runs/review", "branch": "review/{date}", "brief": "jobs/review.md", "minutes": 120}
+  ]
+}
