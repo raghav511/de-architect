@@ -238,10 +238,13 @@ function reelPlayer(q, at, feedMode, end) {
     }
     function play() { reelUnlocked = true; playing = true; slide.classList.add('playing'); hint.textContent = ''; beat(); }
     function pause() { playing = false; stop(); if (fx) fx.finish(); slide.classList.remove('playing'); if (bi < r.beats.length && !hint.firstChild) hint.appendChild(playBig(false)); }
-    function playBig(first) { return el('button', { class: 'rstart', 'aria-label': 'Play' + (first ? '. Swipe up for the next reel, tap the sides to step' : ''), onclick: e => { e.stopPropagation(); play(); } }, [el('span', { class: 'rplayc' }, svg(RI.play, 34)), first ? el('span', { class: 'rhint', text: 'Swipe up for the next reel · tap the sides to step' }) : null]); }
-    function step(d) { const was = playing; stop(); bi = Math.max(0, Math.min(r.beats.length, bi + d)); if (was && bi < r.beats.length) beat(); else { const b = render(); if (b && fx) fx.finish(); if (!b) { playing = false; reelDone(r); } } }
-    /* taps: left third back, right third forward, middle pause or play (like stories) */
-    slide.addEventListener('click', e => { if (e.target.closest('button,a,input,label,.rendcard,.rsheet')) return; const x = e.clientX - slide.getBoundingClientRect().left, w = slide.clientWidth; if (x < w / 3) step(-1); else if (x > 2 * w / 3) step(1); else (playing ? pause() : play()); });
+    function playBig(first) { return el('button', { class: 'rstart', 'aria-label': 'Play' + (first ? '. Swipe up for the next reel, tap the sides to step' : ''), onclick: e => { e.stopPropagation(); play(); } }, [el('span', { class: 'rplayc' }, svg(RI.play, 34)), first ? el('span', { class: 'rhint', text: 'Swipe up for the next reel · tap the sides to step or move between reels' }) : null]); }
+    function step(d) { /* past the end card: the next reel; back from the first beat: the previous one (user request, 1.46.2) */
+      if (d > 0 && bi >= r.beats.length) return go(i + 1);
+      if (d < 0 && bi === 0 && i > 0) return go(i - 1);
+      const was = playing; stop(); bi = Math.max(0, Math.min(r.beats.length, bi + d)); if (was && bi < r.beats.length) beat(); else { const b = render(); if (b && fx) fx.finish(); if (!b) { playing = false; reelDone(r); } } }
+    /* taps: left third back, right third forward, middle pause or play (like stories); on the end card the sides move between reels and the middle does nothing, so the check's options stay put */
+    slide.addEventListener('click', e => { if (e.target.closest('button,a,input,label,ol,.rsheet')) return; const x = e.clientX - slide.getBoundingClientRect().left, w = slide.clientWidth, end = bi >= r.beats.length; if (x < w / 3) step(-1); else if (x > 2 * w / 3) step(1); else if (!end) (playing ? pause() : play()); });
     const b0 = render(); if (b0 && fx) fx.finish();
     return { play, pause, stop: () => { playing = false; stop(); slide.classList.remove('playing'); }, step, playBig, get playing() { return playing; }, slide };
   }
