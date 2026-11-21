@@ -1,66 +1,66 @@
 {
- "updated": "2026-11-17",
+ "updated": "2026-11-21",
  "note": "Refreshed every week by the program's research task. Each item says what changed, why it matters to a data engineer or architect, and how to test the claim yourself.",
  "items": [
   {
-   "title": "Databricks Genie ZeroOps (beta): an agent that watches jobs, pipelines and tables, finds the root cause of a failure and proposes the fix",
-   "summary": "Added to the Databricks release notes on 12 November 2026 as a beta. Genie ZeroOps monitors jobs, pipelines and tables, detects failures, investigates the likely root cause and proposes a fix. In the same week Databricks extended attribute-based DENY policies to AI securables such as model, MCP, agent and skill services (beta).",
-   "why": "This is the on-call data agent from module A3 shipped as a product. The interview question moves from 'can an agent triage a failure' to 'what may it change on its own': read-only investigation is cheap to allow, while a proposed fix still needs a person, a test run and an audit trail. DENY policies on agent services are the guardrail that keeps it inside its lane.",
-   "try": "In projects/ai-foundations/labs/lab10_oncall.py, list which of the agent's tools only read and which change state. Gate every state-changing tool behind an approval step and log who approved it, then break a pipeline on purpose and check the agent proposes rather than applies.",
-   "url": "https://docs.databricks.com/aws/en/release-notes/product/2026/november#genie-zeroops-is-available-in-beta",
-   "source": "Databricks release notes",
-   "mid": "a03",
-   "sec": "A3.5"
+   "title": "Snowflake: dynamic tables with REFRESH_MODE = AUTO now resolve to ADAPTIVE, not INCREMENTAL",
+   "summary": "From 20 November 2026, a new dynamic table left on the default AUTO refresh mode resolves to ADAPTIVE when its query supports it, and to FULL otherwise. Tables that already exist keep the mode they resolved to. Setting REFRESH_MODE = INCREMENTAL explicitly keeps the old behaviour.",
+   "why": "A changed default changes your bill and your freshness without anyone touching the code. An architect pins the refresh mode of every production dynamic table in code review, the same way you pin a library version, and reads the resolved mode after each deploy.",
+   "try": "In module 8's build step, write the dynamic table twice, once with the default and once with REFRESH_MODE = INCREMENTAL, and note which one you would let reach production and why.",
+   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-20-dynamic-tables-auto-resolves-to-adaptive",
+   "source": "Snowflake release notes",
+   "mid": "s08",
+   "sec": "8.4"
   },
   {
-   "title": "Unity Catalog views readable by outside engines through the Iceberg REST catalog (beta)",
-   "summary": "Databricks release notes, 13 November 2026: external Iceberg engines can now query Unity Catalog views defined over Iceberg-compatible tables through the Iceberg REST catalog, in beta. Until now outside engines could read the tables but not the views on top of them.",
-   "why": "Views are where row filters, column selection and business logic live. If another engine can read the view instead of the raw table, you can share one governed definition across Spark, Snowflake or Trino rather than copying the logic into each engine and watching the copies drift.",
-   "try": "In the lakehouse project, write one view over the trips Iceberg table that hides a column and filters a city. Note which engines in your design would read the view and which would still need the raw table, and what that means for where you enforce access.",
-   "url": "https://docs.databricks.com/aws/en/release-notes/product/2026/november#external-access-to-views-through-the-iceberg-rest-catalog-is-in-beta",
+   "title": "Snowflake: COPY INTO and Snowpipe log bad rows and enforce CHECK constraints (generally available)",
+   "summary": "Generally available on 19 November 2026. Tables with error logging or CHECK constraints now reject rows that break them during COPY INTO and Snowpipe loads and write those rows to an error table; loads into other tables behave as before.",
+   "why": "This is the dead-letter pattern moved into the warehouse load itself: good rows land, bad rows are kept with the reason, and nothing is silently dropped. It also means a constraint added for safety can start rejecting rows a pipeline used to accept, so add one with an alert on the error table.",
+   "try": "In module 9, sketch how you would split a batch into accepted and rejected rows with the reason for each, then count how many rejects would page someone.",
+   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-19-copy-snowpipe-error-logging-check-constraints-ga",
+   "source": "Snowflake release notes",
+   "mid": "s09",
+   "sec": "9.2"
+  },
+  {
+   "title": "dbt v2 engine is generally available, with batch testing",
+   "summary": "dbt's November update (17 November 2026) makes the v2 engine generally available on Redshift, Databricks, BigQuery, Snowflake and DuckDB, with ClickHouse and Spark in beta. Batch testing, opt-in with --batch-tests, runs a model's unique and not_null tests as one query per test type; local unit tests in DuckDB are in alpha.",
+   "why": "Test cost is a real line on a warehouse bill: hundreds of small test queries each scan the table. Batching them is the same trade-off as batching any small request, and an interviewer may ask how you would cut the cost of dbt tests without dropping coverage.",
+   "try": "In module 4's dbt build, count the test queries one dbt test run sends for a model with four tested columns, then count them again as if unique and not_null were batched.",
+   "url": "https://www.getdbt.com/blog/whats-new-in-dbt-november-2026",
+   "source": "dbt Labs blog",
+   "mid": "s04",
+   "sec": "4.6"
+  },
+  {
+   "title": "Databricks: add and backfill Delta columns without rewriting the unchanged columns (beta)",
+   "summary": "In beta from 13 November 2026, enabled by an admin on the Previews page. Adding and backfilling a column on a Delta table writes only the new column's data instead of rewriting every data file.",
+   "why": "On copy-on-write tables a backfill of one column has always meant rewriting the whole table. Writing only the changed column turns a multi-terabyte rewrite into a small write, which changes how you plan schema changes and backfills.",
+   "try": "In module 8's DeltaTable lab, add a column and backfill it, then count the add and remove commits in _delta_log and compare with what a column-only write would need.",
+   "url": "https://docs.databricks.com/aws/en/release-notes/product/2026/november#efficient-column-updates-beta",
    "source": "Databricks release notes",
    "mid": "s08",
-   "sec": "8.5"
+   "sec": "8.2"
   },
   {
-   "title": "Databricks: PostgreSQL change data capture in one pipeline, with no separate ingestion gateway (beta)",
-   "summary": "Databricks release notes, 15 November 2026: an integrated CDC pipeline for PostgreSQL is in beta. It ingests change data from PostgreSQL through a single pipeline, without the separate ingestion gateway the earlier setup needed.",
-   "why": "Log-based capture still reads the Postgres write-ahead log through a replication slot, so the old failure modes stay: a stalled consumer makes the slot hold WAL and fills the source's disk. Fewer moving parts make it easier to run, but you still own slot monitoring, initial snapshot and reconciliation.",
-   "try": "In module s06's CDC lab, stop the consumer for a few minutes while writes continue and watch the replication slot's retained WAL grow. Write the alert you would set on slot lag before trusting any managed pipeline with it.",
-   "url": "https://docs.databricks.com/aws/en/release-notes/product/2026/november#postgresql-integrated-cdc-pipeline-is-now-in-beta",
+   "title": "Databricks: system table retention from 30 days to 10 years (generally available)",
+   "summary": "Generally available on 18 November 2026. Retention for system tables is set account-wide from 30 to 3,650 days; the first 395 days are free and longer retention adds storage charges.",
+   "why": "System tables hold the usage, billing and audit history that showback and audits run on. Choosing their retention is a platform-as-a-product decision: long enough for a year-over-year cost review and an audit, short enough not to pay for history nobody reads.",
+   "try": "In module O4, write the retention you would set and the two questions it must answer (last year's cost per team, and who read a table eleven months ago).",
+   "url": "https://docs.databricks.com/aws/en/release-notes/product/2026/november#configurable-retention-for-system-tables-is-generally-available",
    "source": "Databricks release notes",
-   "mid": "s06",
-   "sec": "6.2"
+   "mid": "o04",
+   "sec": "O4.5"
   },
   {
-   "title": "Snowflake: role grants that expire on their own (preview)",
-   "summary": "Snowflake release notes, 10 November 2026: GRANT ROLE now accepts FOR INTERVAL or UNTIL, so a role granted to a user is removed automatically when the time is up. In preview. On 16 November SHOW GRANTS TO ... INCLUDE HIERARCHY became generally available, listing grants held through every role in the hierarchy.",
-   "why": "Break-glass and incident access is the classic governance hole: someone gets a powerful role for a fix and keeps it for a year. A grant that expires by itself turns 'remember to revoke' into a default, and the hierarchy view answers the auditor's real question, what can this person reach through all their roles.",
-   "try": "Write the access policy for one dataset in module O3 again with a time-boxed incident role: who can grant it, for how long, and how you would prove afterwards it was removed. Compare with the manual revoke step you had before.",
-   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-10-temporary-role-grants-preview",
-   "source": "Snowflake release notes",
-   "mid": "o03",
-   "sec": "O3.3"
-  },
-  {
-   "title": "Snowflake semantic views: materializations are generally available, many-to-many relationships in preview",
-   "summary": "Snowflake release notes: on 11 November 2026 semantic view materializations became generally available; they pre-aggregate dimensions and metrics to speed up queries. On 13 November semantic views gained many-to-many relationships in preview, modelled through a bridge table or directly on non-key columns.",
-   "why": "A semantic layer is what keeps an AI agent's numbers consistent with the dashboard's. Materializations remove the 'it is correct but slow' objection, and many-to-many support matters because that is exactly where metrics double-count if the layer does not know about the bridge table.",
-   "try": "Take the pooled-trip bridge table from module s04 and write the semantic definition for revenue per rider. Check whether your definition double-counts fares on a trip with three riders, then add the weighting factor and check again.",
-   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-11-semantic-view-materializations-ga",
-   "source": "Snowflake release notes",
-   "mid": "a04",
-   "sec": "A4.3"
-  },
-  {
-   "title": "Confluent Cloud picks up rotated OAuth signing keys by itself",
-   "summary": "Confluent Cloud release notes, 16 November 2026: when a client's token carries a key ID that Kafka on Confluent Cloud does not know, it now fetches the identity provider's signing keys (JWKS) again, so rotated keys are picked up in about a second.",
-   "why": "Key rotation used to be a quiet way to take a streaming platform down: the identity provider rotates, the broker still has the old key set cached, and every producer fails authentication at once. Knowing this failure mode, and that rotation must be tested, is a good staff-level answer about Kafka security.",
-   "try": "In module s05's Kafka notes, add key rotation to your list of failures that do not look like failures: write how you would detect a burst of authentication errors from producers and what you would check first.",
-   "url": "https://docs.confluent.io/cloud/current/release-notes/index.html#november-16-2026",
+   "title": "Confluent Cloud: back up and restore whole Kafka records through Azure Blob Storage",
+   "summary": "Added on 18 November 2026. The Azure Blob Storage sink and source connectors can save and restore full records, with keys, values, headers and metadata, using the BACKUP_FULL_RECORD and RESTORE_BACKUP_FULL_RECORD modes.",
+   "why": "Retention is not a backup: once a segment ages out, the data is gone. Keeping keys and headers matters, because a restore without keys loses partitioning and ordering, and one without headers loses tracing and schema ids.",
+   "try": "In module 5, list what a restored topic must keep to be usable (key, partition order, headers, schema id) and which of those a plain value-only export would lose.",
+   "url": "https://docs.confluent.io/cloud/current/connectors/object-storage-backup-restore.html#cc-object-storage-backup-restore",
    "source": "Confluent Cloud release notes",
    "mid": "s05",
-   "sec": "5.9"
+   "sec": "5.6"
   }
  ]
 }
