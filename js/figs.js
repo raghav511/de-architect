@@ -207,7 +207,29 @@ const FIGS = (() => {
     ] };
   };
 
-  const DEF = { isolation: iso, pages, scans, bplus, shard, deadlock: dead, replication: repl, wal, promptparts, llmstep };
+  /* 11. Claude Code 15: brief an artifact, steer it with specific feedback, check the numbers, then share */
+  const artifactloop = () => {
+    const say = (title, lines, c) => B(12, 30, 250, 180, '', { f: c[1], s: c[0] }) + T(24, 52, title, { a: 'start', b: 1, fs: 13, c: c[0] }) + lines.map((l, i) => T(24, 78 + i * 22, l, { a: 'start', fs: 12 })).join('');
+    /* the dashboard as Claude draws it: o.top = chart above table, o.axis = labelled axis, o.users = the user-report count, o.bad = that count is wrong */
+    const page = o => {
+      let s = B(300, 20, 328, 230, '', { s: C.ln }) + T(316, 40, 'Reliability, October', { a: 'start', b: 1, fs: 13 });
+      [['incidents', '24'], ['found by users', o.users], ['median detect', '18 min']].forEach((k, i) => { const bad = o.bad && i === 1; s += B(312 + i * 104, 50, 96, 44, '', { f: bad ? C.reL : C.blL, s: bad ? C.re : C.bl, sw: bad ? 2.5 : 1.5 }) + T(360 + i * 104, 70, k[1], { b: 1, fs: 14, c: bad ? C.re : C.ink }) + T(360 + i * 104, 87, k[0], { fs: 10.5, c: C.mu }); });
+      const chart = y => { let c = T(316, y + 12, 'minutes to detect, by who caught it', { a: 'start', fs: 11, c: C.mu }); [['users', 172, C.re], ['row check', 36, C.ln], ['freshness', 14, C.ln], ['alert', 7, C.ln]].forEach((b, i) => { c += T(380, y + 32 + i * 18, b[0], { a: 'end', fs: 10.5 }) + `<rect x="386" y="${y + 23 + i * 18}" width="${Math.max(3, b[1] * 1.3)}" height="12" fill="${o.axis ? (b[2] === C.re ? C.re : '#B8BFC6') : C.bl}"/>`; }); if (o.axis) c += T(612, y + 95, '0 to 180 min', { a: 'end', fs: 10, c: C.mu }); return c; };
+      const table = y => B(312, y, 304, 40, 'table: the five slowest detections', { fs: 11.5, f: '#F8F9F5' });
+      s += o.top ? chart(102) + table(204) : table(104) + chart(150);
+      return s;
+    };
+    return { title: 'An artifact, briefed, steered and checked', steps: [
+      [say('The brief: four lines', ['Reader: platform lead, deciding', '  where to add checks', 'Data: incidents.csv, compute from it', 'Message: users find our worst', '  incidents first', 'Shape: 3 numbers, 1 chart, 1 table'], [C.bl, C.blL]), 'The brief decides the first draft: who reads it and what they decide, the data to compute from, the one message, and the shape.'],
+      [say('First draft', ['Fast, plausible, cluttered.', 'The message is buried under', 'the table, and every bar is', 'the same colour.'], [C.am, C.amL]) + page({ users: '8', top: 0, axis: 0 }) + A(266, 120, 296, 120, C.mu), 'The first draft arrives in a minute. It looks finished, which is exactly why you read it as critically as a diff.'],
+      [say('Feedback 1: one change, with why', ['"Move the detection chart', 'above the table; it carries', 'the message."'], [C.te, C.teL]) + page({ users: '8', top: 1, axis: 0 }) + A(266, 120, 296, 120, C.te), 'Specific feedback lands: what, where and why, one thing per message. "Make it nicer" gets a random redesign.'],
+      [say('Feedback 2', ['"Colour only the users bar;', 'grey the rest. Label the', 'axis in minutes from 0."'], [C.te, C.teL]) + page({ users: '8', top: 1, axis: 1 }) + A(266, 120, 296, 120, C.te), 'The second round sharpens the message: one highlighted bar, an honest axis starting at zero.'],
+      [say('Check the numbers', ['Your own count from the CSV:', '  found by users = 6', 'The page says 8.', 'Ask for the calculation; fix', '  that one figure.'], [C.re, C.reL]) + page({ users: '8', top: 1, axis: 1, bad: 1 }), 'Check every headline number against the data yourself. A plausible wrong number is the costliest kind: point to it, ask for the calculation, and fix it.'],
+      [say('Then share', ['Numbers match the CSV.', 'The query is kept with it.', 'Share a private link with', 'the lead for comments first.'], [C.te, C.teL]) + page({ users: '6', top: 1, axis: 1 }), 'Only now share it: artifacts start private to you, so send the link to the reader for comments before it goes wider, and keep the query for next month.']
+    ] };
+  };
+
+  const DEF = { isolation: iso, pages, scans, bplus, shard, deadlock: dead, replication: repl, wal, promptparts, llmstep, artifactloop };
   const cache = {};
   function build(name) {
     const f = cache[name] || (cache[name] = DEF[name] && DEF[name]());

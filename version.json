@@ -1,8 +1,8 @@
 {
-  "version": "1.48.0",
+  "version": "1.49.0",
   "date": "2026-11-21",
   "notes": [
-    "New in the Claude Code track: Claude Code 14, Claude in data pipelines. Make an LLM step safe to rerun, send work nobody waits for as a half-price batch, cache the long shared part of a prompt, and pick the smallest model that passes.",
-    "A worked example shows a million tickets a night going from about 4,600 dollars to about 50; practise on a ticket classifier with three graded tasks, a step-through figure and four short reels."
+    "New in the Claude Code track: Claude Code 15, apps, decks and documents with Claude. Brief Claude for a page or dashboard in four lines, steer it one specific change at a time, and check every number against the data before you share.",
+    "Make a message-first review deck and a decision memo from data, and ship a small app with plan mode, tests first and small commits; practise on an incident log with three graded tasks, a step-through figure and four short reels."
   ]
 }
