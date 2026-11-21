@@ -1,8 +1,8 @@
 {
-  "version": "1.46.6",
+  "version": "1.47.0",
   "date": "2026-11-21",
   "notes": [
-    "dbt 4.6: each test is its own query, and dbt v2 can run a model's unique and not_null tests together.",
-    "Snowflake 8.4: set a dynamic table's refresh mode yourself (the default now picks adaptive), and loads can reject rows that break CHECK constraints to an error table."
+    "New in the Claude Code track: Claude Code 13, prompting Claude in depth. Build a prompt part by part, use examples and tags, choose how much Claude thinks, get JSON you can trust, and compare two prompt versions on a small test set.",
+    "Practise on three data-engineering prompts (a SQL review, a failure summary and invoice extraction), with a step-through figure, four short reels and three graded tasks."
   ]
 }
