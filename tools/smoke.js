@@ -148,6 +148,24 @@ async function run(engine) {
     await nx.click(); await p.waitForTimeout(300); ok(await p.$eval('.dfig', e => e.innerHTML.length).catch(() => 0) !== before, 'the figure did not change');
   });
 
+  await S('Claude Code track: each newer module opens its lesson, steps its figure, and shows its tasks and quiz', async p => {
+    await boot(p);
+    const mods = await p.evaluate(() => CC_MODS.filter(m => +m.slice(1) >= 13));
+    ok(mods.length, 'no Claude Code modules from c13 on');
+    for (const m of mods) {
+      await nav(p, '#/learn/' + m + '/chapter', 1000);
+      ok((await txt(p)).length > 800, m + ': the lesson is empty');
+      const fig = await p.$('.dfig'); ok(fig, m + ': no step-through figure in the lesson');
+      const cap = await p.$eval('.dfig .figcap', e => e.textContent);
+      await p.click('.dfig button[aria-label="Next step"]'); await p.waitForTimeout(200);
+      ok(await p.$eval('.dfig .figcap', e => e.textContent) !== cap, m + ': the figure did not step');
+      await nav(p, '#/cc/' + m + '/1', 900);
+      ok(/Task 1 of 3/i.test(await txt(p)), m + ': the graded tasks did not open');
+      await nav(p, '#/quiz/' + m, 900);
+      ok((await p.$$eval('.pal button', b => b.length)) >= 5 && await p.$('.opt'), m + ': the quiz has no questions or options');
+    }
+  });
+
   await S('Search: typing finds lessons and opening one goes there', async p => {
     await boot(p); await p.click('button[aria-label="Search"]'); await p.waitForTimeout(200);
     await p.keyboard.type('kafka'); await p.waitForTimeout(500);

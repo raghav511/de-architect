@@ -1,0 +1,5 @@
+[2026-11-04 02:00:00] INFO  task=wait_for_vendor_file run=2026-11-03 sensor poke every 300s, timeout 7200s
+[2026-11-04 02:05:00] INFO  data/orders_2026-11-03.csv not found
+[2026-11-04 03:00:00] INFO  data/orders_2026-11-03.csv not found
+[2026-11-04 04:00:00] ERROR sensor timed out after 7200s: data/orders_2026-11-03.csv never arrived
+[2026-11-04 04:00:00] INFO  downstream tasks skipped: ingest_orders, load_orders, revenue_report

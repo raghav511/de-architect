@@ -1,0 +1,8 @@
+[2026-11-03 02:04:11] INFO  task=ingest_orders run=2026-11-02 attempt=1
+[2026-11-03 02:04:12] INFO  reading data/orders_2026-11-02.csv (1,204 rows)
+[2026-11-03 02:04:12] ERROR Traceback (most recent call last):
+  File "pipeline/ingest.py", line 41, in parse_amount
+    return float(raw)
+ValueError: could not convert string to float: '1.234,50'
+[2026-11-03 02:04:12] INFO  row 388 country=DE order_id=88412
+[2026-11-03 02:04:12] ERROR task=ingest_orders failed; 3 retries left

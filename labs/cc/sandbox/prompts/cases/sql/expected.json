@@ -1,0 +1,5 @@
+{
+  "q1.sql": {"verdict": "block", "must_mention": ["join", "duplicat"], "note": "joining order_items repeats each order once per item, so SUM(o.amount) is inflated (fan-out)"},
+  "q2.sql": {"verdict": "change", "must_mention": ["select *"], "note": "SELECT * pulls every column, the email column (personal data) too; wrapping order_date in a function also stops an index from being used"},
+  "q3.sql": {"verdict": "approve", "must_mention": [], "note": "the correct latest-row pattern; a good review approves it and does not invent problems"}
+}

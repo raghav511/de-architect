@@ -166,7 +166,31 @@ const FIGS = (() => {
     ] };
   };
 
-  const DEF = { isolation: iso, pages, scans, bplus, shard, deadlock: dead, replication: repl, wal };
+  /* 9. Claude Code 13: a pipeline prompt built part by part, and what each part changes in the answer */
+  const promptparts = () => {
+    const parts = [['Role', 'on-call DE, for standup', C.bl, C.blL], ['Context + why', 'retries reload the whole day', C.pl, C.plL], ['Task', 'what failed, why, next step', C.te, C.teL], ['Constraints', 'quote the line, else unknown', C.am, C.amL], ['Examples', '3 tagged, one "all fine"', C.pl, C.plL], ['Output format', 'JSON schema, enforced', C.te, C.teL]];
+    const st = (n, ans, o = {}) => {
+      let s = T(16, 22, 'system prompt (stable, cacheable)', { a: 'start', b: 1, fs: 12, c: C.mu }) + B(12, 30, 300, 6 * 30 + 8, '', { dash: !n, s: C.ln });
+      parts.slice(0, n).forEach((p, i) => { s += B(18, 36 + i * 30, 288, 26, '', { f: p[3], s: p[2], sw: i === n - 1 ? 2.5 : 1.2 }) + T(26, 53 + i * 30, p[0], { a: 'start', b: 1, fs: 12, c: p[2] }) + T(130, 53 + i * 30, p[1], { a: 'start', fs: 11.5 }); });
+      s += T(16, 238, 'user message', { a: 'start', b: 1, fs: 12, c: C.mu }) + B(12, 244, 300, 22, o.input || 'Review this failure log: {log}', { mono: 1, fs: 11.5, f: o.input ? C.amL : C.bg, s: o.input ? C.am : C.ln });
+      s += A(320, 140, 352, 140, C.mu) + B(360, 30, 268, 200, '', { f: ans[1], s: ans[2], sw: 2 }) + T(494, 52, ans[0], { b: 1, fs: 13, c: ans[2] });
+      ans[3].forEach((l, i) => { s += T(372, 80 + i * 22, l, { a: 'start', fs: 12, mono: ans[4] }); });
+      if (o.check) s += B(360, 238, 268, 28, o.check, { fs: 12, f: C.teL, s: C.te });
+      return s;
+    };
+    const vague = ['Answer: a long, polite essay', C.amL, C.am, ['"The task failed for several', 'possible reasons. It might be', 'the network, the data or the', 'scheduler. Consider retrying."', '', 'No verdict, no evidence,', 'and retry may make it worse.']];
+    return { title: 'A pipeline prompt, part by part', steps: [
+      [st(0, vague), 'A bare request. Nobody is there to clarify, so Claude fills every gap with a guess: a long, careful answer with no verdict and no evidence.'],
+      [st(1, ['Answer: right reader, still vague', C.amL, C.am, ['"For standup: ingest_orders failed.', 'Cause unclear; maybe data or', 'network. Suggest a retry."']]), 'Role: who is speaking and for whom. The tone and length fit a standup, but the cause is still a guess.'],
+      [st(2, ['Answer: knows what a retry costs', C.amL, C.am, ['"ingest_orders failed on bad', 'data. A retry reloads everything', 'and will fail the same way."']]), 'Context with the reason: facts Claude cannot know (a retry reloads the whole day) and why they matter. It now avoids the expensive wrong advice.'],
+      [st(4, ['Answer: one job, with proof', C.teL, C.te, ['cause: decimal comma in', '  parse_amount (DE rows)', 'evidence: "ValueError: could not', '  convert string to float: \'1.234,50\'"', 'next: fix the parser, then rerun']]), 'Task and constraints: one outcome, a quoted log line as proof, and "unknown" allowed when the log does not show the cause. Adjectives like "be accurate" change little; criteria change a lot.'],
+      [st(5, ['Answer: the house style', C.teL, C.te, ['Same judgement on new logs,', 'including "nothing to fix" when', 'a run only warns. Examples teach', 'format and judgement together.']]), 'Examples: three to five real cases in <example> tags, including one where the right answer is "nothing wrong", or Claude learns that every log has a problem.'],
+      [st(6, ['Answer: JSON a program can read', C.teL, C.te, ['{"category": "bad_data",', ' "evidence": "ValueError: ...",', ' "retry_helps": false,', ' "next_step": "fix parse_amount"}'], 1]), 'Output format: a JSON schema enforced by the API (or claude -p --json-schema). The schema guarantees the shape, not the truth.'],
+      [st(6, ['Answer: checked before it is used', C.teL, C.te, ['{"category": "bad_data",', ' "evidence": "ValueError: ...",', ' "retry_helps": false, ...}'], 1], { input: '<log>{400 lines}</log> + question', check: 'code checks: the evidence is in the log' }), 'The stable parts sit in the system prompt (and can be cached); the changing log goes in the user message, in tags, before the question. Code then checks the evidence really appears in the log before anyone acts on it.']
+    ] };
+  };
+
+  const DEF = { isolation: iso, pages, scans, bplus, shard, deadlock: dead, replication: repl, wal, promptparts };
   const cache = {};
   function build(name) {
     const f = cache[name] || (cache[name] = DEF[name] && DEF[name]());

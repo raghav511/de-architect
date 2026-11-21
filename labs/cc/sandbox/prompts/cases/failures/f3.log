@@ -1,0 +1,5 @@
+[2026-11-05 02:10:44] INFO  task=load_orders run=2026-11-04 attempt=2
+[2026-11-05 02:10:45] INFO  inserting 1,187 rows into warehouse.db
+[2026-11-05 02:10:45] ERROR sqlite3.IntegrityError: UNIQUE constraint failed: orders.order_id
+[2026-11-05 02:10:45] INFO  attempt 1 had already inserted 1,187 rows before the worker was killed at 02:06
+[2026-11-05 02:10:45] ERROR task=load_orders failed; 1 retry left
