@@ -1,8 +1,8 @@
 {
-  "version": "1.47.0",
+  "version": "1.48.0",
   "date": "2026-11-21",
   "notes": [
-    "New in the Claude Code track: Claude Code 13, prompting Claude in depth. Build a prompt part by part, use examples and tags, choose how much Claude thinks, get JSON you can trust, and compare two prompt versions on a small test set.",
-    "Practise on three data-engineering prompts (a SQL review, a failure summary and invoice extraction), with a step-through figure, four short reels and three graded tasks."
+    "New in the Claude Code track: Claude Code 14, Claude in data pipelines. Make an LLM step safe to rerun, send work nobody waits for as a half-price batch, cache the long shared part of a prompt, and pick the smallest model that passes.",
+    "A worked example shows a million tickets a night going from about 4,600 dollars to about 50; practise on a ticket classifier with three graded tasks, a step-through figure and four short reels."
   ]
 }

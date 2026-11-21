@@ -190,7 +190,24 @@ const FIGS = (() => {
     ] };
   };
 
-  const DEF = { isolation: iso, pages, scans, bplus, shard, deadlock: dead, replication: repl, wal, promptparts };
+  /* 10. Claude Code 14: an LLM step that is idempotent, cached and batched */
+  const llmstep = () => {
+    const rows = [['T1', 'a1f3', 'done'], ['T2', '9c07', 'done'], ['T3', '4be2', 'new'], ['T4', 'e810', 'new'], ['T5', '77d9', 'changed']];
+    const tbl = (hl) => T(16, 22, 'new rows tonight', { a: 'start', b: 1, fs: 12, c: C.mu }) + rows.map((r, i) => { const skip = hl && r[2] === 'done'; return B(12, 30 + i * 34, 170, 28, r[0] + '  hash ' + r[1], { mono: 1, fs: 11.5, f: skip ? C.teL : hl && r[2] !== 'done' ? C.amL : C.bg, s: skip ? C.te : hl && r[2] !== 'done' ? C.am : C.ln }) + (hl ? T(190, 49 + i * 34, skip ? 'skip: same key' : r[2] === 'changed' ? 'text changed' : 'to do', { a: 'start', fs: 11.5, c: skip ? C.te : C.amD }) : ''); }).join('');
+    const req = (on) => ['T3', 'T4', 'T5'].map((id, i) => B(300, 40 + i * 44, 150, 34, '', { s: on ? C.bl : C.ln }) + B(304, 44 + i * 44, 92, 26, 'rules + examples', { fs: 10.5, f: on === 'cache' ? C.teL : C.blL, s: on === 'cache' ? C.te : C.bl }) + B(400, 44 + i * 44, 46, 26, id, { mono: 1, fs: 11, f: C.amL, s: C.am })).join('') + T(375, 32, 'requests: prefix + one ticket', { b: 1, fs: 11.5, c: C.bl });
+    const out = (order, err) => T(540, 32, 'results, any order', { b: 1, fs: 11.5, c: C.pl }) + order.map((id, i) => B(480, 40 + i * 44, 140, 34, id + '-' + { T3: '4be2', T4: 'e810', T5: '77d9' }[id] + (err === id ? ' errored' : ' ok'), { mono: 1, fs: 11, f: err === id ? C.reL : C.plL, s: err === id ? C.re : C.pl })).join('');
+    const note = (s, c) => B(12, 214, 616, 48, s, { fs: 12.5, f: c ? c[0] : C.amL, s: c ? c[1] : C.am });
+    return { title: 'An LLM step you can rerun: key, cache, batch, join', steps: [
+      [tbl() + note('Tonight\'s rows. Some were labelled last night; one ticket\'s text was edited since.'), 'An LLM step is a transform that bills per row. Before calling anything, decide which rows really need a call.'],
+      [tbl(1) + note('Key = (ticket id, hash of the text, prompt version, model). Same key as a stored result: skip. A crash and rerun costs nothing.', [C.teL, C.te]), 'Idempotent by key: rows already done with the same key are skipped; a changed text gets a new hash and is labelled again.'],
+      [tbl(1) + req(1) + A(264, 110, 296, 110, C.bl) + note('Each request: the long stable prefix (rules, labels, examples) first, the one changing ticket last.'), 'Build requests with the stable rules and examples first and the ticket last, so the prefix is identical for every request.'],
+      [tbl(1) + req('cache') + A(264, 110, 296, 110, C.bl) + note('Prompt caching: the identical prefix is read from the cache at about a tenth of the input price. Check cache_read_input_tokens.', [C.teL, C.te]), 'Prompt caching: mark the end of the prefix with cache_control; requests after the first read it from the cache for a fraction of the price.'],
+      [tbl(1) + req('cache') + A(454, 110, 476, 110, C.pl) + out(['T5', 'T3', 'T4']) + note('Nobody is waiting, so send them as one batch: half price, most done within an hour. Results come back in any order.'), 'Message Batches API: half the price for work nobody waits for. Results arrive in any order, so position means nothing.'],
+      [tbl(1) + req('cache') + A(454, 110, 476, 110, C.pl) + out(['T5', 'T3', 'T4'], 'T4') + note('Join results by custom_id (ticket id + hash). Store the successes; resubmit only the errored or expired ones in a new batch.', [C.reL, C.re]), 'Join by custom_id, never by position. Partial failure is normal: resubmit only what errored or expired, and the key stops anything being done twice.']
+    ] };
+  };
+
+  const DEF = { isolation: iso, pages, scans, bplus, shard, deadlock: dead, replication: repl, wal, promptparts, llmstep };
   const cache = {};
   function build(name) {
     const f = cache[name] || (cache[name] = DEF[name] && DEF[name]());

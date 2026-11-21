@@ -1,0 +1,288 @@
+@@meta
+id: c14
+n: 14
+title: Claude in data pipelines: batches, prompt caching and the right model
+goal: Put Claude inside a pipeline the way you would any paid, slow and sometimes wrong transform: idempotent by row, cost estimated before the run, the Message Batches API and prompt caching where they pay, and the smallest model that passes, with routing and fallbacks.
+hours: 2
+
+@@tickets
+C1401 | learn | 0.75 | Lesson: LLM steps in pipelines, batches, prompt caching and model choice | You can make an LLM step idempotent, work out its cost per million rows, and say when batches, caching and a smaller model pay off. | chapter
+C1402 | ai | 0.75 | Practise in Claude Code: a ticket classifier that is idempotent, batched and costed | Your classifier skips rows it has done, joins batch results by custom_id, and prints a cost table for a million tickets. | lab
+C1403 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
+C1404 | test | 0.33 | Quiz C14 | 80% or better. | quiz
+
+@@readings
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
+- **Reading note: Batch processing.** The Message Batches API runs many Messages requests asynchronously at half the price: up to 100,000 requests or 256 MB per batch, most done within an hour, all within 24 hours, results kept 29 days and matched by your custom_id. [ⓘ](https://platform.claude.com/docs/en/build-with-claude/batch-processing)
+- **Reading note: Prompt caching.** Mark the end of a stable prefix with cache_control; later requests with the identical prefix read it at a fraction of the input price. Writes cost a little more, entries live 5 minutes (or 1 hour), and the response's usage says whether it worked. [ⓘ](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
+- **Reading note: Choosing a model.** Start efficiency-first with Haiku for high-volume, simple tasks, or capability-first with Opus for hard ones; try a lower effort before a smaller model; test on your own cases. [ⓘ](https://platform.claude.com/docs/en/about-claude/models/choosing-a-model)
+- **Reading note: Pricing.** Prices per million input and output tokens for each model, the cache write and read multipliers, and the batch discount. Check it before you quote a number in a design review. [ⓘ](https://platform.claude.com/docs/en/about-claude/pricing)
+
+@@chapter
+## C14.1 An LLM step is a transform that bills per row
+
+Classify tickets, extract fields from emails, enrich products with a category: these are ordinary pipeline transforms whose function happens to be a model. AI 4 covered the same idea inside the warehouse ([A4.5 AI functions in SQL](#/learn/a04/chapter)) and AI 5 covered extraction as ETL ([A5.5](#/learn/a05/chapter)); here you build the step yourself with Claude, where the levers are yours.
+
+Four properties make it safe to rerun and cheap to run:
+
+1. **Idempotent by row.** Key every result by `(row_id, input_hash, prompt_version, model)`. A rerun skips rows already done with the same key, so a retry after a crash costs nothing and never duplicates. A new prompt version is a deliberate backfill, not an accident.
+2. **Estimated before it runs.** Cost per row = input tokens x input price + output tokens x output price (thinking counts as output). Multiply by the rows. Run 1,000 rows first and compare with the estimate.
+3. **Bounded.** A concurrency limit below your rate limit, retries with backoff for rate-limit (429) and overloaded (529) errors (the SDKs retry twice by default), a timeout, and a daily budget that stops the job.
+4. **Checked.** The output schema and business rules from Claude Code 13, a dead-letter table for rows that fail twice, and a labelled sample scored on every prompt or model change.
+
+Where the call lives: an Airflow or Dagster task that reads new rows, a dbt Python model, or Spark `mapPartitions` with one client per partition and a semaphore. Never call the model inside a per-row UDF with no concurrency limit: 200 executors times 8 cores is 1,600 parallel calls and a wall of 429s.
+
+<div data-fig="llmstep"></div>
+
+### Under the hood
+
+A Messages call is a network request to a shared service: latency is seconds, not microseconds, and capacity is metered in requests and tokens per minute. Batch-style data work needs the same tools you use for any slow external API: bounded parallelism, retries that do not duplicate, and a record of what was already done.
+
+### Common traps
+
+- No input hash: an edited ticket keeps its old label forever, or every rerun pays again.
+- Retrying a 400 error (a bad request) as if it were a 429.
+- Logging full prompts with customer text into a shared log table (Claude Code 6).
+
+## C14.2 The Message Batches API
+
+When nobody is waiting for the answer (last night's tickets, a backfill, an evaluation run), send the requests as a **batch**. Every token costs **50% less**, and you trade latency: most batches finish within an hour, and every batch finishes or expires within 24 hours.
+
+```python
+import anthropic, hashlib
+from anthropic.types.message_create_params import MessageCreateParamsNonStreaming
+from anthropic.types.messages.batch_create_params import Request
+
+client = anthropic.Anthropic()            # ANTHROPIC_API_KEY from the environment
+reqs = [Request(custom_id=f"{t.id}-{hashlib.sha1(t.text.encode()).hexdigest()[:8]}",
+                params=MessageCreateParamsNonStreaming(model="claude-haiku-5-5", max_tokens=200,
+                    system=SYSTEM, messages=[{"role": "user", "content": t.text}]))
+        for t in todo]
+batch = client.messages.batches.create(requests=reqs)
+# later: poll batches.retrieve(batch.id).processing_status until "ended", then
+for r in client.messages.batches.results(batch.id):
+    if r.result.type == "succeeded": save(r.custom_id, r.result.message)
+    else: retry_later(r.custom_id, r.result.type)     # errored, canceled or expired
+```
+
+The rules that matter for pipelines:
+
+- **Results come back in any order.** Join them by `custom_id` (1 to 64 letters, digits, `-` or `_`), never by position. Put the row key and the input hash in it.
+- **Limits:** up to 100,000 requests or 256 MB per batch, whichever comes first. Split larger jobs.
+- **Partial failure is normal.** Each result is `succeeded`, `errored`, `canceled` or `expired`. Resubmit only the failed ones in a new batch; expired requests are not billed.
+- **Results stay downloadable for 29 days.** Store them in your table at once; the batch is not your storage.
+- **Orchestrate it as two tasks:** submit (store the batch id), then a sensor or deferrable task that waits and collects. A worker that sleeps for an hour holding a slot wastes the cluster.
+
+### Under the hood
+
+A batch is many independent Messages requests that the service runs when it has spare capacity, which is why it can be cheaper. Each request is still single-shot: there is no tool loop inside a batch, so work that needs several turns must be flattened into one request or run in real time.
+
+### Common traps
+
+- Joining results by list index.
+- One giant batch with no record of its id: a crashed orchestrator cannot find the results.
+- Using batches for a dashboard someone opens at 9 a.m. with data from 8:55.
+
+## C14.3 Prompt caching, and a worked cost example
+
+Most pipeline prompts are a long, **identical** prefix (instructions, label definitions, five examples) and a short changing part (one ticket). **Prompt caching** stores the processed prefix so the next request with the same prefix reads it at a fraction of the price. Mark where the stable part ends:
+
+```python
+client.messages.create(model="claude-haiku-5-5", max_tokens=200,
+    system=[{"type": "text", "text": RULES_AND_EXAMPLES, "cache_control": {"type": "ephemeral"}}],
+    messages=[{"role": "user", "content": ticket_text}])
+```
+
+- **Order:** tools, then system, then messages. Anything that changes (a timestamp, a ticket id) must come **after** the marker, or every request misses.
+- **Lifetime:** 5 minutes by default, refreshed on every hit; `"ttl": "1h"` keeps it an hour, useful for batches, which can take longer than 5 minutes.
+- **Price:** a write costs 1.25x normal input (2x for the 1-hour TTL); a read costs about 0.1x (0.05x on Sonnet 5.5 and Opus 5.5). Two requests within 5 minutes already pay it back.
+- **Minimum size:** about 512 tokens on current models; a shorter prefix silently does not cache.
+- **Prove it:** `usage.cache_read_input_tokens` should be large on the second request. If it stays 0, something in the prefix changes.
+
+**Worked example.** One million tickets a night; each request is a 2,000-token shared prefix, a 100-token ticket and about 40 output tokens at low effort. Prices from the pricing page in November 2026, per million tokens: Haiku 5.5 $0.10 in, $0.50 out, cache read $0.01; Sonnet 5.5 $2 in, $10 out, cache read $0.10.
+
+| Setup | Input | Output | Per night |
+|---|---|---|---|
+| Sonnet 5.5, no caching | 2.1 B tokens x $2 = $4,200 | 40 M x $10 = $400 | about $4,600 |
+| Haiku 5.5, no caching | 2.1 B x $0.10 = $210 | 40 M x $0.50 = $20 | about $230 |
+| Haiku 5.5, prefix cached | 2 B x $0.01 + 0.1 B x $0.10 = $30 | $20 | about $50 |
+| Haiku 5.5, batch, no caching | half of $230 | | about $115 |
+| Haiku 5.5, batch and cache | discounts stack; cache hits in a batch are best effort | | $25 to $115 |
+
+The model choice is worth 20x; caching is worth another 4x. Check quality before cost: the cheapest row is the one that is also right.
+
+### Under the hood
+
+The model turns the prefix into internal state (keys and values for every token) before it can read the next token. Caching stores that state for an identical prefix, so the work is done once. Any changed byte early in the prompt changes everything after it, which is why the rule is "stable first, changing last".
+
+### Common traps
+
+- `datetime.now()` or a run id at the top of the system prompt.
+- Switching models mid-job: caches belong to one model.
+- Assuming a hit: read the usage fields.
+
+## C14.4 The right model: routing and fallbacks
+
+| Model (API id) | Price in / out per M tokens | Use it for |
+|---|---|---|
+| Haiku 5.5 (`claude-haiku-5-5`) | $0.10 / $0.50 | High-volume classification, extraction, tagging |
+| Sonnet 5.5 (`claude-sonnet-5-5`) | $2 / $10 | Harder extraction, summaries, most agent and coding work |
+| Opus 5.5 (`claude-opus-5-5`) | $4 / $20 | Hard reasoning, long agentic tasks, design |
+
+(Fable 5.2 is above Opus for the hardest long-horizon work, at a higher price. Haiku's price rises for prompts over 100,000 tokens.)
+
+**Choose with your test set, not the leaderboard.** Anthropic's guide gives two starts: efficiency-first (start on Haiku, move up only for a measured gap) for high-volume pipelines, capability-first (start on Opus, then try lower effort or a smaller model) for hard tasks. Lowering **effort** on one model is often a better first lever than switching models, and it keeps one prompt cache.
+
+**Routing** sends each row to the cheapest model that can do it: rules (short tickets with a known keyword go to Haiku) or a cascade (Haiku first; rows that fail the schema or business rules, or answer "unknown", go to Sonnet). A cascade pays when most rows stay small; escalated rows cost both calls. [A6.5](#/learn/a06/chapter) has the trade-offs of each lever.
+
+**Fallbacks** keep a nightly job alive:
+
+- **429 and 529:** retry with backoff and jitter, then slow the job down; do not hammer.
+- **A longer outage:** fall back to another model or platform (Claude on Bedrock or Vertex) that has passed the same eval set, and record which model answered each row.
+- **A refusal** (`stop_reason: "refusal"`): do not retry the same request in a loop; send the row to the dead-letter table.
+- **Every row records** model, prompt version and cost, so a fallback night can be found and re-run.
+
+With several teams this logic belongs in one LLM gateway ([A6.6](#/learn/a06/chapter)), not copied into every job.
+
+### Under the hood
+
+Larger models do more computation per token, so they cost more and answer more slowly; effort changes how many tokens a model spends on the same task. Both move quality, so every change is checked on the same labelled sample.
+
+### Common traps
+
+- A fallback model nobody evaluated: the job "succeeds" with worse labels.
+- Routing on a guess instead of measured accuracy per route.
+- Forgetting thinking tokens in the cost estimate: they bill as output.
+
+@@lab
+## Lab: an idempotent, batched, costed ticket classifier (40 minutes)
+
+In ~/cc-sandbox (fresh copy: `bash ~/de-architect/labs/cc/new_sandbox.sh`). Read `llm/README.md`, then `python3 llm/make_tickets.py`. The API steps need `ANTHROPIC_API_KEY` from the Anthropic Console in your shell (a few dollars of credit is plenty; never write the key into a file). Without a key, do steps 2 and 3 through `claude -p --model haiku --effort low` and steps 4 and 5 as a dry run that prints what it would send.
+
+1. With Claude Code in plan mode, design `llm/classify.py`: a system prompt with the six labels (billing, delivery, refund, account, bug, other), one line on what each means and five examples, marked with `cache_control`; one ticket per user message; a JSON schema with `label` and `confidence`.
+2. **Idempotent:** results go to `llm/results.db` keyed by `(ticket_id, input_hash, prompt_version, model)`. Run it on `llm/labelled.csv` twice. The second run must make **0** model calls. Print accuracy against the true labels.
+3. **Caching:** print `cache_read_input_tokens` for the first three calls. The first should be 0 and the next ones near the prefix size. If not, find what changes in the prefix.
+4. **Batch:** `llm/batch.py` sends the first 500 tickets of `llm/tickets.csv` as one batch with `custom_id = ticket_id + "-" + hash[:8]`, stores the batch id, and a second command collects results by `custom_id` and lists any errored or expired ids for a resubmit.
+5. **Cost:** `llm/cost.py` prints the C14.3 table for 1,000,000 tickets using your measured token counts (from `usage`) instead of the example's.
+6. **Routing:** send tickets with confidence below 0.6, or a label that fails the schema, to Sonnet. Report how many escalated and what that adds to the cost.
+
+@@quiz
+TYPE: mcq
+TAG: ai
+Q: Your nightly classifier crashed after 600,000 of 1,000,000 rows. What makes the rerun cheap and correct?
+A) Rerun from the start with temperature 0 so the labels come out identical to the first run
+B) Results keyed by row id, input hash, prompt version and model, so done rows are skipped
+C) Delete the partial results and run the whole job again tonight with a bigger concurrency
+D) Raise the SDK's retry count so the crash cannot happen again
+ANS: B
+WHY: Idempotency by key makes reruns skip finished rows and never duplicate them.
+---
+TYPE: mcq
+TAG: ai
+Q: You join Message Batches results back to your rows. How?
+A) By position, since result number n always belongs to request number n
+B) By custom_id, which carries the row key and the input hash
+C) By the text of the model's answer
+D) By the time each result was created
+ANS: B
+WHY: Results can come back in any order; custom_id is the join key.
+---
+TYPE: mcq
+TAG: ai
+Q: Every request starts with "Run at 2026-11-21T02:00:07" and then 2,000 tokens of fixed rules. cache_read_input_tokens is always 0. Why?
+A) The rules are too short to cache, since only prompts over 100,000 tokens are cached
+B) The timestamp changes on every run and sits before the rules, so the prefix never repeats
+C) Caching only works inside the Message Batches API, not on single Messages requests
+D) The model forgets the cache between requests unless you send a cache id
+ANS: B
+WHY: The cache matches an identical prefix; put changing values after the cached part.
+---
+TYPE: mcq
+TAG: ai
+Q: A dashboard refreshes every 10 minutes and labels new reviews for analysts watching it. Should the labels go through the Message Batches API?
+A) Yes, because it halves the price and that always wins over any latency concern
+B) No: batches can take up to 24 hours, so use real-time calls with caching
+C) Yes, as long as each batch holds fewer than 100 requests at a time
+D) No, because batches cannot use a system prompt or a JSON schema
+ANS: B
+WHY: Batches fit work nobody is waiting for; most finish within an hour but up to 24 hours is allowed.
+---
+TYPE: mcq
+TAG: ai
+Q: Haiku labels 94% of tickets correctly and Sonnet 96%, at 20 times the price. What do you do first?
+A) Switch everything to Sonnet, since a two point gain always justifies the price
+B) Read the misses, then route only low-confidence or failing rows to Sonnet
+C) Average the answers of both models on every single ticket in the batch
+D) Ask Haiku to be more careful in capitals at the top of the prompt
+ANS: B
+WHY: A measured cascade or route sends only the hard rows to the dearer model.
+---
+TYPE: mcq
+TAG: ai
+Q: Overnight the API returns 529 overloaded for 20 minutes. What should the job do?
+A) Retry each row immediately in a tight loop until the service accepts it
+B) Back off, then fall back to an evaluated model and log which one answered
+C) Mark every remaining row as failed and delete the night's partial results
+D) Switch to any other model that happens to be available, without checking it
+ANS: B
+WHY: Backoff protects the service and your rate limit; a fallback must have passed the same evals, and each row records its model.
+---
+TYPE: fill
+TAG: ai
+Q: The usage field that proves a prompt cache hit is cache_read_input____.
+ANS: tokens|_tokens
+WHY: cache_read_input_tokens counts input read from the cache; 0 on repeated requests means the prefix changes.
+---
+TYPE: short
+TAG: ai
+Q: Estimate the nightly cost of labelling 1 million tickets with a 2,000-token shared prefix, 100-token tickets and 40 output tokens on Haiku 5.5 ($0.10 in, $0.50 out, $0.01 cache read per million), with and without prompt caching.
+MODEL: Without caching: input 2,100 x 1M = 2.1 B tokens x $0.10/M = $210; output 40 M x $0.50/M = $20; about $230 a night. With the prefix cached: 2 B prefix tokens read at $0.01/M = $20, plus 0.1 B ticket tokens at $0.10/M = $10, plus $20 output: about $50 (cache writes are small). Through the Batches API every token is half price, so $115 without caching; with caching too it can fall towards $25, but cache hits inside a batch are best effort. Check accuracy on a labelled sample before choosing the cheapest.
+
+@@interview
+Q: You need to classify 50 million product descriptions with an LLM. How do you design it?
+TAG: ai
+A: Estimate first: tokens per row times rows times price, on a 1,000-row sample, at two models and two effort levels, scored against a labelled sample. Pick the smallest model that passes. Make the step idempotent: results keyed by product id, input hash, prompt version and model, so reruns skip done rows. Put the instructions and examples in a cached prefix and the description last. Nobody is waiting, so send it through the Message Batches API in chunks under 100,000 requests, with custom_id carrying the key and hash, a submit task and a collect task, and resubmission of errored or expired rows. Schema and business-rule checks, a dead-letter table, a daily budget and a record of model and prompt version on every row.
+---
+Q: When does prompt caching pay off, and how do you know it is working?
+TAG: ai
+A: When many requests share a long identical prefix within the cache lifetime: instructions, examples, tool definitions or a shared document, followed by a short changing part. A write costs about 1.25 times normal input and a read about a tenth or less, so two requests within five minutes already pay back. It fails silently when anything before the marker changes, such as a timestamp, or when the prefix is below the minimum size. I check usage.cache_read_input_tokens on repeated requests and alert when the hit rate drops.
+---
+Q: Batch API or real time?
+TAG: ai
+A: Batch when nobody waits for the answer: nightly enrichment, backfills, evaluation runs. It halves the token price, but most batches take up to an hour and any can take up to 24, results come back in any order, and there is no tool loop. Real time when a person or a downstream SLA waits, with caching to cut the cost. Many pipelines use both: real time for today's new rows, batch for the backfill.
+---
+Q: How do you choose between Haiku, Sonnet and Opus for a pipeline step?
+TAG: ai
+A: On my own labelled cases, not a leaderboard. For high-volume simple tasks I start with Haiku and move up only for a measured gap; for hard reasoning I start with Opus and try lower effort or a smaller model. I compare accuracy, cost per correct row and latency, read the misses, and often route: the cheap model for most rows, the stronger one for rows that fail checks or report low confidence. Every row records the model so a change can be backfilled deliberately.
+---
+Q: The LLM provider has an outage during your nightly job. What happens?
+TAG: ai
+A: The job backs off with jitter on 429 and 529 errors and slows its concurrency rather than hammering. If the outage lasts, it falls back to another model or cloud platform that passed the same evals, and each row records which model answered, so the night can be reviewed or re-run. Rows that still fail go to a dead-letter table and the job finishes the rest; the daily budget and an alert stop runaway retries. Because the step is idempotent, a rerun the next morning only processes what is missing.
+
+@@tasks
+TITLE: An idempotent classification step
+TASK: Do lab steps 1 to 3. Paste `llm/classify.py` (or its key parts: the prompt with cache_control, the result key and the skip logic), the output of two runs on `llm/labelled.csv`, and the cache_read_input_tokens of the first three calls (or, without a key, the claude -p version and its accuracy).
+SUBMIT: the code, two runs' output and the cache numbers.
+RUBRIC: - Results are keyed by ticket id, a hash of the input, the prompt version and the model.
+- The second run makes no model calls (the output shows 0 calls or all rows skipped).
+- The stable rules and examples come first with cache_control, and the ticket is in the user message after them; nothing that changes sits before the marker.
+- Output is schema-checked (a label from the six, a confidence) and accuracy against the true labels is printed.
+- Cache numbers show 0 on the first call and a large read on later calls, or the answer explains why not.
+---
+TITLE: Batches joined by custom_id
+TASK: Do lab step 4. Paste `llm/batch.py` (submit and collect), the batch id handling, and the summary of one run: succeeded, errored and expired counts. Without a key, paste the dry-run output for the first 3 requests and the collect code.
+SUBMIT: the batch code and its run summary.
+RUBRIC: - custom_id carries the ticket id and an input hash and matches the allowed characters (letters, digits, - and _, at most 64).
+- Submit and collect are separate steps and the batch id is stored, so a crash does not lose the results.
+- Results are joined by custom_id, never by position, and written to the same results table as the real-time path.
+- Errored and expired requests are listed for a resubmit in a new batch; succeeded rows are not sent again.
+- The answer says why this job suits a batch (nobody waits) and states the 50% discount.
+---
+TITLE: A cost and model plan for a million tickets a night
+TASK: Your manager asks what the classifier will cost at 1,000,000 tickets a night and which model to use. Write a short plan (under 300 words) with a cost table from your measured token counts (lab step 5) and your routing and fallback rules (lab step 6).
+SUBMIT: the plan with its table.
+RUBRIC: - The cost table uses measured tokens per request and current prices, and shows at least: the larger model, Haiku, Haiku with caching, and the batch option.
+- Thinking or output tokens are counted as output.
+- The model choice rests on accuracy on the labelled sample, not price alone; a cascade or route sends only failing or low-confidence rows to the larger model, with the extra cost stated.
+- Fallbacks: backoff on 429 and 529, an evaluated fallback model, refusals and repeated failures to a dead-letter table, model and prompt version recorded per row.
+- A daily budget or alert, and under 300 words.
