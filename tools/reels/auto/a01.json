@@ -400,9 +400,9 @@
     "check": {
      "q": "An agent keeps retrying the same failing query. Which fix belongs in the harness?",
      "opts": [
-      "Ask the model to try harder",
+      "Ask the model in the prompt to try harder",
       "A turn cap and spend budget with a stop",
-      "Use a bigger model"
+      "Switch the agent to a bigger, smarter model"
      ],
      "ans": 1,
      "why": "The model cannot be trusted to stop itself. The harness enforces hard limits so a bad loop ends cheaply."

@@ -1,8 +1,8 @@
 {
-  "version": "1.46.4",
+  "version": "1.46.5",
   "date": "2026-11-21",
   "notes": [
-    "What is new: 6 items on Snowflake dynamic tables and load checks, dbt v2 batch testing, Delta column backfills, Databricks system table retention and Kafka record backups.",
-    "No new interview questions could be confirmed as asked this week."
+    "Python 2 decorator reel fixed: with retry written above timing, the timer measures each attempt on its own, not all attempts together.",
+    "Quick checks on sorting, decorators, pure functions and agent loops reworded so the right answer no longer stands out by length."
   ]
 }

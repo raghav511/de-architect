@@ -2698,8 +2698,8 @@
      "q": "What does a key function do in sorted?",
      "opts": [
       "Turns each item into the value used for comparing",
-      "Deletes items that do not match",
-      "Sorts the list in place and returns None"
+      "Removes the items that do not match the rule",
+      "Sorts the list in place and gives back None"
      ],
      "ans": 0,
      "why": "The key maps each item to the value Python compares. It does not filter, and sorted returns a new list rather than changing the old one."
@@ -2861,9 +2861,9 @@
     "check": {
      "q": "In key=lambda t: (t[\"city\"], -t[\"fare\"]), when is fare looked at?",
      "opts": [
-      "Always, before city",
+      "Always, and before the city is compared",
       "Only when two cities are equal",
-      "Never, because it is negative"
+      "Never, because the fare is negative"
      ],
      "ans": 1,
      "why": "Tuples compare slot by slot, so the second value only matters when the first values tie."
@@ -3076,8 +3076,8 @@
     "check": {
      "q": "Which choice best fits sorting a table too big for memory?",
      "opts": [
-      "Use sorted with itemgetter",
-      "Sort twice with stability",
+      "Use sorted with itemgetter on the full list",
+      "Sort the list twice, relying on stability",
       "Push the order by to the database or Spark"
      ],
      "ans": 2,
@@ -3188,9 +3188,9 @@
     "check": {
      "q": "What does a decorator do to the function it is placed on?",
      "opts": [
-      "Deletes it and replaces it with new logic",
+      "Deletes it and puts new logic in its place",
       "Wraps it, adding behaviour around the original",
-      "Makes it run faster automatically"
+      "Compiles it so that it runs faster on each call"
      ],
      "ans": 1,
      "why": "A decorator surrounds the original function with extra behaviour, like a case on a phone, without editing the function itself."
@@ -3444,9 +3444,9 @@
     "check": {
      "q": "What does functools.wraps fix?",
      "opts": [
-      "It makes the wrapper run faster",
-      "It copies the original name and docstring onto the wrapper",
-      "It lets the wrapper skip returning a value"
+      "It makes the wrapper run faster on every call",
+      "It copies the original name and docstring across",
+      "It lets the wrapper skip returning the result"
      ],
      "ans": 1,
      "why": "Without it the decorated function reports itself as wrapper in logs, tracebacks and task names; wraps preserves the original metadata."
@@ -3480,7 +3480,7 @@
       }
      },
      {
-      "say": "But they hide behaviour. A retry decorator on a function that charges a card can charge twice unless the function is idempotent, meaning safe to repeat. Stacked decorators run in order, and the order changes meaning: retry outside timing measures all attempts.",
+      "say": "But they hide behaviour. A retry decorator on a function that charges a card can charge twice unless the function is idempotent, meaning safe to repeat. Stacked decorators wrap from the bottom up, and the order changes meaning: timing outside retry measures all attempts together, while retry outside timing times each attempt on its own.",
       "show": {
        "t": "scene",
        "title": "Hidden *behaviour*",
@@ -3563,14 +3563,14 @@
      }
     ],
     "check": {
-     "q": "Why is stacking order of decorators important?",
+     "q": "With @retry(3) written above @timed, what does the timer measure?",
      "opts": [
-      "Python rejects the wrong order",
-      "Each layer wraps the next, so order changes what each one sees, such as what retry covers when timing",
-      "Only the top decorator ever runs"
+      "All three attempts added up as a single total",
+      "Each attempt on its own, since retry wraps timing",
+      "Nothing, because Python runs only the top decorator"
      ],
      "ans": 1,
-     "why": "Decorators nest. A retry outside a timer times all attempts together; inside, it times each attempt separately."
+     "why": "Decorators apply from the bottom up, so @timed wraps f first and @retry wraps that. Retry is the outer layer and calls the timed function once per attempt, so each attempt is timed on its own. Put @timed on top to measure all attempts together."
     },
     "work": [
      "Audit retry decorators and confirm the wrapped functions are idempotent.",
@@ -3755,9 +3755,9 @@
     "check": {
      "q": "Why is a calculator-style step safer in a pipeline that gets rerun?",
      "opts": [
-      "It runs faster",
+      "It runs faster than any other kind of step",
       "Running it again changes nothing outside it",
-      "It uses less memory"
+      "It keeps every row it has seen in memory"
      ],
      "ans": 1,
      "why": "A pure step only returns an answer from its inputs. Rerunning it cannot leave behind extra changes, so retries are safe."
@@ -4067,9 +4067,9 @@
     "check": {
      "q": "A Spark task fails and is retried. Your function increments a global counter. What happens?",
      "opts": [
-      "The counter is incremented only once",
-      "The counter may be incremented more than once for the same row",
-      "Spark blocks the retry"
+      "The counter goes up only once, as Spark dedupes it",
+      "The counter may go up more than once for the same row",
+      "Spark sees the global and refuses to retry the task"
      ],
      "ans": 1,
      "why": "Retries rerun your function on the same data. Side effects such as counters or API calls then repeat, which is why impure steps are unsafe."
@@ -4199,9 +4199,9 @@
     "check": {
      "q": "You need reference data from an API for each row. What is the best design?",
      "opts": [
-      "Call the API inside the transform for every row",
-      "Fetch the data once as a table, join it in a pure step, write with an upsert",
-      "Store the response in a global dict as you go"
+      "Call the API inside the transform for each row",
+      "Fetch it once as a table, join, upsert the write",
+      "Cache each response in a global dict as you go"
      ],
      "ans": 1,
      "why": "Fetching at the edge keeps the transform pure and retry-safe. An upsert on a key makes the final write idempotent."
