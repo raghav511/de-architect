@@ -108,6 +108,7 @@ Module order is `BASE_MODS` in `js/plan.js`; new module files must also be added
 
 ## Recent changes
 
+- Weekly review 2026-11-21: 4.6 says each dbt test is its own query and dbt v2 can batch them; 8.4 says to set a dynamic table's refresh mode explicitly (AUTO now resolves to ADAPTIVE) and that COPY INTO and Snowpipe reject rows that break CHECK constraints to an error table. The sections' reels were checked and are still accurate, so their fingerprints were refreshed rather than rewritten.
 - Ops: one nightly scheduled task runs every app job (`tools/routines/`), waits out network drops, catches up missed jobs and notifies only when something needs the learner.
 - 1.46.2: Reels: tap the right side of a reel's end card for the next reel, the left side to go back; a left tap on a reel's first beat opens the previous reel (Q57).
 - 1.46.0: Redesign phase 10 (the last), Profile: the hero (`.phero`) in the colour theme with level, XP and streak and Sync, Update and Mode inside it (one compact row on phones, so the tabs and the sync field stay on the first screen); Look › Colour theme as four swatch cards (`themeSwatches`; a hidden `#st_palette` keeps `saveSettings` working); a Saved note on every change (`.savedpill`). The redesign is complete: `tools/redesign_test.js` (40 cases) and `tools/redesign/README.md`.
