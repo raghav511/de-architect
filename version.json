@@ -1,8 +1,8 @@
 {
-  "version": "1.46.5",
+  "version": "1.46.6",
   "date": "2026-11-21",
   "notes": [
-    "Python 2 decorator reel fixed: with retry written above timing, the timer measures each attempt on its own, not all attempts together.",
-    "Quick checks on sorting, decorators, pure functions and agent loops reworded so the right answer no longer stands out by length."
+    "dbt 4.6: each test is its own query, and dbt v2 can run a model's unique and not_null tests together.",
+    "Snowflake 8.4: set a dynamic table's refresh mode yourself (the default now picks adaptive), and loads can reject rows that break CHECK constraints to an error table."
   ]
 }

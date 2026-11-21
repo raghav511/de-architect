@@ -129,10 +129,10 @@ Pruning works well when data arrives in an order that matches how it is queried,
 |---|---|
 | **Time Travel** | Query or restore data as of an earlier moment, within a retention period. After that, **Fail-safe** keeps it for a further period that only Snowflake support can access |
 | **Zero-copy cloning** | `CREATE TABLE t2 CLONE t1` copies only metadata. Both tables point at the same micro-partitions, and storage is consumed only as they diverge. Ideal for test environments |
-| **Stages and `COPY INTO`** | Bulk loading of files from a location |
+| **Stages and `COPY INTO`** | Bulk loading of files from a location. A table with error logging or `CHECK` constraints rejects rows that break them to an error table (GA November 2026, Snowpipe too) |
 | **Snowpipe** | Continuous loading triggered by file arrival. Snowpipe Streaming loads rows directly, without files |
 | **Streams and tasks** | A stream records changes to a table since it was last consumed. A task runs SQL on a schedule. Together they build incremental pipelines |
-| **Dynamic tables** | You declare a query and a target lag. Snowflake keeps the result that fresh, incrementally where it can. The declarative replacement for most stream and task pairs |
+| **Dynamic tables** | You declare a query and a target lag. Snowflake keeps the result that fresh, incrementally where it can. The declarative replacement for most stream and task pairs. Set the refresh mode explicitly in production: since November 2026 the default `AUTO` resolves to `ADAPTIVE` for new tables, not `INCREMENTAL` |
 | **`VARIANT`** | A column type for semi-structured data, queried with path notation and `FLATTEN` |
 | **Masking and row access policies** | Rules attached to columns and tables that change what each role sees |
 

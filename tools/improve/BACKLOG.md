@@ -19,6 +19,10 @@ Top unblocked item goes next. Each item: goal served (1 understand, 2 remember, 
 18. **In-browser labs for modules 2, 3, 7, 8** where they still assume Docker or a cloud account (4). One module per iteration.
 19. **Duplicate guard for company questions** in `tools/validate.py` (same normalised question text under two ids) (5).
 20. **iPhone Safari pass** with the simulator or mobile-mcp (5): Today, Reels audio, live mock mic, simulator touch.
+21. **Review 2026-11-21: Spark Real-Time Mode with aggregations and dedup** (s05 5.7): only an aggregator reported it so far; confirm on the Spark or Databricks release notes, then update 5.7 and its reels. Test: validate, reels build.
+22. **Review 2026-11-21: deny policies on AI securables and pipeline flows as Unity Catalog objects** (o03, beta on Databricks 12 Nov): one paragraph in the access section once GA. Test: validate.
+23. **Review 2026-11-21: company questions have not grown since 7 Nov** (`data/recent.json`): the refresh cannot confirm dated reports from search summaries alone; try public dated sources (LeetCode Discuss, Medium posts with dates) and log what was searched. Test: refresh note lists searches.
+24. **Review 2026-11-21: reel beats for the 8.4 dynamic tables default and 4.6 batched tests**: add one Inside and caveats beat each in `tools/reels/auto/s08.json` and `s04.json` and record them. Test: build.py, voice.py.
 
 ## Needs approval (do not build until the user approves in chat)
 

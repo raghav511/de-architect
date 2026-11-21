@@ -166,7 +166,7 @@ What to know about that file:
 - **Materializations.** A `view` stores no data. A `table` is rebuilt in full on every run. An `incremental` model processes only new or changed rows. An `ephemeral` model is inlined into its consumers.
 - `is_incremental()` is false on the first run and on a full refresh, so the whole table is built. On later runs the filter applies.
 - `unique_key` with the `merge` strategy updates a row that already exists. Without it, a reprocessed trip is inserted a second time. That is this sprint's incident.
-- **Tests** are declared beside the model: `unique`, `not_null`, `accepted_values` and `relationships`. A test is a query that should return no rows.
+- **Tests** are declared beside the model: `unique`, `not_null`, `accepted_values` and `relationships`. A test is a query that should return no rows. Each test is its own query, so a large project pays for a scan per test; since November 2026 dbt's v2 engine can run a model's `unique` and `not_null` tests as one query per test type (`--batch-tests`).
 - **Snapshots** build a Type 2 history from a source table that only shows current state. dbt adds `dbt_valid_from` and `dbt_valid_to` for you.
 - `dbt build` runs models, tests, snapshots and seeds in dependency order, and stops downstream models when a test fails.
 
