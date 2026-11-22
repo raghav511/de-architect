@@ -1,8 +1,7 @@
 {
-  "version": "1.49.0",
-  "date": "2026-11-21",
+  "version": "1.49.1",
+  "date": "2026-11-22",
   "notes": [
-    "New in the Claude Code track: Claude Code 15, apps, decks and documents with Claude. Brief Claude for a page or dashboard in four lines, steer it one specific change at a time, and check every number against the data before you share.",
-    "Make a message-first review deck and a decision memo from data, and ship a small app with plan mode, tests first and small commits; practise on an incident log with three graded tasks, a step-through figure and four short reels."
+    "What is new, 22 November: a hijacked agent library on PyPI and how to pin and sandbox agents, dbt Charts answering in Claude and ChatGPT through MCP, Claude computer use for teams, per-customer billing for model calls, and Claude's text watermark on more models. Each item has a short lab to try."
   ]
 }

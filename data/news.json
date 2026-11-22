@@ -1,66 +1,48 @@
 {
- "updated": "2026-11-21",
+ "updated": "2026-11-22",
  "note": "Refreshed every week by the program's research task. Each item says what changed, why it matters to a data engineer or architect, and how to test the claim yourself.",
  "items": [
   {
-   "title": "Snowflake: dynamic tables with REFRESH_MODE = AUTO now resolve to ADAPTIVE, not INCREMENTAL",
-   "summary": "From 20 November 2026, a new dynamic table left on the default AUTO refresh mode resolves to ADAPTIVE when its query supports it, and to FULL otherwise. Tables that already exist keep the mode they resolved to. Setting REFRESH_MODE = INCREMENTAL explicitly keeps the old behaviour.",
-   "why": "A changed default changes your bill and your freshness without anyone touching the code. An architect pins the refresh mode of every production dynamic table in code review, the same way you pin a library version, and reads the resolved mode after each deploy.",
-   "try": "In module 8's build step, write the dynamic table twice, once with the default and once with REFRESH_MODE = INCREMENTAL, and note which one you would let reach production and why.",
-   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-20-dynamic-tables-auto-resolves-to-adaptive",
-   "source": "Snowflake release notes",
-   "mid": "s08",
-   "sec": "8.4"
+   "title": "Microsoft's agent-framework package on PyPI was hijacked to steal cloud and CI credentials",
+   "summary": "On 17 November 2026 two malicious releases, 1.26.1 and 1.26.2, of Microsoft's Agent Framework Python package were published to PyPI. A .pth file ran a credential stealer at Python start-up, even without an import, looking for Azure, AWS, GitHub, Docker, Hugging Face and OpenAI secrets and asking for Azure managed identity and CI OIDC tokens. PyPI quarantined both within minutes; 1.26.0 is the clean release.",
+   "why": "Agent frameworks run where the keys are: next to warehouse credentials, CI tokens and model API keys. An architect pins exact versions with hashes, installs agents in a sandbox with only the secrets that task needs, and treats a new release of an agent library like a new database driver: reviewed before it reaches a pipeline.",
+   "try": "In projects/ai-foundations, pin requirements.txt with hashes (pip-compile --generate-hashes or pip hash) and run lab1_loop.py with only the one environment variable it needs; list every other secret the process could read and how you would remove it.",
+   "url": "https://www.bleepingcomputer.com/news/security/microsofts-agent-framework-pypi-package-compromised-to-steal-credentials/",
+   "source": "BleepingComputer"
   },
   {
-   "title": "Snowflake: COPY INTO and Snowpipe log bad rows and enforce CHECK constraints (generally available)",
-   "summary": "Generally available on 19 November 2026. Tables with error logging or CHECK constraints now reject rows that break them during COPY INTO and Snowpipe loads and write those rows to an error table; loads into other tables behave as before.",
-   "why": "This is the dead-letter pattern moved into the warehouse load itself: good rows land, bad rows are kept with the reason, and nothing is silently dropped. It also means a constraint added for safety can start rejecting rows a pipeline used to accept, so add one with an alert on the error table.",
-   "try": "In module 9, sketch how you would split a batch into accepted and rejected rows with the reason for each, then count how many rejects would page someone.",
-   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-19-copy-snowpipe-error-logging-check-constraints-ga",
-   "source": "Snowflake release notes",
-   "mid": "s09",
-   "sec": "9.2"
-  },
-  {
-   "title": "dbt v2 engine is generally available, with batch testing",
-   "summary": "dbt's November update (17 November 2026) makes the v2 engine generally available on Redshift, Databricks, BigQuery, Snowflake and DuckDB, with ClickHouse and Spark in beta. Batch testing, opt-in with --batch-tests, runs a model's unique and not_null tests as one query per test type; local unit tests in DuckDB are in alpha.",
-   "why": "Test cost is a real line on a warehouse bill: hundreds of small test queries each scan the table. Batching them is the same trade-off as batching any small request, and an interviewer may ask how you would cut the cost of dbt tests without dropping coverage.",
-   "try": "In module 4's dbt build, count the test queries one dbt test run sends for a model with four tested columns, then count them again as if unique and not_null were batched.",
+   "title": "dbt Charts answers questions with charts inside Claude and ChatGPT through an MCP server (beta)",
+   "summary": "dbt Labs' November update makes dbt Charts available in Claude and ChatGPT through an MCP server (beta), drawing on the dbt semantic layer; dbt reports 20 to 50% fewer tokens than having the assistant build a dashboard from scratch, on its own benchmark. dbt State gets a free plan and Beta cost attribution tables on Snowflake.",
+   "why": "The chat assistant is becoming a front end for the governed metric layer. The architect's job is to make sure the MCP tool can only read certified metrics, so the chart in a chat window matches the dashboard, and to measure the token saving on your own questions rather than the vendor's.",
+   "try": "Extend labs/lab9_mcp_server.py with a fourth tool, get_metric(name, grain), that only answers from a fixed list of certified SQL definitions, then compare tokens per answer in lab5_evals.py against letting the agent write the SQL with run_sql.",
    "url": "https://www.getdbt.com/blog/whats-new-in-dbt-november-2026",
    "source": "dbt Labs blog",
    "mid": "s04",
-   "sec": "4.6"
+   "sec": "4.9"
   },
   {
-   "title": "Databricks: add and backfill Delta columns without rewriting the unchanged columns (beta)",
-   "summary": "In beta from 13 November 2026, enabled by an admin on the Previews page. Adding and backfilling a column on a Delta table writes only the new column's data instead of rewriting every data file.",
-   "why": "On copy-on-write tables a backfill of one column has always meant rewriting the whole table. Writing only the changed column turns a multi-terabyte rewrite into a small write, which changes how you plan schema changes and backfills.",
-   "try": "In module 8's DeltaTable lab, add a column and backfill it, then count the add and remove commits in _delta_log and compare with what a column-only write would need.",
-   "url": "https://docs.databricks.com/aws/en/release-notes/product/2026/november#efficient-column-updates-beta",
-   "source": "Databricks release notes",
-   "mid": "s08",
-   "sec": "8.2"
+   "title": "Claude computer use reaches Team and Enterprise plans (beta)",
+   "summary": "From 20 November 2026, Claude's computer use is available in beta on Team and Enterprise plans, in the new Claude Desktop experience and on web and mobile where Computer access is turned on by an admin. It is rolling out gradually.",
+   "why": "An agent that drives screens reaches the tools that have no API: old BI tools, vendor consoles, admin pages. That is also the least auditable path. Prefer an API or MCP tool, keep screen control for read-only checks, and make sure an admin decides which teams can turn it on.",
+   "try": "In lab10_oncall.py, list each action the on-call agent takes and mark whether it has an API or tool path or would need screen control; for every screen-only action, write the approval step and the audit line you would require.",
+   "url": "https://support.claude.com/en/articles/18483812-set-up-computer-use-for-team-and-enterprise-plans",
+   "source": "Claude Help Center"
   },
   {
-   "title": "Databricks: system table retention from 30 days to 10 years (generally available)",
-   "summary": "Generally available on 18 November 2026. Retention for system tables is set account-wide from 30 to 3,650 days; the first 395 days are free and longer retention adds storage charges.",
-   "why": "System tables hold the usage, billing and audit history that showback and audits run on. Choosing their retention is a platform-as-a-product decision: long enough for a year-over-year cost review and an audit, short enough not to pay for history nobody reads.",
-   "try": "In module O4, write the retention you would set and the two questions it must answer (last year's cost per team, and who read a table eleven months ago).",
-   "url": "https://docs.databricks.com/aws/en/release-notes/product/2026/november#configurable-retention-for-system-tables-is-generally-available",
-   "source": "Databricks release notes",
-   "mid": "o04",
-   "sec": "O4.5"
+   "title": "Claude API: linked billing lets your customers pay for the Claude usage in your app (beta)",
+   "summary": "Since 17 November 2026, an app built on the Claude API can bill a customer's own Claude organization for the usage it causes, with a beta header and a billing_policy field on the Messages request. Customers set spend caps or unlink in the Console; it works only where the customer's organization pays Anthropic directly.",
+   "why": "Who pays for tokens becomes a per-request decision, not a contract clause. For an internal data platform the same idea is showback: tag every model call with the team that caused it, so cost per successful task can be charged back and capped per team.",
+   "try": "Add a team field to each call in harness/trace.py, run lab7_optimise.py for two pretend teams, and report tokens and cost per team and per successful task; set a cap and show the run that would be refused.",
+   "url": "https://platform.claude.com/docs/en/manage-claude/oauth-apps/organization-billing-connections",
+   "source": "Claude Platform docs"
   },
   {
-   "title": "Confluent Cloud: back up and restore whole Kafka records through Azure Blob Storage",
-   "summary": "Added on 18 November 2026. The Azure Blob Storage sink and source connectors can save and restore full records, with keys, values, headers and metadata, using the BACKUP_FULL_RECORD and RESTORE_BACKUP_FULL_RECORD modes.",
-   "why": "Retention is not a backup: once a segment ages out, the data is gone. Keeping keys and headers matters, because a restore without keys loses partitioning and ordering, and one without headers loses tracing and schema ids.",
-   "try": "In module 5, list what a restored topic must keep to be usable (key, partition order, headers, schema id) and which of those a plain value-only export would lose.",
-   "url": "https://docs.confluent.io/cloud/current/connectors/object-storage-backup-restore.html#cc-object-storage-backup-restore",
-   "source": "Confluent Cloud release notes",
-   "mid": "s05",
-   "sec": "5.6"
+   "title": "Claude's text watermark now covers Opus 4.6, Opus 4.5, Sonnet 4.5 and Haiku 4.5",
+   "summary": "Since 16 November 2026 the text watermark applies to more Claude models on supported platforms. Requests that set a non-default temperature, top_p or top_k may come back without it. A beta organization webhook also reports when a customer-managed encryption key fails or recovers.",
+   "why": "When LLM output lands in tables (summaries, extracted fields, generated docs), provenance matters for audit and for training data later. Do not rely on a watermark alone: store the model, prompt version and request id beside every generated column, and alert on the key events that would stop the pipeline.",
+   "try": "In lab3_prompts.py, write each generated answer to DuckDB with model, prompt hash, sampling settings and request id columns, then query which rows would be missing a watermark because of their sampling settings.",
+   "url": "https://platform.claude.com/docs/en/build-with-claude/text-watermark",
+   "source": "Claude Platform docs"
   }
  ]
 }

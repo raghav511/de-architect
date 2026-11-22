@@ -81,11 +81,11 @@ Evaluation: inject 10 known failures (schema change, OOM, late upstream, bad cre
 
 The field moves weekly, so this section is refreshed by the program's weekly research update. Concepts worth knowing now, with reports to read:
 
-- **Cheaper tokens, stricter prefixes.** Claude Fable 5.2 costs 20% less per token, and editing earlier turns before sending back a thinking block now returns an error: keep the prefix stable so the cache keeps paying. (Claude Platform docs)
-- **Agent state on your own servers.** Self-hosted Claude Managed Agents keep agents, sessions and history on your infrastructure; only model calls leave. Agent memory becomes an ordinary data-residency decision. (Claude Platform docs)
-- **Always-on agents with sub-agents.** Databricks' second-generation Genie runs in the background on its own compute, fans work out to sub-agents and stays inside Unity Catalog permissions and gateway budgets. (SD Times)
-- **Context layers decide accuracy.** Genie Ontology is GA; Databricks reports 91% pass rate at about half the tokens of two frontier agents on its own benchmark. Test the claim on your eval set. (Databricks)
-- **Agents build the dashboards.** Claude Data turns company data into dashboards and stories for Claude Enterprise; the data team's job becomes the certified layer underneath. (AI Business)
+- **Agent libraries are a supply chain.** Two hijacked releases of Microsoft's agent-framework package on PyPI ran a credential stealer at Python start-up, hunting cloud keys and CI tokens. Pin versions with hashes and give an agent only the secrets its task needs. (BleepingComputer)
+- **Metrics in the chat window.** dbt Charts answers in Claude and ChatGPT through an MCP server (beta), from the semantic layer; dbt reports 20 to 50% fewer tokens than building a dashboard from scratch. Expose certified metrics as tools, not open SQL. (dbt Labs)
+- **Agents that drive screens.** Claude computer use is in beta on Team and Enterprise plans, turned on by an admin. Use it for tools with no API, read-only first, with an approval step and an audit line. (Claude Help Center)
+- **Who pays per request.** Linked billing (beta) lets a Claude API app charge each customer's own Claude organization, with spend caps. Inside a company the same idea is showback: tag every model call with the team that caused it. (Claude Platform docs)
+- **Provenance for generated text.** Claude's text watermark now covers more models, but non-default sampling settings can drop it. Store model, prompt version and request id beside every generated column. (Claude Platform docs)
 
 How to judge any new development: what problem does it remove, what does it cost per successful task, can you evaluate it on your own eval set within a day, and what new risk does it add?
 
