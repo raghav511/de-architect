@@ -794,7 +794,7 @@
       }
      },
      {
-      "say": "Say a task needs six queries. That is seven model calls: six tool requests and one final answer. Each call resends the whole growing list, so cost climbs every step.",
+      "say": "Say a task needs six queries, one per turn. That is seven model calls: six tool requests and one final answer. Each call resends the whole growing list, so cost climbs every step.",
       "show": {
        "t": "bars",
        "title": "Tokens sent per call",
@@ -828,14 +828,14 @@
      }
     ],
     "check": {
-     "q": "A task needs six tool calls before the answer. How many model calls happen?",
+     "q": "A task needs six tool calls, one per turn, before the answer. How many model calls happen?",
      "opts": [
       "Six",
       "Seven",
-      "One"
+      "Twelve"
      ],
      "ans": 1,
-     "why": "Each tool request is one model call, and the final text answer is one more, so seven."
+     "why": "Each tool request is one model call, and the final text answer is one more, so seven. Tool results ride along in the next call; they are not calls of their own."
     },
     "work": [
      "Write the loop from memory in your language of choice.",
@@ -855,7 +855,7 @@
       }
      },
      {
-      "say": "Done: the model answers without asking for a tool. Budget: cap the steps, say at twenty five, and cap tokens or dollars. Without a cap, a confused agent loops all night and you pay for it.",
+      "say": "Done: the model answers without asking for a tool. Budget: cap the steps, say at twenty five, and cap tokens or dollars. One turn can ask for several tools at once, so cap tool calls as well as turns. Without a cap, a confused agent loops all night and you pay for it.",
       "show": {
        "t": "points",
        "title": "Two easy stops",
@@ -954,9 +954,9 @@
     "check": {
      "q": "An agent gets the same database permission error three times. What should the loop do?",
      "opts": [
-      "Retry with a longer timeout",
+      "Retry again with a much longer timeout",
       "Stop and report the repeated error",
-      "Raise the step limit"
+      "Raise the step limit and continue"
      ],
      "ans": 1,
      "why": "Repeating the same failure shows no progress. Stop and report instead of burning budget on blind retries."
@@ -1096,9 +1096,9 @@
     "check": {
      "q": "Which task best justifies an agent loop over a fixed pipeline?",
      "opts": [
-      "Nightly copy of one table with the same steps",
+      "Copying one table every night through the same five known steps",
       "Debugging a failing job where each finding decides the next check",
-      "Sending a daily report from a template"
+      "Sending a daily report that fills the same template with fresh numbers"
      ],
      "ans": 1,
      "why": "A loop earns its cost when the next step depends on what the last step found. Fixed, known steps are cheaper and more predictable as a pipeline."
@@ -1251,10 +1251,10 @@
     "check": {
      "q": "An agent keeps making the same mistake. What is the harness engineering response?",
      "opts": [
-      "Reword the prompt more firmly",
+      "Reword the prompt more firmly and add capital letters for emphasis",
       "Change the environment so the mistake cannot happen",
-      "Switch to a bigger model and hope",
-      "Ask the agent to try harder"
+      "Switch to a bigger model and expect it to stop by itself",
+      "Ask the agent to promise it will check its work next time"
      ],
      "ans": 1,
      "why": "Harness engineering changes the surroundings, such as tools, checks and limits, so the mistake becomes impossible rather than merely discouraged."
@@ -1605,10 +1605,10 @@
     "check": {
      "q": "An agent rushes and cuts corners late in a long session. Which fix targets the cause?",
      "opts": [
-      "Tell it to be careful in the prompt",
+      "Tell it in the prompt to slow down and be careful",
       "Give it a fresh context for each sub-task",
-      "Increase its retry count",
-      "Remove the checklist"
+      "Raise its retry count so it can try each step again",
+      "Remove the checklist so it has less to keep track of"
      ],
      "ans": 1,
      "why": "Rushing happens as the context fills up. A fresh context per sub-task removes the cause structurally."
@@ -1879,9 +1879,9 @@
     "check": {
      "q": "Which instruction gives the AI helper the clearest idea of success?",
      "opts": [
-      "Be accurate and thorough",
+      "Be accurate and thorough in every part",
       "Quote the log line that proves the cause",
-      "Try your best on this one"
+      "Try your very best and double-check it all"
      ],
      "ans": 1,
      "why": "It names something you can check. Adjectives like accurate or thorough cannot be verified; a quoted line either exists or it does not."
@@ -2008,9 +2008,9 @@
     "check": {
      "q": "Why wrap the pasted log in its own context tag?",
      "opts": [
-      "It makes the prompt shorter",
+      "It makes the prompt shorter, so each call costs fewer tokens",
       "It helps the model separate your instructions from the data",
-      "It forces the answer to be valid JSON"
+      "It forces the answer to come back as valid JSON every time"
      ],
      "ans": 1,
      "why": "Tags mark where instructions end and data begins. They do not shorten the prompt or guarantee JSON; that is the job of the output format part."
@@ -2104,7 +2104,7 @@
       }
      },
      {
-      "say": "Then validate it. Check every field is present and that confidence is one of the three allowed words.",
+      "say": "Many providers can now force the reply to match a schema. That guarantees the shape, not the truth. So still validate it. Check every field is present, and that the evidence line really appears in the log.",
       "show": {
        "t": "points",
        "title": "Validate",
@@ -2140,9 +2140,9 @@
     "check": {
      "q": "A reply fails validation. What is the best next step?",
      "opts": [
-      "Retry in a loop until it passes",
+      "Retry in a loop until the reply finally passes it",
       "Send the validation error back to the model once",
-      "Ignore the field and continue"
+      "Drop the failing field and carry on without it"
      ],
      "ans": 1,
      "why": "The specific error guides a fix. A single retry caps cost; unbounded loops waste money and may never succeed, so escalate after that."
@@ -2150,7 +2150,8 @@
     "work": [
      "Add schema validation between every model call and the code that reads it.",
      "Cap retries at one and log the validation error.",
-     "Route repeated failures to a human queue or alert."
+     "Route repeated failures to a human queue or alert.",
+     "Where the provider offers schema-enforced output, turn it on, and keep your own checks on the values."
     ],
     "part": "2 of 2"
    },
@@ -3981,11 +3982,11 @@
      }
     ],
     "check": {
-     "q": "Why does the consultant analogy say to keep the folder small and relevant?",
+     "q": "Why does the consultant story say to keep the folder small and relevant?",
      "opts": [
-      "Because the consultant only knows what is in the folder, and extra noise hides the key facts",
-      "Because the consultant remembers last week's meetings anyway",
-      "Because longer folders are always rejected"
+      "The consultant knows only the folder, and noise hides the key facts",
+      "The consultant recalls last week anyway, so repeats are wasted pages",
+      "A long folder is refused at the door, so nothing in it gets read"
      ],
      "ans": 0,
      "why": "The model knows only what it sees in the prompt, so noise can bury the facts that matter and missing definitions force guesses."
@@ -4123,9 +4124,9 @@
     "check": {
      "q": "Which prompt layout gives the best chance of cache hits?",
      "opts": [
-      "Current question first, then instructions and schema",
+      "The current question first, then the instructions, tools and schema",
       "Instructions, tools and schema first, current question last",
-      "Schema in the middle, shuffled each call"
+      "The schema in the middle, with tools in a new order on each call"
      ],
      "ans": 1,
      "why": "Caches match an identical prefix, so stable material must come first and changing material last."
@@ -4246,9 +4247,9 @@
     "check": {
      "q": "Cache hits vanish after a release that put the request time at the top of the system prompt. Why?",
      "opts": [
-      "The model forgot the instructions",
+      "The model forgot the instructions once a date sat above them",
       "The prefix now differs on every call, so nothing matches",
-      "Timestamps are blocked by caches"
+      "Caches refuse any prompt that has a time or a date inside it"
      ],
      "ans": 1,
      "why": "Caches need an identical prefix. A value that changes each call at the top makes every prefix unique."
@@ -4401,9 +4402,9 @@
     "check": {
      "q": "You have five thousand tables and a text-to-SQL assistant. What is the best default?",
      "opts": [
-      "Paste every table into every prompt",
+      "Paste every table into every prompt, since the window is large enough to hold them",
       "Retrieve the relevant tables, and attach governed definitions and sample rows",
-      "Remove all definitions to save tokens"
+      "Send table names only and drop all definitions and sample rows to save tokens"
      ],
      "ans": 1,
      "why": "Retrieval keeps the prompt small and relevant, cuts cost per call, and a semantic layer keeps meanings consistent."

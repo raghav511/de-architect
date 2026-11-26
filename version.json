@@ -1,7 +1,7 @@
 {
-  "version": "1.49.2",
+  "version": "1.49.3",
   "date": "2026-11-26",
   "notes": [
-    "What is new, 26 November: a streaming sink into Lakebase Postgres, Snowflake's new default refresh mode for dynamic tables, bad rows caught at load in Snowflake, a BigQuery API that old Spark and Trino connectors must leave, lineage that names who a change breaks, and Claude Opus 4.5 retiring in January. Each item has a short lab to try."
+    "Reel review (AI 1, the loop, harness, context and prompts, 15 reels): one turn can ask for several tools, so cap tool calls as well as turns; schema-enforced output guarantees the shape, not the values, so still validate; 12 quick checks evened out so the right answer is not the longest."
   ]
 }
