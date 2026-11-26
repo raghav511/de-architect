@@ -1,7 +1,7 @@
 {
-  "version": "1.49.1",
-  "date": "2026-11-22",
+  "version": "1.49.2",
+  "date": "2026-11-26",
   "notes": [
-    "What is new, 22 November: a hijacked agent library on PyPI and how to pin and sandbox agents, dbt Charts answering in Claude and ChatGPT through MCP, Claude computer use for teams, per-customer billing for model calls, and Claude's text watermark on more models. Each item has a short lab to try."
+    "What is new, 26 November: a streaming sink into Lakebase Postgres, Snowflake's new default refresh mode for dynamic tables, bad rows caught at load in Snowflake, a BigQuery API that old Spark and Trino connectors must leave, lineage that names who a change breaks, and Claude Opus 4.5 retiring in January. Each item has a short lab to try."
   ]
 }
