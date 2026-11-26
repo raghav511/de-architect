@@ -1,48 +1,66 @@
 {
- "updated": "2026-11-22",
+ "updated": "2026-11-26",
  "note": "Refreshed every week by the program's research task. Each item says what changed, why it matters to a data engineer or architect, and how to test the claim yourself.",
  "items": [
   {
-   "title": "Microsoft's agent-framework package on PyPI was hijacked to steal cloud and CI credentials",
-   "summary": "On 17 November 2026 two malicious releases, 1.26.1 and 1.26.2, of Microsoft's Agent Framework Python package were published to PyPI. A .pth file ran a credential stealer at Python start-up, even without an import, looking for Azure, AWS, GitHub, Docker, Hugging Face and OpenAI secrets and asking for Azure managed identity and CI OIDC tokens. PyPI quarantined both within minutes; 1.26.0 is the clean release.",
-   "why": "Agent frameworks run where the keys are: next to warehouse credentials, CI tokens and model API keys. An architect pins exact versions with hashes, installs agents in a sandbox with only the secrets that task needs, and treats a new release of an agent library like a new database driver: reviewed before it reaches a pipeline.",
-   "try": "In projects/ai-foundations, pin requirements.txt with hashes (pip-compile --generate-hashes or pip hash) and run lab1_loop.py with only the one environment variable it needs; list every other secret the process could read and how you would remove it.",
-   "url": "https://www.bleepingcomputer.com/news/security/microsofts-agent-framework-pypi-package-compromised-to-steal-credentials/",
-   "source": "BleepingComputer"
+   "title": "Databricks: a native Lakebase Postgres sink for Spark Structured Streaming is generally available",
+   "summary": "On 23 November 2026 Databricks announced general availability of a built-in sink that writes Structured Streaming output straight into Lakebase (its managed Postgres) with one writeStream call, on Databricks Runtime 18 LTS and above. It handles batching, retries, connection reuse and upserts on a declared key, in micro-batch and Real-Time Mode; on serverless only the AvailableNow trigger runs. Writing to an outside PostgreSQL through a Unity Catalog connection is still in public preview.",
+   "why": "The usual way to feed a serving database from a stream is a hand-written foreachBatch writer, which is where duplicate rows after a retry come from. A sink that upserts by key moves that risk into the platform, but the questions stay yours: what the key is, what happens to late and out-of-order rows, and how much write load Postgres can take.",
+   "try": "In module 5's streaming lab, rerun the exactly-once-after-a-crash exercise and write down which key makes the sink's write idempotent; then say what would go wrong with an append-only sink after the same crash.",
+   "url": "https://www.databricks.com/blog/announcing-general-availability-native-lakebase-postgres-sink-spark-structured-streaming",
+   "source": "Databricks blog",
+   "mid": "s08",
+   "sec": "8.3"
   },
   {
-   "title": "dbt Charts answers questions with charts inside Claude and ChatGPT through an MCP server (beta)",
-   "summary": "dbt Labs' November update makes dbt Charts available in Claude and ChatGPT through an MCP server (beta), drawing on the dbt semantic layer; dbt reports 20 to 50% fewer tokens than having the assistant build a dashboard from scratch, on its own benchmark. dbt State gets a free plan and Beta cost attribution tables on Snowflake.",
-   "why": "The chat assistant is becoming a front end for the governed metric layer. The architect's job is to make sure the MCP tool can only read certified metrics, so the chart in a chat window matches the dashboard, and to measure the token saving on your own questions rather than the vendor's.",
-   "try": "Extend labs/lab9_mcp_server.py with a fourth tool, get_metric(name, grain), that only answers from a fixed list of certified SQL definitions, then compare tokens per answer in lab5_evals.py against letting the agent write the SQL with run_sql.",
-   "url": "https://www.getdbt.com/blog/whats-new-in-dbt-november-2026",
-   "source": "dbt Labs blog",
-   "mid": "s04",
-   "sec": "4.9"
+   "title": "Snowflake: new dynamic tables with the default refresh mode now resolve to ADAPTIVE",
+   "summary": "From 20 November 2026, a dynamic table created with the default REFRESH_MODE = AUTO resolves to ADAPTIVE when its query supports incremental refresh, and to FULL otherwise; before, it resolved to INCREMENTAL. Existing tables keep the mode they already have. To keep plain incremental refresh, without adaptive reinitialization, set REFRESH_MODE = INCREMENTAL yourself.",
+   "why": "A changed default is a behaviour change nobody wrote in a pull request: two tables with the same SQL, created a week apart, can now refresh differently and cost differently. State the refresh mode in code, and check what a table actually resolved to before you promise a freshness or a credit number.",
+   "try": "In 8.4, list which of your module 4 models you would make dynamic tables, and for each write the refresh mode you would set explicitly and why; then find the one whose query could not refresh incrementally.",
+   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-20-dynamic-tables-auto-resolves-to-adaptive",
+   "source": "Snowflake release notes",
+   "mid": "s08",
+   "sec": "8.4"
   },
   {
-   "title": "Claude computer use reaches Team and Enterprise plans (beta)",
-   "summary": "From 20 November 2026, Claude's computer use is available in beta on Team and Enterprise plans, in the new Claude Desktop experience and on web and mobile where Computer access is turned on by an admin. It is rolling out gradually.",
-   "why": "An agent that drives screens reaches the tools that have no API: old BI tools, vendor consoles, admin pages. That is also the least auditable path. Prefer an API or MCP tool, keep screen control for read-only checks, and make sure an admin decides which teams can turn it on.",
-   "try": "In lab10_oncall.py, list each action the on-call agent takes and mark whether it has an API or tool path or would need screen control; for every screen-only action, write the approval step and the audit line you would require.",
-   "url": "https://support.claude.com/en/articles/18483812-set-up-computer-use-for-team-and-enterprise-plans",
-   "source": "Claude Help Center"
+   "title": "Snowflake: COPY INTO and Snowpipe enforce CHECK constraints and log rejected rows (GA)",
+   "summary": "Generally available since 19 November 2026: COPY INTO and Snowpipe now enforce a table's CHECK constraints and reject rows that break them. With error logging turned on for the table (ALTER TABLE ... SET ERROR_LOGGING = TRUE) and ON_ERROR = CONTINUE, rejected CSV, JSON and Parquet rows go to the table's error table with the error and usually the source record, so they can be fixed and reloaded in SQL. Tables without CHECK constraints or error logging behave as before.",
+   "why": "This is a dead-letter queue and a contract check at the loading step, built into the warehouse. It catches bad rows before they reach a model, but only the rules you can write as a row-level CHECK: volume drops, late files and duplicates still need the tests from 9.2 and the write, audit, publish step.",
+   "try": "Take the contract you wrote in 9.3 and mark each rule as either a row-level CHECK the loader could enforce or a table-level test it cannot; in module 5's lab, compare with what your dead-letter queue keeps for each bad record.",
+   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-19-copy-snowpipe-error-logging-check-constraints-ga",
+   "source": "Snowflake release notes",
+   "mid": "s09",
+   "sec": "9.3"
   },
   {
-   "title": "Claude API: linked billing lets your customers pay for the Claude usage in your app (beta)",
-   "summary": "Since 17 November 2026, an app built on the Claude API can bill a customer's own Claude organization for the usage it causes, with a beta header and a billing_policy field on the Messages request. Customers set spend caps or unlink in the Console; it works only where the customer's organization pays Anthropic directly.",
-   "why": "Who pays for tokens becomes a per-request decision, not a contract clause. For an internal data platform the same idea is showback: tag every model call with the team that caused it, so cost per successful task can be charged back and capped per team.",
-   "try": "Add a team field to each call in harness/trace.py, run lab7_optimise.py for two pretend teams, and report tokens and cost per team and per successful task; set a cap and show the run that would be refused.",
-   "url": "https://platform.claude.com/docs/en/manage-claude/oauth-apps/organization-billing-connections",
-   "source": "Claude Platform docs"
+   "title": "BigQuery Storage API v1beta1 is deprecated; Spark, Beam and Trino connectors need the v1 API",
+   "summary": "On 25 November 2026 Google deprecated the BigQuery Storage API v1beta1. Since 20 November it is restricted to projects that used it between 1 March and 31 August 2026, and it shuts down fully on 31 August 2027, after which calls fail with NOT_FOUND. The release note says to move to the backward-compatible v1 API and to update connectors, naming the Spark BigQuery connector, the Apache Beam connector, the Trino plugin and the Simba JDBC and ODBC drivers.",
+   "why": "Most teams never call this API by name: an old connector jar pinned in a Spark job does. Deprecations like this are found by an inventory of connector versions, not by reading code, and the nine-month window is the time to schedule the upgrade instead of meeting it during an incident.",
+   "try": "For the batch path you built in module 7, list every connector and driver with its pinned version and who owns the upgrade; in 7.8, add the BigQuery read path to your map of the same design on Google Cloud.",
+   "url": "https://docs.cloud.google.com/bigquery/docs/release-notes",
+   "source": "BigQuery release notes",
+   "mid": "s07",
+   "sec": "7.8"
   },
   {
-   "title": "Claude's text watermark now covers Opus 4.6, Opus 4.5, Sonnet 4.5 and Haiku 4.5",
-   "summary": "Since 16 November 2026 the text watermark applies to more Claude models on supported platforms. Requests that set a non-default temperature, top_p or top_k may come back without it. A beta organization webhook also reports when a customer-managed encryption key fails or recovers.",
-   "why": "When LLM output lands in tables (summaries, extracted fields, generated docs), provenance matters for audit and for training data later. Do not rely on a watermark alone: store the model, prompt version and request id beside every generated column, and alert on the key events that would stop the pipeline.",
-   "try": "In lab3_prompts.py, write each generated answer to DuckDB with model, prompt hash, sampling settings and request id columns, then query which rows would be missing a watermark because of their sampling settings.",
-   "url": "https://platform.claude.com/docs/en/build-with-claude/text-watermark",
-   "source": "Claude Platform docs"
+   "title": "Databricks: impact analysis in Unity Catalog lineage (beta)",
+   "summary": "Since 23 November 2026, Unity Catalog lineage can show the downstream assets that depend on a table or a column, each with an impact level and its owner (beta). Genie Code can summarize the result and export the owners to a CSV file.",
+   "why": "Before you drop or rename a column, the question is who breaks and who to tell. Lineage that answers with owners turns a schema change from a guess into a list of people; it is only as complete as the lineage captured, so jobs that read files directly or run outside the platform will be missing.",
+   "try": "In O3's lab, run the lineage exercise for one column you would rename and write the notice you would send to each downstream owner; then name one consumer that column-level lineage would not see.",
+   "url": "https://docs.databricks.com/aws/en/release-notes/product/2026/november#impact-analysis-in-unity-catalog-lineage-beta",
+   "source": "Databricks release notes",
+   "mid": "o03",
+   "sec": "O3.5"
+  },
+  {
+   "title": "Claude Opus 4.5 is deprecated; API retirement on 22 January 2027",
+   "summary": "On 23 November 2026 Anthropic deprecated Claude Opus 4.5 (claude-opus-4-5-20251101 and the claude-opus-4-5 alias), with retirement from the Claude API set for 22 January 2027; the notes recommend moving to Claude Opus 5.5. The same notes launch Enterprise Frontier Safeguards in beta: zero data retention for eligible organizations on the most capable models, with encrypted copies kept in a bucket in the customer's own cloud account.",
+   "why": "A model id in a pipeline is a dependency with an end date. A gateway that maps a route name to a model, plus a golden-set eval gate, makes a retirement a config change you can test; a model id written into twenty jobs makes it a migration project with a deadline someone else chose.",
+   "try": "In A6's lab, change the model behind one gateway route and rerun the regression gate exercise; note which golden-set cases you would add before trusting a new model on your own prompts.",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "source": "Claude Platform release notes",
+   "mid": "a06",
+   "sec": "A6.6"
   }
  ]
 }
