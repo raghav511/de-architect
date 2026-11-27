@@ -2168,7 +2168,7 @@
       }
      },
      {
-      "say": "No. Reasoning means extra tokens written before the answer. Tokens cost money and add seconds of waiting. For diagnosing a failed task or designing a pipeline, that is worth it. For reformatting a date, it is waste.",
+      "say": "No. Reasoning means extra tokens written before the answer. Those thinking tokens are billed as output, the expensive side, and they add seconds of waiting. For diagnosing a failed task or designing a pipeline, that is worth it. For reformatting a date, it is waste.",
       "show": {
        "t": "scene",
        "title": "Reasoning has a *price*",
@@ -2248,11 +2248,11 @@
     "check": {
      "q": "Why split classify, summarise and draft a fix into separate prompts?",
      "opts": [
-      "Each step can be tested and debugged on its own",
-      "It always makes the model cheaper",
-      "The model cannot read long prompts"
+      "It always makes every model call much cheaper",
+      "Models cannot follow prompts with three tasks",
+      "Each step can be tested and debugged on its own"
      ],
-     "ans": 0,
+     "ans": 2,
      "why": "Separate steps give isolated inputs and expected outputs, so a failure points to one step. Cost may even rise, and length is not the main issue."
     },
     "work": [
@@ -2752,11 +2752,11 @@
     "check": {
      "q": "Why write the result to a file named with the date?",
      "opts": [
-      "So the file sorts nicely",
-      "So a rerun replaces the same file instead of adding a duplicate",
-      "So the model remembers yesterday"
+      "So a rerun overwrites that day's file, with no duplicate",
+      "So the model can recall yesterday's report on its own",
+      "So the scheduler knows which day it should run again"
      ],
-     "ans": 1,
+     "ans": 0,
      "why": "A dated name gives the job a fixed target per day. Running it twice leaves one file, which is what idempotent output means."
     },
     "work": [
@@ -2865,15 +2865,15 @@
       }
      },
      {
-      "say": "Two more traps. Alerts only fire if the job fails loudly, so a model returning empty or wrong text passes silently. Check the output's shape before saving it.",
+      "say": "Two more traps. Alerts only fire if the job fails loudly, so a model returning empty or wrong text passes silently. Check the output's shape before saving it. And a GitHub schedule in a public repo is switched off after sixty days without activity, so a quiet job can simply stop.",
       "show": {
        "t": "points",
        "title": "Silent failures",
        "items": [
-        "Alerts need a loud failure",
         "Empty or wrong text still exits clean",
-        "Validate length and format before saving",
-        "Fail the job if the check fails"
+        "Validate the output, then fail the job",
+        "Public repo quiet for 60 days: schedule off",
+        "Alert when the daily output is missing"
        ]
       }
      },
@@ -2938,17 +2938,17 @@
     "check": {
      "q": "A scheduled prompt job returns an empty string and exits with code zero. What happens with basic failure alerts?",
      "opts": [
-      "An alert fires",
-      "Nothing fires, so you need an output check that fails the job",
-      "The scheduler retries automatically"
+      "An alert fires because empty text counts as an error",
+      "The scheduler retries until the text is not empty",
+      "Nothing fires unless an output check fails the job"
      ],
-     "ans": 1,
+     "ans": 2,
      "why": "Failure alerts react to errors or nonzero exits. Bad content that exits cleanly slips through, so validate the output and fail on purpose."
     },
     "work": [
      "Add a check that fails the job on empty or malformed model output.",
      "Test idempotency by running the job twice and counting rows or files.",
-     "Scan git history for keys and rotate any that appear."
+     "Alert when today's output is missing, so a schedule that stopped is noticed."
     ]
    },
    {
@@ -3062,9 +3062,9 @@
     "check": {
      "q": "Which case best justifies moving from a GitHub Actions schedule to Airflow?",
      "opts": [
-      "One prompt runs once a day",
-      "Many jobs depend on each other and need backfills and retries",
-      "You want the job to be free"
+      "One prompt runs daily and you want a nicer interface",
+      "Many jobs depend on each other and need backfills",
+      "You want the daily job to cost nothing at all to run"
      ],
      "ans": 1,
      "why": "Airflow earns its overhead when you must manage dependencies, backfills and per-task retries. A single daily job is cheaper to run on a simple schedule."
@@ -3174,11 +3174,11 @@
     "check": {
      "q": "In the taxi picture, which three things decide what you pay?",
      "opts": [
+      "Only the time of day you send it",
       "Words in, words out, and model size",
-      "Only the time of day",
-      "Only how many users you have"
+      "Only how many users you have signed up"
      ],
-     "ans": 0,
+     "ans": 1,
      "why": "Cost is input tokens plus output tokens, multiplied by the price of the model you chose."
     },
     "work": [
@@ -3490,12 +3490,12 @@
     "check": {
      "q": "Which change cuts cost most for a question about one customer?",
      "opts": [
-      "Retrieve only that customer's rows",
-      "Add please to the prompt",
-      "Ask the model to repeat the table first"
+      "Move to a model with a larger window",
+      "Ask the model to repeat the table first",
+      "Retrieve only that customer's rows"
      ],
-     "ans": 0,
-     "why": "Sending only relevant data shrinks input by orders of magnitude. Repeating input adds expensive output."
+     "ans": 2,
+     "why": "Sending only relevant data shrinks input by orders of magnitude. A larger window only lets you pay for more input, and repeating input adds expensive output."
     },
     "work": [
      "Replace one full-table or full-log paste with a retrieval step.",
@@ -3597,14 +3597,15 @@
       }
      },
      {
-      "say": "Also, the cache expires after five minutes without a hit. Traffic that arrives every ten minutes pays the write price each time, and a write costs more than a normal call.",
+      "say": "Also, the cache expires after five minutes without a hit. Traffic that arrives every ten minutes pays the write price each time. A one hour cache fixes that, but its write costs double. And a prefix below the minimum size, roughly five hundred to a thousand tokens depending on the model, is silently never cached.",
       "show": {
        "t": "points",
-       "title": "Expiry trap",
+       "title": "Expiry and size traps",
        "items": [
         "Five minute life, refreshed by each hit",
         "Gaps over five minutes mean a new write",
-        "A write costs 1.25 times normal"
+        "One hour cache: write costs 2 times",
+        "Too short a prefix: never cached"
        ]
       }
      },
@@ -3620,16 +3621,17 @@
     "check": {
      "q": "A request ID is placed at the top of the system prompt, before a long document. What happens to caching?",
      "opts": [
-      "It still hits, since the document is identical",
-      "It misses every call, because the prefix differs from the first token",
-      "It hits, but costs double"
+      "It misses every call, since the prefix now differs",
+      "It still hits, since the document itself is identical",
+      "It hits every call, but each read costs double"
      ],
-     "ans": 1,
+     "ans": 0,
      "why": "Caching needs an identical prefix. A changing ID early on makes every prefix unique, so nothing is reused."
     },
     "work": [
      "Move timestamps, IDs and user text to the end of your prompts.",
-     "Log cache_read_input_tokens on every call and alert when it is zero."
+     "Log cache_read_input_tokens on every call and alert when it is zero.",
+     "Match the cache lifetime to how often the same prefix really returns."
     ],
     "part": "1 of 2"
    },
@@ -3690,11 +3692,11 @@
     "check": {
      "q": "Why does a long agent loop get expensive faster than the turn count suggests?",
      "opts": [
+      "The model charges more for each later turn number",
       "Each turn re-sends the growing history as input",
-      "The model charges more per turn number",
-      "Output is always free in loops"
+      "Output tokens are counted twice inside any loop"
      ],
-     "ans": 0,
+     "ans": 1,
      "why": "Every turn includes earlier messages, so total input tokens grow roughly with the square of the turns."
     },
     "work": [
@@ -3781,12 +3783,12 @@
       }
      },
      {
-      "say": "Batch APIs are discounted but slow, so use them for nightly backfills, never for a user waiting. Caching only pays when the same prefix returns often. For a one-off prompt, skip it.",
+      "say": "Batch APIs cost about half, but results can take hours, so use them for nightly backfills, never for a user waiting. Caching only pays when the same prefix returns often. For a one-off prompt, skip it.",
       "show": {
        "t": "points",
        "title": "When to use what",
        "items": [
-        "Batch: nightly, non-urgent work",
+        "Batch: half price, nightly work",
         "Cache: same prefix, many calls",
         "Neither: one-off, urgent prompts"
        ]
@@ -3805,10 +3807,10 @@
      "q": "A small model is 60 percent cheaper but fails 40 percent of tasks, each needing a large-model retry. What should you do?",
      "opts": [
       "Use it everywhere, since each call is cheaper",
-      "Measure cost per successful task before routing to it",
-      "Remove the eval to save tokens"
+      "Drop the eval, since running it costs tokens",
+      "Measure cost per successful task before routing"
      ],
-     "ans": 1,
+     "ans": 2,
      "why": "Retries and failures can cancel the saving. Compare cost per correct result on an eval before switching."
     },
     "work": [

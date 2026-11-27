@@ -244,11 +244,11 @@
     "check": {
      "q": "You loop over a file once, then loop over the same file object again. What happens in the second loop?",
      "opts": [
-      "It starts again from the first line",
       "It does nothing, because the file is already used up",
-      "It raises an error right away"
+      "It starts again from the first line of the file",
+      "It raises an error, because the file was closed"
      ],
-     "ans": 1,
+     "ans": 0,
      "why": "A file is its own iterator, like a belt. After one full pass it is at the end, so the second loop gets StopIteration at once and runs zero times, with no error."
     },
     "work": [
@@ -420,11 +420,11 @@
     "check": {
      "q": "For it = iter([10, 20]), what does the third call to next(it) do?",
      "opts": [
-      "Returns None",
-      "Returns 10 again",
-      "Raises StopIteration"
+      "Returns None quietly",
+      "Raises StopIteration",
+      "Returns 10 once more"
      ],
-     "ans": 2,
+     "ans": 1,
      "why": "After two values the iterator is exhausted. The next call raises StopIteration, which is the signal a for loop uses to end."
     },
     "work": [
