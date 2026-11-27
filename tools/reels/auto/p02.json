@@ -231,9 +231,9 @@
     "check": {
      "q": "In Python, what is the difference between writing to_upper and writing to_upper with brackets?",
      "opts": [
-      "Nothing, they mean the same",
-      "The name alone holds the function; brackets run it now",
-      "The name alone runs it; brackets store it"
+      "They mean the same thing in Python",
+      "The name holds it; brackets run it",
+      "The name runs it; brackets store it"
      ],
      "ans": 1,
      "why": "The bare name is the function object itself, like holding the recipe card. Brackets call it and give you the result, like cooking the meal."
@@ -450,9 +450,9 @@
     "check": {
      "q": "After f = to_upper, what does f point to?",
      "opts": [
-      "A copy of the function's code",
-      "The same function object as to_upper",
-      "The string returned by to_upper"
+      "A brand new copy of the function code",
+      "The same object that to_upper names",
+      "The string that to_upper returns"
      ],
      "ans": 1,
      "why": "Assignment copies the reference. Both names refer to one function object, and nothing is called until you add brackets."
@@ -569,8 +569,8 @@
     "check": {
      "q": "You build three lambdas in a for loop that each return i. Why do they all return the last value?",
      "opts": [
-      "Lambdas can only return the last number",
-      "Each lambda looks up i when it runs, not when it was made",
+      "Lambdas can only return the final number",
+      "Each one reads i when called, not made",
       "The loop deletes the earlier lambdas"
      ],
      "ans": 1,
@@ -707,9 +707,9 @@
     "check": {
      "q": "You need to upper-case a column in a large Spark job. What should you choose first?",
      "opts": [
-      "A Python UDF, because it is flexible",
-      "The built-in F.upper, so Spark can optimise it",
-      "A loop over collected rows in Python"
+      "A Python UDF, as it is the most flexible",
+      "Built-in F.upper, which Spark optimises",
+      "A Python loop over all collected rows"
      ],
      "ans": 1,
      "why": "Built-ins run inside the engine and are optimised. A Python UDF moves every row between the engine and Python workers, which costs time at scale."
@@ -858,9 +858,9 @@
     "check": {
      "q": "What does a comprehension do?",
      "opts": [
-      "Builds a new collection from a pile by keeping, transforming and skipping items",
-      "Deletes items from the original pile",
-      "Sorts the pile in place"
+      "Builds a new collection from an old one",
+      "Deletes the skipped items from the old pile",
+      "Sorts the original pile in place, fast"
      ],
      "ans": 0,
      "why": "It reads items from an iterable, optionally filters them, and produces a new collection. The original is untouched."
@@ -985,9 +985,9 @@
     "check": {
      "q": "You only need the total of all fares. Which is best?",
      "opts": [
-      "sum of a list comprehension",
+      "sum over a full list comprehension",
       "sum of a generator expression",
-      "a set comprehension then sum"
+      "sum of a set comprehension"
      ],
      "ans": 1,
      "why": "A generator feeds sum one value at a time, so no full list is built. A set would also drop duplicate fares and give a wrong total."
@@ -1031,7 +1031,7 @@
       }
      },
      {
-      "say": "Also, a generator can be read only once. Sum it, then try again, and you get zero. And a dictionary comprehension silently keeps the last trip when two share an id.",
+      "say": "Also, a generator can be read only once. Sum it, then try again, and you get zero. And a dictionary comprehension silently keeps the last trip when two share an id. One more: since Python 3.12, comprehensions run inline, with no hidden function call, yet the loop variable still never leaks out.",
       "show": {
        "t": "scene",
        "title": "Two *silent* traps",
@@ -1078,8 +1078,8 @@
     "check": {
      "q": "Two trips share the same id. What does a dict comprehension keyed by id do?",
      "opts": [
-      "Raises a KeyError",
-      "Keeps the first trip",
+      "Raises a KeyError on the clash",
+      "Keeps the first trip it saw",
       "Keeps the last trip silently"
      ],
      "ans": 2,
@@ -1322,10 +1322,10 @@
     "check": {
      "q": "In the coffee shop story, what causes the second customer to see the first customer's order?",
      "opts": [
-      "The customer forgot to write their name",
-      "The pre-filled box points to one notepad shared by all",
-      "The shop has too many customers",
-      "The notepad is too small"
+      "The customer forgot to write a name",
+      "One shared notepad is pre-filled",
+      "The shop has far too many customers",
+      "The notepad has run out of pages"
      ],
      "ans": 1,
      "why": "The default is created once and reused, so every call that skips the box uses the same notepad."
@@ -1501,10 +1501,10 @@
     "check": {
      "q": "When is the default value in a Python function signature evaluated?",
      "opts": [
-      "On every call",
-      "Once, when the function is defined",
+      "On every single call",
+      "Once, at definition",
       "Only on the first call",
-      "When the function returns"
+      "When the call returns"
      ],
      "ans": 1,
      "why": "Python evaluates defaults at definition time and stores them, so a mutable default is one shared object."
@@ -1623,10 +1623,10 @@
     "check": {
      "q": "Why is \"if not batch: batch = []\" a worse guard than \"if batch is None\"?",
      "opts": [
-      "It is slower",
-      "It replaces a caller's own empty list, so their list never fills",
-      "It raises a TypeError",
-      "It only works with tuples"
+      "It is slower than an is check",
+      "It swaps a caller's empty list",
+      "It raises a TypeError on lists",
+      "It only works when given tuples"
      ],
      "ans": 1,
      "why": "An empty list is falsy, so not batch swaps it for a new list and the caller's object is never updated."
@@ -1756,10 +1756,10 @@
     "check": {
      "q": "Which choice best prevents shared-state bugs and option sprawl across a large codebase?",
      "opts": [
-      "Code review comments only",
-      "A lint rule for mutable defaults plus typed config objects",
-      "Using global variables instead",
-      "Passing everything through kwargs"
+      "Code review comments alone",
+      "Lint rule plus typed configs",
+      "Global variables for options",
+      "Pass everything through kwargs"
      ],
      "ans": 1,
      "why": "Automated linting catches the trap consistently, and typed config objects make options explicit and reviewable."
@@ -1969,8 +1969,8 @@
      "q": "What is a closure?",
      "opts": [
       "A function that cannot be called twice",
-      "A function that keeps the outer function's values after the outer one has returned",
-      "A function that closes a file automatically"
+      "Inner function keeping outer values",
+      "A function that closes files by itself"
      ],
      "ans": 1,
      "why": "A closure is an inner function plus the enclosing values it uses, kept alive after the outer function finishes."
@@ -2175,9 +2175,9 @@
     "check": {
      "q": "After make_multiplier(2) returns, where does the value 2 live?",
      "opts": [
-      "In a global variable",
-      "In a cell attached to the inner function",
-      "It is gone and recomputed each call"
+      "In a module global",
+      "In a cell on mul",
+      "Recomputed per call"
      ],
      "ans": 1,
      "why": "Because the inner function uses k, Python keeps it in a cell tied to that function, so it outlives the outer call."
@@ -2289,9 +2289,9 @@
     "check": {
      "q": "Three lambdas built in a loop each return i, and all return the last value. Why?",
      "opts": [
-      "Each lambda copied i at creation",
-      "They all share one captured variable i, read when called",
-      "Lambdas cannot use loop variables"
+      "Each lambda copied i when it was built",
+      "They share one i, read when called",
+      "Lambdas can never use loop variables"
      ],
      "ans": 1,
      "why": "Closures capture the variable itself, not a snapshot. By call time the loop has finished, so every lambda sees the final i."
@@ -2489,9 +2489,9 @@
     "check": {
      "q": "A Spark job captures a 2 GB dictionary in a mapped function. What is the best fix?",
      "opts": [
-      "Make the function a closure with nonlocal",
-      "Broadcast the dictionary so each worker gets one shared copy",
-      "Increase the number of tasks"
+      "Rewrite it as a closure with nonlocal",
+      "Broadcast it once to every worker",
+      "Raise the number of tasks in the job"
      ],
      "ans": 1,
      "why": "Captured values are serialized into every task. A broadcast variable sends the data once per worker instead of once per task."
@@ -2698,8 +2698,8 @@
      "q": "What does a key function do in sorted?",
      "opts": [
       "Turns each item into the value used for comparing",
-      "Deletes items that do not match",
-      "Sorts the list in place and returns None"
+      "Removes the items that do not match the rule",
+      "Sorts the list in place and gives back None"
      ],
      "ans": 0,
      "why": "The key maps each item to the value Python compares. It does not filter, and sorted returns a new list rather than changing the old one."
@@ -2861,9 +2861,9 @@
     "check": {
      "q": "In key=lambda t: (t[\"city\"], -t[\"fare\"]), when is fare looked at?",
      "opts": [
-      "Always, before city",
+      "Always, and before the city is compared",
       "Only when two cities are equal",
-      "Never, because it is negative"
+      "Never, because the fare is negative"
      ],
      "ans": 1,
      "why": "Tuples compare slot by slot, so the second value only matters when the first values tie."
@@ -3076,8 +3076,8 @@
     "check": {
      "q": "Which choice best fits sorting a table too big for memory?",
      "opts": [
-      "Use sorted with itemgetter",
-      "Sort twice with stability",
+      "Use sorted with itemgetter on the full list",
+      "Sort the list twice, relying on stability",
       "Push the order by to the database or Spark"
      ],
      "ans": 2,
@@ -3188,9 +3188,9 @@
     "check": {
      "q": "What does a decorator do to the function it is placed on?",
      "opts": [
-      "Deletes it and replaces it with new logic",
+      "Deletes it and puts new logic in its place",
       "Wraps it, adding behaviour around the original",
-      "Makes it run faster automatically"
+      "Compiles it so that it runs faster on each call"
      ],
      "ans": 1,
      "why": "A decorator surrounds the original function with extra behaviour, like a case on a phone, without editing the function itself."
@@ -3444,9 +3444,9 @@
     "check": {
      "q": "What does functools.wraps fix?",
      "opts": [
-      "It makes the wrapper run faster",
-      "It copies the original name and docstring onto the wrapper",
-      "It lets the wrapper skip returning a value"
+      "It makes the wrapper run faster on every call",
+      "It copies the original name and docstring across",
+      "It lets the wrapper skip returning the result"
      ],
      "ans": 1,
      "why": "Without it the decorated function reports itself as wrapper in logs, tracebacks and task names; wraps preserves the original metadata."
@@ -3480,7 +3480,7 @@
       }
      },
      {
-      "say": "But they hide behaviour. A retry decorator on a function that charges a card can charge twice unless the function is idempotent, meaning safe to repeat. Stacked decorators run in order, and the order changes meaning: retry outside timing measures all attempts.",
+      "say": "But they hide behaviour. A retry decorator on a function that charges a card can charge twice unless the function is idempotent, meaning safe to repeat. Stacked decorators wrap from the bottom up, and the order changes meaning: timing outside retry measures all attempts together, while retry outside timing times each attempt on its own.",
       "show": {
        "t": "scene",
        "title": "Hidden *behaviour*",
@@ -3563,14 +3563,14 @@
      }
     ],
     "check": {
-     "q": "Why is stacking order of decorators important?",
+     "q": "With @retry(3) written above @timed, what does the timer measure?",
      "opts": [
-      "Python rejects the wrong order",
-      "Each layer wraps the next, so order changes what each one sees, such as what retry covers when timing",
-      "Only the top decorator ever runs"
+      "All three attempts added up as a single total",
+      "Each attempt on its own, since retry wraps timing",
+      "Nothing, because Python runs only the top decorator"
      ],
      "ans": 1,
-     "why": "Decorators nest. A retry outside a timer times all attempts together; inside, it times each attempt separately."
+     "why": "Decorators apply from the bottom up, so @timed wraps f first and @retry wraps that. Retry is the outer layer and calls the timed function once per attempt, so each attempt is timed on its own. Put @timed on top to measure all attempts together."
     },
     "work": [
      "Audit retry decorators and confirm the wrapped functions are idempotent.",
@@ -3755,9 +3755,9 @@
     "check": {
      "q": "Why is a calculator-style step safer in a pipeline that gets rerun?",
      "opts": [
-      "It runs faster",
+      "It runs faster than any other kind of step",
       "Running it again changes nothing outside it",
-      "It uses less memory"
+      "It keeps every row it has seen in memory"
      ],
      "ans": 1,
      "why": "A pure step only returns an answer from its inputs. Rerunning it cannot leave behind extra changes, so retries are safe."
@@ -4067,9 +4067,9 @@
     "check": {
      "q": "A Spark task fails and is retried. Your function increments a global counter. What happens?",
      "opts": [
-      "The counter is incremented only once",
-      "The counter may be incremented more than once for the same row",
-      "Spark blocks the retry"
+      "The counter goes up only once, as Spark dedupes it",
+      "The counter may go up more than once for the same row",
+      "Spark sees the global and refuses to retry the task"
      ],
      "ans": 1,
      "why": "Retries rerun your function on the same data. Side effects such as counters or API calls then repeat, which is why impure steps are unsafe."
@@ -4199,9 +4199,9 @@
     "check": {
      "q": "You need reference data from an API for each row. What is the best design?",
      "opts": [
-      "Call the API inside the transform for every row",
-      "Fetch the data once as a table, join it in a pure step, write with an upsert",
-      "Store the response in a global dict as you go"
+      "Call the API inside the transform for each row",
+      "Fetch it once as a table, join, upsert the write",
+      "Cache each response in a global dict as you go"
      ],
      "ans": 1,
      "why": "Fetching at the edge keeps the transform pure and retry-safe. An upsert on a key makes the final write idempotent."

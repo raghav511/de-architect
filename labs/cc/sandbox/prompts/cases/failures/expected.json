@@ -1,0 +1,5 @@
+{
+  "f1.log": {"category": "bad_data", "must_mention": ["decimal comma", "parse_amount"], "retry_helps": false},
+  "f2.log": {"category": "late_upstream", "must_mention": ["vendor", "never arrived"], "retry_helps": true},
+  "f3.log": {"category": "not_idempotent", "must_mention": ["already inserted", "upsert"], "retry_helps": false}
+}

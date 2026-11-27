@@ -166,7 +166,70 @@ const FIGS = (() => {
     ] };
   };
 
-  const DEF = { isolation: iso, pages, scans, bplus, shard, deadlock: dead, replication: repl, wal };
+  /* 9. Claude Code 13: a pipeline prompt built part by part, and what each part changes in the answer */
+  const promptparts = () => {
+    const parts = [['Role', 'on-call DE, for standup', C.bl, C.blL], ['Context + why', 'retries reload the whole day', C.pl, C.plL], ['Task', 'what failed, why, next step', C.te, C.teL], ['Constraints', 'quote the line, else unknown', C.am, C.amL], ['Examples', '3 tagged, one "all fine"', C.pl, C.plL], ['Output format', 'JSON schema, enforced', C.te, C.teL]];
+    const st = (n, ans, o = {}) => {
+      let s = T(16, 22, 'system prompt (stable, cacheable)', { a: 'start', b: 1, fs: 12, c: C.mu }) + B(12, 30, 300, 6 * 30 + 8, '', { dash: !n, s: C.ln });
+      parts.slice(0, n).forEach((p, i) => { s += B(18, 36 + i * 30, 288, 26, '', { f: p[3], s: p[2], sw: i === n - 1 ? 2.5 : 1.2 }) + T(26, 53 + i * 30, p[0], { a: 'start', b: 1, fs: 12, c: p[2] }) + T(130, 53 + i * 30, p[1], { a: 'start', fs: 11.5 }); });
+      s += T(16, 238, 'user message', { a: 'start', b: 1, fs: 12, c: C.mu }) + B(12, 244, 300, 22, o.input || 'Review this failure log: {log}', { mono: 1, fs: 11.5, f: o.input ? C.amL : C.bg, s: o.input ? C.am : C.ln });
+      s += A(320, 140, 352, 140, C.mu) + B(360, 30, 268, 200, '', { f: ans[1], s: ans[2], sw: 2 }) + T(494, 52, ans[0], { b: 1, fs: 13, c: ans[2] });
+      ans[3].forEach((l, i) => { s += T(372, 80 + i * 22, l, { a: 'start', fs: 12, mono: ans[4] }); });
+      if (o.check) s += B(360, 238, 268, 28, o.check, { fs: 12, f: C.teL, s: C.te });
+      return s;
+    };
+    const vague = ['Answer: a long, polite essay', C.amL, C.am, ['"The task failed for several', 'possible reasons. It might be', 'the network, the data or the', 'scheduler. Consider retrying."', '', 'No verdict, no evidence,', 'and retry may make it worse.']];
+    return { title: 'A pipeline prompt, part by part', steps: [
+      [st(0, vague), 'A bare request. Nobody is there to clarify, so Claude fills every gap with a guess: a long, careful answer with no verdict and no evidence.'],
+      [st(1, ['Answer: right reader, still vague', C.amL, C.am, ['"For standup: ingest_orders failed.', 'Cause unclear; maybe data or', 'network. Suggest a retry."']]), 'Role: who is speaking and for whom. The tone and length fit a standup, but the cause is still a guess.'],
+      [st(2, ['Answer: knows what a retry costs', C.amL, C.am, ['"ingest_orders failed on bad', 'data. A retry reloads everything', 'and will fail the same way."']]), 'Context with the reason: facts Claude cannot know (a retry reloads the whole day) and why they matter. It now avoids the expensive wrong advice.'],
+      [st(4, ['Answer: one job, with proof', C.teL, C.te, ['cause: decimal comma in', '  parse_amount (DE rows)', 'evidence: "ValueError: could not', '  convert string to float: \'1.234,50\'"', 'next: fix the parser, then rerun']]), 'Task and constraints: one outcome, a quoted log line as proof, and "unknown" allowed when the log does not show the cause. Adjectives like "be accurate" change little; criteria change a lot.'],
+      [st(5, ['Answer: the house style', C.teL, C.te, ['Same judgement on new logs,', 'including "nothing to fix" when', 'a run only warns. Examples teach', 'format and judgement together.']]), 'Examples: three to five real cases in <example> tags, including one where the right answer is "nothing wrong", or Claude learns that every log has a problem.'],
+      [st(6, ['Answer: JSON a program can read', C.teL, C.te, ['{"category": "bad_data",', ' "evidence": "ValueError: ...",', ' "retry_helps": false,', ' "next_step": "fix parse_amount"}'], 1]), 'Output format: a JSON schema enforced by the API (or claude -p --json-schema). The schema guarantees the shape, not the truth.'],
+      [st(6, ['Answer: checked before it is used', C.teL, C.te, ['{"category": "bad_data",', ' "evidence": "ValueError: ...",', ' "retry_helps": false, ...}'], 1], { input: '<log>{400 lines}</log> + question', check: 'code checks: the evidence is in the log' }), 'The stable parts sit in the system prompt (and can be cached); the changing log goes in the user message, in tags, before the question. Code then checks the evidence really appears in the log before anyone acts on it.']
+    ] };
+  };
+
+  /* 10. Claude Code 14: an LLM step that is idempotent, cached and batched */
+  const llmstep = () => {
+    const rows = [['T1', 'a1f3', 'done'], ['T2', '9c07', 'done'], ['T3', '4be2', 'new'], ['T4', 'e810', 'new'], ['T5', '77d9', 'changed']];
+    const tbl = (hl) => T(16, 22, 'new rows tonight', { a: 'start', b: 1, fs: 12, c: C.mu }) + rows.map((r, i) => { const skip = hl && r[2] === 'done'; return B(12, 30 + i * 34, 170, 28, r[0] + '  hash ' + r[1], { mono: 1, fs: 11.5, f: skip ? C.teL : hl && r[2] !== 'done' ? C.amL : C.bg, s: skip ? C.te : hl && r[2] !== 'done' ? C.am : C.ln }) + (hl ? T(190, 49 + i * 34, skip ? 'skip: same key' : r[2] === 'changed' ? 'text changed' : 'to do', { a: 'start', fs: 11.5, c: skip ? C.te : C.amD }) : ''); }).join('');
+    const req = (on) => ['T3', 'T4', 'T5'].map((id, i) => B(300, 40 + i * 44, 150, 34, '', { s: on ? C.bl : C.ln }) + B(304, 44 + i * 44, 92, 26, 'rules + examples', { fs: 10.5, f: on === 'cache' ? C.teL : C.blL, s: on === 'cache' ? C.te : C.bl }) + B(400, 44 + i * 44, 46, 26, id, { mono: 1, fs: 11, f: C.amL, s: C.am })).join('') + T(375, 32, 'requests: prefix + one ticket', { b: 1, fs: 11.5, c: C.bl });
+    const out = (order, err) => T(540, 32, 'results, any order', { b: 1, fs: 11.5, c: C.pl }) + order.map((id, i) => B(480, 40 + i * 44, 140, 34, id + '-' + { T3: '4be2', T4: 'e810', T5: '77d9' }[id] + (err === id ? ' errored' : ' ok'), { mono: 1, fs: 11, f: err === id ? C.reL : C.plL, s: err === id ? C.re : C.pl })).join('');
+    const note = (s, c) => B(12, 214, 616, 48, s, { fs: 12.5, f: c ? c[0] : C.amL, s: c ? c[1] : C.am });
+    return { title: 'An LLM step you can rerun: key, cache, batch, join', steps: [
+      [tbl() + note('Tonight\'s rows. Some were labelled last night; one ticket\'s text was edited since.'), 'An LLM step is a transform that bills per row. Before calling anything, decide which rows really need a call.'],
+      [tbl(1) + note('Key = (ticket id, hash of the text, prompt version, model). Same key as a stored result: skip. A crash and rerun costs nothing.', [C.teL, C.te]), 'Idempotent by key: rows already done with the same key are skipped; a changed text gets a new hash and is labelled again.'],
+      [tbl(1) + req(1) + A(264, 110, 296, 110, C.bl) + note('Each request: the long stable prefix (rules, labels, examples) first, the one changing ticket last.'), 'Build requests with the stable rules and examples first and the ticket last, so the prefix is identical for every request.'],
+      [tbl(1) + req('cache') + A(264, 110, 296, 110, C.bl) + note('Prompt caching: the identical prefix is read from the cache at about a tenth of the input price. Check cache_read_input_tokens.', [C.teL, C.te]), 'Prompt caching: mark the end of the prefix with cache_control; requests after the first read it from the cache for a fraction of the price.'],
+      [tbl(1) + req('cache') + A(454, 110, 476, 110, C.pl) + out(['T5', 'T3', 'T4']) + note('Nobody is waiting, so send them as one batch: half price, most done within an hour. Results come back in any order.'), 'Message Batches API: half the price for work nobody waits for. Results arrive in any order, so position means nothing.'],
+      [tbl(1) + req('cache') + A(454, 110, 476, 110, C.pl) + out(['T5', 'T3', 'T4'], 'T4') + note('Join results by custom_id (ticket id + hash). Store the successes; resubmit only the errored or expired ones in a new batch.', [C.reL, C.re]), 'Join by custom_id, never by position. Partial failure is normal: resubmit only what errored or expired, and the key stops anything being done twice.']
+    ] };
+  };
+
+  /* 11. Claude Code 15: brief an artifact, steer it with specific feedback, check the numbers, then share */
+  const artifactloop = () => {
+    const say = (title, lines, c) => B(12, 30, 250, 180, '', { f: c[1], s: c[0] }) + T(24, 52, title, { a: 'start', b: 1, fs: 13, c: c[0] }) + lines.map((l, i) => T(24, 78 + i * 22, l, { a: 'start', fs: 12 })).join('');
+    /* the dashboard as Claude draws it: o.top = chart above table, o.axis = labelled axis, o.users = the user-report count, o.bad = that count is wrong */
+    const page = o => {
+      let s = B(300, 20, 328, 230, '', { s: C.ln }) + T(316, 40, 'Reliability, October', { a: 'start', b: 1, fs: 13 });
+      [['incidents', '24'], ['found by users', o.users], ['median detect', '18 min']].forEach((k, i) => { const bad = o.bad && i === 1; s += B(312 + i * 104, 50, 96, 44, '', { f: bad ? C.reL : C.blL, s: bad ? C.re : C.bl, sw: bad ? 2.5 : 1.5 }) + T(360 + i * 104, 70, k[1], { b: 1, fs: 14, c: bad ? C.re : C.ink }) + T(360 + i * 104, 87, k[0], { fs: 10.5, c: C.mu }); });
+      const chart = y => { let c = T(316, y + 12, 'minutes to detect, by who caught it', { a: 'start', fs: 11, c: C.mu }); [['users', 172, C.re], ['row check', 36, C.ln], ['freshness', 14, C.ln], ['alert', 7, C.ln]].forEach((b, i) => { c += T(380, y + 32 + i * 18, b[0], { a: 'end', fs: 10.5 }) + `<rect x="386" y="${y + 23 + i * 18}" width="${Math.max(3, b[1] * 1.3)}" height="12" fill="${o.axis ? (b[2] === C.re ? C.re : '#B8BFC6') : C.bl}"/>`; }); if (o.axis) c += T(612, y + 95, '0 to 180 min', { a: 'end', fs: 10, c: C.mu }); return c; };
+      const table = y => B(312, y, 304, 40, 'table: the five slowest detections', { fs: 11.5, f: '#F8F9F5' });
+      s += o.top ? chart(102) + table(204) : table(104) + chart(150);
+      return s;
+    };
+    return { title: 'An artifact, briefed, steered and checked', steps: [
+      [say('The brief: four lines', ['Reader: platform lead, deciding', '  where to add checks', 'Data: incidents.csv, compute from it', 'Message: users find our worst', '  incidents first', 'Shape: 3 numbers, 1 chart, 1 table'], [C.bl, C.blL]), 'The brief decides the first draft: who reads it and what they decide, the data to compute from, the one message, and the shape.'],
+      [say('First draft', ['Fast, plausible, cluttered.', 'The message is buried under', 'the table, and every bar is', 'the same colour.'], [C.am, C.amL]) + page({ users: '8', top: 0, axis: 0 }) + A(266, 120, 296, 120, C.mu), 'The first draft arrives in a minute. It looks finished, which is exactly why you read it as critically as a diff.'],
+      [say('Feedback 1: one change, with why', ['"Move the detection chart', 'above the table; it carries', 'the message."'], [C.te, C.teL]) + page({ users: '8', top: 1, axis: 0 }) + A(266, 120, 296, 120, C.te), 'Specific feedback lands: what, where and why, one thing per message. "Make it nicer" gets a random redesign.'],
+      [say('Feedback 2', ['"Colour only the users bar;', 'grey the rest. Label the', 'axis in minutes from 0."'], [C.te, C.teL]) + page({ users: '8', top: 1, axis: 1 }) + A(266, 120, 296, 120, C.te), 'The second round sharpens the message: one highlighted bar, an honest axis starting at zero.'],
+      [say('Check the numbers', ['Your own count from the CSV:', '  found by users = 6', 'The page says 8.', 'Ask for the calculation; fix', '  that one figure.'], [C.re, C.reL]) + page({ users: '8', top: 1, axis: 1, bad: 1 }), 'Check every headline number against the data yourself. A plausible wrong number is the costliest kind: point to it, ask for the calculation, and fix it.'],
+      [say('Then share', ['Numbers match the CSV.', 'The query is kept with it.', 'Share a private link with', 'the lead for comments first.'], [C.te, C.teL]) + page({ users: '6', top: 1, axis: 1 }), 'Only now share it: artifacts start private to you, so send the link to the reader for comments before it goes wider, and keep the query for next month.']
+    ] };
+  };
+
+  const DEF = { isolation: iso, pages, scans, bplus, shard, deadlock: dead, replication: repl, wal, promptparts, llmstep, artifactloop };
   const cache = {};
   function build(name) {
     const f = cache[name] || (cache[name] = DEF[name] && DEF[name]());

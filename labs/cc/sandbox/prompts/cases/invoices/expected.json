@@ -1,0 +1,5 @@
+{
+  "inv1.txt": {"vendor": "Nordlicht Verpackung GmbH", "invoice_number": "NL-2026-0912", "invoice_date": "2026-11-03", "due_date": "2026-12-03", "currency": "EUR", "net_total": 1234.50, "total": 1469.06},
+  "inv2.txt": {"vendor": "Harbour Freight Lines Ltd", "invoice_number": "A-7731", "invoice_date": "2026-11-05", "due_date": "2026-12-05", "currency": "GBP", "net_total": null, "total": 3125.20},
+  "inv3.txt": {"vendor": "Quill & Ledger Advisory LLP", "invoice_number": "Q-1180", "invoice_date": "2026-11-06", "due_date": null, "currency": "INR", "net_total": null, "total": 197400.00}
+}

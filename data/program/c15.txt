@@ -1,0 +1,243 @@
+@@meta
+id: c15
+n: 15
+title: Apps, decks and documents with Claude: artifacts, feedback that lands, and small apps shipped safely
+goal: Use Claude to make the things a data engineer shows other people (a dashboard page, a review deck, a design document) from real data with numbers you have checked, and build and ship a small app with Claude Code through plan mode, tests first and small pull requests.
+hours: 2
+
+@@tickets
+C1501 | learn | 0.75 | Lesson: artifacts and iteration, decks and documents from data, and shipping a small app | You can brief Claude for an artifact, steer it with specific feedback, check every number against the data, and run the plan, test, small-PR loop for an app. | chapter
+C1502 | ai | 0.75 | Practise: a reliability dashboard, a review deck and a tiny app from the incidents data | Your page and deck show numbers that match the CSV, and your app ships in two small commits with tests. | lab
+C1503 | test | 0.5 | Test: 3 graded tasks | Every task graded 4/5 or better. | cc
+C1504 | test | 0.33 | Quiz C15 | 80% or better. | quiz
+
+@@readings
+- **In this app.** Each note says what a source teaches, in short; the chapter has everything the labs, quiz and interview need. Tap ⓘ to read the original on its own site.
+- **Reading note: Artifacts.** An artifact is something Claude makes that you would put in front of someone: a page, a deck, a document, a dashboard or a small tool. It opens beside the chat, starts private to you, can be edited by talking to Claude or directly, and can be shared. Templates include Docs, Slides (export to PowerPoint or PDF), Design and Data; Claude Code can publish one too. [ⓘ](https://support.claude.com/en/articles/17153992-what-are-artifacts-and-how-do-i-use-them)
+- **Reading note: Claude Code best practices.** Explore, plan, then code; give Claude a way to verify its work (tests, a screenshot); keep changes small and reviewable; clear context between tasks. [ⓘ](https://code.claude.com/docs/en/best-practices)
+- **Reading note: Common workflows.** Plan mode (Shift+Tab until the status bar shows plan mode) reads and proposes without editing until you approve; then write tests, implement, and make a pull request. [ⓘ](https://code.claude.com/docs/en/common-workflows)
+
+@@chapter
+## C15.1 Artifacts: brief it, then steer it
+
+An **artifact** is something Claude makes that you would show someone: a web page, a dashboard, a deck, a document, a small interactive tool. It opens beside the chat, starts private to you, updates as you talk, and can be shared when it is ready. In claude.ai you can start from a template in the Artifacts tab (Docs, Slides, Design, Data) or simply ask; Claude Code can publish one from a session too (a pull-request walkthrough, a dashboard built from the session's data).
+
+**The brief decides the first draft.** Four lines do most of the work:
+
+| Line | Example |
+|---|---|
+| **Who reads it and what they decide** | "For the data platform lead, to decide where to add checks next quarter." |
+| **The data** | Attach `incidents.csv`; "compute every number from this file". |
+| **The one message** | "Users find our worst incidents before our checks do." |
+| **The shape** | "One page: three numbers at the top, one chart by how incidents were caught, a table of the five slowest detections." |
+
+<div data-fig="artifactloop"></div>
+
+**Feedback that lands is specific and one step at a time.** "Make it nicer" gets a random redesign. Say what, where and why:
+
+- "Move the detection-time chart above the table; it carries the message."
+- "Label the axis in minutes and start it at 0."
+- "Colour only the user-report bar; grey the rest."
+
+In a document you can highlight the passage, choose Edit with Claude and type the change, so you do not have to describe where it is. For a direction you are unsure of, edit an earlier message to branch the chat instead of piling changes on top.
+
+**Check every number.** A model that is asked for "a dashboard" will happily draw plausible bars. Ask it to compute from the attached file and to show the calculation (or the query) next to each figure, then spot-check two numbers yourself. A wrong number in a slide in front of your director costs more than the hour the artifact saved.
+
+### Under the hood
+
+An artifact is code or a document Claude writes (HTML, a slide file, Markdown) and the app renders. It is regenerated or edited each round, so an unrequested change can slip in: compare versions before you share, the way you review a diff.
+
+### Common traps
+
+- Ten changes in one message: half are missed, and you cannot tell which.
+- Pasting customer data to make it look real; use aggregates or a masked sample (Claude Code 6).
+- Sharing before you have checked the numbers or who can open the link.
+
+## C15.2 Decks and documents from data
+
+The deck or document is a **story about data**, so build it in the order a good analyst would:
+
+1. **Message first.** One sentence per slide, written as a claim ("6 of 24 incidents were found by users, and they took about 10 times longer to detect than our checks"), not a topic ("Incidents").
+2. **Outline, then slides.** Ask for the outline as five lines and fix it before any slide exists. Changing a line costs seconds; rebuilding a deck costs minutes.
+3. **Charts from the file.** Give the CSV or the query result; ask for each chart's source (the column and the calculation) in the speaker notes.
+4. **Check against the source.** Recompute two numbers yourself (a pivot, one SQL query). Keep the query with the deck so next month's version is the same calculation.
+5. **Export** where people will read it: Slides artifacts export to PowerPoint or PDF.
+
+**Documents.** A design document or a decision memo has a stable shape; give it to Claude so the output is reviewable:
+
+```
+<shape>
+1. Context (3 sentences)   2. The decision we need   3. Options with cost and risk (a table)
+4. Recommendation and why  5. What we will measure     6. Open questions
+</shape>
+Write a decision memo from my notes in <notes>. Mark anything you inferred rather than read with [check].
+```
+
+The `[check]` marker matters: it turns invented details into a visible to-do list instead of confident prose.
+
+**A data engineer's set:** a monthly reliability review deck from the incident log; a migration design document from your notes and the cost table from Claude Code 14; a one-page data contract for a producer team; a runbook from an incident timeline.
+
+### Under the hood
+
+Claude writes slides and charts as code or structured content, and the numbers in them come either from computing over the data you attached or from the model's own text. Only the first is evidence, which is why you ask for the calculation next to the figure and keep the source query.
+
+### Common traps
+
+- Topic titles: the reader has to work out the message themselves.
+- A beautiful chart of the wrong measure (average when the median tells the story).
+- No source for next month: a new deck that quietly computes things differently.
+
+## C15.3 Ship a small app with Claude Code
+
+A small app (an internal page, a data dictionary viewer, a cost calculator) is where Claude Code saves the most time and where unchecked speed hurts most. Claude Code 1 gave you explore, plan, code, commit; Claude Code 4 the test-first habit; Claude Code 11 parallel work. This is the loop that ties them together for an app:
+
+1. **A ten-line spec.** Who uses it, the three things it must do, what it must never do (no secrets in the browser, read-only data), and how you will know it works.
+2. **Plan mode.** Press Shift+Tab until the status bar shows plan mode: Claude reads and proposes a plan without editing. Push back on anything bigger than the spec: "no framework, one HTML file and one script".
+3. **A walking skeleton.** The smallest version that runs end to end (the page loads the data and shows one number), committed.
+4. **Tests first, one feature at a time.** "Write a failing test for the cause filter, run it to see it fail, then make it pass. Do not change the test." Each feature is one small commit, one small pull request you can review in five minutes.
+5. **Check it like a user.** Run it, click through it, look at it on a phone width. Claude Code can take a screenshot with a browser tool; you still look.
+6. **Ship and watch.** A static page goes to GitHub Pages or an internal host; add one smoke test that opens the live page after each release.
+
+**Keep it small on purpose.** Each pull request does one thing and says how it was tested. A 2,000-line pull request written in ten minutes is unreviewable, and an unreviewed change is how a key ends up in the browser or a delete ends up in a read-only tool.
+
+### Under the hood
+
+Plan mode is a permission mode: the agent can read and propose but has no edit tools until you approve. Tests turn "looks done" into a check the agent can run itself, which is what lets it correct its own mistakes in the loop.
+
+### Common traps
+
+- Starting with "build me a dashboard app" and accepting the framework it picks.
+- Letting Claude change a test so it passes.
+- Secrets or API keys in front-end code: anything shipped to a browser is public.
+
+@@lab
+## Lab: a dashboard, a deck and a tiny app from one incident log (40 minutes)
+
+The data is `reports/incidents.csv` in ~/cc-sandbox (fresh copy: `bash ~/de-architect/labs/cc/new_sandbox.sh`): 24 made-up October incidents with the pipeline, severity, minutes to detect and resolve, the cause and what caught it.
+
+1. **Check the data yourself first** (2 minutes): `python3 -c "import csv,collections as c; r=list(csv.DictReader(open('reports/incidents.csv'))); print(len(r), c.Counter(x['caught_by'] for x in r))"`. Note two numbers you will check later.
+2. **Dashboard artifact.** In claude.ai (or Claude Code), attach the CSV and use the four-line brief from C15.1 for a one-page reliability dashboard. Give three rounds of feedback, each specific and about one thing. Ask for the calculation behind each headline number.
+3. **Check it.** Compare the dashboard's numbers with yours. If one is wrong, say exactly which and why, and fix it.
+4. **Deck.** Ask for a five-slide monthly reliability review: first the outline as five claim titles, then the slides, with each chart's source in the speaker notes. Export it if your plan has Slides.
+5. **Tiny app with Claude Code.** In ~/cc-sandbox, write `app/SPEC.md` (ten lines: a static page that loads the CSV and filters incidents by cause and pipeline). Use plan mode, then a walking skeleton, then one feature with a test first. Make two small commits on a branch (`git switch -c incident-viewer`), each with a message saying how it was tested.
+
+@@quiz
+TYPE: mcq
+TAG: ai
+Q: Your first dashboard draft is fine but cluttered. Which feedback is most likely to land?
+A) Make it look nicer, more modern and more professional all over the page
+B) Move the detection-time chart above the table; it carries the message
+C) Redo the whole page in a completely different and fresh style
+D) Add more charts so that the page looks complete and thorough
+ANS: B
+WHY: Specific, one change, with the reason. Vague feedback gets a random redesign.
+---
+TYPE: mcq
+TAG: ai
+Q: The dashboard says 8 incidents were found by users; your own count from the CSV says 6. What next?
+A) Trust the dashboard, since it was computed by the model from the file
+B) Point to the exact number, ask for the calculation, fix it, and recheck
+C) Remove the number from the page so nobody can notice the gap
+D) Regenerate the whole dashboard from scratch and hope the number changes
+ANS: B
+WHY: Ask for the calculation and correct the specific figure; a guessed number is not evidence.
+---
+TYPE: mcq
+TAG: ai
+Q: Which slide title follows the message-first rule?
+A) Incidents in October, by how they were caught
+B) Users found 6 of 24 incidents, 10x slower than checks
+C) Detection overview and summary of the month
+D) Slide 3: data and charts about our detection
+ANS: B
+WHY: A claim tells the reader what to conclude; a topic makes them work it out.
+---
+TYPE: mcq
+TAG: ai
+Q: Why ask Claude to mark anything it inferred with [check] in a decision memo?
+A) It makes the memo shorter and easier for leaders to read in a hurry
+B) Inferred details become a visible to-do list instead of confident prose
+C) Claude cannot write a memo at all without some form of marker in the text
+D) It turns on a stricter, more careful mode inside the model for that memo
+ANS: B
+WHY: It separates what was read from the notes from what was guessed, so you review the guesses.
+---
+TYPE: mcq
+TAG: ai
+Q: What does plan mode do in Claude Code?
+A) It writes the code much faster by skipping all of the tests in the project
+B) Claude reads and proposes a plan, and makes no edits until you approve
+C) It deploys the app to a staging server for you once it has finished
+D) It hides the diff from you so the review step goes much faster
+ANS: B
+WHY: Plan mode removes edits until you approve the plan, so you can steer early.
+---
+TYPE: mcq
+TAG: ai
+Q: Claude Code built your viewer in one 2,000-line change and all tests pass. What is the risk?
+A) None, since passing tests prove every line of the change is correct
+B) Nobody can review it well, so a leaked key or a write path can slip through
+C) The app will certainly be slow, because large changes are slower to run
+D) GitHub refuses any pull request that is over 1,000 lines in size
+ANS: B
+WHY: Small pull requests are reviewable; tests cover only what they check.
+---
+TYPE: fill
+TAG: ai
+Q: In Claude Code, press Shift+____ until the status bar shows plan mode.
+ANS: Tab|tab
+WHY: Shift+Tab cycles the permission modes, plan mode among them.
+---
+TYPE: short
+TAG: ai
+Q: Write the four-line brief you would give Claude for a one-page reliability dashboard from the incident log.
+MODEL: Reader and decision: the data platform lead, deciding where to add checks next quarter. Data: the attached incidents.csv; compute every number from it and show the calculation. Message: users find our worst incidents before our checks do (6 of 24, detected about 10 times slower than by our checks). Shape: one page, three headline numbers, one chart of detection time by how incidents were caught, a table of the five slowest detections, nothing else.
+
+@@interview
+Q: How do you use AI to produce reports and decks without spreading wrong numbers?
+TAG: ai
+A: I give the model the data, not a description of it, and ask it to compute every figure from the file and show the calculation or query beside it. I write the message and the outline first, so each slide makes one checkable claim. Before sharing I recompute two or three numbers myself and keep the query with the deck so next month is the same calculation. Anything inferred is marked for review. The tool saves the layout time; the numbers still have an owner.
+---
+Q: Walk me through building a small internal tool with an AI coding agent.
+TAG: ai
+A: A ten-line spec with what it must never do, then plan mode so the agent proposes before editing, and I cut the plan down to the spec. A walking skeleton first, then one feature at a time with a failing test written first and the agent not allowed to change the test. Each feature is one small pull request I can review in minutes; I run the app myself and check it at phone width. Then a static deploy and a smoke test against the live page. No secrets in front-end code, read-only data access.
+---
+Q: A stakeholder asks for a dashboard tomorrow. How do you scope it with Claude?
+TAG: ai
+A: I ask what decision it supports, then write a four-line brief: the reader and the decision, the data source, the one message, and the shape (three numbers, one chart, one table). A first draft from Claude in minutes, three rounds of specific feedback, a check of the numbers against the source, and I share a private link with the stakeholder for comments before it goes wider. If it will be used every week, it becomes a maintained page with its query in version control.
+---
+Q: What should never be in a page or app an AI agent built for you?
+TAG: ai
+A: Secrets, because anything delivered to a browser is public: API keys, tokens, connection strings. Personal or customer data beyond what the reader may see. Write access the page does not need. Unreviewed third-party scripts. I keep keys on a server or in a gateway, give the page read-only aggregated data, and review each small pull request for these specifically.
+---
+Q: Your team wants to use AI for design documents. What guardrails do you set?
+TAG: ai
+A: A standard shape (context, decision, options with cost and risk, recommendation, measures, open questions) so documents are comparable. The author's own notes and data as the input, with inferred statements marked for checking. The author owns and signs the document; AI drafts are reviewed like any other. No confidential data pasted into tools outside our approved workspace. And a short note on how AI was used, so reviewers know what to check harder.
+
+@@tasks
+TITLE: A dashboard you steered and checked
+TASK: Do lab steps 1 to 3. Paste your four-line brief, your three feedback messages, a screenshot description or the final headline numbers, and your check of two numbers against the CSV.
+SUBMIT: the brief, the three feedback messages, the final numbers and your check.
+RUBRIC: - The brief names the reader and their decision, the data file, one message and the shape.
+- Each feedback message asks for one specific change, says where, and gives a reason.
+- The answer asked for the calculation behind headline numbers.
+- Two numbers are checked against the CSV: 24 incidents, and 6 found by user reports (or another correct pair such as 8 late_upstream incidents).
+- Any wrong number found is named and corrected, not just regenerated.
+---
+TITLE: A five-slide reliability review
+TASK: Do lab step 4. Paste the five slide titles, the speaker-note source line for each chart, and one paragraph on what you checked before you would present it.
+SUBMIT: the titles, the chart sources and your check.
+RUBRIC: - Every title is a claim, not a topic.
+- The story is supported by the data: users found 6 of 24 incidents and detection by user report took far longer (about 170 minutes on average) than by alerts or checks (7 to 36 minutes); marketing_attribution had no automated catch.
+- Each chart names its source column and calculation.
+- The check recomputes at least two numbers and keeps the query or script with the deck.
+- A recommendation follows from the data (for example freshness and schema checks on marketing_attribution).
+---
+TITLE: A tiny app in two small commits
+TASK: Do lab step 5. Paste `app/SPEC.md`, the plan Claude proposed in plan mode and what you changed in it, the test written first, and `git log --oneline` for your branch with the commit messages.
+SUBMIT: the spec, the plan and your edits, the first test, and the branch log.
+RUBRIC: - The spec is about ten lines and says what the app must never do (no secrets, read-only data).
+- Plan mode was used, and the answer shows the plan was cut down or corrected, not accepted blindly.
+- A test was written before the feature and was seen failing first; the agent was not allowed to change it.
+- Two or more small commits, each doing one thing, with messages that say how it was tested.
+- The answer says how the app would be shipped and checked after release (a static host and one smoke test).

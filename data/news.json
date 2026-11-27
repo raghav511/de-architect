@@ -43,64 +43,64 @@
    "sec": "A7.7"
   },
   {
-   "title": "Databricks Genie ZeroOps (beta): an agent that watches jobs, pipelines and tables, finds the root cause of a failure and proposes the fix",
-   "summary": "Added to the Databricks release notes on 12 November 2026 as a beta. Genie ZeroOps monitors jobs, pipelines and tables, detects failures, investigates the likely root cause and proposes a fix. In the same week Databricks extended attribute-based DENY policies to AI securables such as model, MCP, agent and skill services (beta).",
-   "why": "This is the on-call data agent from module A3 shipped as a product. The interview question moves from 'can an agent triage a failure' to 'what may it change on its own': read-only investigation is cheap to allow, while a proposed fix still needs a person, a test run and an audit trail. DENY policies on agent services are the guardrail that keeps it inside its lane.",
-   "try": "In projects/ai-foundations/labs/lab10_oncall.py, list which of the agent's tools only read and which change state. Gate every state-changing tool behind an approval step and log who approved it, then break a pipeline on purpose and check the agent proposes rather than applies.",
-   "url": "https://docs.databricks.com/aws/en/release-notes/product/2026/november#genie-zeroops-is-available-in-beta",
-   "source": "Databricks release notes",
-   "mid": "a03",
-   "sec": "A3.5"
-  },
-  {
-   "title": "Unity Catalog views readable by outside engines through the Iceberg REST catalog (beta)",
-   "summary": "Databricks release notes, 13 November 2026: external Iceberg engines can now query Unity Catalog views defined over Iceberg-compatible tables through the Iceberg REST catalog, in beta. Until now outside engines could read the tables but not the views on top of them.",
-   "why": "Views are where row filters, column selection and business logic live. If another engine can read the view instead of the raw table, you can share one governed definition across Spark, Snowflake or Trino rather than copying the logic into each engine and watching the copies drift.",
-   "try": "In the lakehouse project, write one view over the trips Iceberg table that hides a column and filters a city. Note which engines in your design would read the view and which would still need the raw table, and what that means for where you enforce access.",
-   "url": "https://docs.databricks.com/aws/en/release-notes/product/2026/november#external-access-to-views-through-the-iceberg-rest-catalog-is-in-beta",
-   "source": "Databricks release notes",
+   "title": "Databricks: a native Lakebase Postgres sink for Spark Structured Streaming is generally available",
+   "summary": "On 23 November 2026 Databricks announced general availability of a built-in sink that writes Structured Streaming output straight into Lakebase (its managed Postgres) with one writeStream call, on Databricks Runtime 18 LTS and above. It handles batching, retries, connection reuse and upserts on a declared key, in micro-batch and Real-Time Mode; on serverless only the AvailableNow trigger runs. Writing to an outside PostgreSQL through a Unity Catalog connection is still in public preview.",
+   "why": "The usual way to feed a serving database from a stream is a hand-written foreachBatch writer, which is where duplicate rows after a retry come from. A sink that upserts by key moves that risk into the platform, but the questions stay yours: what the key is, what happens to late and out-of-order rows, and how much write load Postgres can take.",
+   "try": "In module 5's streaming lab, rerun the exactly-once-after-a-crash exercise and write down which key makes the sink's write idempotent; then say what would go wrong with an append-only sink after the same crash.",
+   "url": "https://www.databricks.com/blog/announcing-general-availability-native-lakebase-postgres-sink-spark-structured-streaming",
+   "source": "Databricks blog",
    "mid": "s08",
-   "sec": "8.5"
+   "sec": "8.3"
   },
   {
-   "title": "Databricks: PostgreSQL change data capture in one pipeline, with no separate ingestion gateway (beta)",
-   "summary": "Databricks release notes, 15 November 2026: an integrated CDC pipeline for PostgreSQL is in beta. It ingests change data from PostgreSQL through a single pipeline, without the separate ingestion gateway the earlier setup needed.",
-   "why": "Log-based capture still reads the Postgres write-ahead log through a replication slot, so the old failure modes stay: a stalled consumer makes the slot hold WAL and fills the source's disk. Fewer moving parts make it easier to run, but you still own slot monitoring, initial snapshot and reconciliation.",
-   "try": "In module s06's CDC lab, stop the consumer for a few minutes while writes continue and watch the replication slot's retained WAL grow. Write the alert you would set on slot lag before trusting any managed pipeline with it.",
-   "url": "https://docs.databricks.com/aws/en/release-notes/product/2026/november#postgresql-integrated-cdc-pipeline-is-now-in-beta",
+   "title": "Snowflake: new dynamic tables with the default refresh mode now resolve to ADAPTIVE",
+   "summary": "From 20 November 2026, a dynamic table created with the default REFRESH_MODE = AUTO resolves to ADAPTIVE when its query supports incremental refresh, and to FULL otherwise; before, it resolved to INCREMENTAL. Existing tables keep the mode they already have. To keep plain incremental refresh, without adaptive reinitialization, set REFRESH_MODE = INCREMENTAL yourself.",
+   "why": "A changed default is a behaviour change nobody wrote in a pull request: two tables with the same SQL, created a week apart, can now refresh differently and cost differently. State the refresh mode in code, and check what a table actually resolved to before you promise a freshness or a credit number.",
+   "try": "In 8.4, list which of your module 4 models you would make dynamic tables, and for each write the refresh mode you would set explicitly and why; then find the one whose query could not refresh incrementally.",
+   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-20-dynamic-tables-auto-resolves-to-adaptive",
+   "source": "Snowflake release notes",
+   "mid": "s08",
+   "sec": "8.4"
+  },
+  {
+   "title": "Snowflake: COPY INTO and Snowpipe enforce CHECK constraints and log rejected rows (GA)",
+   "summary": "Generally available since 19 November 2026: COPY INTO and Snowpipe now enforce a table's CHECK constraints and reject rows that break them. With error logging turned on for the table (ALTER TABLE ... SET ERROR_LOGGING = TRUE) and ON_ERROR = CONTINUE, rejected CSV, JSON and Parquet rows go to the table's error table with the error and usually the source record, so they can be fixed and reloaded in SQL. Tables without CHECK constraints or error logging behave as before.",
+   "why": "This is a dead-letter queue and a contract check at the loading step, built into the warehouse. It catches bad rows before they reach a model, but only the rules you can write as a row-level CHECK: volume drops, late files and duplicates still need the tests from 9.2 and the write, audit, publish step.",
+   "try": "Take the contract you wrote in 9.3 and mark each rule as either a row-level CHECK the loader could enforce or a table-level test it cannot; in module 5's lab, compare with what your dead-letter queue keeps for each bad record.",
+   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-19-copy-snowpipe-error-logging-check-constraints-ga",
+   "source": "Snowflake release notes",
+   "mid": "s09",
+   "sec": "9.3"
+  },
+  {
+   "title": "BigQuery Storage API v1beta1 is deprecated; Spark, Beam and Trino connectors need the v1 API",
+   "summary": "On 25 November 2026 Google deprecated the BigQuery Storage API v1beta1. Since 20 November it is restricted to projects that used it between 1 March and 31 August 2026, and it shuts down fully on 31 August 2027, after which calls fail with NOT_FOUND. The release note says to move to the backward-compatible v1 API and to update connectors, naming the Spark BigQuery connector, the Apache Beam connector, the Trino plugin and the Simba JDBC and ODBC drivers.",
+   "why": "Most teams never call this API by name: an old connector jar pinned in a Spark job does. Deprecations like this are found by an inventory of connector versions, not by reading code, and the nine-month window is the time to schedule the upgrade instead of meeting it during an incident.",
+   "try": "For the batch path you built in module 7, list every connector and driver with its pinned version and who owns the upgrade; in 7.8, add the BigQuery read path to your map of the same design on Google Cloud.",
+   "url": "https://docs.cloud.google.com/bigquery/docs/release-notes",
+   "source": "BigQuery release notes",
+   "mid": "s07",
+   "sec": "7.8"
+  },
+  {
+   "title": "Databricks: impact analysis in Unity Catalog lineage (beta)",
+   "summary": "Since 23 November 2026, Unity Catalog lineage can show the downstream assets that depend on a table or a column, each with an impact level and its owner (beta). Genie Code can summarize the result and export the owners to a CSV file.",
+   "why": "Before you drop or rename a column, the question is who breaks and who to tell. Lineage that answers with owners turns a schema change from a guess into a list of people; it is only as complete as the lineage captured, so jobs that read files directly or run outside the platform will be missing.",
+   "try": "In O3's lab, run the lineage exercise for one column you would rename and write the notice you would send to each downstream owner; then name one consumer that column-level lineage would not see.",
+   "url": "https://docs.databricks.com/aws/en/release-notes/product/2026/november#impact-analysis-in-unity-catalog-lineage-beta",
    "source": "Databricks release notes",
-   "mid": "s06",
-   "sec": "6.2"
-  },
-  {
-   "title": "Snowflake: role grants that expire on their own (preview)",
-   "summary": "Snowflake release notes, 10 November 2026: GRANT ROLE now accepts FOR INTERVAL or UNTIL, so a role granted to a user is removed automatically when the time is up. In preview. On 16 November SHOW GRANTS TO ... INCLUDE HIERARCHY became generally available, listing grants held through every role in the hierarchy.",
-   "why": "Break-glass and incident access is the classic governance hole: someone gets a powerful role for a fix and keeps it for a year. A grant that expires by itself turns 'remember to revoke' into a default, and the hierarchy view answers the auditor's real question, what can this person reach through all their roles.",
-   "try": "Write the access policy for one dataset in module O3 again with a time-boxed incident role: who can grant it, for how long, and how you would prove afterwards it was removed. Compare with the manual revoke step you had before.",
-   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-10-temporary-role-grants-preview",
-   "source": "Snowflake release notes",
    "mid": "o03",
-   "sec": "O3.3"
+   "sec": "O3.5"
   },
   {
-   "title": "Snowflake semantic views: materializations are generally available, many-to-many relationships in preview",
-   "summary": "Snowflake release notes: on 11 November 2026 semantic view materializations became generally available; they pre-aggregate dimensions and metrics to speed up queries. On 13 November semantic views gained many-to-many relationships in preview, modelled through a bridge table or directly on non-key columns.",
-   "why": "A semantic layer is what keeps an AI agent's numbers consistent with the dashboard's. Materializations remove the 'it is correct but slow' objection, and many-to-many support matters because that is exactly where metrics double-count if the layer does not know about the bridge table.",
-   "try": "Take the pooled-trip bridge table from module s04 and write the semantic definition for revenue per rider. Check whether your definition double-counts fares on a trip with three riders, then add the weighting factor and check again.",
-   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-11-semantic-view-materializations-ga",
-   "source": "Snowflake release notes",
-   "mid": "a04",
-   "sec": "A4.3"
-  },
-  {
-   "title": "Confluent Cloud picks up rotated OAuth signing keys by itself",
-   "summary": "Confluent Cloud release notes, 16 November 2026: when a client's token carries a key ID that Kafka on Confluent Cloud does not know, it now fetches the identity provider's signing keys (JWKS) again, so rotated keys are picked up in about a second.",
-   "why": "Key rotation used to be a quiet way to take a streaming platform down: the identity provider rotates, the broker still has the old key set cached, and every producer fails authentication at once. Knowing this failure mode, and that rotation must be tested, is a good staff-level answer about Kafka security.",
-   "try": "In module s05's Kafka notes, add key rotation to your list of failures that do not look like failures: write how you would detect a burst of authentication errors from producers and what you would check first.",
-   "url": "https://docs.confluent.io/cloud/current/release-notes/index.html#november-16-2026",
-   "source": "Confluent Cloud release notes",
-   "mid": "s05",
-   "sec": "5.9"
+   "title": "Claude Opus 4.5 is deprecated; API retirement on 22 January 2027",
+   "summary": "On 23 November 2026 Anthropic deprecated Claude Opus 4.5 (claude-opus-4-5-20251101 and the claude-opus-4-5 alias), with retirement from the Claude API set for 22 January 2027; the notes recommend moving to Claude Opus 5.5. The same notes launch Enterprise Frontier Safeguards in beta: zero data retention for eligible organizations on the most capable models, with encrypted copies kept in a bucket in the customer's own cloud account.",
+   "why": "A model id in a pipeline is a dependency with an end date. A gateway that maps a route name to a model, plus a golden-set eval gate, makes a retirement a config change you can test; a model id written into twenty jobs makes it a migration project with a deadline someone else chose.",
+   "try": "In A6's lab, change the model behind one gateway route and rerun the regression gate exercise; note which golden-set cases you would add before trusting a new model on your own prompts.",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "source": "Claude Platform release notes",
+   "mid": "a06",
+   "sec": "A6.6"
   }
  ]
 }

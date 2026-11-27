@@ -1,0 +1,9 @@
+RECHNUNG / INVOICE
+Lieferant: Nordlicht Verpackung GmbH, Hamburg
+Rechnungsnummer: NL-2026-0912
+Rechnungsdatum: 03.11.2026   Faellig: 03.12.2026
+Pos 1  Kartons 40x30x20, 500 Stk     1.150,00 EUR
+Pos 2  Klebeband, 40 Rollen             84,50 EUR
+Summe netto                          1.234,50 EUR
+MwSt 19 %                              234,56 EUR
+Gesamtbetrag                         1.469,06 EUR

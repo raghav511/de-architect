@@ -1,5 +1,5 @@
 {
-  "version": "1.47.0",
+  "version": "1.50.0",
   "date": "2026-11-27",
   "notes": [
     "New module AI 7, Agent engineering: prompt, context, harness, loop and graph, with five exercises, a quiz and an interview set. It also covers what Anthropic, OpenAI, Google and xAI released from June to November 2026.",

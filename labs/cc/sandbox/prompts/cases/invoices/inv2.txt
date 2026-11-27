@@ -1,0 +1,7 @@
+INVOICE #A-7731
+From: Harbour Freight Lines Ltd, Leeds
+Date: 2026-11-05
+Ocean freight, container MSKU 204118 ........ GBP 2,980.00
+Fuel surcharge ............................... GBP   145.20
+Total due .................................... GBP 3,125.20
+Payment terms: 30 days from invoice date.
