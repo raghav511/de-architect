@@ -1,6 +1,6 @@
 /* Data Architect · DE and architect interview prep. Plain JS, no build step. */
 'use strict';
-const VERSION = '1.46.2';
+const VERSION = '1.47.0';
 const $ = (s, r = document) => r.querySelector(s);
 function el(tag, attrs, kids) {
   const e = document.createElement(tag);
@@ -752,13 +752,13 @@ function vPracticeHub() {
       el('div', { class: 'row' }, [chip(k), el('span', { class: 'grow' })]), el('b', { class: 'bt-name', text: n }), el('span', { class: 'bt-n', text: sv + ' / ' + xs.length }), el('span', { class: 's', text: d }),
       el('span', { class: 'mix', 'aria-hidden': 'true' }, mix.map((c, i) => el('i', { class: 'm' + i, style: { flex: String(Math.max(c, 1)) } }))),
       el('span', { class: 's', text: mix[0] + ' easy · ' + mix[1] + ' medium · ' + mix[2] + ' hard' })]); }));
-  const L = [['#/sim', 'Design simulator', 'sim', 'Draw, run and break a data system'], ['#/design', 'Design problems', 'pen', 'One per module, at real scale'], ['#/projects', 'Projects', 'proj', 'Build it end to end'], ['#/git', 'Git labs', 'git', '16 labs in the in-app Linux'], ['#/terminal', 'Terminal', 'term', 'A real shell in the browser'], ['#/practice/tests', 'Coding tests', 'check2', 'Timed, with hidden tests']];
+  const L = [['#/sim', 'Design simulator', 'sim', 'Draw, run and break a data system'], ['#/sim/cases', 'Case studies', 'mark', 'What broke at Discord, Stripe, Netflix, and the fix'], ['#/design', 'Design problems', 'pen', 'One per module, at real scale'], ['#/projects', 'Projects', 'proj', 'Build it end to end'], ['#/git', 'Git labs', 'git', '16 labs in the in-app Linux'], ['#/terminal', 'Terminal', 'term', 'A real shell in the browser'], ['#/practice/tests', 'Coding tests', 'check2', 'Timed, with hidden tests']];
   const build = el('section', { class: 'card pad stack' }, [el('h2', { text: 'Build and design' }), el('div', { class: 'buildlinks' }, L.map(([h, t, ic, d]) => el('a', { class: 'item', href: h }, [el('span', { class: 'bl-ic' }, svg(I[ic], 20)), el('span', { class: 'grow' }, [el('span', { class: 't', text: t }), el('br'), el('span', { class: 's', text: d })]), svg(I.fwd, 18)])))]);
   const solved = Object.keys(S.solved || {}).length;
   shell('Practice', solved + ' problems solved · reviews come back on 3, 7 and 21 days', [pTabs('home'), el('div', { class: 'grid2' }, [el('div', { class: 'stack', style: { gap: '16px' } }, [hero, rev, el('h2', { text: 'Coding' }), tiles]), el('div', { class: 'stack', style: { gap: '16px' } }, [build])])]);
 }
 function pTabs(f) { const nDue = revDue().length; const tabs = [['home', 'Practice'], ['all', 'All'], ['review', 'Review' + (nDue ? ' (' + nDue + ' due)' : '')], ['py', 'Python'], ['model', 'Module exercises'], ['dsa', 'DSA'], ['sql', 'SQL'], ['spark', 'PySpark'], ['opt', 'Optimize only'], ['tests', 'Coding tests']];
-  return el('div', { class: 'tabs', role: 'tablist' }, tabs.map(([k, n]) => el('button', { role: 'tab', 'data-f': k, 'aria-selected': String(k === f), onclick: () => { location.hash = k === 'home' ? '#/practice' : '#/practice/' + k; }, text: n }))); }
+  return el('div', { class: 'tabs pfilt', role: 'tablist' }, tabs.map(([k, n]) => el('button', { role: 'tab', 'data-f': k, 'aria-selected': String(k === f), onclick: () => { location.hash = k === 'home' ? '#/practice' : '#/practice/' + k; }, text: n }))); }
 async function vPractice(f) {
   if (!f || f === 'home') return vPracticeHub();
   const nDue = revDue().length;
@@ -1200,7 +1200,7 @@ function mergeState(a, b) {
   const sa = a.sim || {}, sb = b.sim || {}; out.sim = Object.assign({}, sa, sb, { d: Object.assign({}, sa.d || {}, sb.d || {}), done: Object.assign({}, sa.done || {}, sb.done || {}) });
   for (const id in out.sim.d) { const x = (sa.d || {})[id], y = (sb.d || {})[id]; out.sim.d[id] = !x ? y : !y ? x : (x.at || 0) > (y.at || 0) ? x : y; }
   /* exam results: the best score is kept; an open attempt keeps every hint opened on either device */
-  out.sim.taught = Object.assign({}, sa.taught || {}, sb.taught || {}); out.sim.ex = Object.assign({}, sa.ex || {}, sb.ex || {});
+  out.sim.taught = Object.assign({}, sa.taught || {}, sb.taught || {}); out.sim.cases = Object.assign({}, sa.cases || {}, sb.cases || {}); out.sim.ex = Object.assign({}, sa.ex || {}, sb.ex || {});
   for (const k in out.sim.ex) { const x = (sa.ex || {})[k], y = (sb.ex || {})[k]; if (!x || !y) continue; const l = [x.last, y.last].filter(Boolean).sort((p, q) => (q.at || 0) - (p.at || 0))[0], c = [x.cur, y.cur].filter(Boolean).sort((p, q) => (q.t0 || 0) - (p.t0 || 0))[0];
     out.sim.ex[k] = { best: Math.max(x.best == null ? -1 : x.best, y.best == null ? -1 : y.best), last: l, cur: c && Object.assign({}, c, x.cur && y.cur && x.cur.t0 === y.cur.t0 ? { lvl: Math.max(x.cur.lvl || 0, y.cur.lvl || 0), rev: Math.max(x.cur.rev || 0, y.cur.rev || 0) } : {}) }; if (out.sim.ex[k].best < 0) out.sim.ex[k].best = null; }
   /* interview loop: stories, answers and exercises merge one by one and the newer edit wins (a deleted story keeps a dated marker); the pitch and the project as a whole */

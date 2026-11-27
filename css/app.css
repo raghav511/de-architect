@@ -95,7 +95,7 @@ code{font-size:.9em;background:#EEF1EA;padding:1px 5px;border-radius:4px}
 .flow span{border-radius:9px;padding:12px 4px;text-align:center;font-weight:700;font-size:13px}
 .flow:before{content:"";position:absolute;left:10px;right:10px;top:50%;height:2px;background:var(--line2);z-index:0}
 .flow span{position:relative;z-index:1}
-.flow .dot{position:absolute;top:calc(50% - 5px);left:4%;width:10px;height:10px;border-radius:50%;background:var(--amber-b);z-index:2;animation:flow 4s linear infinite;padding:0}
+.flow .dot{position:absolute;top:-5px;left:4%;width:10px;height:10px;border-radius:50%;background:var(--amber-b);z-index:2;animation:flow 4s linear infinite;padding:0}
 @keyframes flow{0%{left:2%;opacity:0}10%{opacity:1}90%{opacity:1}100%{left:96%;opacity:0}}
 @media (prefers-reduced-motion:reduce){.flow .dot{animation:none}}
 
@@ -250,7 +250,8 @@ textarea.code{flex:1;width:100%;border:0;resize:none;padding:14px 16px;font:14px
 .wkday .s{font-size:12px;color:var(--muted)}
 .wu{font-size:12.5px;line-height:1.3;padding:3px 6px;border-radius:6px;background:#EEF2F8;color:#1E3F8F;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .wu.ok{background:var(--teal-l);color:var(--teal-d)}
-@media (max-width:860px){.wkstrip{grid-template-columns:1fr}.wkday{min-height:0}}
+@media (max-width:860px){.wkstrip{grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.wkday{min-height:56px;padding:6px 2px;align-items:center;justify-content:center;text-align:center;gap:2px}.wkday>.row{flex-direction:column;gap:0}.wkday>.row b{font-size:13px;line-height:1.2;white-space:normal}.wkday>.stack{display:none}} /* on a phone the week is one row of seven days (it was a list of seven cards, most of them empty); tap a day to open it */
+.plan .hint{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.plan .hint .grow{flex:1 1 200px}.shortday[aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:#fff}
 .grid2.wide{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
 @media (max-width:1023px){.grid2.wide{grid-template-columns:minmax(0,1fr)}}
 .item[aria-current=true]{background:var(--blue-l)}
@@ -425,6 +426,7 @@ select.btn{-webkit-appearance:none;appearance:none;padding-right:32px;background
 .profile .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .ptabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
 .ptabs button{flex:none}
+@media (max-width:860px){.pfilt{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-14px;padding-inline:14px}.pfilt::-webkit-scrollbar{display:none}.pfilt button{flex:none}} /* Practice filters: one row that scrolls sideways on a phone (ten chips wrapped into three rows above the first card) */
 @media (max-width:560px){.pquick{grid-template-columns:1fr 1fr}.pquick .qmode{grid-column:1/-1;min-height:0;flex-direction:row;align-items:center}.pquick .qmode .seg{margin:0 0 0 auto;width:auto}.profile .duo{grid-template-columns:1fr}.pquick .qa{min-height:84px}}
 /* accent colour: the teal tokens follow your pick, light and dark */
 :root[data-accent=blue]{--teal:var(--blue);--teal-d:var(--blue-d);--teal-l:var(--blue-l);--teal-xl:color-mix(in srgb,var(--blue-l) 45%,var(--card))}
@@ -913,7 +915,8 @@ svg .f{fill:none}
 .modcta{position:sticky;bottom:12px;z-index:20;display:flex;justify-content:flex-end;pointer-events:none;margin-top:4px}
 .modcta .btn{pointer-events:auto;min-height:52px;border-radius:14px;font-size:16px;font-weight:800;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .modcta .btn span{overflow:hidden;text-overflow:ellipsis}
-@media (max-width:1023px){.modcta{position:fixed;left:12px;right:12px;bottom:calc(66px + env(safe-area-inset-bottom));margin:0}.modcta .btn{flex:1;box-shadow:0 10px 26px -8px rgba(0,0,0,.35)}#page:has(.modcta){padding-bottom:80px}}
+@media (max-width:1023px){.modcta{position:fixed;left:12px;right:12px;bottom:calc(66px + env(safe-area-inset-bottom));margin:0}.modcta .btn{flex:1;box-shadow:0 10px 26px -8px rgba(0,0,0,.35)}#page:has(.modcta){padding-bottom:calc(150px + env(safe-area-inset-bottom))}body:has(.modcta:not(.away)) .fab{bottom:calc(132px + env(safe-area-inset-bottom))}}
+.modcta.away{visibility:hidden;pointer-events:none}.modcta.away .btn{pointer-events:none}
 /* ---- Redesign: quiz (tools/redesign_test.js quiz) ---- */
 .qsegs{display:flex;gap:3px;align-items:center}
 .qsegs i{flex:1;height:6px;border-radius:3px;background:var(--line2)}
@@ -1010,3 +1013,43 @@ svg .f{fill:none}
 :root .phero .avatar.big,:root .phero .avatar.big span{color:var(--hero-btn-ink);background:var(--hero-btn)}
 :root .phero .avatar.big{color:var(--hero-btn-ink)!important}
 .phero{align-items:stretch}.phero>.row{width:100%}
+
+/* Simulator, first-time pass: a first-steps card, numbered steps on the first three tabs, part-kind chips, a labelled design
+   picker, and a phone view where the canvas is as tall as its boxes and its tools sit in one row under it */
+.simintro{border-color:var(--teal);gap:8px;padding:12px 14px}.simsteps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14.5px}
+.simtabs{counter-reset:simstep}.simtabs button:nth-child(-n+3)::before{counter-increment:simstep;content:counter(simstep);display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-right:6px;border-radius:50%;background:var(--line);color:var(--ink);font-size:12px;font-weight:800}
+.simtabs button[aria-selected=true]:nth-child(-n+3)::before{background:rgba(255,255,255,.28);color:inherit}
+.simtabs button:nth-child(4){margin-left:8px}
+.simcats{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.simcats::-webkit-scrollbar{display:none}.simcats .chip{flex:none}
+.simpick{max-width:230px}
+.simstat small{white-space:nowrap}
+@media (max-width:560px){
+  .simhead .simname{flex:1 1 100%}.simpick{flex:1 1 0;max-width:none;min-width:0}
+  .simcard{height:auto;min-height:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding-bottom:8px}
+  .simcv{flex:0 0 100%;height:240px;cursor:default}
+  .simtools{position:static;flex-direction:row;padding-left:8px}.simtools .btn:nth-child(-n+5){display:none}
+  .simrun{position:static;margin-left:auto;padding-right:8px}
+  .simnode{cursor:pointer}
+}
+/* desktop: the panel is a flex column with a height limit, so its tab row (a scroll box) was squeezed to a sliver and the
+   seven tabs could not be seen or clicked; nothing in the panel may shrink. The canvas gets the room: a narrower panel, and
+   on screens under 1500 px the side menu steps aside on this page (Back is in the header). */
+.simside>*{flex-shrink:0}.simbody>*{flex-shrink:0}
+.simgrid{grid-template-columns:minmax(0,1fr) minmax(300px,340px)}
+@media (min-width:1024px) and (max-width:1499px){body:has(.simwrap) .side{display:none}body:has(.simwrap) .app{grid-template-columns:1fr}}
+@media (max-width:1023px){.simgrid{grid-template-columns:1fr}}
+.simnode text{font-size:13px}.simnode .ab{font-size:9.5px}.simnode .rp,.simnode .lg{font-size:11.5px}.simnode .rd{font-size:12px}
+@media (min-width:1024px){.simtabs{flex-wrap:wrap;overflow:visible}.simtabs button:nth-child(4){margin-left:0}}
+/* case studies (js/cases.js): a grid of cases, then one case as numbered steps with a predict-first question */
+.casegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.casecard{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r);background:var(--card);color:inherit;text-decoration:none;min-height:128px}
+.casecard:hover{border-color:var(--teal)}.casecard.done{background:var(--soft)}
+.caseco{font:800 17px var(--display)}.caset{font-weight:600;line-height:1.3}.cases{margin-top:auto;font-size:13px;color:var(--muted)}
+.casestep{gap:10px}.casehead{gap:8px}.casefix{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.caseopt{display:flex;align-items:flex-start;gap:10px;text-align:left;min-height:52px;padding:10px 12px;border:1.5px solid var(--line2);border-radius:12px;background:var(--card);cursor:pointer;font-size:15.5px;line-height:1.35;color:var(--ink)}
+.caseopt:hover:not([disabled]){border-color:var(--teal)}.caseopt[disabled]{cursor:default;opacity:1}
+.caseletter{flex:none;width:26px;height:26px;border-radius:50%;background:var(--line);display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+.caseopt.right{border-color:var(--teal);background:var(--teal-xl)}.caseopt.right .caseletter{background:var(--teal);color:#fff}
+.caseopt.wrong{border-color:var(--red);background:var(--red-l)}.caseopt.wrong .caseletter{background:var(--red);color:#fff}
+.casesay{border-color:var(--plum)}
+@media (max-width:560px){.simcaselink{flex:1 1 0}.simhead .simexp{flex:1 1 0}.simhead .simexp summary{width:100%}}

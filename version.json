@@ -1,7 +1,11 @@
 {
-  "version": "1.46.2",
-  "date": "2026-11-18",
+  "version": "1.47.0",
+  "date": "2026-11-27",
   "notes": [
-    "Tap the right side of a reel's quick check for the next reel, the left side to go back. A left tap on a reel's first moment opens the previous reel."
+    "New module AI 7, Agent engineering: prompt, context, harness, loop and graph, with five exercises, a quiz and an interview set. It also covers what Anthropic, OpenAI, Google and xAI released from June to November 2026.",
+    "Design simulator: 19 case studies from real companies (Discord, Stripe, Netflix and more). Predict what broke, read the fix, then reproduce it in a challenge.",
+    "Design simulator is easier to use: its tabs show on a desktop again, boxes are readable on a phone, and a first-steps card says what to do.",
+    "Today: one row per item, a Short on time view, and the week as one row of seven days.",
+    "Lesson pages: the Continue bar no longer covers the buttons at the end of the page."
   ]
 }
