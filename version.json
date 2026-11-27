@@ -1,7 +1,8 @@
 {
-  "version": "1.50.2",
+  "version": "1.50.3",
   "date": "2026-11-28",
   "notes": [
-    "Weekly review: AI 6 now gives the EU AI Act dates after the 2026 amendment, DE 7 says when a hard cost limit beats an alarm, and Org 4 points to the platform's own usage tables for showback."
+    "What is new: 6 items on BigQuery cost limits, Snowflake row policies, Databricks storage metrics, AWS protection for LLM and MCP endpoints, OpenSearch vectors and Anthropic's customer-owned safety storage.",
+    "AI 7, Agent engineering, now has 36 narrated reels, four levels for each of its eight sections."
   ]
 }

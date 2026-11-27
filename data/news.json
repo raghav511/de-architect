@@ -1,7 +1,67 @@
 {
- "updated": "2026-11-27",
+ "updated": "2026-11-28",
  "note": "Refreshed every week by the program's research task. Each item says what changed, why it matters to a data engineer or architect, and how to test the claim yourself.",
  "items": [
+  {
+   "title": "BigQuery: project and organisation settings can stop queries leaving a reservation for on-demand billing (GA)",
+   "summary": "On 23 November 2026 BigQuery made two settings generally available: reservation_override_mode and disable_on_demand_billing. They are set per region with ALTER PROJECT SET OPTIONS or ALTER ORGANIZATION SET OPTIONS and decide whether a query may override its reservation and run on on-demand pricing, or must stay on the reserved slots.",
+   "why": "Capacity commitments only cap the bill if nobody can step around them. This is a guardrail set once by the platform team instead of a rule in a wiki, and it is the concrete answer to an interviewer asking how you stop one team bypassing the reservation.",
+   "try": "In module 7's cost section, take the Athena-style bytes-scanned exercise and write down which control would have stopped the expensive query: a budget alert, a per-query limit or a rule that forbids on-demand. Say which of the three acts before the money is spent.",
+   "url": "https://docs.cloud.google.com/bigquery/docs/release-notes",
+   "source": "BigQuery release notes",
+   "mid": "s07",
+   "sec": "7.7"
+  },
+  {
+   "title": "Snowflake: more than one tag-based row access policy on the same table (preview)",
+   "summary": "On 23 November 2026 Snowflake released, in preview, the ability for several tag-based row access policies to apply to one table or view. They combine with AND by default; setting a policy on the tag as PERMISSIVE combines it with OR. The release note lists no limits or edition requirements.",
+   "why": "Row rules usually come from different owners: region from legal, business unit from finance. Layering independent policies through tags avoids one large policy that every team has to edit, but AND versus OR is now a design decision that can silently hide or expose rows.",
+   "try": "In Org 3's access exercise, write two row rules (region and business unit) and work out by hand which rows a user sees when they combine with AND and when they combine with OR. Note which mistake leaks data and which only hides it.",
+   "url": "https://docs.snowflake.com/en/release-notes/2026/other/2026-11-23-multiple-tag-based-row-access-policies",
+   "source": "Snowflake release notes",
+   "mid": "o03",
+   "sec": "O3.3"
+  },
+  {
+   "title": "Databricks: a system table with daily storage metrics for every managed table (GA)",
+   "summary": "On 25 November 2026 Databricks made system.storage.table_metrics_history generally available. It holds one row per Unity Catalog managed table, materialized view and streaming table per daily cycle, with active, vacuumable and time-travel bytes and file counts, kept for 13 months. Databricks pays for the collection compute; foreign and Hive metastore tables are not covered.",
+   "why": "Storage showback and finding tables that need VACUUM used to mean a custom crawler over table history. A system table turns both into a SQL query, and vacuumable bytes per table is exactly the number a cost review asks for.",
+   "try": "In module 8's Delta lab, run optimize and vacuum on the table and record active files and removable files before and after. That is the per-table number this system table gives you every day for a whole catalog.",
+   "url": "https://docs.databricks.com/aws/en/admin/system-tables/table-metrics-history",
+   "source": "Databricks documentation",
+   "mid": "o04",
+   "sec": "O4.5"
+  },
+  {
+   "title": "AWS WAF finds and protects LLM, MCP and agent-to-agent endpoints (GA)",
+   "summary": "On 23 November 2026 AWS announced that the API Gateway API Portal discovers LLM, MCP and A2A endpoints behind API Gateway, load balancers and CloudFront across an organisation from traffic logs and configuration, flagging undocumented public MCP servers. A new WAF AI Security managed rule group checks protocol compliance, blocks malformed MCP and A2A messages and can call Bedrock Guardrails for prompt injection and sensitive data. The rule group is in 7 regions; WAF and Bedrock charges apply.",
+   "why": "It adds a network layer to guardrails in layers: a check that runs before the request reaches your application, and an inventory of MCP servers nobody registered. It does not replace access checks on tools or output checks in the application.",
+   "try": "In AI 6's guardrails exercises, list each layer (input, access, action, output, audit) and mark which ones a network rule in front of the endpoint could cover and which it cannot see at all.",
+   "url": "https://aws.amazon.com/about-aws/whats-new/2026/11/waf-ai-endpoint-discovery-protection/",
+   "source": "AWS What's New",
+   "mid": "a06",
+   "sec": "A6.11"
+  },
+  {
+   "title": "Amazon OpenSearch Service supports OpenSearch 3.9: smaller vectors and an LLM judge for search relevance",
+   "summary": "On 23 November 2026 Amazon OpenSearch Service added OpenSearch 3.9. For vectors it brings a half-float type with a 16-bit encoder, 2-bit and 4-bit scalar quantization and Base64 vector ingestion. The Search Relevance Workbench gains LLM-as-a-judge scoring through model connectors, reusing earlier judgments.",
+   "why": "Vector memory is the first sizing question in a RAG design: 16 bits per dimension halves a float32 index, and 2-bit or 4-bit quantization cuts it much further at some cost in recall. A built-in judge makes it cheaper to measure that cost instead of guessing.",
+   "try": "In AI 5's lens, redo the sizing of 10 million documents with 32, 16, 4 and 2 bits per dimension, then say how you would measure the recall you gave up before choosing.",
+   "url": "https://aws.amazon.com/about-aws/whats-new/2026/11/amazon-opensearch-opensearch-3-9",
+   "source": "AWS What's New",
+   "mid": "a05",
+   "sec": "A5.9"
+  },
+  {
+   "title": "Anthropic: Enterprise Frontier Safeguards (beta) keeps sealed safety copies in the customer's own bucket",
+   "summary": "On 23 November 2026 Anthropic launched Enterprise Frontier Safeguards in beta. Eligible organisations get zero data retention, with encrypted copies of prompts and responses written to an S3 or Cloud Storage bucket in the customer's account. It applies to every request in a workspace, the customer reviews safety cases instead of Anthropic, and a customer-managed key is optional but permanent once attached.",
+   "why": "It is a new retention pattern for regulated LLM workloads: the provider keeps nothing, and the evidence sits in storage you own and must operate. Several choices cannot be undone, which is the kind of trade-off a design answer should name before turning it on.",
+   "try": "In AI 6's audit and governance section, write the three questions you would ask before enabling it: who can read the bucket, what happens when a write to it fails, and what you can no longer change afterwards.",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "source": "Claude Platform release notes",
+   "mid": "a06",
+   "sec": "A6.11"
+  },
   {
    "title": "Anthropic: Claude Managed Agents add scheduled runs, session budgets and a self-hosted option (beta)",
    "summary": "Managed Agents is Anthropic's hosted harness: a sandbox, sessions, memory stores and vaults around the model. Between June and November 2026 it gained scheduled deployments (9 June), session budgets (7 August), a server-checked automatic permission policy (10 September) and a fully self-hosted option on request (12 November). It is still a beta. On the model side, Claude Fable 5.2, Opus 5.5, Sonnet 5.5 and Haiku 5.5 all have a 1M-token context and set reasoning by an effort level.",
