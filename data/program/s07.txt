@@ -151,7 +151,7 @@ Cost questions appear in a third of your interview files. Treat cost as a metric
 | Data transfer | Cross-region reads; NAT gateways carrying S3 traffic | Keep compute and data in one region; VPC gateway endpoints for S3 |
 | Retries | A job that fails and reruns nightly | Fix the job; alert on retry counts |
 
-Three practices make it manageable. **Tag everything** with project, environment and pipeline, so cost can be grouped. Set **budgets and alarms** before creating anything. Report **cost per pipeline per run** next to its run time, so a regression is visible the day it happens.
+Three practices make it manageable. **Tag everything** with project, environment and pipeline, so cost can be grouped. Set **budgets and alarms** before creating anything. Report **cost per pipeline per run** next to its run time, so a regression is visible the day it happens. Where the platform offers a hard limit, prefer it to an alarm, which only tells you after the money is spent: BigQuery, for example, lets an organisation forbid queries from leaving their reservation for on-demand pricing (`disable_on_demand_billing`, generally available since November 2026).
 
 ## 7.8 The same map on Azure and Google Cloud
 

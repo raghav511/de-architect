@@ -83,7 +83,7 @@ To show cost you need:
 3. **Unit costs** people can reason with: cost per TB scanned, per pipeline run, per data product per month, per active user.
 4. **A monthly report** to each team: their spend, the trend, the top three drivers and one suggestion.
 
-Track the **untagged share** of spend; if it is 30%, nobody trusts the report. Then optimise together: idle clusters, unpartitioned scans, forgotten dev environments, storage that should move to cheaper tiers.
+Track the **untagged share** of spend; if it is 30%, nobody trusts the report. Then optimise together: idle clusters, unpartitioned scans, forgotten dev environments, storage that should move to cheaper tiers. Use the platform's own usage tables before building a crawler: Databricks' `system.storage.table_metrics_history` (generally available since November 2026), for example, has daily active, vacuumable and time-travel bytes for every managed table, which gives storage per team from the tags you already have.
 
 ## O4.6 Adoption and outcomes
 
