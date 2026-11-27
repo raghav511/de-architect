@@ -12,7 +12,7 @@ PY
 BR=$(git rev-parse --abbrev-ref HEAD)
 git add -A
 python3 tools/secret_scan.py || { echo "secret scan failed: nothing shipped"; git reset -q; exit 1; }
-git commit -q -m "$TITLE" -m "$(printf '%s\n' "$@")" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -q -m "$TITLE" -m "$(printf '%s\n' "$@")" -m "Co-Authored-By: ${CO_AUTHOR:-Claude Opus 5.5 <noreply@anthropic.com>}"
 git push -q -u origin "$BR"
 BODY="$(printf -- '- %s\n' "$@")
 
