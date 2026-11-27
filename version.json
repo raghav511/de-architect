@@ -1,7 +1,7 @@
 {
-  "version": "1.50.1",
+  "version": "1.50.2",
   "date": "2026-11-28",
   "notes": [
-    "Reel review: 15 reels on prompts, cost and automating prompts checked. Four now add newer facts (thinking tokens cost as output, the one-hour cache, batch at half price, GitHub schedules that stop after 60 quiet days) and 12 quick checks have options of even length."
+    "Weekly review: AI 6 now gives the EU AI Act dates after the 2026 amendment, DE 7 says when a hard cost limit beats an alarm, and Org 4 points to the platform's own usage tables for showback."
   ]
 }

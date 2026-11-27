@@ -23,6 +23,11 @@ Top unblocked item goes next. Each item: goal served (1 understand, 2 remember, 
 22. **Review 2026-11-21: deny policies on AI securables and pipeline flows as Unity Catalog objects** (o03, beta on Databricks 12 Nov): one paragraph in the access section once GA. Test: validate.
 23. **Review 2026-11-21: company questions have not grown since 7 Nov** (`data/recent.json`): the refresh cannot confirm dated reports from search summaries alone; try public dated sources (LeetCode Discuss, Medium posts with dates) and log what was searched. Test: refresh note lists searches.
 24. **Review 2026-11-21: reel beats for the 8.4 dynamic tables default and 4.6 batched tests**: add one Inside and caveats beat each in `tools/reels/auto/s08.json` and `s04.json` and record them. Test: build.py, voice.py.
+25. **Review 2026-11-27: Postgres 19 in the Postgres lens** (d01 D1.9; released 19 Nov 2026): read the release notes, say which answers change and add the release each feature needs. Test: validate, flows Postgres lens.
+26. **Review 2026-11-27: 36 chapter sections have no reel series** (a03 A3.6, a06 A6.10 to A6.12, c13 four, c14 three, c15 two, o04 seven, o05 eight, s09 9.6): `python3 tools/reels/write.py <mid>` one module a night, then build and record. Test: build.py, smoke Reels.
+27. **Review 2026-11-27: a network layer and customer-owned retention in guardrails** (a06 A6.11): AWS WAF AI Security rules for LLM, MCP and A2A endpoints (GA 23 Nov) and Anthropic Enterprise Frontier Safeguards (beta); one paragraph and one interview question. Test: validate.
+28. **Review 2026-11-27: vector sizing with 16, 4 and 2 bits per dimension** (a05 A5.9, OpenSearch 3.9): extend the 10 million documents sizing answer. Test: validate.
+29. **Review 2026-11-27: AI 7 has no design problem** (validate.py warning): add one to `data/design.json`. Test: validate has no warning for a07.
 
 ## Needs approval (do not build until the user approves in chat)
 
