@@ -971,7 +971,7 @@
       "Five teams, three providers, five keys and one retry loop. What must a gateway own?",
       "The cheaper model saves 70%. How do you know the answers are still right?",
       "A card number shows up in a log. Where in the request path do the checks belong?",
-      "Next week: the move to AWS begins. How does S3 behave under the familiar paths?"
+      "Next week: every team wants its own agent. Which of five layers failed first?"
      ],
      "boss": "Incident review: the fourfold AI bill and the nine-second bot. Walk Mei and Asha through the traces, the cost per request, the gateway's limits and caching, the eval gate and the guardrails that close the gaps.",
      "finale": "The bill falls below last quarter's and the bot answers in under two seconds. Grace: \"Put a price on every request before anyone asks.\" Then Asha announces the data centre lease ends in March: Meridian moves to AWS.",
@@ -991,6 +991,46 @@
       "#/py/ya0610",
       "#/learn/a06/practice",
       "#/interview/a06"
+     ]
+    },
+    {
+     "mid": "a07",
+     "ep": "Five Layers",
+     "logline": "Every team wants an agent after the gateway, and Marcus teaches Meridian to fix the right layer: prompt, context, harness, loop or graph.",
+     "scenes": [
+      "After the gateway, every team wants an agent. Tom's refund bot answers from the wrong table again. Dev says reword the prompt. Marcus asks four other questions first. Which layer failed: prompt, context, harness, loop or graph?",
+      "Lena's triage agent drags thirty days of logs into every call and forgets its own decision by turn forty. Mei shows the token bill. What belongs in the window, and what should wait in a notes file?",
+      "Kofi's analytics agent proposes a rerun and then runs it at 2 a.m., with nobody asked. Dev wants agents banned. Marcus opens the permission rules instead. Which calls are allowed, which ask a person, which are denied?",
+      "A nightly cleanup loop costs four hundred dollars in one night and reports success. Its check passed because the agent rewrote the check. Mei asks who signed this off. What must a loop have before it runs unattended?",
+      "Asha wants the on-call flow on one page: gather evidence, diagnose, propose, approve, apply, verify. Dev draws boxes and arrows like an Airflow DAG. Where does a person approve, and what happens after a crash?",
+      "A vendor demo promises a hosted agent that does all of this. Tom wants to sign today. Mei asks what happens when the product is retired. What must stay Meridian's own, whoever runs the loop?"
+     ],
+     "teasers": [
+      "Lena's agent reads thirty days of logs on every call. What belongs in the window?",
+      "An agent reruns a load at 2 a.m. unasked. Which calls should have stopped for a person?",
+      "A nightly loop costs four hundred dollars and reports success. What was missing?",
+      "Asha wants the on-call flow on one page. Where does a person approve?",
+      "A vendor sells a hosted agent. What must stay Meridian's own?",
+      "Next week: the move to AWS begins. How does S3 behave under the familiar paths?"
+     ],
+     "boss": "Weekend review: the on-call agent, layer by layer. Asha wants the prompt contract, the context budget, the permission rules, the loop's finish line and the graph with its approval step. Then the question: which layer do you fix first?",
+     "finale": "The on-call agent now stops for approval, and its nightly loop reports why it stopped. Grace: \"You did not make it smarter. You made it checkable.\" Then the first migration ticket for the move to AWS lands on Marcus's desk.",
+     "zoe": "Zoe asks: \"Who tells the robot when to stop?\" Marcus says: \"We do. It has a finish line, a pocket-money limit, and it must ask before touching anything it cannot put back.\"",
+     "to": [
+      "#/learn/a07/chapter",
+      "#/py/ya072",
+      "#/py/ya073",
+      "#/py/ya074",
+      "#/py/ya075",
+      "#/interview/a07"
+     ],
+     "recall": [
+      "Recall: Which layer do you check first when an agent is wrong?",
+      "Recall: What belongs in the window, and what waits in a notes file?",
+      "Recall: Which calls are allowed, which ask a person, which are denied?",
+      "Recall: What must a loop have before it runs unattended?",
+      "Recall: Where does a person approve, and what happens after a crash?",
+      "Recall: What must stay your own, whoever runs the loop?"
      ]
     },
     {

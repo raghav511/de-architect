@@ -1,7 +1,11 @@
 {
-  "version": "1.49.3",
-  "date": "2026-11-26",
+  "version": "1.50.0",
+  "date": "2026-11-27",
   "notes": [
-    "Reel review (AI 1, the loop, harness, context and prompts, 15 reels): one turn can ask for several tools, so cap tool calls as well as turns; schema-enforced output guarantees the shape, not the values, so still validate; 12 quick checks evened out so the right answer is not the longest."
+    "New module AI 7, Agent engineering: prompt, context, harness, loop and graph, with five exercises, a quiz and an interview set. It also covers what Anthropic, OpenAI, Google and xAI released from June to November 2026.",
+    "Design simulator: 19 case studies from real companies (Discord, Stripe, Netflix and more). Predict what broke, read the fix, then reproduce it in a challenge.",
+    "Design simulator is easier to use: its tabs show on a desktop again, boxes are readable on a phone, and a first-steps card says what to do.",
+    "Today: one row per item, a Short on time view, and the week as one row of seven days.",
+    "Lesson pages: the Continue bar no longer covers the buttons at the end of the page."
   ]
 }

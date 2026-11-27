@@ -30,7 +30,7 @@ work and never replaces it.
 2. The Metric War (m01, m02, m03, s01, s02, s03, s04): two teams, two numbers for "completed trips"; the model, the walking
    skeleton, the lake, Spark under festival load, a warehouse people trust. Finale: the board numbers finally match, and Tom says
    "now make it real time".
-3. Real Time (a04, d01, s05, s06, a05, a06, s07): the text-to-SQL bot that embarrasses the CEO; a split-brain incident; surge
+3. Real Time (a04, d01, s05, s06, a05, a06, a07, s07): the text-to-SQL bot that embarrasses the CEO; a split-brain incident; surge
    pricing on streams; refunds that do not match (the 2% gap is solved here: CDC and late refunds); RAG over runbooks; an AI
    gateway bill; the move to the cloud while Mei watches. Finale: launch night, a region goes dark.
 4. The Merger (j01, s08, s09, s10, o01, o02, o03, o04): Meridian buys Lumen; Victor's Scala and Databricks estate meets Meridian's

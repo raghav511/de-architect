@@ -2,7 +2,7 @@
    Loaded before app.js; uses its globals (S, DATA, el, svg, I, shell, chip, save, iso, ...) at call time. */
 'use strict';
 /* Diagnostic first, then the Python track interleaved with the AI modules, then data modelling, then data engineering. */
-const BASE_MODS = ['s00', 'p01', 'p02', 'a01', 'p03', 'p04', 'a02', 'p05', 'p06', 'a03', 'm01', 'm02', 'm03', 's01', 's02', 's03', 's04', 'a04', 'd01', 's05', 's06', 'a05', 'a06', 's07', 'j01', 's08', 's09', 's10', 'o01', 'o02', 'o03', 'o04', 'r01', 'o05', 's11', 's12'];
+const BASE_MODS = ['s00', 'p01', 'p02', 'a01', 'p03', 'p04', 'a02', 'p05', 'p06', 'a03', 'm01', 'm02', 'm03', 's01', 's02', 's03', 's04', 'a04', 'd01', 's05', 's06', 'a05', 'a06', 'a07', 's07', 'j01', 's08', 's09', 's10', 'o01', 'o02', 'o03', 'o04', 'r01', 'o05', 's11', 's12'];
 /* Claude Code and AI-at-work track: runs alongside the main path, inside the daily hour, spread so it lasts about as long as the main path */
 const CC_MODS = ['c01', 'c02', 'c03', 'c04', 'c05', 'c06', 'c07', 'c08', 'c09', 'c10', 'c11', 'c12', 'c13', 'c14', 'c15'];
 const CC_PACE = { 1: { 6: 1 }, 2: { 3: 1, 6: 1 }, 3: { 3: 1, 6: 2 } }; /* steps per week -> steps per getDay(): Saturday first, then Wednesday */
@@ -188,7 +188,7 @@ function unitCard(u, opts) {
     el('div', { class: 'grow stack', style: { gap: '5px', minWidth: 0 } }, [
       opts.cur ? el('span', { class: 'upn', text: 'Up next' }) : null,
       !u.isDone && wasDone(u.uid) ? el('span', { class: 'chip c-ai', title: 'You finished an earlier version of this step on ' + shortDate(wasDone(u.uid)) + '. It has changed.', text: 'Updated · finished before ' + shortDate(wasDone(u.uid)).slice(4) }) : isNewUnit(u) ? el('span', { class: 'chip c-dsa', text: 'New' }) : null,
-      el('div', { class: 'row wrap', style: { gap: '6px' } }, [kchip(u.kind), opts.from ? el('span', { class: 'chip c-ai', text: 'from ' + opts.from }) : null, el('span', { class: 'chip ' + modColor(u.mid), style: { background: 'transparent', border: '1px solid currentColor' }, text: modLabel(u.mid) }), el('span', { class: 'mins', text: u.mins + ' min' }), opts.day ? el('span', { class: 'muted', style: { fontSize: '13px' }, text: opts.day }) : null]),
+      el('div', { class: 'row wrap', style: { gap: '6px' } }, [kchip(u.kind), opts.from ? el('span', { class: 'chip c-ai', text: 'from ' + opts.from }) : null, el('span', { class: 'chip ' + modColor(u.mid), style: { background: 'transparent', border: '1px solid currentColor' }, text: modLabel(u.mid) }), el('span', { class: 'mins', text: u.mins + ' min' + (opts.xp ? ' · +' + opts.xp + ' XP' : '') }), opts.day ? el('span', { class: 'muted', style: { fontSize: '13px' }, text: opts.day }) : null]),
       el('span', { class: 't', text: u.title }),
       u.goal ? el('span', { class: 'goal', text: u.goal }) : null,
       u.done && !opts.compact ? el('span', { class: 'dw' }, [el('b', { text: 'Done when: ' }), u.done]) : null,
@@ -317,7 +317,11 @@ function vToday(off) {
   const m = (cur && (cur.unit ? cur.unit.mid : null)) || MODS[dayCurIdx(sc)] || sc.cur, M = MOD[m], sp = sc.span[m];
   const hr = new Date().getHours();
   const fromTxt = x => x.carried ? shortDate(x.carried).slice(0, 3) : '';
-  const row = x => x.unit ? unitCard(x.unit, { fold: true, cur: false, from: fromTxt(x) }) : xGroup(k, '', '', [Object.assign({}, x.x, { from: fromTxt(x), sub: x.x.sub + ' · +' + x.xp + ' XP' })]);
+  const row0 = x => x.unit ? unitCard(x.unit, { fold: true, cur: false, from: fromTxt(x), xp: x.xp }) : xGroup(k, '', '', [Object.assign({}, x.x, { from: fromTxt(x), sub: x.x.sub + ' · +' + x.xp + ' XP' })]);
+  const row = row0;
+  /* Short day (Profile-free, one tap): only the next open item of each tab; the full set still decides the streak */
+  const short = off === 0 && !pre && !!S.settings.shortDay && items.some(x => !x.done);
+  const keepOf = xs => xs.find(x => !x.done);
   const upNext = cur && !pre ? focusHero(cur, k, fromTxt(cur)) : null;
   const nav = el('div', { class: 'row wrap daynav', style: { gap: '8px' } }, [
     el('a', { class: 'btn icon sm', href: '#/today/' + (off - 1), 'aria-label': 'Previous day' }, svg(I.back, 18)),
@@ -332,7 +336,11 @@ function vToday(off) {
   const tabNow = PARTS.some(g => g[0] === todayTab) ? todayTab : ((PARTS.find(g => !g[2].every(x => x.done)) || PARTS[0] || [])[0]);
   const paneOf = ([id, n, xs, t]) => {
     const secs = DAY_SECS.filter(s => s[0] === t).map(s => [s, xs.filter(x => x.s === s[1])]).filter(z => z[1].length), s0 = sum(xs), done = xs.every(x => x.done);
-    const kids = secs.map(([s, ys]) => { const z = sum(ys); return el('div', { class: 'xgroup stack tsec', id: 'sec-' + s[1], style: { gap: '8px' } }, [el('div', { class: 'row wrap xghead' }, [el('h3', { class: 'grow', text: s[2] }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: z.xpd + ' / ' + z.xp + ' XP · ' + z.m + ' min' })])].concat(ys.filter(x => x !== cur).map(row))); });
+    const keep = short ? keepOf(xs) : null, shown = ys => (short ? ys.filter(x => x === keep) : ys).filter(x => x !== cur); /* Up next is the hero above, never repeated in the list */
+    /* a heading only where a section holds more than one row: a heading above every single row doubled the list's height, and a section whose only row was Up next showed an empty heading */
+    const kids = secs.filter(([s, ys]) => shown(ys).length).map(([s, ys]) => { const z = sum(ys), vs = shown(ys); return el('div', { class: 'xgroup stack tsec', id: 'sec-' + s[1], style: { gap: '8px' } }, (vs.length > 1 ? [el('div', { class: 'row wrap xghead' }, [el('h3', { class: 'grow', text: s[2] }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: z.xpd + ' / ' + z.xp + ' XP · ' + z.m + ' min' })])] : []).concat(vs.map(row))); });
+    if (cur && xs.includes(cur)) kids.unshift(el('span', { class: 'muted upabove', style: { fontSize: '13.5px' }, text: 'Up next, above, is the first item of this tab.' }));
+    if (short && keep && xs.length > 1) kids.push(el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: (xs.filter(x => !x.done).length - 1) + ' more in the full set.' }));
     if (t === 'interview' && off === 0) { const cn = typeof coachNote === 'function' ? coachNote() : null; if (cn) kids.push(el('div', { class: 'xgroup stack tsec', id: 'grp-coach', style: { gap: '8px' } }, [el('h3', { text: 'Coaching' }), cn]));
       kids.push(el('a', { class: 'tlink', href: '#/mock', style: { fontWeight: 600, fontSize: '14px' }, text: 'Prefer writing? The written mock ›' })); }
     if (done && off === 0) kids.push(el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'muted', style: { fontSize: '14px' }, text: n + ' is done for today. Want more? Each adds its XP; none is required.' }), el('div', { class: 'row wrap', style: { gap: '8px' } }, DAY_SECS.filter(s => s[0] === t).map(s => el('button', { class: 'btn sm', onclick: () => dayMore(k, s[1]), text: 'One more: ' + s[2].toLowerCase() })))]));
@@ -349,7 +357,8 @@ function vToday(off) {
     pre ? el('p', { style: { margin: 0 }, text: 'Your plan starts ' + shortDate(S.start) + '.' }) : null,
     off > 0 && !pre ? el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'A preview: the set is chosen on the morning of the day, from what is still open then.' }) : null,
     off === 0 && !pre && typeof repairHint === 'function' && repairHint(k) ? el('div', { class: 'hint quiet', role: 'status' }, [repairHint(k)]) : null,
-    !pre && items.length ? el('div', { class: 'hint' + (full ? '' : ' quiet'), role: 'status' }, full ? [el('b', { text: 'Daily set done · +' + DAY_BONUS + ' XP. ' }), 'It counts for your streak.'] : ['Finish all ' + items.length + ' for +' + DAY_BONUS + ' XP and a streak day. No time limit: the minutes are only a guide.' + (off === 0 && typeof caseHint === 'function' ? caseHint(k) : '')]) : null].concat(PARTS.map(paneOf)));
+    !pre && items.length ? el('div', { class: 'hint' + (full ? '' : ' quiet'), role: 'status' }, full ? [el('b', { text: 'Daily set done · +' + DAY_BONUS + ' XP. ' }), 'It counts for your streak.'] : [el('span', { class: 'grow', text: short ? 'Short day: the next item of each tab, about ' + fmt(PARTS.map(g => keepOf(g[2])).filter(Boolean).reduce((a, x) => a + x.mins, 0)) + '. A streak day still needs the full set.' : 'All ' + items.length + ' done: +' + DAY_BONUS + ' XP and a streak day. No time limit.' + (off === 0 && typeof caseHint === 'function' ? caseHint(k) : '') }),
+        off === 0 ? el('button', { class: 'btn sm shortday', 'aria-pressed': String(short), onclick: () => { S.settings.shortDay = !S.settings.shortDay; save(); route(); }, text: short ? 'Show the full set' : 'Short on time?' }) : null]) : null].concat(PARTS.map(paneOf)));
   const D = DATA.design[m];
   const modCard = el('section', { class: 'card pad stack todaymod' }, [
     el('div', { class: 'row wrap', style: { gap: '6px' } }, [el('span', { class: 'chip ' + modColor(m), text: 'Module ' + modLabel(m) }), el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: weeksText(sp) })]),
@@ -364,7 +373,7 @@ function vToday(off) {
     wide ? el('div', { class: 'todaytop' }, [topCard, modCard]) : topCard, /* the Meridian series (js/story.js): Previously on, then Up next; Tomorrow on, once the set is done */
     off === 0 && !pre && full && typeof storyCase === 'function' ? storyCase(k) : null, /* a case file after a full set, Monday to Saturday (ENGAGE 9) */
     off === 0 ? whatsNewCard() : null,
-    el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [wide ? null : modCard, off === 0 ? el('div', { id: 'rtodayslot' }) : null])]),
+    el('div', { class: 'grid2' }, [plan, el('div', { class: 'stack', style: { gap: '18px' } }, [wide ? null : modCard, off === 0 && !items.some(x => /^reels:/.test(String(x.id))) ? el('div', { id: 'rtodayslot' }) : null])]),
     off === 0 ? el('div', { id: 'gcardslot' }) : null,
     el('section', { class: 'card pad stack' }, [el('div', { class: 'row wrap' }, [el('h2', { class: 'grow', style: { minWidth: 'max-content' }, text: 'This week' }), el('span', { class: 'muted', style: { fontSize: '14px' }, text: 'XP earned and minutes · ✓ full set · tap a day to see it' }), el('button', { class: 'btn sm', onclick: exportIcs, text: 'Add to calendar' })]), weekStrip(sc, k)])]);
   if (off === 0) { reelToday().then(c => { const s = document.getElementById('rtodayslot'); if (c && s) s.replaceWith(c); }); gameCard().then(c => { const s = document.getElementById('gcardslot'); if (c && s) s.replaceWith(c); }); gameShipCheck(); }
@@ -502,7 +511,9 @@ async function vLearn(m, tab, range) {
     el('h1', { class: 'mh-title', text: modTitle(m) }), typeof storyFrame === 'function' ? storyFrame(m, { short: true }) : null,
     el('div', { class: 'row' }, [el('div', { class: 'bar grow' }, el('i', { style: { width: (sp.n ? Math.round(100 * sp.done / sp.n) : 0) + '%' } })), el('span', { class: 'mh-steps', text: sp.done + ' of ' + sp.n + ' steps' })]), tabs]);
   const nxu = sc.units.find(u => u.mid === m && !u.isDone);
-  const cta = el('div', { class: 'modcta' }, el('a', { class: 'btn pri', href: nxu ? nxu.href : '#/quiz/' + m }, [el('span', { text: nxu ? 'Continue: ' + nxu.title : 'Take the quiz' }), svg(I.fwd, 18)]));
+  /* the Continue bar is left out on the very step it points to (that page ends in its own Done, next), and it steps aside
+     while the page's own buttons are on screen: on a phone it used to sit on top of them */
+  const cta = nxu && nxu.href === location.hash ? null : el('div', { class: 'modcta' }, el('a', { class: 'btn pri', href: nxu ? nxu.href : '#/quiz/' + m }, [el('span', { text: nxu ? 'Continue: ' + nxu.title : 'Take the quiz' }), svg(I.fwd, 18)]));
   const body = el('div', { class: 'stack' });
   shell('Module ' + modLabel(m), (TABS2.find(t => t[0] === tab) || ['', 'Chapter'])[1], [head, body, cta], { back: '#/path' });
   const s = DATA.sprints[m];
@@ -550,10 +561,11 @@ async function vLearn(m, tab, range) {
     if (u && !u.isDone) { S.done[u.uid] = iso(new Date()); (S.doneAt = S.doneAt || {})[u.uid] = Date.now(); if (S.undone) delete S.undone[u.uid]; }
     save(); location.hash = nextHref;
   };
-  body.appendChild(el('div', { class: 'row wrap' }, [finished ? el('a', { class: 'btn pri', href: nextHref, text: 'Next: ' + nextName }) : el('button', { class: 'btn pri', onclick: finish, text: 'Done, next: ' + nextName }), el('a', { class: 'btn', href: '#/today', text: 'Back to today\'s plan' }),
+  const acts = body.appendChild(el('div', { class: 'row wrap modacts' }, [finished ? el('a', { class: 'btn pri', href: nextHref, text: 'Next: ' + nextName }) : el('button', { class: 'btn pri', onclick: finish, text: 'Done, next: ' + nextName }), el('a', { class: 'btn', href: '#/today', text: 'Back to today\'s plan' }),
     finished && (S.tabs || {})[m + ':' + tab] && tabDone(m, tab, { units: [] }) ? el('button', { class: 'btn', onclick: () => { delete S.tabs[m + ':' + tab]; save(); route(); }, text: 'Mark not finished' }) : null]));
+  if (cta && 'IntersectionObserver' in window) { const io = new IntersectionObserver(es => cta.classList.toggle('away', es[es.length - 1].isIntersecting)); io.observe(acts); cleanup.push(() => io.disconnect()); }
 }
-const AMAPS = { d01: ['Storage engine', 'Replication', 'Partitioning', 'Transactions', 'Consensus'], j01: ['Scala', 'Spark API', 'JVM memory', 'Kubernetes', 'Paved path'], r01: ['Strategy', 'Design doc', 'Migration', 'Cost', 'Influence'], m01: ['Process', 'Grain', 'Dimensions', 'History (SCD)', 'Cumulative'], m02: ['Event', 'Grain', 'Fact type', 'Dedupe', 'Reduced'], m03: ['Raw', 'Cleaned', 'Business', 'Serving', 'Semantic'], p01: ['Objects', 'Lists', 'Dicts and sets', 'Big-O', 'collections'], p02: ['Arguments', 'Closures', 'Comprehensions', 'Sort keys', 'Decorators'], p03: ['Iterable', 'Generator', 'Pipeline', 'itertools', 'Batches'], p04: ['Class', 'dataclass', 'Property', 'Protocol', 'Design'], p05: ['Exceptions', 'with', 'Logging', 'pytest', 'Package'], p06: ['I/O or CPU', 'Threads', 'Processes', 'asyncio', 'Measure'], a01: ['Task', 'Model', 'Tools', 'Trace', 'Answer'], a02: ['Task', 'Agent', 'Grader', 'Fix', 'Lesson'], a03: ['Alert', 'MCP tools', 'Agent', 'Approval', 'Report'], a04: ['Question', 'Context layer', 'Guarded SQL', 'Read-only tools', 'Eval'], a05: ['Documents', 'Chunks', 'Vectors', 'Fresh index', 'Recall'], a06: ['Request', 'Gateway', 'Model server', 'Trace', 'Eval gate'], s00: ['Laptop', 'Docker', 'Python', 'Repo', 'Diagnostic'] };
+const AMAPS = { d01: ['Storage engine', 'Replication', 'Partitioning', 'Transactions', 'Consensus'], j01: ['Scala', 'Spark API', 'JVM memory', 'Kubernetes', 'Paved path'], r01: ['Strategy', 'Design doc', 'Migration', 'Cost', 'Influence'], m01: ['Process', 'Grain', 'Dimensions', 'History (SCD)', 'Cumulative'], m02: ['Event', 'Grain', 'Fact type', 'Dedupe', 'Reduced'], m03: ['Raw', 'Cleaned', 'Business', 'Serving', 'Semantic'], p01: ['Objects', 'Lists', 'Dicts and sets', 'Big-O', 'collections'], p02: ['Arguments', 'Closures', 'Comprehensions', 'Sort keys', 'Decorators'], p03: ['Iterable', 'Generator', 'Pipeline', 'itertools', 'Batches'], p04: ['Class', 'dataclass', 'Property', 'Protocol', 'Design'], p05: ['Exceptions', 'with', 'Logging', 'pytest', 'Package'], p06: ['I/O or CPU', 'Threads', 'Processes', 'asyncio', 'Measure'], a01: ['Task', 'Model', 'Tools', 'Trace', 'Answer'], a02: ['Task', 'Agent', 'Grader', 'Fix', 'Lesson'], a03: ['Alert', 'MCP tools', 'Agent', 'Approval', 'Report'], a04: ['Question', 'Context layer', 'Guarded SQL', 'Read-only tools', 'Eval'], a05: ['Documents', 'Chunks', 'Vectors', 'Fresh index', 'Recall'], a06: ['Request', 'Gateway', 'Model server', 'Trace', 'Eval gate'], a07: ['Prompt', 'Context', 'Harness', 'Loop', 'Graph'], s00: ['Laptop', 'Docker', 'Python', 'Repo', 'Diagnostic'] };
 function weekMap(m) {
   const map = (isCC(m) && ['Learn', 'Try it here', 'Practise in the terminal', 'Test, graded', 'Quiz']) || AMAPS[m] || (isS(m) ? MAPS[+m.slice(1) - 1] : null) || ['Read', 'Build', 'Break', 'Fix', 'Explain'];
   return el('section', { class: 'fig', 'aria-label': 'Mental map for module ' + modLabel(m) }, [el('div', { class: 'row' }, [el('b', { text: 'Mental map: where this module fits' }), el('span', { class: 'step', text: modLabel(m) })]),

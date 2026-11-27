@@ -1,7 +1,47 @@
 {
- "updated": "2026-11-26",
+ "updated": "2026-11-27",
  "note": "Refreshed every week by the program's research task. Each item says what changed, why it matters to a data engineer or architect, and how to test the claim yourself.",
  "items": [
+  {
+   "title": "Anthropic: Claude Managed Agents add scheduled runs, session budgets and a self-hosted option (beta)",
+   "summary": "Managed Agents is Anthropic's hosted harness: a sandbox, sessions, memory stores and vaults around the model. Between June and November 2026 it gained scheduled deployments (9 June), session budgets (7 August), a server-checked automatic permission policy (10 September) and a fully self-hosted option on request (12 November). It is still a beta. On the model side, Claude Fable 5.2, Opus 5.5, Sonnet 5.5 and Haiku 5.5 all have a 1M-token context and set reasoning by an effort level.",
+   "why": "The loop, the sandbox and the schedule are now things you can buy. What stays yours is the set of tools for your data, the permission rules, the budget per run and the check that says the work is done. Ask of any hosted harness what you ask of any managed service: what state lives there, how you export it, and what happens to running work in an outage.",
+   "try": "Do exercise 4 of module AI 7 (a loop with four stop rules), then write down which of its four stop rules a session budget replaces and which you would still have to build.",
+   "url": "https://platform.claude.com/docs/en/release-notes/overview",
+   "source": "Anthropic release notes",
+   "mid": "a07",
+   "sec": "A7.7"
+  },
+  {
+   "title": "OpenAI: the Agents API (public beta) is the new managed harness; the Assistants API ended and hosted Evals closes on 30 November",
+   "summary": "OpenAI's Agents API, in public beta since 10 September 2026, runs a managed harness with durable sessions on OpenAI's sandbox or your own, and later added computer use, scheduled automations and background compaction by default. The Assistants API was shut down on 26 August 2026, and Agent Builder, the hosted Evals product and reusable prompts end on 30 November 2026. Prompt caching can now last 12 hours, with cache writes priced above normal input.",
+   "why": "Two hosted agent products retired in one year is the lesson: keep prompts, tool definitions, eval sets and traces in your own repository and storage, behind an interface you own. A design that depends on a vendor's eval product has no regression gate the day it closes.",
+   "try": "List every hosted feature one of your AI designs depends on and mark each as generally available, beta or preview. For each beta, write the one-line plan if it changes shape.",
+   "url": "https://developers.openai.com/api/docs/deprecations",
+   "source": "OpenAI deprecations and changelog",
+   "mid": "a07",
+   "sec": "A7.7"
+  },
+  {
+   "title": "Google: Gemini 4 models, the Interactions API as the main API, and tool retrieval that loads tool definitions on demand (preview)",
+   "summary": "Google released the Gemini 4 family (Argon, Carbon, Hydrogen and Neon) in October and November 2026, with a 1M-token context and thinking levels. The Interactions API, with background runs and stored state, is now the primary API for models and agents. Tool retrieval, in preview since 19 November, loads tool definitions only when a request needs them, including tools from remote MCP servers. Computer use became generally available on 30 October.",
+   "why": "Tool definitions are context: forty tools can be a third of every prompt, paid for on every turn. Loading them on demand is the select move of context engineering done by the platform. Stored state on the provider's side raises a governance question: what is kept, for how long, and who may read it.",
+   "try": "Do exercise 2 of module AI 7 (pack a context budget) with your own numbers: count the tokens of the tool definitions in one agent you use and work out their share of a 30-turn run.",
+   "url": "https://aistudio.google.com/docs/changelog",
+   "source": "Gemini API changelog",
+   "mid": "a07",
+   "sec": "A7.3"
+  },
+  {
+   "title": "xAI: Grok 4.7 prices cached input at a quarter of normal input; Grok Bot runs persistent agents with scheduled routines",
+   "summary": "Grok 4.7, the current xAI API model since September 2026, has a 500k-token context and lists three prices: input, cached input at a quarter of that, and output. xAI's documentation describes Grok Bot as persistent agents on a cloud computer with connectors, MCP servers, scheduled routines and approval before sending, and Grok Build as a terminal coding agent with sub-agents, hooks and MCP. xAI has no published agent SDK or tracing tooling of its own.",
+   "why": "Every large lab now prices cached input separately, so prompt order is a cost decision: a stable prefix is billed at a fraction, and one timestamp near the top loses it. Approval before sending is the ask rule of a harness, shipped as a product default.",
+   "try": "Do exercise 1 of module AI 7 (order a prompt for caching), then price one of your prompts three ways: no cache, a cached stable prefix, and a prefix broken by a timestamp.",
+   "url": "https://docs.x.ai/developers/release-notes",
+   "source": "xAI release notes",
+   "mid": "a07",
+   "sec": "A7.7"
+  },
   {
    "title": "Databricks: a native Lakebase Postgres sink for Spark Structured Streaming is generally available",
    "summary": "On 23 November 2026 Databricks announced general availability of a built-in sink that writes Structured Streaming output straight into Lakebase (its managed Postgres) with one writeStream call, on Databricks Runtime 18 LTS and above. It handles batching, retries, connection reuse and upserts on a declared key, in micro-batch and Real-Time Mode; on serverless only the AvailableNow trigger runs. Writing to an outside PostgreSQL through a Unity Catalog connection is still in public preview.",

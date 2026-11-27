@@ -1,0 +1,482 @@
+@@meta
+id: a07
+n: 7
+title: Agent engineering: prompt, context, harness, loop and graph
+goal: Treat the five layers around a model as five engineering jobs. Write prompts that are contracts, budget what the model sees, build the harness that decides what it may do, design loops that stop for the right reason, and lay work out as a graph with state, checkpoints and approvals. Then read what Anthropic, OpenAI, Google and xAI shipped in the second half of 2026 through those five layers.
+hours: 6.75
+
+@@tickets
+A701 | learn | 0.75 | Chapter part 1: five layers, and prompt engineering | You can name the five layers with the failure each one owns, and rewrite a vague prompt as a contract. | chapter:0-1
+A702 | learn | 0.75 | Chapter part 2: context engineering | You can budget a context window, name the four moves and say where caching applies. | chapter:2-2
+A703 | learn | 0.75 | Chapter part 3: harness and loop engineering | You can list what a harness owns and give a loop a finish line, a checker and four stop rules. | chapter:3-4
+A704 | learn | 0.75 | Chapter part 4: graph engineering, what the four labs shipped, the architect's lens | You can say when a graph beats a loop, and place three recent releases on the five layers. | chapter:5-7
+A705 | build | 1 | Exercises 1–3: order a prompt for caching, pack a context budget, decide a permission | All three pass in the editor. | py:1-3
+A706 | build | 1 | Exercises 4–5: a loop with stop rules, a graph with a checkpoint | Both pass in the editor; every model in them is a stub. | py:4-5
+A707 | practice | 0.5 | Layer drills | Five drills answered, then checked against the model answers. | practice
+A708 | test | 0.5 | Quiz A7 | 80% or better. | quiz
+A709 | talk | 0.75 | Interview set A7 | 8 of 10 answered out loud and ticked. | interview
+
+@@readings
+- **In this app: the chapter.** A7.1 to A7.8 cover everything the exercises, quiz and interviews need. Tap ⓘ to read a source on its own site.
+- **Reading note: context engineering.** Anthropic describes the job as finding the smallest set of high-signal tokens for the next step, because recall drops as a window fills. Its tools are just-in-time retrieval, compaction, notes kept outside the window and sub-agents with clean contexts. [ⓘ](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
+- **Reading note: harness engineering.** OpenAI's account of building a product with agents writing the code: a short map file that points into the repository's own docs, custom linters whose error messages tell the agent the fix, and background agents that clean up drift. [ⓘ](https://openai.com/index/harness-engineering/)
+- **Reading note: guides and sensors.** Birgitta Böckeler splits a harness into guides, which steer the agent before it acts, and sensors, which check after it acts; each can be plain code or another model. [ⓘ](https://martinfowler.com/articles/harness-engineering.html)
+- **Reading note: loop engineering.** The term spread in mid-2026 for designing the system that keeps prompting an agent: a measurable finish line, an independent check, budgets and a progress file. [ⓘ](https://newsletter.pragmaticengineer.com/p/what-is-loop-engineering)
+- **Reading note: durable execution.** LangGraph saves a checkpoint after every step, so a run can pause for a person, survive a crash and resume from the last finished node. [ⓘ](https://docs.langchain.com/oss/python/langgraph/durable-execution)
+- **Reading note: is graph engineering real?** A fair summary of the 2026 debate: the architecture is real and older than the name; the label is new and not yet standard. [ⓘ](https://www.turingpost.com/p/is-graph-engineering-real-why-everyone-is-talking-about-it)
+
+@@chapter
+## A7.1 Five layers, one system
+
+Module A1 gave you the loop, the harness, context and prompts in a paragraph each. This module treats each one as an engineering job with its own levers, failures and tests, and adds the fifth: the graph.
+
+Read the layers from the inside out. Each one wraps the one before it.
+
+| Layer | You decide | It fails as | You test it with |
+|---|---|---|---|
+| **Prompt** | What you ask in one call, and the shape of the answer | Vague, inconsistent or unparseable output | An eval set scored on every change |
+| **Context** | What the model sees this turn: instructions, tools, data, history, memory | A missing fact, or the right fact buried in 200,000 tokens | Token counts per part, cache hit rate, recall on known questions |
+| **Harness** | What the model can do: tools, permissions, sandbox, hooks, checks | A wrong or unsafe action; "done" when nothing works | Attack cases, denied calls, tests run after each step |
+| **Loop** | How it keeps going: act, check, adjust, and when to stop | Spinning, stopping early, or passing a weak check | Stop reasons, turns and cost per run |
+| **Graph** | Which step or agent runs next, with what state, and who approves | One long context that cannot resume or be audited | A replay from any checkpoint |
+
+**One rule for all five.** When an agent gets something wrong, most people reword the prompt. Ask four questions first, from the outside in:
+
+1. Did the right step run at all? (graph)
+2. Did anything check the result before it was accepted? (loop)
+3. Was the model able and allowed to do the right thing, and stopped from doing the wrong one? (harness)
+4. Did it have the fact it needed, where it could find it? (context)
+
+Only when all four are yes is it a prompt problem. A reworded prompt cannot supply a missing table definition or stop a `DROP TABLE`.
+
+**A running example.** Meridian's on-call data agent gets an alert: last night's revenue load is 2% short. Through this chapter you will see the same task five times: the prompt that asks for a diagnosis, the context that holds the evidence, the harness that keeps it read-only, the loop that works until a reconciliation query passes, and the graph that sends the fix to a person before anything is rerun.
+
+## A7.2 Prompt engineering: the prompt is a contract
+
+A prompt is the specification for one model call. Today it is a part of context engineering, the part you write by hand, and it still decides whether the output can be used by code.
+
+**What goes in it.** A1.5 gave six parts: role, task, context, constraints, output format, examples. Three things make the difference in production:
+
+- **Say why, not only what.** "Quote the log line that proves the cause, because the on-call engineer will check it" gets better evidence than "be accurate". Current models follow reasons better than rules in capital letters.
+- **Write at the right height.** Too low is a list of hard-coded cases the model treats as the only cases. Too high is "be helpful and careful". The right height states the goal, the constraints and how you will judge the answer.
+- **Show two or three examples that differ.** One example gets copied. Three that vary in length and edge cases teach the pattern.
+
+**The output is part of the contract.** When code reads the answer, ask for a schema and enforce it:
+
+```
+<output_format>
+JSON only: {"cause": str, "evidence": [{"table": str, "query": str, "rows": int}],
+            "fix": str, "reversible": bool, "confidence": "low" | "medium" | "high"}
+</output_format>
+```
+
+Use the provider's structured output feature where it exists, validate what comes back, and on a failure send the validation error back once. A field such as `reversible` is there for the harness: an irreversible fix goes to a person.
+
+**Thinking is a setting, not a sentence.** The current flagship models decide how much to reason from an effort setting on the request (low to high or max). "Think step by step" in the prompt is no longer the lever; choose the effort per step, high for diagnosis and low for formatting. [ⓘ](https://platform.claude.com/docs/en/about-claude/models/overview)
+
+**Prompts are code.** Keep them in the repository, version them, and score every change against an eval set (A2). A prompt changed without a score is an untested deploy.
+
+**What a prompt cannot do.** It cannot make a model know your schema, cannot be relied on to block an action, and cannot make a long run finish. Those belong to the next three layers.
+
+## A7.3 Context engineering: what the model sees
+
+The model knows only what is in the window on this turn. Context engineering is choosing that content at every step: the smallest set of tokens that makes the right next action likely.
+
+**Why small matters.** Three costs grow with the window. Money: every input token is paid for on every turn. Time: prefill grows with prompt length (A6.2). Quality: models recall less reliably as a window fills, an effect usually called context rot. A 1M-token window is room to work, not a reason to fill it.
+
+**What competes for the window.**
+
+```
+system prompt and rules     2,000    stable
+tool definitions            6,000    stable   (40 tools at about 150 tokens each)
+table and metric notes      4,000    stable
+retrieved rows and docs    12,000    changes every turn
+conversation and results   30,000    grows every turn
+the question                  200    changes every turn
+```
+
+**The four moves.**
+
+| Move | What you do | Data engineering example |
+|---|---|---|
+| **Write** | Save facts outside the window: a notes file, a memory store, a progress file | The agent writes `findings.md`: tables checked, row counts, what it ruled out |
+| **Select** | Pull in only what this step needs, just in time | Retrieve the two table definitions the question names, not the whole catalog |
+| **Compress** | Summarise or clear old turns and bulky tool results | Replace a 5,000-row query result with its count, its schema and three sample rows |
+| **Isolate** | Give a sub-task its own clean window and take back only a summary | A sub-agent reads 40 log files and returns three lines |
+
+**Tools are context too.** Every tool definition is paid for on every turn and every extra tool is one more wrong choice. Keep few, distinct tools with clear names. When a server offers hundreds, load definitions on demand; Anthropic and Google both offer tool search for this, in different states of release. [ⓘ](https://aistudio.google.com/docs/changelog)
+
+**Caching follows the order.** Providers reuse the work for a prompt prefix they have seen recently and charge much less for those tokens. It works only when the stable part comes first and is byte-for-byte the same, so order the window stable to changing, and never put a timestamp or a request id near the top. Exercise 1 makes you do this.
+
+**Compaction and memory.** When a run nears its limit, the harness summarises the history and continues from the summary. What must survive a compaction is the goal, the decisions made and why, what is done, and the next step. Anything else can be fetched again. Memory across sessions is a file or store the agent reads at the start and writes at the end. Treat it like any table: it has an owner, a size limit, and stale rows that someone must delete.
+
+**In the running example.** The diagnosis agent starts with the alert, the two table definitions and the reconciliation query. It does not get the last 30 days of load logs; it has a tool that fetches one day's log tail when it asks.
+
+## A7.4 Harness engineering: what the model may do
+
+The harness is everything around the model that is not the model: the code that runs the loop, the tools, the permission rules, the sandbox, the hooks and the checks. The working rule from A1.3 still holds: when the agent makes a mistake, change the environment so that mistake cannot happen again.
+
+**Guides and sensors.** A useful split is between what steers the agent before it acts and what checks after.
+
+| | Runs as code | Runs as a model |
+|---|---|---|
+| **Guides** (before) | Permission rules, allowed tools, a schema for tool input, a project map file | A planner that writes the steps first |
+| **Sensors** (after) | Tests, linters, row counts, schema checks, a diff size limit | A reviewer model that reads the diff |
+
+Prefer code where code can decide. A linter is cheaper, faster and more certain than a reviewer model, and its error message can tell the agent exactly what to fix.
+
+**What a harness owns.**
+
+- **Tools.** Small, well named, with typed input. For data work: `list_tables`, `describe_table`, `run_sql` with a row limit, `get_run_log`.
+- **Permissions.** Three answers to every call: allow, ask a person, deny. Deny wins. Anything unlisted asks. Exercise 3 builds this.
+- **A sandbox.** A read-only warehouse role, a scratch schema, no network except the hosts the task needs. The model can be talked into anything; the sandbox cannot.
+- **Hooks.** Code that runs at fixed points: before a tool call (block a secret read), after an edit (run the formatter), at the end (run the tests before "done" is accepted).
+- **A map, not a manual.** A short file at the top of the project (`AGENTS.md`, `CLAUDE.md`) that says where things are and how to check work, pointing to the real docs. A long file is context spent on every turn.
+- **A trace.** Every call with its input, output, tokens, cost and time (A6.9).
+
+**Buy or build.** In 2026 all four large labs sell a hosted harness as well as a model: a managed loop with a sandbox, sessions, schedules and memory (A7.7). Buying it removes the sandbox and session work. It does not remove your part: the tools for your data, the permission rules, the budgets and the checks. An architect's question is the same as for any managed service: what state lives there, how you get it out, and what happens to running work when the service is down.
+
+**In the running example.** The diagnosis agent has a read-only role and a 200-row limit. It may propose a rerun; the rerun tool is on the ask list, so the request stops at a person.
+
+## A7.5 Loop engineering: how it keeps going
+
+A1.2 gave the loop inside one agent run. Loop engineering is the design of the outer system that keeps an agent working toward a goal across many turns, runs or nights: act, check, adjust, repeat. The term became common in mid-2026; the simplest form is older, a shell loop that feeds the same instruction to a coding agent until the work is done.
+
+**Four parts every loop needs.**
+
+1. **A finish line a program can check.** "All tests in `tests/` pass", "the reconciliation query returns zero rows", "every file in the list has a row in `done.csv`". If only a person can tell whether it is finished, it is not ready for a loop.
+2. **An independent checker.** The maker does not mark its own work. Use code first (tests, counts, a schema check) and a second model with a different prompt where judgment is needed. A checker that shares the maker's context shares its blind spots.
+3. **Stop rules.** Done, a turn limit, a spend limit, a time limit, and no progress: the same state or the same failing check twice in a row. Record which rule fired; the stop reason is your main metric.
+4. **A progress file.** Long work outlives a context window. Each pass starts fresh, reads what is done from a file, does one unit of work, writes the file and stops. This is the same idea as an idempotent, restartable batch job.
+
+```
+while True:
+    state = read("progress.md")             # fresh context every pass
+    if check(state): stop("done")           # the finish line, checked by code
+    if turns >= MAX or spent >= BUDGET: stop("budget")
+    new = agent(task, state)                # one unit of work
+    if new == state: stop("no progress")
+    write("progress.md", new)
+```
+
+**Three ways to trigger a loop.** Until a goal is met (the loop above). On a timer (a nightly data-quality pass). On an event (a failed run, a new pull request). Timed and event loops need the same stop rules, plus a lock so two runs never overlap.
+
+**How loops fail.** A vague goal, so the agent declares success. A weak check, so it games the check: tests deleted, a query rewritten to return nothing. No budget, so one bad night costs a month. One change that is too large per pass, so nothing can be reviewed. The fixes are the four parts above, and a rule that the agent may never edit the checker.
+
+**In the running example.** The goal is "the reconciliation query between revenue and payments returns zero rows for last night". The checker is that query, run by code. The budget is 20 turns and five dollars.
+
+## A7.6 Graph engineering: how steps connect
+
+A loop is one path: the same step, again. Real work branches. Some steps are fixed code, some need a model, some run side by side, one needs a person, and a failure in step four should not repeat steps one to three. Graph engineering is laying that work out as an explicit graph.
+
+**The parts.**
+
+| Part | What it is | Pipeline word you already know |
+|---|---|---|
+| **Node** | One step: a function, a tool call, a model call or a whole agent | Task |
+| **Edge** | What runs next; a conditional edge chooses from the state | Dependency, branch operator |
+| **State** | One typed object every node reads and updates | XCom, the run's context |
+| **Checkpoint** | State saved after each node, so a run can resume | Task state in the metadata database |
+| **Interrupt** | The run pauses for a person and resumes with the answer | A manual approval task |
+| **Join** | Parallel branches meet, usually behind a verifier | Trigger rule, fan-in |
+
+You already think this way: an Airflow DAG is a graph of tasks with saved state. Two things are new. Agent graphs may have **cycles** (review, fix, review again), and a node may be a model that **chooses the edge**.
+
+**Keep the routing in code.** Let code decide the path wherever a rule can decide it, and use a model only inside the nodes that need judgment. A graph where every edge is a model's choice is a loop with extra steps and no guarantees.
+
+```
+alert ─> gather evidence ─> diagnose ─> propose fix ─> [approve?] ─> apply ─> verify ─> report
+              ^                 │                          │ no                 │ fails
+              └── need more ────┘                          └─> report           └─> diagnose
+```
+
+**When a graph beats a loop.** Use one when steps differ in kind, when some can run in parallel, when a person must approve part of it, when the run is long enough to crash, or when you must show afterwards exactly what ran. Stay with one loop when the task is one kind of step repeated until a check passes.
+
+**What it costs.** More moving parts, a state schema that becomes an interface between teams, and checkpoints that are a store someone must own: retention, access and personal data inside saved states all apply (O3).
+
+**An honest note on the name.** "Graph engineering" as a label dates from July 2026 and is still argued over. The architecture is not new: state machines, workflow engines and LangGraph came first. Here it means control flow. It does not mean knowledge graphs or GraphRAG (A5.8); the data-side term you will hear is "context graph". In an interview, describe the design and use the label lightly.
+
+**Where it shows up.** LangGraph (state graphs with checkpoints and interrupts), Google's ADK 2.0 (one graph engine for model-driven and fixed workflows), and Claude Code's dynamic workflows (a script that fans out sub-agents and joins their results) are three shapes of the same idea.
+
+## A7.7 What the four labs shipped, June to November 2026
+
+Checked against each lab's own changelog on 27 November 2026. Releases move fast: treat the status column as a snapshot, and check the source before you quote one in an interview. Model names matter less than the pattern in the last row.
+
+| Lab | Prompt and model | Context | Harness, loop and graph |
+|---|---|---|---|
+| **Anthropic** | Claude Fable 5.2, Opus 5.5, Sonnet 5.5, Haiku 5.5; 1M-token context; reasoning set by an effort level | Files and Agent Skills out of beta (August); on-demand compaction (beta, September); message threads kept by the server (beta, November) | Managed Agents (beta): a hosted harness with a sandbox, sessions and memory, plus scheduled runs, session budgets and a self-hosted option; Claude Code adds a goal loop and scripted workflows that fan out sub-agents; computer use out of beta |
+| **OpenAI** | GPT-6.2 Astra and Sol; GPT-6 Luna as the low-cost model; effort settings | 12-hour prompt caching (October); cache diagnostics (September); background compaction on by default in the Agents API | Agents API (public beta): a managed harness with durable sessions, hosted or your own sandbox, scheduled runs. The Assistants API ended in August; Agent Builder and the hosted Evals product end on 30 November |
+| **Google** | Gemini 4 family (Carbon, Neon, Hydrogen, Argon); 1M-token context; thinking levels | Tool retrieval that loads tool definitions on demand (preview, November) | The Interactions API is the main API, with background runs and stored state; Managed Agents (preview) run the Antigravity agent in a hosted sandbox; ADK 2.0 is a graph engine; computer use is generally available |
+| **xAI** | Grok 4.7; 500k-token context; cached input at a quarter of the input price | Server-side search, code execution and collections search as tools | Grok Build, a terminal coding agent with sub-agents, hooks and MCP; Grok Bot, persistent agents with scheduled routines and approval before sending |
+| **The pattern** | Reasoning is a request setting | Caching, compaction and tool loading are platform features | Every lab now sells the harness, the schedule and the session, not only the model |
+
+Sources: [ⓘ Anthropic](https://platform.claude.com/docs/en/release-notes/overview) · [ⓘ OpenAI](https://developers.openai.com/api/docs/changelog) · [ⓘ Google](https://aistudio.google.com/docs/changelog) · [ⓘ xAI](https://docs.x.ai/developers/release-notes)
+
+**Two changes in the plumbing.** The Model Context Protocol's July 2026 revision made requests stateless, which makes MCP servers easier to run behind a load balancer. [ⓘ](https://blog.modelcontextprotocol.io/posts/2026-07-28/) And the data platforms moved the same way as the labs: managed MCP servers for databases and agent features inside the warehouse are now standard offers, so "where does the agent run, and with whose permissions" is a platform question (A4, O3).
+
+**What this means for a data architect.**
+
+- **The design choices moved outward.** With the loop, the sandbox and the schedule for sale, your work is the tools, the permissions, the budgets, the checks and what goes into the context.
+- **Plan for deprecation.** Two hosted agent products were retired within one year. Keep prompts, eval sets, tool definitions and state in your own repository and storage, behind an interface you own (A6.6).
+- **Read prices as three numbers.** Input, cached input and output. A design that keeps a stable prefix can cost a fraction of one that does not.
+- **Check the status word.** Beta and preview features change shape. Say which ones a design depends on.
+
+## A7.8 Architect's lens: agent engineering
+
+The questions an architect is asked about running agents on a data platform, beyond which model to use.
+
+| Question | Short answer for the five layers |
+|---|---|
+| **What problem does it solve?** | A model alone answers one question. The layers turn it into a system that can find its own evidence, act within limits, check its work, stop for the right reason and be resumed and audited. |
+| **Why it over the alternatives?** | Against a single large prompt: it scales past one context window and can be tested part by part. Against a fixed pipeline: it handles cases nobody enumerated. Against a fully free agent: routing in code and permission rules give guarantees a prompt cannot. |
+| **When not to use it?** | When the steps are known and fixed, write the pipeline; it is cheaper and certain. When no program can check the result, do not loop. When the action cannot be undone and nobody will approve it, do not automate it. |
+| **Who owns and pays for it?** | A platform team owns the harness: the gateway, tools, permission rules, sandbox and traces. Feature teams own prompts, eval sets and goals. Cost is charged per run from traces; every loop has a named owner and a budget. |
+| **Where does it sit?** | Beside the orchestrator, not in place of it. The scheduler triggers runs, the agent graph does the judgment work, and it reaches data only through tools on read-only roles, the semantic layer (A4) and retrieval (A5). |
+| **How does it fail and scale?** | It fails as loops that spin or stop early, checks that are gamed, context that rots, a permission that was too wide, and saved state nobody cleans. It scales by isolating sub-tasks in clean contexts, caching stable prefixes and running branches in parallel behind a verifier. |
+| **When do you move off it?** | When a task has become routine, replace the agent with the pipeline it has shown you. When a hosted harness covers your tools and rules, stop running your own. When a provider retires a product, the interface you own lets you move. |
+
+### Under the hood
+
+**1. Why does a bigger context window not remove the need for context engineering?**
+<details><summary>Model answer</summary>
+
+Three costs grow with what you put in, whatever the limit. Every input token is paid for on every turn, so a loop of 30 turns over a 300,000-token window pays for nine million input tokens. Time to first token grows with prompt length. And recall falls as a window fills: a fact in the middle of a very long context is found less reliably than the same fact in a short one. A large window removes the hard stop, which is useful for one-off reading of a long document. For an agent that runs many turns, the working set should stay small: stable material first so it is cached, bulky tool results cleared or summarised, facts kept in a notes file and fetched when needed.
+
+</details>
+
+**2. A loop passes its check every night, and the numbers are still wrong. What happened and what do you change?**
+<details><summary>Model answer</summary>
+
+The check is weaker than the goal, and the agent optimised the check. Typical forms: the agent could edit the test or the query that judges it; the check looked at shape (the job succeeded, the row count is above zero) and not at truth (revenue equals payments); or the maker and the checker shared one context, so the checker repeated the maker's assumption. Changes: make the checker read-only to the agent and keep it in a separate place; check the business invariant, not the exit code; use an independent checker with its own context; keep a small set of known-bad cases the check must fail; and sample passed runs for a person to review, so the check itself is measured.
+
+</details>
+
+**3. What must a checkpoint hold for a run to resume correctly, and what goes wrong when a node is retried?**
+<details><summary>Model answer</summary>
+
+A checkpoint holds the full state after a node finished: the inputs, each node's outputs, which node is next, and any pending question to a person. On resume the engine restarts from the last saved node, so the node that was running when the crash happened runs again. If that node has a side effect (it wrote rows, sent a message, started a job), the effect happens twice unless the node is idempotent: an idempotency key on the write, a MERGE instead of an INSERT, or a check for "already done" at the top of the node. Model calls inside a replayed node may also answer differently the second time, so anything that must not change (a generated id, a decision already shown to a person) is saved in the state, not recomputed. It is the same discipline as a restartable batch task.
+
+</details>
+
+**4. Tool definitions take 30% of every prompt. What are your options?**
+<details><summary>Model answer</summary>
+
+First measure which tools are called at all; most agents use a handful. Then, in order: remove tools nobody calls and merge near-duplicates, since overlap also causes wrong choices; shorten descriptions to what distinguishes each tool; keep the definitions at the very top and unchanged so they are served from the prompt cache; load definitions on demand with a tool search or retrieval feature where the provider has one; split the work so each sub-agent has only the tools for its job; and for large tool results, let the model write code that calls tools and returns only the summary, so intermediate data never enters the window. Check quality on the eval set after each step: fewer tools usually improves it.
+
+</details>
+
+**5. When do you buy a lab's hosted harness, and when do you run your own?**
+<details><summary>Model answer</summary>
+
+Buy when the work fits its sandbox and tools, when sessions, schedules and compaction are things you would otherwise build, and when the data it touches is allowed to be processed there. Run your own when the agent must sit inside your network next to the data with no path out, when you need one harness across several model providers, or when the permission model must be yours (row-level access by the calling user, for example). In both cases keep four things yours: the tool definitions, the permission rules, the eval sets and the traces. Two hosted agent products were retired during 2026, so the test of a good design is that moving it is a week of work, not a rewrite.
+
+</details>
+
+@@lab
+## In the app: one exercise per layer (2 hours)
+
+Five exercises run real tests in your browser. Every model in them is a stub: nothing is sent to any AI service.
+
+1. **Order a prompt for caching.** Stable parts first, in their original order, then the parts that change; count the tokens a cache can reuse.
+2. **Pack a context budget.** Pinned items always go in; the rest by score while they fit; a large item is skipped, not a reason to stop.
+3. **Decide a tool call.** Allow, ask or deny from a list of rules: deny wins, and anything unlisted asks a person.
+4. **A loop with four stop rules.** Done, turn limit, spend limit and no progress, with the reason recorded.
+5. **A graph with a checkpoint.** Nodes, conditional edges, a pause before an approval node, and a resume from the saved state.
+
+## Going further (optional, 45 minutes)
+
+Take one task you do by hand every week (a failed-run triage, a data-quality report, a schema review) and write its five layers on one page: the prompt contract, the context budget in tokens, the tools and permission rules, the loop's finish line with its checker and budgets, and the graph with the step where a person approves. Then build it in the Claude Code track (C8 and C12).
+
+@@practice
+## Layer drills (30 minutes)
+
+1. An agent answers "what was revenue last week?" with a number from the wrong table. Which layer do you fix first, and how?
+2. A nightly agent loop cost $400 last night instead of $6. What was missing, and what do you add?
+3. Your on-call agent proposed a rerun and then ran it. Nobody approved. Where is the fault?
+4. After 40 turns the agent forgets the decision it made on turn 5 and redoes the work. What do you change?
+5. A team wants a manager agent that decides, each turn, which of six agents runs next. What do you propose instead?
+
+**Model answers:** 1, context: it did not have, or could not find, the metric's definition. Give the semantic layer's definition of revenue and the table note, and add the question to the eval set; rewording the prompt does not supply a missing fact. 2, the loop had no spend limit and no no-progress rule. Add turn, cost and time limits, stop when the same check fails twice with the same state, record the stop reason and alert on any reason except done. 3, the harness: the rerun tool was on the allow list. Move it to ask, mark irreversible tools in their definition, and give the agent's role no write access so the rule is enforced below the model. 4, context: write decisions to a notes file as they are made, and make sure compaction keeps the goal, the decisions and the next step. 5, a graph with the routing in code: fixed edges where a rule decides, a model only inside the nodes that need judgment, one shared state, and a verifier before results are joined.
+
+## Customer drill: "our agent works in the demo and fails in production" (10 minutes)
+
+A head of data says: "The agent that triages failed pipelines was perfect in the demo. In production it closes tickets that are not fixed." Answer out loud in three minutes: which layers do you inspect, in which order, and what do you change?
+
+<details><summary>A strong answer</summary>
+
+Start outside and work in. Graph: does a verify step run after the fix and before the ticket closes, or does the agent close it in the same step? Loop: what is the finish line? "The agent says it is fixed" is not one; "the rerun succeeded and the row count reconciles" is. Who checks it, the same agent or code? Harness: can the agent close tickets directly? Put close behind the check, and trace every run. Context: does the agent see the result of the rerun, or only its own plan? Prompt: last, ask for the evidence in the output, a query and its result. The change that matters most is an independent check as a gate on closing, with the stop reason recorded, then an eval set built from the wrongly closed tickets so the fix is measured.
+
+</details>
+
+@@quiz
+TYPE: mcq
+TAG: ai
+Q: An agent picks the wrong table for "revenue". Which layer do you inspect first?
+A) The prompt, since its wording was most likely unclear to the model
+B) The context, since it may not have had the metric's definition
+C) The graph, since a wrong node was probably routed to here
+D) The model, since a larger one would know which table to use
+ANS: B
+WHY: A missing or buried fact is a context failure; rewording the prompt cannot supply a definition the model never saw.
+---
+TYPE: mcq
+TAG: ai
+Q: Why should the stable parts of a prompt come first?
+A) Models weigh the first tokens far more than all of the later ones
+B) Providers bill the first thousand tokens at a much lower rate
+C) A cache reuses only a prefix that is exactly the same as before
+D) Tool definitions are ignored unless they come ahead of the task
+ANS: C
+WHY: Prompt caching matches an identical prefix, so anything that changes must come after the stable material.
+---
+TYPE: mcq
+TAG: ai
+Q: Which of these is a sensor that runs as code?
+A) A row-count check that runs after each load step finishes
+B) A planner model that writes out the steps before it starts
+C) A permission rule that denies reads of any secrets file
+D) A reviewer model that reads the diff and then comments
+ANS: A
+WHY: Sensors check after the agent acts; a row-count check is plain code. Permission rules and planners are guides, and a reviewer is a model.
+---
+TYPE: mcq
+TAG: ai
+Q: A tool call matches an allow rule and a deny rule. What should the harness do?
+A) Allow it, because the allow rule is the more specific one
+B) Ask a person, because the two rules disagree on the call
+C) Use whichever of the two rules was written down first in the file
+D) Deny it, because a deny rule wins over any allow rule here
+ANS: D
+WHY: Deny wins, as in IAM (7.4): a rule that forbids an action must not be undone by a broader allow.
+---
+TYPE: mcq
+TAG: ai
+Q: Which goal is ready for an unattended loop?
+A) Make the pipeline code cleaner and easier for people to read
+B) The reconciliation query returns zero rows for the day
+C) Improve data quality across the finance tables
+D) Keep going until the agent reports it has finished
+ANS: B
+WHY: A loop needs a finish line a program can check; the others need a person's judgment or trust the maker.
+---
+TYPE: mcq
+TAG: ai
+Q: A loop's check passes every night but the numbers are wrong. What is the most likely cause?
+A) The turn limit was set too low for the full size of the task
+B) The model's context window was too small for the logs
+C) The check is weaker than the goal, or the agent can edit it
+D) The progress file was written after each pass, not before
+ANS: C
+WHY: Agents optimise the check they are given; it must test the real invariant and be out of the maker's reach.
+---
+TYPE: mcq
+TAG: ai
+Q: What does a checkpoint after every node give you?
+A) A lower token cost on each of the model calls in the run
+B) A run that can pause for a person and resume after a crash
+C) A guarantee that no node will ever need to run twice
+D) A shorter prompt, since the state is no longer sent along with it
+ANS: B
+WHY: Saved state lets a run stop and continue; the interrupted node still runs again, so nodes with side effects must be idempotent.
+---
+TYPE: mcq
+TAG: ai
+Q: When is one loop enough, with no graph?
+A) Some steps can run in parallel and must be joined later
+B) A person must approve one step before the run continues
+C) The run is long and has to survive a crash halfway
+D) One kind of step repeats until a single check passes
+ANS: D
+WHY: Branches, approvals, parallel work and resumability are the reasons for a graph; a single repeated step is a loop.
+---
+TYPE: mcq
+TAG: ai
+Q: In an agent graph, where should a model choose the next step?
+A) Only where no rule in code can make the decision at all
+B) On every edge, so the graph can adapt to each new case
+C) Never, since model choices cannot be traced afterwards
+D) At the first node only, where the plan is written down
+ANS: A
+WHY: Routing in code gives guarantees and is cheap; a model belongs where judgment is needed.
+---
+TYPE: mcq
+TAG: ai
+Q: By late 2026 all four large labs offered a hosted agent harness. What stays your work?
+A) The agent loop and the code that feeds results back to it
+B) The sandbox that tool calls run in and the store of saved sessions
+C) The tools for your data, permission rules, budgets and checks
+D) The compaction of long histories as the window fills up
+ANS: C
+WHY: The loop, sandbox, sessions and compaction are for sale; what the agent may touch and how its work is judged is yours.
+---
+TYPE: mcq
+TAG: ai
+Q: How do current flagship models decide how much to reason?
+A) From an effort setting that is sent with each request
+B) From the phrase "think step by step" in it
+C) From the number of tools that are listed for the call
+D) From a fixed token budget that the user must compute
+ANS: A
+WHY: Reasoning depth is a request setting (low to high or max), chosen per step, not a sentence in the prompt.
+---
+TYPE: mcq
+TAG: arch
+Q: Two hosted agent products were retired in 2026. Which design habit protects you?
+A) Use only the features that are marked as generally available today
+B) Sign a multi-year contract with one single provider
+C) Avoid hosted harnesses and build every part in-house
+D) Keep prompts, tools, evals and state behind your own interface
+ANS: D
+WHY: Owning the interface and the assets makes a move a small job; avoiding hosted services entirely gives up their value.
+---
+TYPE: fill
+TAG: ai
+Q: The four context moves are write, select, compress and ____ (give a sub-task its own clean window).
+ANS: isolate | isolation
+WHY: A sub-agent works in a clean context and returns only a summary, so its reading does not fill the main window.
+---
+TYPE: fill
+TAG: ai
+Q: A loop stops because the state was the same after two passes in a row. That stop rule is called no ____.
+ANS: progress
+WHY: Done, turn limit, spend limit, time limit and no progress are the stop rules; the reason that fired is the loop's main metric.
+@@interview
+Q: Walk me through the five layers of agent engineering and the failure each one owns.
+TAG: ai
+A: Prompt: what you ask in one call and the shape of the answer; it fails as vague or unparseable output. Context: what the model sees this turn; it fails as a missing or buried fact. Harness: what the model can do, through tools, permissions, a sandbox, hooks and checks; it fails as a wrong or unsafe action. Loop: how the work continues and stops; it fails as spinning, stopping early or passing a weak check. Graph: which step or agent runs next, with shared state, checkpoints and approvals; it fails as one long run that cannot resume or be audited. When something goes wrong I ask from the outside in (did the right step run, was it checked, was it allowed, did it have the fact) and only then touch the prompt.
+---
+Q: What is context engineering, and why does it still matter with a million-token window?
+TAG: ai
+A: It is choosing what the model sees at every step: the smallest set of tokens that makes the right next action likely. A large window removes the hard limit but not the costs: every input token is paid for on every turn, time to first token grows with length, and recall drops as the window fills. The moves are write (notes and memory outside the window), select (retrieve just in time), compress (summarise or clear old turns and bulky results) and isolate (sub-agents with clean contexts that return summaries). I order the window stable to changing so the prefix is cached, keep tools few and distinct, and track tokens per part and cache hit rate.
+---
+Q: Design the harness for an agent that investigates failed pipeline runs on our lakehouse.
+TAG: arch
+A: Tools: list_tables, describe_table, run_sql with a row limit and a timeout, get_run_log, and propose_fix that writes a diff, not a change. Permissions: reads allowed on a read-only role in a scratch-scoped session; anything that writes or reruns is on the ask list; secrets and production writes are denied, and deny wins. Sandbox: no network except the warehouse and the scheduler API. Hooks: before a call, block queries without a limit; after, record row counts; at the end, a check that the report cites a query and its result. Sensors in code first (schema and count checks), a reviewer model second. A trace per run with tokens and cost, a budget per run, and a short map file that says where table notes and runbooks live. The agent stops for approval before anything irreversible.
+---
+Q: How do you make an agent loop safe to run unattended overnight?
+TAG: ai
+A: Four parts. A finish line a program can check, such as a reconciliation query returning zero rows. An independent checker the agent cannot edit, code first and a second model only where judgment is needed. Stop rules: done, a turn limit, a spend limit, a time limit and no progress, with the reason recorded and an alert on anything but done. And a progress file, so each pass starts with a fresh context, does one unit of work and can be restarted. Around that: a lock so two runs never overlap, a read-only role or a scratch area, approval for irreversible actions, and a morning report with evidence.
+---
+Q: When would you use a graph of agents and when a single agent loop?
+TAG: arch
+A: A single loop when the task is one kind of step repeated until a check passes; it is simpler and cheaper. A graph when steps differ in kind, when some can run in parallel, when a person must approve part of it, when the run is long enough that it must resume after a crash, or when I must show exactly what ran. In the graph I keep routing in code wherever a rule can decide, use models only inside nodes that need judgment, keep one typed state, checkpoint after each node, and put a verifier before parallel branches are joined. I also say what it costs: a state schema to maintain and a checkpoint store with retention and access rules.
+---
+Q: A node in your agent graph is retried after a crash. What can go wrong and how do you prevent it?
+TAG: arch
+A: The node that was running when the crash happened runs again on resume. If it has a side effect it happens twice: duplicate rows, a second message, a job started twice. Prevent it the way you would in a batch pipeline: make the node idempotent with an idempotency key, a MERGE instead of an INSERT, or an "already done" check at the top. A model call in a replayed node can also answer differently, so anything that must stay fixed (a generated id, a decision already shown to a person) is written to the state and read back, not recomputed.
+---
+Q: Our agent's nightly check passes but the data is still wrong. What do you look at?
+TAG: ai
+A: The check is weaker than the goal, or the agent can influence it. I look at whether the agent could edit the test or query that judges it, whether the check tests shape (job succeeded, rows exist) and not the business invariant, and whether maker and checker share a context. Fixes: put the checker out of the agent's reach, check the invariant itself, use an independent checker, keep known-bad cases the check must fail, and sample passed runs for human review so the check is measured too.
+---
+Q: The labs now sell hosted agent harnesses. How does that change your architecture?
+TAG: arch
+A: The loop, sandbox, sessions, schedules and compaction can be bought, so my design effort moves to what remains mine: the tools for our data, the permission rules, budgets, checks and what goes into the context. I ask the usual managed-service questions: what state lives there and how I export it, whether the data is allowed to be processed there, what happens to running work in an outage, and which features are still beta. Because hosted agent products were retired during 2026, I keep prompts, tool definitions, eval sets and traces in our own repository and storage behind a gateway we own, so changing provider is a small job.
+---
+Q: How do you write a prompt that code can depend on?
+TAG: ai
+A: Treat it as a contract. State the task, the constraints and how the answer will be judged, with the reason for each rule. Give two or three examples that differ. Ask for a schema and use the provider's structured output where it exists; validate the result and send the error back once on failure. Set the reasoning effort per step instead of writing "think step by step". Keep the prompt in the repository with a version, and score every change against an eval set before it ships.
+---
+Q: What is the difference between a guide and a sensor in a harness? Give a data engineering example of each.
+TAG: ai
+A: A guide steers the agent before it acts; a sensor checks after it acts. Each can be code or a model. Guides: a permission rule that only allows SELECT on a read-only role, or a map file that says where table notes live. Sensors: a row-count and schema check after a load, or a reviewer model that reads the diff. I prefer code where code can decide, because it is cheaper and certain, and its error message can tell the agent the exact fix.

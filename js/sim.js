@@ -511,11 +511,12 @@ function simClean(j) { /* imported files and links are untrusted: keep only know
 const apx = (p, ...xs) => p.append(...xs.filter(x => x != null && x !== false)); /* append, skipping optional pieces */
 const SIM_W = 150, SIM_H = 66, SIM_NS = 'http://www.w3.org/2000/svg';
 const sv = (tag, a, kids) => { const e = document.createElementNS(SIM_NS, tag); for (const k in (a || {})) if (a[k] != null) e.setAttribute(k, a[k]); (kids || []).forEach(c => c && e.appendChild(c)); return e; };
-let simTab = 'build', simScFilter = 'all', simLastD = null;
+let simTab = 'build', simScFilter = 'all', simLastD = null, simPalCat = 'all';
 const simMode = {}, simLvl = {}; /* per challenge, this session: learn, practice or exam; hints opened outside exams */
 function simEx(sid) { const st = simState(); if (!st.ex || typeof st.ex !== 'object') st.ex = {}; const x = st.ex[sid] = st.ex[sid] || {}; if (!x.cur) x.cur = { lvl: 0, rev: 0, t0: Date.now() }; return x; }
 function simTeachTpl(key) { const D = typeof DATA !== 'undefined' && DATA.design && DATA.design[key]; return SIM_TPL.find(t => t.id === key) || (D && SIM_TPL.find(t => t.re.test(D.title + ' ' + D.prompt))) || SIM_TPL[3]; }
 function vSim(a, b, c) {
+  if (a === 'cases' && typeof vCaseStudies === 'function') { vCaseStudies(b); return; } /* case studies from real companies (js/cases.js) */
   const st = simState();
   if (a === 'share' && b) { try { const d = simUnpack(b); st.d[d.id] = d; st.cur = d.id; save(); toast('Shared design added: ' + d.name); } catch (e) { toast('That link does not hold a design.'); } location.replace('#/sim'); return; }
   if (a === 'sc' && b) { const sc = SIM_SC.find(s => s.id === b); if (sc) { const id = 'sc-' + sc.id; if (!st.d[id] || st.d[id].del) st.d[id] = simFromSc(sc); st.cur = id; simTab = 'goal'; simLastD = id; if (c === 'exam') { simMode[sc.id] = 'exam'; const x = simEx(sc.id); if (!x.cur.lvl && !x.cur.rev) x.cur.t0 = Date.now(); } save(); } location.replace('#/sim'); return; }
@@ -542,8 +543,8 @@ function vSim(a, b, c) {
   const strip = el('div', { class: 'simstrip', role: 'status', 'aria-live': 'off' });
   const paintStrip = () => { const cost = SIM.cost(d, rt, m && m.R).total; strip.textContent = '';
     const cell = (l, v, cls) => el('span', { class: 'simstat' + (cls ? ' ' + cls : '') }, [el('small', { text: l }), el('b', { class: 'mono', text: v })]);
-    apx(strip, cell('In', m ? Math.round(m.rps).toLocaleString() + '/s' : '—'), cell('p50', m ? Math.round(m.p50) + ' ms' : '—'), cell('p99', m ? Math.round(m.p99) + ' ms' : '—', m && m.p99 > 500 ? 'bad' : ''),
-      cell('Errors', m ? m.err.toFixed(1) + '%' : '—', m && m.err > 1 ? 'bad' : ''), cell('Lag', m ? (m.fresh ? m.fresh.toFixed(1) + ' s' : '0 s') : '—', m && m.fresh > 5 ? 'bad' : ''), cell('Hot spots', m ? String(m.hot.length) : '—', m && m.hot.length ? 'warn' : ''), cell('Cost', '$' + cost.toLocaleString() + '/mo'));
+    apx(strip, cell('Arriving', m ? Math.round(m.rps).toLocaleString() + '/s' : '—'), cell('p50 · typical', m ? Math.round(m.p50) + ' ms' : '—'), cell('p99 · slowest 1%', m ? Math.round(m.p99) + ' ms' : '—', m && m.p99 > 500 ? 'bad' : ''),
+      cell('Errors', m ? m.err.toFixed(1) + '%' : '—', m && m.err > 1 ? 'bad' : ''), cell('Lag · behind by', m ? (m.fresh ? m.fresh.toFixed(1) + ' s' : '0 s') : '—', m && m.fresh > 5 ? 'bad' : ''), cell('Overloaded', m ? String(m.hot.length) : '—', m && m.hot.length ? 'warn' : ''), cell('Cost', '$' + cost.toLocaleString() + '/mo'));
   };
 
   /* canvas */
@@ -553,13 +554,32 @@ function vSim(a, b, c) {
   cv.append(defs, gZ, gE, ghost, gN);
   const setVB = () => cv.setAttribute('viewBox', [vb.x, vb.y, vb.w, vb.h].map(Math.round).join(' '));
   const pt = ev => { const r = cv.getBoundingClientRect(); return { x: vb.x + (ev.clientX - r.left) / r.width * vb.w, y: vb.y + (ev.clientY - r.top) / r.height * vb.h }; };
-  const fit = () => { if (!d.nodes.length) { vb = { x: 0, y: 0, w: 960, h: 420 }; setVB(); return; } const xs = d.nodes.map(n => n.x), ys = d.nodes.map(n => n.y); const x0 = Math.min(...xs) - 40, y0 = Math.min(...ys) - 40, x1 = Math.max(...xs) + SIM_W + 40, y1 = Math.max(...ys) + SIM_H + 40; const r = cv.getBoundingClientRect(), ar = r.width && r.height ? r.width / r.height : 2.3; let w = Math.max(x1 - x0, 820), h = Math.max(y1 - y0, 260); if (w / h > ar) h = w / ar; else w = h * ar; vb = { x: x0 - (w - (x1 - x0)) / 2, y: y0 - (h - (y1 - y0)) / 2, w, h }; setVB(); };
-  const inView = n => n.x >= vb.x && n.y >= vb.y && n.x + SIM_W <= vb.x + vb.w && n.y + SIM_H <= vb.y + vb.h;
+  /* phone view: a left-to-right design cannot be read at 345 px (boxes came out about 60 px wide), so on a narrow screen the
+     boxes are arranged top to bottom by depth from the sources, two a row, at a size you can read. The positions saved in the
+     design are untouched; boxes are tapped, not dragged, and the page scrolls over the canvas. */
+  const tall = () => !!window.matchMedia && matchMedia('(max-width:560px)').matches;
+  let vpos = null, vsig = '';
+  const place = () => {
+    if (!tall()) { vpos = null; return; }
+    const { ord } = SIM.order(d), depth = {}, rows = [];
+    ord.forEach(id => { const ins = d.edges.filter(e => e.b === id).map(e => depth[e.a]).filter(v => v != null); depth[id] = ins.length ? Math.max(...ins) + 1 : 0; });
+    d.nodes.forEach(n => { const k = depth[n.id] != null ? depth[n.id] : 0; (rows[k] = rows[k] || []).push(n.id); });
+    vpos = {}; let y = 14;
+    rows.filter(Boolean).forEach(ids => { ids.forEach((id, i) => { vpos[id] = { x: ids.length === 1 ? 14 + (SIM_W + 16) / 2 : 14 + (i % 2) * (SIM_W + 16), y: y + Math.floor(i / 2) * (SIM_H + 18), sub: Math.floor(i / 2), top: y }; }); y += Math.ceil(ids.length / 2) * (SIM_H + 18) + 22; });
+  };
+  const P = n => (vpos && vpos[n.id]) || n;
+  const fit = () => { place(); cv.style.height = vpos ? '240px' : ''; cv.style.touchAction = vpos ? 'pan-y' : ''; if (!d.nodes.length) { vb = { x: 0, y: 0, w: 960, h: 420 }; setVB(); return; } const pad = vpos ? 14 : 28, xs = d.nodes.map(n => P(n).x), ys = d.nodes.map(n => P(n).y); const x0 = Math.min(...xs) - pad - (vpos || !matchMedia('(min-width:1024px)').matches ? 0 : 80), y0 = Math.min(...ys) - pad, x1 = Math.max(...xs) + SIM_W + pad, y1 = Math.max(...ys) + SIM_H + pad; /* on a desktop the tool column sits on the left: keep the first box clear of it */
+    if (vpos) { const bw = Math.max(x1 - x0, 2 * SIM_W + 44), cw = cv.getBoundingClientRect().width || 340; cv.style.height = Math.round(Math.min(innerHeight * 0.72, Math.max(200, (y1 - y0) * cw / bw))) + 'px'; }
+    const r = cv.getBoundingClientRect(), ar = r.width && r.height ? r.width / r.height : 2.3; let w = Math.max(x1 - x0, vpos ? 2 * SIM_W + 44 : 760), h = Math.max(y1 - y0, vpos ? 120 : 260); if (w / h > ar) h = w / ar; else w = h * ar; vb = { x: x0 - (w - (x1 - x0)) / 2, y: y0 - (h - (y1 - y0)) / 2, w, h }; setVB(); };
+  const inView = n0 => { const n = P(n0); return n.x >= vb.x && n.y >= vb.y && n.x + SIM_W <= vb.x + vb.w && n.y + SIM_H <= vb.y + vb.h; };
   const zoom = (f, c) => { c = c || { x: vb.x + vb.w / 2, y: vb.y + vb.h / 2 }; const w = Math.min(6000, Math.max(240, vb.w * f)), h = vb.h * w / vb.w; vb = { x: c.x - (c.x - vb.x) * w / vb.w, y: c.y - (c.y - vb.y) * h / vb.h, w, h }; setVB(); };
-  const ePath = (a, b) => { const x1 = a.x + SIM_W, y1 = a.y + SIM_H / 2, x2 = b.x, y2 = b.y + SIM_H / 2, k = Math.max(40, Math.abs(x2 - x1) / 2); return 'M' + x1 + ' ' + y1 + ' C' + (x1 + k) + ' ' + y1 + ' ' + (x2 - k) + ' ' + y2 + ' ' + x2 + ' ' + y2; };
+  const ePath = (a0, b0) => { const a = P(a0), b = P(b0); if (vpos) { const x1 = a.x + SIM_W / 2, y1 = a.y + SIM_H, x2 = b.x + SIM_W / 2, y2 = b.y, k = Math.max(14, Math.abs(y2 - y1) / 2), gx = 14 + SIM_W + 8;
+    if (b.sub) return 'M' + x1 + ' ' + y1 + ' L' + gx + ' ' + (b.top - 10) + ' L' + gx + ' ' + (y2 - 9) + ' L' + x2 + ' ' + (y2 - 9) + ' L' + x2 + ' ' + y2; /* a box in a second row of its level: the wire runs down the gap between the columns, not behind the box above */
+    return 'M' + x1 + ' ' + y1 + ' C' + x1 + ' ' + (y1 + k) + ' ' + x2 + ' ' + (y2 - k) + ' ' + x2 + ' ' + y2; } const x1 = a.x + SIM_W, y1 = a.y + SIM_H / 2, x2 = b.x, y2 = b.y + SIM_H / 2, k = Math.max(40, Math.abs(x2 - x1) / 2); return 'M' + x1 + ' ' + y1 + ' C' + (x1 + k) + ' ' + y1 + ' ' + (x2 - k) + ' ' + y2 + ' ' + x2 + ' ' + y2; };
   function draw() {
     gE.textContent = ''; gN.textContent = ''; gZ.textContent = '';
-    if (zones) { const cols = ['src', 'edge', 'compute', 'stream', 'store', 'ext']; cols.forEach(c => { const xs = d.nodes.filter(n => SIM_K[n.k].cat === c); if (!xs.length) return; const x0 = Math.min(...xs.map(n => n.x)) - 14, x1 = Math.max(...xs.map(n => n.x)) + SIM_W + 14, y0 = Math.min(...xs.map(n => n.y)) - 34, y1 = Math.max(...xs.map(n => n.y)) + SIM_H + 14; gZ.append(sv('rect', { class: 'simzone', x: x0, y: y0, width: x1 - x0, height: y1 - y0, rx: 14, style: '--c:' + SIM_CAT[c][1] }), Object.assign(sv('text', { class: 'simzt', x: x0 + 12, y: y0 + 20 }), { textContent: SIM_CAT[c][0] })); }); }
+    place(); if (vpos) { const sg = d.nodes.map(n => n.id).join() + '|' + d.edges.map(e => e.a + '>' + e.b).join(); if (sg !== vsig) { vsig = sg; fit(); } } else vsig = '';
+    if (zones && !vpos) { const cols = ['src', 'edge', 'compute', 'stream', 'store', 'ext']; cols.forEach(c => { const xs = d.nodes.filter(n => SIM_K[n.k].cat === c); if (!xs.length) return; const x0 = Math.min(...xs.map(n => n.x)) - 14, x1 = Math.max(...xs.map(n => n.x)) + SIM_W + 14, y0 = Math.min(...xs.map(n => n.y)) - 34, y1 = Math.max(...xs.map(n => n.y)) + SIM_H + 14; gZ.append(sv('rect', { class: 'simzone', x: x0, y: y0, width: x1 - x0, height: y1 - y0, rx: 14, style: '--c:' + SIM_CAT[c][1] }), Object.assign(sv('text', { class: 'simzt', x: x0 + 12, y: y0 + 20 }), { textContent: SIM_CAT[c][0] })); }); }
     d.edges.forEach(e => { const a = N(e.a), b = N(e.b); if (!a || !b) return; const flow = m && m.R[a.id] ? (SIM_K[a.k].async ? m.R[a.id].offer : m.R[a.id].served) : 0;
       const bad = rt.chaos.some(c => c.target === e.id && SIM.active(rt, rt.t).includes(c));
       const g = sv('g', { class: 'simedge' + (sel && sel.e === e.id ? ' on' : '') + (running && flow > 0 ? ' flow' : '') + (bad ? ' bad' : '') + (e._trace ? ' trace' : ''), 'data-id': e.id, tabindex: '0', role: 'button', 'aria-label': 'Wire from ' + (a.name || a.k) + ' to ' + (b.name || b.k) });
@@ -568,17 +588,18 @@ function vSim(a, b, c) {
       gE.append(g); });
     d.nodes.forEach(n => {
       const K = SIM_K[n.k], r = m && m.R[n.id], col = SIM_CAT[K.cat][1], hot = m && m.hot.includes(n.id), down = r && !simIsSrc(n) && r.cap === 0;
-      const g = sv('g', { class: 'simnode' + (sel && sel.n === n.id ? ' on' : '') + (hot ? ' hot' : '') + (down ? ' down' : ''), 'data-id': n.id, 'data-k': n.k, transform: 'translate(' + n.x + ' ' + n.y + ')', tabindex: '0', role: 'button', 'aria-label': (n.name || K.t) + ', ' + K.t + (r ? ', ' + Math.round(r.inn) + ' per second, ' + Math.round((r.u || 0) * 100) + '% load' : '') });
+      const g = sv('g', { class: 'simnode' + (sel && sel.n === n.id ? ' on' : '') + (hot ? ' hot' : '') + (down ? ' down' : ''), 'data-id': n.id, 'data-k': n.k, transform: 'translate(' + P(n).x + ' ' + P(n).y + ')', tabindex: '0', role: 'button', 'aria-label': (n.name || K.t) + ', ' + K.t + (r ? ', ' + Math.round(r.inn) + ' per second, ' + Math.round((r.u || 0) * 100) + '% load' : '') });
       g.style.setProperty('--c', col);
       const tx = (x, y, s, cls) => { const t = sv('text', { x, y, class: cls }); t.textContent = s; return t; };
-      apx(g, sv('rect', { class: 'box', width: SIM_W, height: SIM_H, rx: 12 }), sv('rect', { class: 'tag', x: 8, y: 8, width: 34, height: 16, rx: 4 }), tx(25, 20, K.ab, 'ab'), tx(48, 21, (n.name || K.t).slice(0, 15), 'nm'));
-      const reps = rt.reps[n.id] != null ? rt.reps[n.id] : (n.n || 1);
-      if (!simIsSrc(n)) apx(g, tx(SIM_W - 8, 21, '×' + reps + (n.standby ? '+S' : '') + (n.auto || K.auto ? ' A' : ''), 'rp'));
+      apx(g, sv('rect', { class: 'box', width: SIM_W, height: SIM_H, rx: 12 }), sv('rect', { class: 'tag', x: 8, y: 8, width: 34, height: 16, rx: 4 }), tx(25, 20, K.ab, 'ab'));
+      /* the name has the whole first line (the replica count used to be printed over its end); long names are set slightly narrower to fit */
+      const nmS = (n.name || K.t).slice(0, 16), nmE = tx(48, 21, nmS, 'nm'); if (nmS.length > 12) { nmE.setAttribute('textLength', SIM_W - 56); nmE.setAttribute('lengthAdjust', 'spacingAndGlyphs'); } apx(g, nmE);
+      const reps = rt.reps[n.id] != null ? rt.reps[n.id] : (n.n || 1), rpT = simIsSrc(n) ? '' : '×' + reps + (n.standby ? '+S' : '') + (n.auto || K.auto ? ' A' : ''), rpW = rpT.length * 7 + 6;
       if (r) { apx(g, tx(10, 42, Math.round(simIsSrc(n) ? r.inn : r.served).toLocaleString() + '/s' + (simIsSrc(n) ? '' : ' · ' + Math.round((r.own || 0) * (2 + 2.5 * Math.pow(Math.min(r.u, 1.2), 2))) + 'ms'), 'rd'));
-        if (!simIsSrc(n)) { const u = Math.min(1, r.u || 0); apx(g, sv('rect', { class: 'ub', x: 10, y: 50, width: SIM_W - 20, height: 6, rx: 3 }), sv('rect', { class: 'uf' + (u >= 0.85 ? ' hi' : u >= 0.6 ? ' mid' : ''), x: 10, y: 50, width: Math.max(2, (SIM_W - 20) * u), height: 6, rx: 3 })); }
+        if (!simIsSrc(n)) { const u = Math.min(1, r.u || 0); apx(g, sv('rect', { class: 'ub', x: 10, y: 50, width: SIM_W - 20 - rpW, height: 6, rx: 3 }), sv('rect', { class: 'uf' + (u >= 0.85 ? ' hi' : u >= 0.6 ? ' mid' : ''), x: 10, y: 50, width: Math.max(2, (SIM_W - 20 - rpW) * u), height: 6, rx: 3 }), tx(SIM_W - 8, 58, rpT, 'rp')); }
         if (r.lag > 1) apx(g, tx(SIM_W - 8, 42, 'lag ' + (r.fresh || 0).toFixed(1) + 's', 'lg'));
-      } else apx(g, tx(10, 44, simIsSrc(n) ? ((n.rps != null ? n.rps : K.rps) * (d.mult || 1)).toLocaleString() + '/s' : (n.cap != null ? n.cap : K.cap).toLocaleString() + '/s each', 'rd sub'));
-      apx(g, sv('circle', { class: 'port', cx: SIM_W, cy: SIM_H / 2, r: 9, 'data-port': n.id }), sv('circle', { class: 'inport', cx: 0, cy: SIM_H / 2, r: 4 }));
+      } else apx(g, tx(10, 44, simIsSrc(n) ? ((n.rps != null ? n.rps : K.rps) * (d.mult || 1)).toLocaleString() + '/s' : rpT + ' · ' + (n.cap != null ? n.cap : K.cap).toLocaleString() + '/s each', 'rd sub'));
+      apx(g, sv('circle', { class: 'port', cx: vpos ? SIM_W / 2 : SIM_W, cy: vpos ? SIM_H : SIM_H / 2, r: vpos ? 7 : 9, 'data-port': n.id }), sv('circle', { class: 'inport', cx: vpos ? SIM_W / 2 : 0, cy: vpos ? 0 : SIM_H / 2, r: 4 }));
       g.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); if (sel && sel.wiring && sel.n !== n.id) { simWire(sel.n, n.id); return; } sel = { n: n.id }; simTab = 'build'; draw(); panel(); } }); /* tap or Enter on a second box while wiring finishes the wire */
       gN.append(g);
     });
@@ -588,33 +609,34 @@ function vSim(a, b, c) {
   const pts = new Map(); let drag = null, pinch = null;
   cv.addEventListener('pointerdown', ev => {
     cv.focus({ preventScroll: true }); pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
-    if (pts.size === 2) { const [p1, p2] = [...pts.values()]; pinch = { dist: Math.hypot(p1.x - p2.x, p1.y - p2.y), vb: Object.assign({}, vb) }; drag = null; return; }
+    if (pts.size === 2 && !vpos) { const [p1, p2] = [...pts.values()]; pinch = { dist: Math.hypot(p1.x - p2.x, p1.y - p2.y), vb: Object.assign({}, vb) }; drag = null; return; }
     const p = pt(ev), port = ev.target.closest('[data-port]'), ng = ev.target.closest('.simnode'), eg = ev.target.closest('.simedge');
     try { cv.setPointerCapture(ev.pointerId); } catch (x) { }
     if (port) drag = { kind: 'wire', from: port.getAttribute('data-port'), p0: p, moved: false };
     else if (ng) { const n = N(ng.getAttribute('data-id')); drag = { kind: 'node', id: n.id, dx: p.x - n.x, dy: p.y - n.y, p0: p, moved: false, before: snap() }; }
     else if (eg) drag = { kind: 'edge', id: eg.getAttribute('data-id'), p0: p, moved: false };
-    else drag = { kind: 'pan', c0: { x: ev.clientX, y: ev.clientY }, vb0: Object.assign({}, vb), moved: false };
+    else drag = vpos ? { kind: 'bg', p0: p, moved: false } : { kind: 'pan', c0: { x: ev.clientX, y: ev.clientY }, vb0: Object.assign({}, vb), moved: false };
   });
   cv.addEventListener('pointermove', ev => {
     if (pts.has(ev.pointerId)) pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
     if (pinch && pts.size === 2) { const [p1, p2] = [...pts.values()], dist = Math.hypot(p1.x - p2.x, p1.y - p2.y); vb = Object.assign({}, pinch.vb); zoom(pinch.dist / Math.max(20, dist)); return; }
     if (!drag) return; const p = pt(ev);
     if (Math.hypot(p.x - (drag.p0 ? drag.p0.x : 0), p.y - (drag.p0 ? drag.p0.y : 0)) > 4 || (drag.c0 && Math.hypot(ev.clientX - drag.c0.x, ev.clientY - drag.c0.y) > 4)) drag.moved = true;
-    if (drag.kind === 'node' && drag.moved) { const n = N(drag.id); n.x = Math.round((p.x - drag.dx) / 10) * 10; n.y = Math.round((p.y - drag.dy) / 10) * 10; const g = gN.querySelector('[data-id="' + n.id + '"]'); if (g) g.setAttribute('transform', 'translate(' + n.x + ' ' + n.y + ')'); gE.querySelectorAll('.simedge').forEach(ge => { const e = d.edges.find(x => x.id === ge.getAttribute('data-id')); if (e && (e.a === n.id || e.b === n.id)) ge.querySelectorAll('path').forEach(pp => pp.setAttribute('d', ePath(N(e.a), N(e.b)))); }); }
-    else if (drag.kind === 'wire') { const a = N(drag.from); ghost.setAttribute('d', 'M' + (a.x + SIM_W) + ' ' + (a.y + SIM_H / 2) + ' L' + p.x + ' ' + p.y); }
+    if (drag.kind === 'node' && drag.moved && !vpos) { const n = N(drag.id); n.x = Math.round((p.x - drag.dx) / 10) * 10; n.y = Math.round((p.y - drag.dy) / 10) * 10; const g = gN.querySelector('[data-id="' + n.id + '"]'); if (g) g.setAttribute('transform', 'translate(' + n.x + ' ' + n.y + ')'); gE.querySelectorAll('.simedge').forEach(ge => { const e = d.edges.find(x => x.id === ge.getAttribute('data-id')); if (e && (e.a === n.id || e.b === n.id)) ge.querySelectorAll('path').forEach(pp => pp.setAttribute('d', ePath(N(e.a), N(e.b)))); }); }
+    else if (drag.kind === 'wire' && !vpos) { const a = N(drag.from); ghost.setAttribute('d', 'M' + (a.x + SIM_W) + ' ' + (a.y + SIM_H / 2) + ' L' + p.x + ' ' + p.y); }
     else if (drag.kind === 'pan' && drag.moved) { const r = cv.getBoundingClientRect(); vb.x = drag.vb0.x - (ev.clientX - drag.c0.x) / r.width * vb.w; vb.y = drag.vb0.y - (ev.clientY - drag.c0.y) / r.height * vb.h; setVB(); }
   });
   const up = ev => {
     pts.delete(ev.pointerId); if (pinch) { if (pts.size < 2) pinch = null; return; }
     if (!drag) return; const dr = drag; drag = null; ghost.setAttribute('d', '');
-    if (dr.kind === 'node') { if (dr.moved) { undo.push(dr.before); redo.length = 0; touch(); draw(); } else if (sel && sel.wiring && sel.n !== dr.id) simWire(sel.n, dr.id); else { sel = { n: dr.id }; simTab = 'build'; draw(); panel(); } }
-    else if (dr.kind === 'wire') { const tgt = document.elementFromPoint(ev.clientX, ev.clientY), g = tgt && tgt.closest && tgt.closest('.simnode'); if (dr.moved && g) simWire(dr.from, g.getAttribute('data-id')); else if (!dr.moved) { sel = { n: dr.from, wiring: true }; simTab = 'build'; draw(); panel(); toast('Now tap the box to wire it to.'); } }
+    if (dr.kind === 'node') { if (dr.moved && !vpos) { undo.push(dr.before); redo.length = 0; touch(); draw(); } else if (sel && sel.wiring && sel.n !== dr.id) simWire(sel.n, dr.id); else { sel = { n: dr.id }; simTab = 'build'; draw(); panel(); if (vpos) requestAnimationFrame(() => { const r = tabRow.getBoundingClientRect(); if (r.top > innerHeight * 0.6) window.scrollTo({ top: scrollY + r.top - innerHeight * 0.5, behavior: 'smooth' }); }); } } /* phone view: bring the box's settings up to mid-screen, they sit under the canvas */
+    else if (dr.kind === 'wire') { const tgt = document.elementFromPoint(ev.clientX, ev.clientY), g = tgt && tgt.closest && tgt.closest('.simnode'); if (dr.moved && g && !vpos) simWire(dr.from, g.getAttribute('data-id')); else if (!dr.moved || vpos) { sel = { n: dr.from, wiring: true }; simTab = 'build'; draw(); panel(); toast('Now tap the box to wire it to.'); } }
     else if (dr.kind === 'edge') { sel = { e: dr.id }; simTab = 'build'; draw(); panel(); }
-    else if (dr.kind === 'pan' && !dr.moved) { if (sel && sel.wiring) { sel = null; } else sel = null; draw(); panel(); }
+    else if ((dr.kind === 'pan' && !dr.moved) || dr.kind === 'bg') { if (sel && sel.wiring) { sel = null; } else sel = null; draw(); panel(); }
   };
-  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
-  cv.addEventListener('wheel', ev => { ev.preventDefault(); zoom(ev.deltaY > 0 ? 1.1 : 0.9, pt(ev)); }, { passive: false });
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', ev => { if (vpos) { pts.delete(ev.pointerId); pinch = null; drag = null; ghost.setAttribute('d', ''); } else up(ev); }); /* phone view: a cancelled touch is the page scrolling, not a tap */
+  const onRs = () => { vsig = ''; fit(); draw(); }; window.addEventListener('resize', onRs); cleanup.push(() => window.removeEventListener('resize', onRs));
+  cv.addEventListener('wheel', ev => { if (!ev.ctrlKey && !ev.metaKey) return; ev.preventDefault(); zoom(ev.deltaY > 0 ? 1.1 : 0.9, pt(ev)); }, { passive: false }); /* plain scrolling moves the page; a trackpad pinch (or Ctrl/Cmd + wheel) zooms the canvas */
   function simWire(a, b) { if (a === b || d.edges.some(e => e.a === a && e.b === b)) { sel = null; draw(); panel(); return; } if (simIsSrc(N(b))) { toast('Sources only send traffic; wire from them, not to them.'); return; } change(() => { const id = nid('e'); d.edges.push({ id, a, b }); sel = { e: id }; }); }
   const key = ev => {
     if (!document.body.contains(cv)) return; const tg = ev.target; if (tg && /INPUT|TEXTAREA|SELECT/.test(tg.tagName)) return;
@@ -662,14 +684,17 @@ function vSim(a, b, c) {
 
   /* ---- design picker ---- */
   const nameIn = el('input', { class: 'simname', value: d.name, 'aria-label': 'Design name', maxlength: '60' }); nameIn.addEventListener('input', () => { d.name = nameIn.value || 'Untitled'; touch(); });
-  const pick = el('select', { class: 'btn sm', 'aria-label': 'Open a design', onchange: async e => { const v = e.target.value; e.target.value = d.id;
+  const pick = el('select', { class: 'btn sm simpick', 'aria-label': 'Open a design', onchange: async e => { const v = e.target.value; e.target.value = ''; if (!v) return;
     if (v === '+new') { const nd = simBlank('Design ' + (simList().length + 1)); st.d[nd.id] = nd; st.cur = nd.id; save(); route(); }
     else if (v === '+dup') { const nd = JSON.parse(JSON.stringify(d)); nd.id = 'd' + Date.now().toString(36); nd.name = d.name + ' (copy)'; nd.at = Date.now(); delete nd.del; st.d[nd.id] = nd; st.cur = nd.id; save(); route(); }
     else if (v === '+del') { d.del = Date.now(); d.at = d.del; const was = d.id; st.cur = null; save(); toast('Design removed.', () => { delete st.d[was].del; st.d[was].at = Date.now(); st.cur = was; save(); route(); }); route(); }
     else if (v === '+imp') impIn.click();
     else if (v.startsWith('+tpl:')) { simNewFrom(v.slice(5)); route(); }
     else { st.cur = v; save(); route(); } } },
-    simList().map(x => el('option', { value: x.id, selected: x.id === d.id ? 'selected' : null, text: x.name })).concat([el('option', { value: '+new', text: '+ New blank design' })].concat(SIM_TPL.map(t => el('option', { value: '+tpl:' + t.id, text: '+ Start from: ' + t.t })), [ el('option', { value: '+dup', text: 'Duplicate this design' }), el('option', { value: '+imp', text: 'Import a JSON file…' }), el('option', { value: '+del', text: 'Remove this design' })])));
+    [el('option', { value: '', selected: 'selected', text: 'Designs…' }),
+      el('optgroup', { label: 'Your designs' }, simList().map(x => el('option', { value: x.id, text: (x.id === d.id ? '✓ ' : '') + x.name }))),
+      el('optgroup', { label: 'Start a new one' }, [el('option', { value: '+new', text: '+ New blank design' })].concat(SIM_TPL.map(t => el('option', { value: '+tpl:' + t.id, text: '+ Start from: ' + t.t })))),
+      el('optgroup', { label: 'This design' }, [el('option', { value: '+dup', text: 'Duplicate this design' }), el('option', { value: '+imp', text: 'Import a JSON file…' }), el('option', { value: '+del', text: 'Remove this design' })])]);
   const impIn = el('input', { type: 'file', accept: '.json,application/json', class: 'sr', 'aria-label': 'Import a design file', onchange: e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { try { const nd = simClean(JSON.parse(t)); st.d[nd.id] = nd; st.cur = nd.id; save(); toast('Imported ' + nd.name); route(); } catch (x) { toast('That file is not a design.'); } }); } });
   const dl = (blob, name) => { const a = el('a', { href: URL.createObjectURL(blob), download: name }); document.body.appendChild(a); a.click(); a.remove(); };
   const fileName = ext => (d.name || 'design').replace(/[^\w-]+/g, '-').toLowerCase() + '.' + ext;
@@ -725,11 +750,12 @@ function vSim(a, b, c) {
     if (sel && sel.e) { const e = d.edges.find(x => x.id === sel.e); if (e) { apx(body, el('h3', { text: 'Wire' }), el('p', { style: { margin: 0 }, text: (N(e.a).name || N(e.a).k) + ' → ' + (N(e.b).name || N(e.b).k) }), el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'Break it from the Break tab: add latency, cut it, or drop packets.' }), el('div', { class: 'row wrap', style: { gap: '8px' } }, [el('button', { class: 'btn sm', onclick: () => { simTab = 'break'; panel(); }, text: 'Break this wire' }), el('button', { class: 'btn sm warn', onclick: delSel, text: 'Delete wire' })])); return; } }
     const q = el('input', { type: 'search', class: 'simsearch', placeholder: 'Find a component', 'aria-label': 'Find a component' });
     const list = el('div', { class: 'stack', style: { gap: '10px' } });
-    const fill = () => { list.textContent = ''; const s = q.value.trim().toLowerCase(); Object.keys(SIM_CAT).forEach(c => { const ks = Object.keys(SIM_K).filter(k => SIM_K[k].cat === c && (!s || (SIM_K[k].t + ' ' + SIM_K[k].d).toLowerCase().includes(s))); if (!ks.length) return;
+    const cats = el('div', { class: 'simchips simcats', role: 'group', 'aria-label': 'Kind of part' }, [['all', 'All']].concat(Object.keys(SIM_CAT).map(c => [c, SIM_CAT[c][0]])).map(([c, t]) => el('button', { class: 'chip', 'data-cat': c, 'aria-pressed': String(simPalCat === c), onclick: () => { simPalCat = c; cats.querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', String(b.getAttribute('data-cat') === c))); fill(); }, text: t })));
+    const fill = () => { list.textContent = ''; const s = q.value.trim().toLowerCase(); Object.keys(SIM_CAT).filter(c => s || simPalCat === 'all' || c === simPalCat).forEach(c => { const ks = Object.keys(SIM_K).filter(k => SIM_K[k].cat === c && (!s || (SIM_K[k].t + ' ' + SIM_K[k].d).toLowerCase().includes(s))); if (!ks.length) return;
       apx(list, el('div', { class: 'stack', style: { gap: '6px' } }, [el('span', { class: 'lbl', text: SIM_CAT[c][0] }), el('div', { class: 'simpal' }, ks.map(k => el('button', { class: 'simcomp', 'data-k': k, title: SIM_K[k].d, onpointerdown: ev => palDrag(ev, k), onclick: ev => { if (ev.currentTarget.dataset.dragged) return; addNode(k); } }, [el('span', { class: 'simab', style: { background: SIM_CAT[c][1] }, text: SIM_K[k].ab }), el('span', { class: 'grow' }, [el('b', { text: SIM_K[k].t }), el('small', { text: SIM_K[k].d })])])))])); }); };
     q.addEventListener('input', fill); fill();
     if (d.nodes.length <= 1 && !d.edges.length) apx(body, el('span', { class: 'lbl', text: 'Quick start' }), simQuickRow(id => change(() => { const t = simFromSc(SIM_TPL.find(x => x.id === id)); d.nodes = t.nodes; d.edges = t.edges; if (/^(My design|Design \d+)$/.test(d.name)) { d.name = t.name; nameIn.value = t.name; } sel = null; fit(); })), el('span', { class: 'lbl', text: 'Or build from parts' }));
-    apx(body, el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'Tap a component to add it (wired after the selected box), or drag it onto the canvas. Drag from a box\'s right dot to another box to wire them.' }), q, list);
+    apx(body, el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: vpos ? 'Tap a part to add it after the selected box. To join two boxes, select one, tap Wire to, then tap the other.' : 'Tap a component to add it (wired after the selected box), or drag it onto the canvas. Drag from a box\'s right dot to another box to wire them.' }), cats, q, list);
   }
   function pRun() {
     const mult = el('input', { type: 'range', id: 'sim_mult', min: '0.25', max: '10', step: '0.25', value: d.mult || 1 }), mv = el('b', { class: 'mono', text: '×' + (d.mult || 1) });
@@ -831,9 +857,10 @@ function vSim(a, b, c) {
           md !== 'exam' ? el('a', { class: 'btn', href: '#/learn/' + sc.mid, text: 'Open the module' }) : null,
           el('button', { class: 'btn sm', onclick: () => { st.d[d.id] = Object.assign(simFromSc(sc), { from: d.from }); save(); route(); }, text: 'Start over' })]),
         out, ladder,
+        typeof csFor === 'function' && csFor(sc.id).length ? el('div', { class: 'stack simreal', style: { gap: '6px' } }, [el('span', { class: 'lbl', text: 'It happened for real' })].concat(csFor(sc.id).map(k => el('a', { class: 'simsc', href: '#/sim/cases/' + k.id }, [el('span', { class: 'grow' }, [el('b', { text: k.co + ': ' + k.t }), el('small', { text: k.yr + ' · what broke and the fix, about 4 min' })])])))) : null,
         ex.last ? el('span', { class: 'muted', style: { fontSize: '13.5px' }, text: 'Last exam: ' + ex.last.score + ' / 100' + (ex.last.cost ? ' (hints −' + ex.last.cost + ')' : '') + ' on ' + shortDate(iso(new Date(ex.last.at))) + '.' }) : null,
         el('span', { class: 'lbl', text: 'Other scenarios' }));
-    } else apx(body, el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'Each scenario opens a starting design that fails on purpose. Fix it until Check my design passes. Your edits are kept.' }),
+    } else apx(body, el('a', { class: 'simsc', href: '#/sim/cases' }, [el('span', { class: 'grow' }, [el('b', { text: 'Case studies: what broke at Discord, Stripe, Netflix and others' }), el('small', { text: 'Predict, see the fix, then reproduce it here' })])]), el('p', { class: 'muted', style: { margin: 0, fontSize: '14px' }, text: 'Each scenario opens a starting design that fails on purpose. Fix it until Check my design passes. Your edits are kept.' }),
       el('span', { class: 'lbl', text: 'Learn a design box by box' }), el('div', { class: 'simquick' }, SIM_TPL.map(t => el('a', { class: 'simqbtn', href: '#/sim/teach/' + t.id }, [el('b', { text: 'Teach me: ' + t.t }), el('small', { text: t.s })]))));
     const mods = [...new Set(SIM_SC.map(s => s.mid))];
     apx(body, el('div', { class: 'simchips', role: 'group', 'aria-label': 'Filter scenarios' }, [['all', 'All']].concat(mods.map(x => [x, modLabel(x)]), [['Beginner', 'Beginner'], ['Intermediate', 'Intermediate'], ['Advanced', 'Advanced'], ['Staff', 'Staff scale']]).map(([k, t]) => el('button', { class: 'chip', 'aria-pressed': String(simScFilter === k), onclick: () => { simScFilter = k; panel(); }, text: t }))),
@@ -866,7 +893,7 @@ function vSim(a, b, c) {
     } else if (sel && sel.e) { const e = d.edges.find(x => x.id === sel.e); if (e) { const c = act.find(x => x.target === e.id); parts.push('Wire ' + tname(e.id) + (m && e._v != null ? ': carries ' + fmt(e._v) + ' a second' : '') + (c ? '; ' + SIM_CH[c.type].t.toLowerCase() + ' is active on it' : '') + '.'); } }
     const tc = d.teach && SIM_TPL.find(t => t.id === d.teach.tpl);
     const T = {
-      build: () => sel ? 'Change it in the panel, or tap another box.' : tc ? 'Lesson: ' + Object.keys(d.teach.map).length + ' of ' + tc.nodes.length + ' boxes placed' + (tStep()[d.teach.step] && tStep()[d.teach.step].k ? '. Tap Add it for me, or add the highlighted part from the Build list below.' : '.') : d.nodes.length + ' boxes and ' + d.edges.length + ' wires. Tap a part to add it; drag from a box\'s right dot to wire it.',
+      build: () => sel ? 'Change it in the panel, or tap another box.' : tc ? 'Lesson: ' + Object.keys(d.teach.map).length + ' of ' + tc.nodes.length + ' boxes placed' + (tStep()[d.teach.step] && tStep()[d.teach.step].k ? '. Tap Add it for me, or add the highlighted part from the Build list below.' : '.') : d.nodes.length + ' boxes and ' + d.edges.length + ' wires. ' + (vpos ? 'Tap a box to change it. Tap a part below to add it after the selected box.' : 'Tap a part to add it; drag from a box\'s right dot to wire it.'),
       run: () => running && m ? 'Traffic is running: ' + fmt(m.rps) + ' a second in, p99 ' + fmt(m.p99) + ' ms, ' + m.err.toFixed(1) + '% errors' + (m.fresh > 0.5 ? ', ' + m.fresh.toFixed(1) + ' s behind' : '') + '.' : (m ? 'Paused. Run traffic to continue' : 'Press Run traffic to send requests through the design') + ' (traffic × ' + (d.mult || 1) + ').',
       break: () => act.length ? act.map(c => SIM_CH[c.type].t + (c.target ? ' on ' + tname(c.target) : '')).join(', ') + ' active' + (m ? ': ' + m.err.toFixed(1) + '% errors, ' + (m.fresh || 0).toFixed(1) + ' s behind.' : '.') : sel ? 'Inject a failure to hit the selected ' + (sel.e ? 'wire.' : 'box.') : 'Select a box or wire, then inject a failure to see how the design copes.',
       metrics: () => !m ? 'Run traffic to fill the charts.' : m.hot.length ? 'Weakest point: ' + tname(m.hot[0]) + why(m.hot[0]) + '.' : 'No hot spots: every box has headroom.',
@@ -915,9 +942,15 @@ function vSim(a, b, c) {
     if (sp.act === 'run') playB.classList.add('simpulse');
   }
 
-  const head = el('div', { class: 'row wrap simhead' }, [nameIn, pick, exportMenu, impIn]);
+  /* first visit: three steps and two guided ways in, until dismissed (the page opened on a finished design, seven tabs and no goal) */
+  const firstSc = SIM_SC.find(x => x.lvl === 'Beginner') || SIM_SC[0];
+  const intro = d.teach || sc || d.live || S.settings.simIntro ? null : el('section', { class: 'card pad stack simintro', 'aria-label': 'How the simulator works' }, [
+    el('div', { class: 'row' }, [el('b', { class: 'grow simct', text: 'New here? Three steps' }), el('button', { class: 'btn sm', onclick: () => { S.settings.simIntro = 1; save(); intro.remove(); }, text: 'Got it' })]),
+    el('ol', { class: 'simsteps' }, [['Run', 'Press Run traffic. Each box shows how full it is; red means it cannot keep up.'], ['Change', 'Tap a box and give it more replicas or partitions. The numbers at the top answer at once.'], ['Break', 'Open Break, fail a box, and fix the design until it survives.']].map(([t, x]) => el('li', {}, [el('b', { text: t + '. ' }), x]))),
+    el('div', { class: 'row wrap', style: { gap: '8px' } }, [el('a', { class: 'btn pri sm', href: '#/sim/teach/' + SIM_TPL[0].id, text: 'Teach me a design, box by box' }), el('a', { class: 'btn sm', href: '#/sim/sc/' + firstSc.id, text: 'Try a first challenge' }), el('a', { class: 'btn sm', href: '#/sim/cases', text: 'Read a real case' })])]);
+  const head = el('div', { class: 'row wrap simhead' }, [nameIn, pick, el('a', { class: 'btn sm simcaselink', href: '#/sim/cases', text: 'Case studies' }), exportMenu, impIn]);
   const backTo = d.from && /^#\/(live|mock|design|quiz|learn|interview)\b/.test(d.from) ? el('a', { class: 'btn sm pri', href: d.from, text: 'Back to the question' }) : null; if (backTo) head.prepend(backTo);
-  shell('Design simulator', 'System design', [el('div', { class: 'stack simwrap' }, [head, strip, nar, coach, el('div', { class: 'simgrid' }, [canvasCard, el('section', { class: 'card pad stack simside' }, [tabRow, body])])])], { back: '#/design' });
+  shell('Design simulator', 'System design', [el('div', { class: 'stack simwrap' }, [head, intro, strip, nar, coach, el('div', { class: 'simgrid' }, [canvasCard, el('section', { class: 'card pad stack simside' }, [tabRow, body])])])], { back: '#/design' });
   panel(); draw(); requestAnimationFrame(fit);
   window.simDebug = { get d() { return d; }, get rt() { return rt; }, get m() { return m; }, play, step: () => tick(), narrate, get sel() { return sel; }, set sel(v) { sel = v; draw(); panel(); } };
 }
